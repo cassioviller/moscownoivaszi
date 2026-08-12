@@ -2,9 +2,10 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-// S-O19: os tetos moram em `lib/limites.ts`, ao lado do da FOTO — a conta do
-// base64 que os liga estava só em comentário.
-import { CORPO_MAX_AVARIA, CORPO_MAX_FOTO_VESTIDO } from "./lib/limites";
+// S-O19: o teto do corpo mora em `lib/limites.ts`, ao lado do da FOTO — a conta
+// do base64 que os liga estava só em comentário. S-O51/E180: e é UM só, o mesmo
+// para as duas portas que recebem foto, calculado a partir de `FOTO_MAX_BYTES`.
+import { CORPO_MAX_FOTO_BYTES } from "./lib/limites";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import { requireSessaoComLoja, requireModulo } from "./middlewares/auth";
@@ -64,7 +65,7 @@ app.use(
   "/api/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem",
   requireSessaoComLoja,
   requireModulo("vestidos"),
-  express.json({ limit: CORPO_MAX_FOTO_VESTIDO }),
+  express.json({ limit: CORPO_MAX_FOTO_BYTES }),
 );
 /**
  * V1/E167 — a FOTO DA AVARIA passava pela mesma porta e nunca ganhou o teto.
@@ -79,18 +80,18 @@ app.use(
  * anunciado. O 422 `FOTO_MUITO_GRANDE` era código morto, e a suíte era verde
  * porque o único teste mandava um PNG 1×1 de 70 bytes.
  *
- * A conta do limite: 2 MiB de foto × 4/3 do base64 = 2,67 MiB. `4mb` cobre
- * isso com o envelope do JSON e ainda deixa a foto de até ~3 MiB CHEGAR — é o
- * que faz o 422 (que nomeia o teto e o gesto) ser a resposta do excesso, em
- * vez do 413 mudo do parser. Mesma montagem da foto de vestido acima, e pelos
- * mesmos dois motivos: o gate vem ANTES do parser (B15/E104) e o parser vem
- * antes do global (o primeiro a rodar marca `req._body`).
+ * A conta do limite mora em `lib/limites.ts` e é a MESMA das duas portas desde
+ * o E180 (S-O51): 2 MiB de foto × 4/3 do base64 = 2,67 MiB, mais 1 MiB de
+ * envelope. É o que faz o 422 (que nomeia o teto e o gesto) ser a resposta do
+ * excesso, em vez do 413 mudo do parser. Mesma montagem da foto de vestido
+ * acima, e pelos mesmos dois motivos: o gate vem ANTES do parser (B15/E104) e o
+ * parser vem antes do global (o primeiro a rodar marca `req._body`).
  */
 app.use(
   "/api/lojas/:lojaId/bloqueios/:bloqueioId/avarias",
   requireSessaoComLoja,
   requireModulo("vestidos"),
-  express.json({ limit: CORPO_MAX_AVARIA }),
+  express.json({ limit: CORPO_MAX_FOTO_BYTES }),
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

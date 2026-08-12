@@ -5,6 +5,11 @@ import {
   escritasComTabelaDinamica,
   portasNoTexto,
   sqlCruEscrevendoEmTabelaQuente,
+  trancasEmLacoNaoOrdenado,
+  trancasForaDeOrdem,
+  trancasNoTexto,
+  trancasPorTransacao,
+  trancasSemDegrauDeclarado,
   type Porta,
 } from "./portas-de-escrita";
 
@@ -39,6 +44,22 @@ import {
  * as 6 sozinha, no commit seguinte ao que as criou; quem não a leu foi quem
  * commitou.
  *
+ * **E180 — `parcelas` entra como a QUINTA tabela quente (S-O34).** A D4 escolheu
+ * quatro tabelas e deixou de fora justamente aquela onde o dinheiro mora: o
+ * E158 já tivera de trancá-la (`contratos.ts:1229`) e a varredura que conta as
+ * portas não a contava. Ela custou uma linha em `TABELAS_QUENTES`, uma em
+ * `PAIS`, uma em `COLUNAS_DE_ESTADO` e uma em `NOMES_NO_BANCO` — e trouxe **15
+ * portas de uma vez**, das quais **14 já tinham disciplina** (11 sob tranca, 3
+ * por CAS). A décima quinta é o gerador da demonstração, que já estava perdoado
+ * pelo mesmo motivo que as outras seis dele.
+ *
+ * | | Portas |
+ * |---|---|
+ * | **TRANCA** | **28** |
+ * | **CAS** | **8** |
+ * | **ABERTA** | **12** |
+ * | **Total** | **48**, em 271 arquivos-fonte versionados |
+ *
  * ## O que esta varredura NÃO vê
  *
  * Dito aqui porque é a informação mais útil da próxima rodada — a régua que
@@ -51,13 +72,19 @@ import {
  *    isso; resolve-se com corrida determinística no molde `sm7`.
  * 2. **Ela não entra no helper.** `verificarDisponibilidade({ executor: tx })`
  *    conta como releitura da guarda porque recebe o executor da transação — mas
- *    a varredura não confere o que ele pergunta lá dentro.
+ *    a varredura não confere o que ele pergunta lá dentro. **Vale igual para a
+ *    ordem:** o `trancarContratos` de `comissao.ts:224` tranca ORDENADO por id e
+ *    recebe o `tx` de fora, então nenhuma das duas contas abaixo o enxerga.
  * 3. **Ela não sabe se a linha trancada é A linha.** `PAIS` diz que trancar o
  *    lead serve para escrever no contrato; não diz que é o lead CERTO. Trancar
  *    outro lead passaria.
- * 4. **Ela conta a tranca, não a ordem.** A ordem `lead → contrato → parcelas →
- *    bloqueios → vestidos` que evita deadlock está escrita em
- *    `contratos.ts:586-594` e `reservas.ts:62-71` e **não é conferida aqui**.
+ * 4. ~~**Ela conta a tranca, não a ordem.**~~ **Fechado no E180 (S-O33)**, nas
+ *    duas metades que a AST pode responder: a sequência de tabelas sobe os
+ *    degraus de `DEGRAUS_DA_ORDEM` sem descer nenhum, e a tranca tomada dentro
+ *    de um laço percorre coleção ORDENADA. O que fica de fora está declarado no
+ *    enumerador e é o mesmo ponto cego 1: ramo condicional é lido como
+ *    sequência, e a leitura erra para MAIS — acusa ordem que talvez não
+ *    aconteça, nunca aprova inversão que aconteça.
  * 5. **Ela é da camada do drizzle.** Um `pool.query("UPDATE contratos …")` fora
  *    do drizzle não é porta para ela. O caso vizinho — template `sql` com verbo
  *    de escrita — TEM peneira (regex sobre o texto do template, porque template
@@ -118,7 +145,7 @@ const sitio = (p: Porta): string => `${p.arquivo}:${p.linha} ${p.verbo}(${p.tabe
  *   "INSERT não precisa de tranca" seria a régua que autoriza, e o
  *   `contratos.ts:685` é a prova: é um INSERT e precisa de duas trancas.
  *
- * ### `scripts/loja-de-demonstracao.ts` — 6 portas, e a varredura acertou em
+ * ### `scripts/loja-de-demonstracao.ts` — 7 portas, e a varredura acertou em
  * vê-las
  *
  * O gerador da loja de demonstração (`0cfae03`) escreve orçamento, contrato e
@@ -139,10 +166,11 @@ const sitio = (p: Porta): string => `${p.arquivo}:${p.linha} ${p.verbo}(${p.tabe
  * - Ele **não roda em produção**. Nenhuma rota o chama; o caminho é o `tsx` na
  *   mão de quem gera a documentação.
  *
- * A contagem fica travada em 6 pelo mesmo motivo que a de `comissao.ts` fica em
- * 3: o que esta tabela impede não é a porta existir, é ela se multiplicar em
- * silêncio. Se o gerador ganhar a sétima escrita, este arquivo fica vermelho e
- * alguém decide de novo.
+ * A contagem fica travada pelo mesmo motivo que a de `comissao.ts` fica em 3: o
+ * que esta tabela impede não é a porta existir, é ela se multiplicar em
+ * silêncio. **E ela cobrou de novo no E180:** `parcelas` entrando como quinta
+ * tabela quente revelou o carnê da demonstração (`:525`), e a contagem foi de 6
+ * para 7 com o vermelho `expected 12 to be 11` na frente.
  */
 const SEM_DISCIPLINA: Record<string, number> = {
   "artifacts/api-server/src/routes/comissao.ts": 3,
@@ -150,9 +178,11 @@ const SEM_DISCIPLINA: Record<string, number> = {
   // linha foi o que cobrou a baixa. Resta o nascimento de `POST /orcamentos`.
   "artifacts/api-server/src/routes/orcamentos.ts": 1,
   "artifacts/api-server/src/routes/reservas.ts": 1,
-  "scripts/loja-de-demonstracao.ts": 6,
+  // Era 6; a sétima é o carnê (`:525`), que só ficou visível quando `parcelas`
+  // virou tabela quente no E180. Mesma família das outras seis, mesmo veredito.
+  "scripts/loja-de-demonstracao.ts": 7,
 };
-const TOTAL_SEM_DISCIPLINA = 11;
+const TOTAL_SEM_DISCIPLINA = 12;
 
 describe("varredura — a enumeração das portas de escrita", () => {
   /**
@@ -167,16 +197,17 @@ describe("varredura — a enumeração das portas de escrita", () => {
     expect(arquivosVarridos().length).toBeGreaterThan(200);
   });
 
-  it("acha as portas — o piso é 22, e hoje são 26", () => {
+  it("acha as portas — o piso é 22, e hoje são 48", () => {
     expect(portas.length).toBeGreaterThanOrEqual(22);
   });
 
-  it("as quatro tabelas quentes têm porta — nenhuma some da conta", () => {
+  it("as cinco tabelas quentes têm porta — nenhuma some da conta", () => {
     const porTabela = new Set(portas.map((p) => p.tabela));
     expect([...porTabela].sort()).toEqual([
       "bloqueioVestidosTable",
       "contratosTable",
       "orcamentosTable",
+      "parcelasTable",
       "reservasTable",
     ]);
   });
@@ -298,20 +329,135 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
     expect(hoje).toEqual(SEM_DISCIPLINA);
   });
 
-  it("o total da dívida é 11 — 3 de verdade, 2 nascimentos e 6 do gerador da demo", () => {
+  it("o total da dívida é 12 — 3 de verdade, 2 nascimentos e 7 do gerador da demo", () => {
     expect(abertas.length).toBe(TOTAL_SEM_DISCIPLINA);
     expect(Object.values(SEM_DISCIPLINA).reduce((s, n) => s + n, 0)).toBe(TOTAL_SEM_DISCIPLINA);
   });
 
   /**
    * O outro lado da conta: as portas COM disciplina também são contadas. Sem
-   * isto, um refactor que apagasse metade das trancas deixaria a dívida em 6 e
+   * isto, um refactor que apagasse metade das trancas deixaria a dívida em 12 e
    * a suíte verde — a varredura estaria contando o que sobrou, não o que há.
    */
-  it("e as portas com disciplina são 20 — 16 sob tranca e 4 por CAS", () => {
+  it("e as portas com disciplina são 36 — 28 sob tranca e 8 por CAS", () => {
     const conta = { TRANCA: 0, CAS: 0, ABERTA: 0 };
     for (const p of portas) conta[p.disciplina] += 1;
-    expect(conta.TRANCA).toBeGreaterThanOrEqual(16);
-    expect(conta.CAS).toBeGreaterThanOrEqual(4);
+    expect(conta.TRANCA).toBeGreaterThanOrEqual(28);
+    expect(conta.CAS).toBeGreaterThanOrEqual(8);
+  });
+});
+
+/**
+ * E180 / S-O33 — a ORDEM das trancas, que é a metade que o E171 não contava.
+ *
+ * O ponto cego 4 do E171 estava escrito com a frase certa: *"uma porta nova que
+ * tranque na ordem inversa passa verde e trava a produção"*. Ele ficou de fora
+ * por honestidade — *"a ordem correta depende de qual linha cada `FOR UPDATE`
+ * segura, e a AST só vê a tabela"* —, e a frase confunde as duas metades do
+ * problema:
+ *
+ * - **ENTRE tabelas**, a AST vê tudo o que é preciso ver. Qual TABELA cada
+ *   tranca segura sai do `.from(X)` da própria cadeia, e é a ordem das tabelas
+ *   que as duas cadeias declaram em prosa (`contratos.ts:643`,
+ *   `reservas.ts:63`). Isto fecha inteiro.
+ * - **DENTRO da tabela**, a AST não vê a linha — e não precisa: o que ordena os
+ *   bloqueios entre si é a coleção do laço estar `.sort()`ada, e isso é léxico.
+ *
+ * O deadlock que estas contas existem para impedir tem número: o E143 achou o
+ * **40P01 fora do mapa de erros** (S20), e um ciclo entre duas rotas derruba uma
+ * delas com 500 na cara de quem vende.
+ */
+describe("varredura — as trancas sobem a cadeia, e nunca descem", () => {
+  it("olha para as transações de verdade — 25 transações trancam, e são 31 trancas", () => {
+    const porTransacao = trancasPorTransacao();
+    expect(porTransacao.size).toBeGreaterThanOrEqual(20);
+    expect([...porTransacao.values()].reduce((s, t) => s + t.length, 0)).toBeGreaterThanOrEqual(25);
+  });
+
+  it("nenhuma transação tranca uma tabela DEPOIS de outra mais funda na cadeia", () => {
+    expect(trancasForaDeOrdem()).toEqual([]);
+  });
+
+  /**
+   * As cinco trancas sobre tabela sem degrau declarado. Não são erro — são
+   * decisão adiada, e a contagem trava pelo mesmo motivo que a da dívida: uma
+   * tabela sem degrau não pode ser ordenada contra as outras, e a primeira
+   * transação que a trancar JUNTO de uma tabela da cadeia abre um ciclo que
+   * ninguém conferiu.
+   *
+   * Hoje as cinco trancam a tabela sozinhas: `admin.ts:177` (loja),
+   * `agenda.ts:347` (cabine), `agenda.ts:1156` (ajuste) e as duas de
+   * `contas_pagar` (`comissao.ts:1046`, `financeiro.ts:435`). `contas_pagar` é a
+   * candidata mais próxima a precisar de degrau: `comissao.ts` a tranca e
+   * escreve em `contratos` sem trancar o contrato (S-O32), então o dia em que a
+   * S-O32 fechar é o dia em que as duas se encontram numa transação só.
+   */
+  it("e as trancas sobre tabela fora da cadeia são 5 — cada uma sozinha na sua transação", () => {
+    expect(trancasSemDegrauDeclarado()).toHaveLength(5);
+    const acompanhadas = [...trancasPorTransacao().values()]
+      .filter((t) => t.some((x) => x.degrau === null) && t.length > 1)
+      .map((t) => t.map((x) => `${x.arquivo}:${x.linha} ${x.tabela}`));
+    expect(acompanhadas).toEqual([]);
+  });
+
+  /**
+   * A metade "ORDENADOS por id". Três trancas moram dentro de um laço, e as três
+   * percorrem coleção ordenada: `contratos.ts:701` (bloqueios do contrato),
+   * `reservas.ts:254` (bloqueios da reserva) e `reservas.ts:350` (vestidos
+   * vinculados). A quarta — `comissao.ts:234` — também ordena, e esta conta não
+   * a vê: ela mora num helper que RECEBE o `tx`, que é o ponto cego 2.
+   */
+  it("toda tranca dentro de laço percorre coleção ORDENADA", () => {
+    expect(trancasEmLacoNaoOrdenado()).toEqual([]);
+    const emLaco = [...trancasPorTransacao().values()].flat().filter((t) => t.laco !== null);
+    expect(emLaco).toHaveLength(3);
+  });
+});
+
+describe("varredura — o enumerador da ordem reconhece a inversão e o laço solto", () => {
+  /**
+   * O autoteste da conta nova, pelo mesmo motivo do autoteste do enumerador de
+   * portas: ela nasce VERDE sobre o repositório, e régua que nunca se viu
+   * vermelha é decoração.
+   */
+  const naOrdem = `
+    import { leadsTable, bloqueioVestidosTable } from "@workspace/db";
+    await db.transaction(async (tx) => {
+      await tx.select({ id: leadsTable.id }).from(leadsTable).where(eq(leadsTable.id, id)).for("update");
+      for (const b of [...ids].sort()) {
+        await tx.select({ id: bloqueioVestidosTable.id }).from(bloqueioVestidosTable)
+          .where(eq(bloqueioVestidosTable.id, b)).for("update");
+      }
+    });`;
+
+  it("aprova lead → bloqueios, que é a cadeia declarada", () => {
+    const trancas = [...trancasNoTexto("sintetico.ts", naOrdem).values()].flat();
+    expect(trancas.map((t) => t.tabela)).toEqual(["leadsTable", "bloqueioVestidosTable"]);
+    expect(trancas.map((t) => t.degrau)).toEqual([0, 4]);
+    expect(trancas[1]!.lacoOrdenado).toBe(true);
+  });
+
+  it("reprova a inversão — o bloqueio trancado ANTES do lead é o ciclo", () => {
+    const invertido = `
+      import { leadsTable, bloqueioVestidosTable } from "@workspace/db";
+      await db.transaction(async (tx) => {
+        await tx.select({ id: bloqueioVestidosTable.id }).from(bloqueioVestidosTable)
+          .where(eq(bloqueioVestidosTable.id, b)).for("update");
+        await tx.select({ id: leadsTable.id }).from(leadsTable).where(eq(leadsTable.id, id)).for("update");
+      });`;
+    const trancas = [...trancasNoTexto("sintetico.ts", invertido).values()].flat();
+    expect(trancas.map((t) => t.degrau)).toEqual([4, 0]);
+  });
+
+  it("reprova o laço sobre coleção solta — o `.sort()` é o que ordena as LINHAS", () => {
+    const trancas = [...trancasNoTexto("sintetico.ts", naOrdem.replace("[...ids].sort()", "ids")).values()].flat();
+    expect(trancas[1]!.laco).toBe("ids");
+    expect(trancas[1]!.lacoOrdenado).toBe(false);
+  });
+
+  it("não confunde a tranca do `db` com a do `tx` — só a da transação conta", () => {
+    const fora = naOrdem.replace("await tx.select({ id: leadsTable.id })", "await db.select({ id: leadsTable.id })");
+    const trancas = [...trancasNoTexto("sintetico.ts", fora).values()].flat();
+    expect(trancas.map((t) => t.tabela)).toEqual(["bloqueioVestidosTable"]);
   });
 });

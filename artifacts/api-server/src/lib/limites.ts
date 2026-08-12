@@ -13,23 +13,34 @@
  * diferentes), então ela tem a sua, nomeada, e a
  * `varredura-limites-de-upload` prega que as duas são o mesmo número — a mesma
  * forma do espelho da trilha de auditoria (S-O1).
+ *
+ * **S-O51/E180: os tetos de CORPO viraram um, e ele é conta.** Eram dois
+ * literais de MB para a mesma foto; hoje há `CORPO_MAX_FOTO_BYTES`, derivado do
+ * teto da foto, e a varredura recusa o literal de volta.
  */
 
 /** 2 MiB por foto — de avaria e de vestido, a mesma régua. */
 export const FOTO_MAX_BYTES = 2 * 1024 * 1024;
 
 /**
- * O teto do CORPO da requisição, e por que são DOIS números — nenhum igual ao
- * da foto.
+ * S-O51 — **o teto do CORPO é UM, e é CONTA, não literal.**
  *
- * A foto viaja em base64, que custa 4/3 do binário: 2 MiB viram 2,67 MiB. Os
- * dois cobrem isso; a diferença entre eles é histórica e está no comentário do
- * `app.ts` (V1/E167), que conta o 413 mudo que o parser global de 100 KB dava
- * na foto de avaria antes de a rota rodar uma linha.
+ * Eram dois — `CORPO_MAX_FOTO_VESTIDO = "6mb"` e `CORPO_MAX_AVARIA = "4mb"` —,
+ * protegendo a MESMA foto de 2 MiB pelas duas portas que a recebem. A diferença
+ * era histórica: o da avaria nasceu com a conta escrita (V1/E167), o do vestido
+ * é mais velho e nunca teve nenhuma. **Dois números para uma decisão é a marca
+ * de que a decisão não foi tomada** — e a varredura do E178 pregava que cada um
+ * cabe a foto, porque pregar que são iguais teria ficado vermelho.
  *
- * A folga é de propósito nos dois casos: quem estoura AQUI recebe um erro do
- * PARSER, sem a frase da guarda que sabe explicar o que fazer. O teto que a
- * pessoa lê é o de `FOTO_MAX_BYTES`, e ele tem de morder primeiro.
+ * A conta é a que o E167 escreveu e agora o código executa: a foto viaja em
+ * **base64, que custa 4/3 do binário**, então 2 MiB viram **2,67 MiB**, e sobre
+ * isso vai **1 MiB de envelope** — o JSON em volta e a folga que faz o excesso
+ * chegar. Chegar é o ponto: quem estoura AQUI recebe o **413 mudo do parser**,
+ * e quem estoura no `FOTO_MAX_BYTES` recebe o **422 `FOTO_MUITO_GRANDE`, que
+ * nomeia o teto e o gesto**. O teto que a pessoa lê tem de morder primeiro.
+ *
+ * Hoje dá **3.844.779 bytes (3,67 MiB)** — menor que os dois anteriores, e é o
+ * primeiro que responde "por quê". Mudar `FOTO_MAX_BYTES` move este junto, que
+ * é a única forma de os dois não voltarem a divergir.
  */
-export const CORPO_MAX_FOTO_VESTIDO = "6mb";
-export const CORPO_MAX_AVARIA = "4mb";
+export const CORPO_MAX_FOTO_BYTES = Math.ceil((FOTO_MAX_BYTES * 4) / 3) + 1024 * 1024;

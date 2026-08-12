@@ -217,8 +217,8 @@ type EstornoPendente = { totalC: number; contratoIds: string[] };
  * fechamento sem ter sido abatido** — a loja paga comissão sobre venda
  * desfeita, que é exatamente o que o E54 existe para impedir.
  *
- * A tranca vai **ORDENADA por id**, como em `contratos.ts:586-594` e
- * `reservas.ts:62-71`: duas portas segurando os mesmos contratos em ordens
+ * A tranca vai **ORDENADA por id**, como em `contratos.ts:643` e
+ * `reservas.ts:65`: duas portas segurando os mesmos contratos em ordens
  * diferentes se serializariam num deadlock em vez de numa fila.
  */
 async function trancarContratos(

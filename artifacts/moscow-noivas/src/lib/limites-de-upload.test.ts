@@ -47,18 +47,45 @@ describe("varredura — o teto da foto é o mesmo dos dois lados (S-O19)", () =>
     ).toBe(doServidor);
   });
 
-  it("o teto do CORPO cabe na foto em base64 (4/3) com folga", () => {
-    const tetos = [...servidor.matchAll(/export const CORPO_MAX_[A-Z_]+ = "(\d+)mb";/g)].map((x) =>
-      Number(x[1]),
+  /**
+   * S-O51/E180 — **o teto do corpo é UM, e é conta.**
+   *
+   * Eram dois (`"6mb"` e `"4mb"`), protegendo a MESMA foto pelas duas portas
+   * que a recebem, diferentes por motivo histórico e não por decisão. Esta
+   * varredura pregava que **cada um** cabe a foto codificada — nunca que são o
+   * mesmo número, porque não eram. Agora prega as três coisas de uma vez: que
+   * há UM, que ele é DERIVADO de `FOTO_MAX_BYTES` (e não um literal que
+   * envelhece sozinho), e que o `app.ts` monta os dois parsers com ele.
+   */
+  it("há UM teto de corpo, derivado da foto — e não um literal de MB por porta", () => {
+    const literais = [...servidor.matchAll(/export const CORPO_MAX_[A-Z_]+ = "(\d+)mb";/g)];
+    expect(literais.map((x) => x[0]), "o teto do corpo voltou a ser literal").toEqual([]);
+
+    const m = /export const CORPO_MAX_FOTO_BYTES = ([^;]+);/.exec(servidor);
+    expect(m, "a constante única do corpo mudou de nome ou de forma").toBeTruthy();
+    expect(m![1], "o teto do corpo tem de SAIR do teto da foto, senão os dois divergem de novo").toContain(
+      "FOTO_MAX_BYTES",
     );
-    expect(tetos.length, "os dois tetos de corpo saíram de `limites.ts`").toBe(2);
+
+    // eslint-disable-next-line no-eval
+    const corpo = eval(m![1]!.replace("FOTO_MAX_BYTES", String(FOTO_MAX_BYTES))) as number;
     const fotoEmBase64 = Math.ceil(FOTO_MAX_BYTES * (4 / 3));
-    for (const mb of tetos) {
-      expect(
-        mb * 1024 * 1024,
-        "o corpo tem de caber a foto codificada — senão a recusa vem do parser, sem a frase que explica",
-      ).toBeGreaterThan(fotoEmBase64);
-    }
+    expect(
+      corpo,
+      "o corpo tem de caber a foto codificada — senão a recusa vem do parser, sem a frase que explica",
+    ).toBeGreaterThan(fotoEmBase64);
+    // E a folga é do tamanho de um envelope, não de uma segunda foto: teto de
+    // corpo generoso demais é o processo montando JSON que a guarda vai recusar.
+    expect(corpo - fotoEmBase64).toBeLessThan(FOTO_MAX_BYTES);
+  });
+
+  it("e as duas portas que recebem foto montam o parser com ESSE teto", () => {
+    const app = readFileSync(path.join(RAIZ, "artifacts/api-server/src/app.ts"), "utf8");
+    const limites = [...app.matchAll(/express\.json\(\{ limit: ([A-Za-z_]+) \}\)/g)].map((x) => x[1]);
+    expect(limites.length, "as duas portas de foto saíram do `app.ts`").toBe(2);
+    expect(new Set(limites), "as duas portas voltaram a ter tetos diferentes").toEqual(
+      new Set(["CORPO_MAX_FOTO_BYTES"]),
+    );
   });
 
   it("ninguém declara o teto por conta própria — nem rota, nem tela", () => {

@@ -96,14 +96,45 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   seed, com `expect(linhas.length).toBeGreaterThanOrEqual(4)`: ela existe para
   que conjunto vazio não aprove tudo em silêncio, e num banco sem seed é
   exatamente isso que ela pega.
-  **A suíte de E2E, porém, NÃO é portátil para banco virgem** (medido no mesmo
-  dia): no banco próprio ela dá **166 passed · 1 failed · 4 skipped**, e a que
-  falha é `04-vestidos.spec.ts:80` ("a cor entre as características"), que no
-  banco de dev passa — `7 passed` no arquivo inteiro. São **5 dos 171** que
-  dependem de dado acumulado no dev. A régua do `banco-virgem.ts` não pega isso
-  porque ela sobe o `global-setup` e **não roda um spec sequer**. Então: suíte
-  de API, sim, em banco próprio; **E2E completo, no banco de dev** — e é por
-  isso que ele continua sendo o recurso que se mede em série.
+  **A suíte de E2E, porém, NÃO é portátil para banco virgem** (medido por TRÊS
+  agentes no mesmo dia, cada um por um caminho): no banco próprio ela dá **166
+  passed · 1 failed · 4 skipped**, e a que falha é `04-vestidos.spec.ts` ("a cor
+  entre as características"), que no dev passa — `7 passed` no arquivo inteiro.
+  **A causa é uma linha:** o `global-setup.ts:151` grava `cor: "Marfim"` na
+  COLUNA legada, e a ficha lê o **atributo de catálogo** desde o E149 — no dev o
+  vestido tem o atributo porque o script de migração daquele épico rodou lá; num
+  banco de hoje, `vestido_atributos` está vazio para ele. A régua do
+  `banco-virgem.ts` não pega isso porque sobe o `global-setup` e **não roda um
+  spec sequer**. Então, até a S-O63 fechar: suíte de API, sim, em banco próprio;
+  **E2E completo, no banco de dev**.
+- **Worktree isola arquivo e banco, NÃO isola PORTA** (2026-08-12): o
+  `playwright.config.ts` crava `5099`/`5173` com `reuseExistingServer: true`,
+  então **dois E2E na mesma máquina se atropelam** mesmo em worktrees
+  diferentes. Medido: uma execução deu `46 passed · 22 failed · 35 did not run`
+  com o código idêntico ao de uma execução verde, e **33 artefatos de falha
+  diziam `net::ERR_CONNECTION_REFUSED`** — o vizinho derrubou o servidor que
+  esta reusava. A terceira execução, depois de esperar o vizinho soltar,
+  repetiu a primeira na vírgula. *Escrever em paralelo, medir em série* vale
+  para dois E2E na mesma máquina, não só para duas suítes de API no mesmo banco.
+- **A varredura das PORTAS DE ESCRITA sob tranca** (E171, ampliada no E180):
+  `cd artifacts/api-server && npx vitest run src/__tests__/varredura-portas-sob-tranca.test.ts`
+  (**~2 s, não toca no banco**). Ela enumera por `git ls-files` + AST **toda
+  escrita** (`insert`/`update`/`delete`) nas **cinco tabelas quentes** —
+  `bloqueio_vestidos`, `reservas`, `contratos`, `orcamentos` e **`parcelas`
+  (S-O34, a tabela onde o dinheiro mora)** — e classifica cada porta em
+  **TRANCA**, **CAS** ou **ABERTA**. Hoje: **48 portas · 28 TRANCA · 8 CAS · 12
+  na dívida declarada** (3 abertas de verdade em `comissao.ts`, 2 nascimentos de
+  linha-pai, 7 do gerador da loja de demonstração). Desde o E180 ela também
+  confere a **ORDEM** das trancas (S-O33): a sequência de `FOR UPDATE` de cada
+  transação sobe os degraus de `DEGRAUS_DA_ORDEM` (`lead · reserva · avaria →
+  orçamento → contrato → parcelas → bloqueios → vestidos`) sem descer nenhum, e
+  toda tranca dentro de laço percorre coleção `.sort()`ada — deadlock é o modo de
+  falha que a ordem existe para evitar. **Quando ela fica vermelha**, ou nasceu
+  porta sem disciplina, ou uma porta fechada reabriu, ou uma porta da dívida foi
+  FECHADA — e neste caso o conserto é baixar o número na tabela `SEM_DISCIPLINA`
+  do teste. A dívida trava a CONTAGEM por arquivo, não a lista de nomes. Os
+  pontos cegos conhecidos estão listados no topo do arquivo e em
+  `portas-de-escrita.ts`.
 - **Capturar as telas para revisão visual** (S-D1/S-D2): com o app de pé,
   `BASE_URL=http://localhost:5173 CAPTURAS_DIR=<destino absoluto>
   ./artifacts/api-server/node_modules/.bin/tsx scripts/capturar-telas.ts` —
@@ -292,6 +323,19 @@ rode o codegen.
   "Essa mudança não é possível agora" nas recusas de transição); e
   `lib/erro-cru-varredura.test.ts` reprova `err.message` em tela e título
   começando em "Erro", varrendo o arquivo inteiro.
+  **E o 23505 do banco é traduzido ÍNDICE POR ÍNDICE** (S-O2/E180):
+  `classificarErro` lê o `constraint` do erro do `pg` — que chegava ao handler e
+  era jogado fora — e `DUPLICADO_POR_INDICE` (`api-server/src/lib/erros.ts`)
+  traduz **11 dos 27 índices únicos que não são PK**. Sete devolvem o código que
+  a guarda da porta da frente já devolve (`CONTRATO_ATIVO_DUPLICADO`,
+  `CABINE_OCUPADA`, `VENDEDORA_OCUPADA`, …), pela régua do K3: *para a vendedora
+  não existe diferença entre perder por um segundo e por um dia*. Índice que o
+  mapa não conhece **continua saindo `REGISTRO_DUPLICADO`**, e o LOG passa a
+  dizer o nome dele — é por onde a próxima tradução entra. Nenhuma tela precisou
+  mudar: a segunda perna de `erro-api.ts` já é o `detalhe` do servidor.
+  `e180-indice-por-indice-api.test.ts` confere cada chave do mapa contra
+  `pg_indexes` — o nome do índice mora no BANCO, e nada no compilador liga os
+  dois.
 - **A cor da marca é `--primary: 350 25% 65%` e não muda para consertar
   contraste** (E92) — quem muda é o que vai EM CIMA dela. `index.css` traz a
   razão WCAG ao lado de cada token, e `lib/aparencia.test.ts` lê o arquivo de

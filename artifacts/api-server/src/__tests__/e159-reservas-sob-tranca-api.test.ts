@@ -35,7 +35,8 @@ import {
  *
  * As corridas seguem o molde determinístico do
  * `sm7-corrida-reserva-exclusiva-api.test.ts:64-91`. A ordem das trancas do
- * módulo está em `reservas.ts:62-71`.
+ * módulo está em `reservas.ts:65`, e desde o E180 ela é CONFERIDA — os degraus
+ * em `portas-de-escrita.ts`, a régua em `varredura-portas-sob-tranca.test.ts`.
  */
 describe("E159 — as guardas de reservas.ts relidas sob a tranca", () => {
   let f: Fixture;

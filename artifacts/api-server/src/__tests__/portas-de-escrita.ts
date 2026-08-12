@@ -67,6 +67,7 @@ export const TABELAS_QUENTES = [
   "reservasTable",
   "contratosTable",
   "orcamentosTable",
+  "parcelasTable",
 ] as const;
 export type TabelaQuente = (typeof TABELAS_QUENTES)[number];
 
@@ -76,16 +77,18 @@ export const NOMES_NO_BANCO: Record<TabelaQuente, string> = {
   reservasTable: "reservas",
   contratosTable: "contratos",
   orcamentosTable: "orcamentos",
+  parcelasTable: "parcelas",
 };
 
 /**
  * A cadeia de trancas, escrita uma vez.
  *
- * O E158 fixou a ordem do módulo de contratos em `contratos.ts:586-594`
+ * O E158 fixou a ordem do módulo de contratos em `contratos.ts:643`
  * (`lead → contrato → parcelas → bloqueios`) e o E159 a estendeu em
- * `reservas.ts:62-71` (`linha-pai da rota → contrato → parcelas → bloqueios
+ * `reservas.ts:65` (`linha-pai da rota → contrato → parcelas → bloqueios
  * ORDENADOS → vestidos ORDENADOS`). Sem ordem comum, duas portas se matam em
- * deadlock em vez de fazer fila.
+ * deadlock em vez de fazer fila. **A ordem é conferida desde o E180** —
+ * `DEGRAUS_DA_ORDEM`, abaixo.
  *
  * Para cada tabela quente, quais linhas servem de tranca. Trancar a linha-PAI é
  * legítimo e às vezes é a única opção: o `POST /contratos` tranca o LEAD porque
@@ -104,6 +107,7 @@ export const PAIS: Record<TabelaQuente, readonly string[]> = {
     "contratosTable",
     "leadsTable",
   ],
+  parcelasTable: ["parcelasTable", "contratosTable", "leadsTable"],
 };
 
 /**
@@ -116,7 +120,49 @@ export const COLUNAS_DE_ESTADO: Record<TabelaQuente, readonly string[]> = {
   reservasTable: ["status"],
   orcamentosTable: ["status", "aceitoEm", "aprovadoEm", "publicoAbertoEm"],
   bloqueioVestidosTable: ["canceladoEm"],
+  parcelasTable: ["status", "recebidoEm", "conciliadoEm", "enviadoContabilidadeEm"],
 };
+
+/**
+ * A ORDEM em que as trancas se tomam, em degraus — S-O33, o ponto cego 4 do E171.
+ *
+ * As duas cadeias que o repositório já declarava em prosa dizem a MESMA coisa,
+ * e é ela que está aqui:
+ *
+ * - `contratos.ts:643` (E158): `lead → contrato → parcelas → bloqueios`
+ * - `reservas.ts:63` (E159): `linha-pai da rota (lead · reserva · avaria) →
+ *   contrato → parcelas → bloqueios ORDENADOS → vestidos ORDENADOS`
+ *
+ * Ordem não é preferência: é o que impede DEADLOCK. Duas transações que tomam
+ * as mesmas duas linhas em ordens contrárias — uma segurando o lead e esperando
+ * o bloqueio, outra segurando o bloqueio e esperando o lead — se matam em ciclo
+ * em vez de fazerem fila, e o Postgres derruba uma delas com 40P01. A varredura
+ * do E171 contava a tranca e **não a ordem**: uma porta nova invertida passava
+ * verde e travava a produção.
+ *
+ * Tabelas do MESMO degrau são intercambiáveis: `leads`, `reservas` e `avarias`
+ * são as três "linha-pai da rota", e nenhuma rota tranca duas delas.
+ *
+ * `orcamentos` entra entre o lead e o contrato porque é onde a jornada o põe —
+ * e a colocação é livre de consequência hoje, por medida: das 30 transações que
+ * trancam, **nenhuma tranca `orcamentos` junto de outra tabela**. Ela está aqui
+ * para que a primeira que o fizer seja conferida, não para reconstituir uma
+ * ordem que alguém já tenha escolhido.
+ */
+export const DEGRAUS_DA_ORDEM: readonly (readonly string[])[] = [
+  ["leadsTable", "reservasTable", "avariasTable"],
+  ["orcamentosTable"],
+  ["contratosTable"],
+  ["parcelasTable"],
+  ["bloqueioVestidosTable"],
+  ["vestidosTable"],
+];
+
+/** O degrau de uma tabela na cadeia, ou `null` quando ela não está declarada. */
+export function degrauDaTranca(tabela: string): number | null {
+  const i = DEGRAUS_DA_ORDEM.findIndex((d) => d.includes(tabela));
+  return i === -1 ? null : i;
+}
 
 /** Os identificadores por onde uma escrita sai para o banco. */
 const EXECUTORES = new Set(["db", "tx", "executor", "exec"]);
@@ -423,6 +469,189 @@ export function escritasComTabelaDinamica(): string[] {
     v(sf);
   }
   return achados;
+}
+
+/**
+ * ## A ORDEM das trancas (S-O33)
+ *
+ * O E171 mediu a disciplina de cada porta e declarou, no ponto cego 4, que ela
+ * conta a tranca e **não a ordem**. O que segue fecha essa metade — e fecha só
+ * o que a AST pode saber, que é a razão de o E171 tê-la deixado de fora.
+ *
+ * A pergunta do deadlock tem duas metades, e elas se respondem com evidências
+ * diferentes:
+ *
+ * 1. **ENTRE tabelas** — a sequência de `FOR UPDATE` de uma transação sobe os
+ *    degraus de `DEGRAUS_DA_ORDEM` sem descer nenhum. A tabela de cada tranca
+ *    sai do `.from(X)` da própria cadeia: isto a AST sabe, e sabe inteiro.
+ * 2. **DENTRO da tabela** — os bloqueios e os vestidos vão ORDENADOS por id,
+ *    porque duas transações que trancam b1 e b2 em ordens contrárias se matam
+ *    igual, mesmo estando as duas no degrau certo. **Aqui a AST não sabe qual
+ *    LINHA cada tranca segura** — o id é valor de tempo de execução —, e o que
+ *    ela sabe é o laço: uma tranca dentro de um `for…of` percorre a coleção na
+ *    ordem em que ela vem, então a coleção tem de estar ORDENADA na expressão
+ *    do laço. É uma régua LÉXICA e está declarada como tal.
+ */
+
+/** Uma tranca tomada dentro de uma transação. */
+export type Tranca = {
+  arquivo: string;
+  linha: number;
+  /** A tabela do `.from(X)` da cadeia — `?` quando a cadeia não a declara. */
+  tabela: string;
+  /** O degrau dela em `DEGRAUS_DA_ORDEM`, ou `null` quando não está declarada. */
+  degrau: number | null;
+  /** A expressão do laço que envolve a tranca, quando há um. */
+  laco: string | null;
+  /** Com laço: a coleção percorrida está explicitamente ordenada. */
+  lacoOrdenado: boolean;
+};
+
+/** O `for`/`for…of`/`for…in` mais interno que envolve o nó, dentro do corpo dado. */
+function lacoQueEnvolve(no: ts.Node, limite: ts.Node): ts.Node | null {
+  for (let p: ts.Node | undefined = no.parent; p && p !== limite.parent; p = p.parent) {
+    if (ts.isForOfStatement(p) || ts.isForStatement(p) || ts.isForInStatement(p)) return p;
+  }
+  return null;
+}
+
+/** As trancas de UM texto-fonte, agrupadas por transação. Exportada para o autoteste. */
+export function trancasNoTexto(caminho: string, texto: string): Map<string, Tranca[]> {
+  return trancasNaFonte(ts.createSourceFile(caminho, texto, ts.ScriptTarget.Latest, true));
+}
+
+function trancasNaFonte(sf: ts.SourceFile): Map<string, Tranca[]> {
+  const mapa = new Map<string, Tranca[]>();
+  const rel = sf.fileName;
+  const v = (no: ts.Node): void => {
+    if (
+      ts.isCallExpression(no) &&
+      ts.isPropertyAccessExpression(no.expression) &&
+      no.expression.name.text === "transaction"
+    ) {
+      const cb = no.arguments[0];
+      const txNome =
+        cb && (ts.isArrowFunction(cb) || ts.isFunctionExpression(cb)) ? (cb.parameters[0]?.name.getText(sf) ?? null) : null;
+      if (cb && txNome) {
+        const corpo = (cb as ts.ArrowFunction | ts.FunctionExpression).body;
+        const trancas: Tranca[] = [];
+        for (const chamada of chamadasDe(corpo, "for")) {
+          if (raizDoReceptor((chamada.expression as ts.PropertyAccessExpression).expression) !== txNome) continue;
+          const laco = lacoQueEnvolve(chamada, corpo);
+          const expLaco = laco
+            ? ts.isForOfStatement(laco)
+              ? laco.expression.getText(sf)
+              : laco.getText(sf).split("\n")[0]!.slice(0, 60)
+            : null;
+          const tabela = tabelaDoFrom(cadeiaCompleta(chamada)) ?? "?";
+          trancas.push({
+            arquivo: rel,
+            linha: sf.getLineAndCharacterOfPosition(chamada.getStart(sf)).line + 1,
+            tabela,
+            degrau: degrauDaTranca(tabela),
+            laco: expLaco,
+            lacoOrdenado: expLaco !== null && /\.sort\s*\(/.test(expLaco),
+          });
+        }
+        if (trancas.length > 0) {
+          trancas.sort((a, b) => a.linha - b.linha);
+          mapa.set(`${rel}:${sf.getLineAndCharacterOfPosition(no.getStart(sf)).line + 1}`, trancas);
+        }
+      }
+    }
+    no.forEachChild(v);
+  };
+  v(sf);
+  return mapa;
+}
+
+/**
+ * Enumera as trancas de cada transação da população, em ORDEM DE POSIÇÃO.
+ *
+ * A chave do mapa é o `arquivo:linha` da chamada `.transaction(`, que é o que
+ * identifica a transação para quem for ler o vermelho.
+ */
+export function trancasPorTransacao(): Map<string, Tranca[]> {
+  const mapa = new Map<string, Tranca[]>();
+  for (const sf of fontesVarridas()) {
+    for (const [chave, trancas] of trancasNaFonte(sf)) mapa.set(chave, trancas);
+  }
+  return mapa;
+}
+
+/**
+ * As trancas que DESCEM um degrau — a inversão que produz o deadlock.
+ *
+ * Só compara trancas de degrau declarado: o par com tabela fora de
+ * `DEGRAUS_DA_ORDEM` sai pela peneira de `trancasSemDegrauDeclarado`, e uma
+ * comparação inventada valeria menos que nenhuma.
+ *
+ * **O que ela não vê, e é o mesmo ponto cego 1 do E171:** a régua é LÉXICA. Duas
+ * trancas em ramos EXCLUSIVOS de um `if/else` são lidas como sequência, e uma
+ * tranca dentro de um `if` que não roda não é tomada. A leitura em ordem de
+ * arquivo é a aproximação certa para o caso comum — o bloco linear de uma rota —
+ * e erra para MAIS, nunca para menos: ela acusa ordem que talvez não aconteça,
+ * jamais aprova inversão que aconteça.
+ */
+export function trancasForaDeOrdem(): string[] {
+  const fora: string[] = [];
+  for (const [transacao, trancas] of trancasPorTransacao()) {
+    const comDegrau = trancas.filter((t) => t.degrau !== null);
+    for (let i = 1; i < comDegrau.length; i += 1) {
+      const antes = comDegrau[i - 1]!;
+      const agora = comDegrau[i]!;
+      if (agora.degrau! < antes.degrau!) {
+        fora.push(
+          `${agora.arquivo}:${agora.linha} tranca ${agora.tabela} (degrau ${agora.degrau}) DEPOIS de ` +
+            `${antes.tabela} (degrau ${antes.degrau}), na transação de ${transacao}`,
+        );
+      }
+    }
+  }
+  return fora;
+}
+
+/**
+ * As trancas sobre tabela que a cadeia não declara.
+ *
+ * Não são erro: são DECISÃO adiada. Uma tabela sem degrau não pode ser ordenada
+ * contra as outras, então a primeira transação que a trancar junto de uma tabela
+ * da cadeia abre um ciclo que ninguém conferiu. A varredura trava a CONTAGEM
+ * delas pelo mesmo motivo que trava a da dívida.
+ */
+export function trancasSemDegrauDeclarado(): string[] {
+  const sem: string[] = [];
+  for (const trancas of trancasPorTransacao().values()) {
+    for (const t of trancas) {
+      if (t.degrau === null) sem.push(`${t.arquivo}:${t.linha} tranca ${t.tabela}`);
+    }
+  }
+  return sem;
+}
+
+/**
+ * As trancas tomadas DENTRO de um laço sobre coleção que não está ordenada.
+ *
+ * É a metade "ORDENADOS por id" da cadeia. Duas transações que trancam os
+ * mesmos dois bloqueios em ordens contrárias se matam em ciclo mesmo estando as
+ * duas no degrau certo: o degrau ordena as TABELAS, o `.sort()` ordena as
+ * LINHAS dentro de uma delas.
+ *
+ * **A régua é léxica e a limitação está declarada:** ela reconhece a ordenação
+ * pelo `.sort(` na expressão do laço, que é a grafia das quatro que existem
+ * (`contratos.ts:700`, `reservas.ts:253`, `:349`, `comissao.ts:229`). Uma
+ * coleção que chegasse ordenada de um `ORDER BY` do SQL passaria por aqui como
+ * não-ordenada; no dia em que a primeira nascer, a saída é ordenar no laço
+ * também — custa uma chamada e dispensa quem lê de reconstituir a origem.
+ */
+export function trancasEmLacoNaoOrdenado(): string[] {
+  const soltas: string[] = [];
+  for (const trancas of trancasPorTransacao().values()) {
+    for (const t of trancas) {
+      if (t.laco !== null && !t.lacoOrdenado) soltas.push(`${t.arquivo}:${t.linha} tranca ${t.tabela} em \`${t.laco}\``);
+    }
+  }
+  return soltas;
 }
 
 /**

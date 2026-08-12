@@ -45,6 +45,115 @@ export function ehViolacaoUnica(err: unknown): boolean {
   return pgErrorCode(err) === "23505";
 }
 
+/**
+ * O NOME da restrição violada, caminhando a mesma cadeia de `cause`.
+ *
+ * O `pg` põe o nome do índice em `err.constraint` — o dado que responde *qual*
+ * regra o banco recusou. Ele estava chegando ao handler e sendo jogado fora:
+ * `classificarErro` lia só o `code`, e por isso as 27 restrições únicas que não
+ * são PK deste banco tinham uma resposta só.
+ */
+export function pgConstraint(err: unknown): string | undefined {
+  let atual: unknown = err;
+  for (let i = 0; i < 8 && atual && typeof atual === "object"; i++) {
+    const nome = (atual as { constraint?: unknown }).constraint;
+    if (typeof nome === "string" && nome) return nome;
+    atual = (atual as { cause?: unknown }).cause;
+  }
+  return undefined;
+}
+
+/**
+ * S-O2 — **o 23505 traduzido ÍNDICE POR ÍNDICE.**
+ *
+ * O `REGISTRO_DUPLICADO` genérico foi um avanço sobre a frase solta que ele
+ * substituiu (S12/E107), e parou no meio do caminho: ele diz que o BANCO
+ * recusou, não *o quê*. Para quem vende, "Já existe um registro com estes
+ * dados" no meio de um cadastro de peça não é informação — é um beco. Medido:
+ * `POST /vestidos` com um código já usado respondia exatamente isso, sem dizer
+ * qual peça, qual campo, nem que o conserto é trocar o código.
+ *
+ * A régua deste mapa, e é ela que decide o que entra:
+ *
+ * 1. **Perder a corrida dá a MESMA resposta da guarda.** É a régua do K3
+ *    (`contratos.ts:917`): *"para a vendedora não existe diferença entre perder
+ *    por um segundo e por um dia"*. Sete das ONZE linhas abaixo devolvem um
+ *    código que ALGUMA rota já devolve pela porta da frente — a UNIQUE é a rede
+ *    daquela guarda, e a rede passa a falar a língua dela.
+ * 2. **Índice sem guarda ganha frase, não código novo por esporte.** As QUATRO
+ *    restantes (`vestidos_loja_id_codigo_unique`, `usuarios_email_unique`,
+ *    `itens_estoque_loja_nome_tamanho_unq` e
+ *    `parcelas_contrato_id_numero_unique`) não têm guarda em rota nenhuma: o
+ *    banco é a única palavra, e o que muda é a frase que a pessoa lê.
+ * 3. **A chave é o nome do índice no BANCO, e há régua que o prega.** Um mapa
+ *    de nomes que envelhece é pior que nenhum — ele reintroduz o genérico em
+ *    silêncio, que é o defeito que esta linha existe para tirar.
+ *    `e180-indice-por-indice-api.test.ts` confere cada chave contra
+ *    `pg_indexes`.
+ *
+ * O que NÃO entra: índice que só uma corrida improvável alcança e cuja frase
+ * genérica não engana ninguém (os `*_token_unq`, que colidem quando dois
+ * `randomUUID` empatam). Silêncio ali é honesto; o mapa não é catálogo.
+ */
+export const DUPLICADO_POR_INDICE: Record<string, { error: string; detalhe: string }> = {
+  // A guarda é `POST /contratos` (`contratos.ts:917`), relida sob a tranca do
+  // lead desde o E158. O índice é parcial (`WHERE status = 'ATIVO'`) e fecha
+  // por baixo o que a releitura fecha por cima.
+  contratos_lead_ativo_unico: {
+    error: "CONTRATO_ATIVO_DUPLICADO",
+    detalhe: "Esta noiva já tem um contrato ativo — cancele o que existe antes de fechar outro.",
+  },
+  contratos_orcamento_id_unique: {
+    error: "ORCAMENTO_JA_VINCULADO",
+    detalhe: "Este orçamento já virou contrato — abra o contrato que existe em vez de fechar outro.",
+  },
+  // As duas UNIQUE de `atendimentos` são a rede das duas recusas que o
+  // `agenda-core/mover.ts:38` já nomeia, com as frases dele.
+  atendimentos_cabine_id_inicio_unique: {
+    error: "CABINE_OCUPADA",
+    detalhe: "Já há atendimento nessa cabine nesse horário — escolha outra cabine ou outro horário.",
+  },
+  atendimentos_loja_id_vendedora_id_inicio_unique: {
+    error: "VENDEDORA_OCUPADA",
+    detalhe: "A vendedora já tem atendimento nesse horário — escolha outra pessoa ou outro horário.",
+  },
+  // A guarda é o `JA_VIROU_PECA` de `vestidos.ts:153`, e o comentário de lá já
+  // chama este índice de "o cinto do banco".
+  vestidos_origem_ajuste_id_unique: {
+    error: "CONFECCAO_JA_VIROU_PECA",
+    detalhe: "Este trabalho já virou uma peça do acervo — a peça existe, não há o que criar de novo.",
+  },
+  comissao_fechamentos_loja_id_vendedora_id_competencia_unique: {
+    error: "COMPETENCIA_JA_FECHADA",
+    detalhe: "A comissão desta vendedora nesta competência já foi fechada.",
+  },
+  recorrencias_salario_ativo_unico: {
+    error: "SALARIO_ATIVO_EXISTE",
+    detalhe: "Esta pessoa já tem um salário ativo nesta loja — edite o que existe em vez de criar outro.",
+  },
+  // Sem guarda em rota nenhuma: o banco é a única palavra.
+  vestidos_loja_id_codigo_unique: {
+    error: "CODIGO_EM_USO",
+    detalhe: "Já existe uma peça com este código no acervo — escolha outro código.",
+  },
+  usuarios_email_unique: {
+    error: "EMAIL_EM_USO",
+    detalhe: "Já existe uma pessoa cadastrada com este e-mail.",
+  },
+  itens_estoque_loja_nome_tamanho_unq: {
+    error: "ITEM_DE_ESTOQUE_EM_USO",
+    detalhe: "Esta loja já conta um item com este nome e tamanho — some à quantidade do que existe.",
+  },
+  // O K9 (`contratos.ts:1810`) tirou a colisão do caminho comum decidindo o
+  // número sob a tranca do contrato; a UNIQUE continua sendo a rede do duplo
+  // clique, e era ela que devolvia "já cobrei este reparo" para uma cobrança
+  // legítima.
+  parcelas_contrato_id_numero_unique: {
+    error: "PARCELA_DUPLICADA",
+    detalhe: "Este contrato já tem uma parcela com este número — recarregue o carnê e tente de novo.",
+  },
+};
+
 /** Duck-typing em vez de `instanceof`: há dois zod no build (zod e zod/v4). */
 export function ehZodError(err: unknown): boolean {
   const e = err as { name?: unknown; issues?: unknown };
@@ -189,11 +298,29 @@ export function classificarErro(err: unknown): Classificacao {
    */
   const code = pgErrorCode(err);
   if (code === "23505") {
+    /**
+     * S-O2 — o índice nomeado responde por si; o genérico é o que sobra.
+     *
+     * O `REGISTRO_DUPLICADO` continua sendo a resposta de todo índice que o mapa
+     * não conhece: fechar a classe não é a mesma coisa que prometer conhecer as 27
+     * restrições únicas do banco, e prometer o que não se cumpre é o defeito
+     * que este épico inteiro persegue.
+     */
+    const nome = pgConstraint(err);
+    const especifico = nome ? DUPLICADO_POR_INDICE[nome] : undefined;
+    if (especifico) {
+      return {
+        status: 409,
+        body: { error: especifico.error, detalhe: especifico.detalhe },
+        logLevel: "warn",
+        logMsg: `Violação de unicidade (${nome})`,
+      };
+    }
     return {
       status: 409,
       body: { error: "REGISTRO_DUPLICADO", detalhe: "Já existe um registro com estes dados." },
       logLevel: "warn",
-      logMsg: "Violação de unicidade",
+      logMsg: nome ? `Violação de unicidade (${nome}, sem tradução própria)` : "Violação de unicidade",
     };
   }
   if (code === "23503") {

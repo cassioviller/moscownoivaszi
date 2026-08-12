@@ -165,6 +165,71 @@ async function criarVersaoEnviada(tx: Cliente, lojaId: string, orcamentoId: stri
   });
 }
 
+/**
+ * S-O15/E180 — **as duas portas que congelam versão fazem o MESMO gesto.**
+ *
+ * São duas: o `POST /orcamentos/:id/link` (compartilhar É enviar) e o
+ * `PATCH /orcamentos/:id` que marca ENVIADO. Elas congelam a mesma coisa e
+ * cobravam pré-condições DIFERENTES, cada uma escrita no seu lugar:
+ *
+ * | | `POST /link` | `PATCH` ENVIADO (antes) |
+ * |---|---|---|
+ * | exige ≥1 item | sim, **sob a tranca** | sim, **lido no POOL** (`:783`) |
+ * | reabre validade vencida (D3) | sim | **não** |
+ *
+ * As duas diferenças são defeito, e a segunda é a que chega à noiva: um
+ * RASCUNHO de 40 dias marcado como ENVIADO congelava uma versão **já vencida**,
+ * e a página dela respondia 422 `VALIDADE_VENCIDA` no aceite — a proposta
+ * nasce morta. Pela outra porta, o mesmo orçamento reabria para 30 dias.
+ *
+ * É a forma exata que o C8 já teve uma vez (*"a pré-condição em dois lugares,
+ * divergindo"*) e a regra 26 na letra: **cinco grafias do mesmo cuidado é a
+ * medida de que falta uma régua, e o sítio que esqueceu é o que quebra.** Agora
+ * as duas perguntas moram nas duas funções abaixo, e as duas portas as fazem
+ * DENTRO da transação, com a linha já trancada.
+ *
+ * **Elas perguntam; quem ESCREVE continua sendo a porta.** A primeira versão
+ * disto era uma função só, que também gravava a validade nova — e a varredura
+ * do E171 (nesta mesma sessão, uma tabela quente adiante) a classificou como
+ * porta ABERTA: `tx.update(orcamentosTable)` dentro de um helper que RECEBE o
+ * `tx` é escrita que nenhuma AST consegue ligar à tranca do chamador (é o ponto
+ * cego 2 dela). Régua que obriga a declarar dívida é régua dizendo que o
+ * desenho está errado.
+ */
+
+/**
+ * D3 (E166, decisão da dona) — **reenviar É reabrir a negociação.**
+ *
+ * A validade recomeça (30 dias, a régua da casa) e a versão nova congela com
+ * ela: a noiva aceita o que está vendo, prazo incluído. `null` quando não
+ * venceu — não há o que reabrir.
+ *
+ * Chamada com a validade RELIDA sob a tranca, ela não dobra: o segundo clique
+ * lê a validade já reaberta pelo primeiro, não a vencida.
+ */
+function validadeReaberta(validade: Date | null): Date | null {
+  return validade && validade < new Date()
+    ? ancoraDeNegocio(addDias(hojeLocal(), VALIDADE_PADRAO_DIAS))
+    : null;
+}
+
+/**
+ * O1 (E166) — **a versão nunca congela VAZIA.**
+ *
+ * A versão 1 com `totalLiquido: 0` levava o aceite de R$ 0,00 a APROVADO
+ * terminal e matava a venda inteira. A pergunta é feita sob a tranca que o
+ * chamador já tomou, e por isso não envelhece entre a guarda e o congelamento —
+ * era a metade que só o `POST /link` tinha (o `PATCH` perguntava no POOL).
+ */
+async function propostaTemItem(tx: Cliente, orcamentoId: string): Promise<boolean> {
+  const [item] = await tx
+    .select({ id: orcamentoItensTable.id })
+    .from(orcamentoItensTable)
+    .where(eq(orcamentoItensTable.orcamentoId, orcamentoId))
+    .limit(1);
+  return !!item;
+}
+
 router.use(requireSessaoComLoja);
 /**
  * E172/S-O40 — a proposta tem módulo próprio desde 2026-08-12.
@@ -740,7 +805,9 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
   // + reconferência dentro da transação: o CAS do aceite atualiza esta mesma
   // linha, a tranca serializa os dois.
   const orcamento = await db.transaction(async (tx) => {
-    const [agora] = await tx.select({ status: orcamentosTable.status }).from(orcamentosTable)
+    const [agora] = await tx
+      .select({ status: orcamentosTable.status, validade: orcamentosTable.validade })
+      .from(orcamentosTable)
       .where(eq(orcamentosTable.id, orcamentoId as string))
       .for("update");
     if (!agora) return null;
@@ -764,24 +831,48 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
     if (parsed.data.status && !transicaoOrcamentoValida(agora.status, parsed.data.status)) {
       return { transicaoInvalida: agora.status };
     }
+    /**
+     * S-O15 — as MESMAS duas perguntas da outra porta que congela, feitas aqui
+     * dentro, sob a tranca que o `select … .for("update")` acima acabou de tomar.
+     *
+     * A guarda de `:783` continua onde está: ela dá o 422 sem custo de
+     * transação para o caminho comum. O que muda é que ela deixou de ser a
+     * última palavra — e que a validade vencida é reaberta aqui, como o
+     * `POST /link` sempre fez. As duas rodam ANTES do UPDATE, para a recusa não
+     * deixar um ENVIADO sem versão congelada (é o buraco que o B11/E95 fechou).
+     */
+    if (virandoEnviado && !(await propostaTemItem(tx, orcamentoId as string))) {
+      return { vazio: true as const };
+    }
+    const validadeNova = virandoEnviado ? validadeReaberta(agora.validade) : null;
     const [atualizado] = await tx.update(orcamentosTable)
       .set({
         ...parsed.data,
         ...(virandoAprovado ? { aprovadoEm: new Date() } : {}),
+        ...(validadeNova ? { validade: validadeNova } : {}),
         updatedAt: new Date(),
       })
       .where(and(eq(orcamentosTable.id, orcamentoId as string), eq(orcamentosTable.lojaId, lojaId as string)))
       .returning();
     if (!atualizado) return null;
-    if (virandoEnviado) {
-      await criarVersaoEnviada(tx, lojaId as string, orcamentoId as string);
-    }
+    if (virandoEnviado) await criarVersaoEnviada(tx, lojaId as string, orcamentoId as string);
     return atualizado;
   });
   if (orcamento && "corrida" in orcamento) {
     res.status(422).json({
       error: "ORCAMENTO_APROVADO",
       detalhe: "Orçamento aprovado não muda mais — crie um novo orçamento para renegociar",
+    });
+    return;
+  }
+  // S-O15: a corrida que a guarda do pool (`:783`) não pega — o último item foi
+  // removido entre ela e a tranca. Mesma frase, porque é a mesma recusa, e a
+  // transação sai sem ter escrito nada.
+  if (orcamento && "vazio" in orcamento) {
+    res.status(422).json({
+      error: "ORCAMENTO_VAZIO",
+      detalhe: "A proposta não tem nenhum item — lance o vestido antes de marcar como enviada.",
+      campos: [{ campo: "itens", motivo: "Lance ao menos um item" }],
     });
     return;
   }
@@ -1265,42 +1356,15 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", requireModulo("orcame
     if (sobTranca.status === "RECUSADO") return { erro: "RECUSADO", expiraEm: null } as const;
 
     /**
-     * O1 (E166) — o link congelava um orçamento VAZIO, e era a ação primária
-     * da tela de um orçamento novo.
+     * S-O15/E180 — o item e a validade saem da MESMA régua da porta irmã.
      *
-     * A versão 1 nascia com `totalLiquido: 0` e hash do conteúdo vazio; a
-     * página da noiva imprimia **Total R$ 0,00** com o botão "Aceitar" aceso.
-     * Ela aceitava, o orçamento ia para APROVADO — terminal — e a vendedora
-     * não conseguia mais lançar o vestido de R$ 5.000,00: 422 no item, 422 no
-     * contrato. Uma venda inteira sem contrato possível, e o aceite gravado
-     * era de zero. A versão nunca mais congela vazia — e a pergunta mora sob a
-     * tranca, que é a mesma que as portas de item tomam (`sobPaiTrancado`),
-     * então "tinha item quando eu perguntei" não envelhece entre a guarda e o
-     * congelamento.
+     * As duas perguntas que este bloco fazia à mão — *"tem item?"* (O1) e *"a
+     * validade venceu?"* (D3) — moram em `propostaTemItem` e `validadeReaberta`,
+     * chamadas aqui dentro da tranca. O `PATCH` que marca ENVIADO faz as mesmas
+     * duas: era a pré-condição em dois lugares, e o que ela decide chega à noiva.
      */
-    const [temItem] = await tx.select({ id: orcamentoItensTable.id })
-      .from(orcamentoItensTable)
-      .where(eq(orcamentoItensTable.orcamentoId, orcamentoId))
-      .limit(1);
-    if (!temItem) return { erro: "VAZIO", expiraEm: null } as const;
-
-    /**
-     * D3 (E166, decisão da dona) — o link regenerado de uma proposta VENCIDA
-     * re-abre a validade EXPLICITAMENTE, em vez de por acidente.
-     *
-     * O aceite passou a barrar proposta vencida (C6): sem isto, regenerar o
-     * link entregaria à noiva uma página que só sabe dizer "venceu". Reenviar
-     * É reabrir a negociação: a validade recomeça (30 dias, a régua da casa) e
-     * uma versão NOVA congela com ela — a noiva aceita o que está vendo, prazo
-     * incluído, e a aba velha esbarra na guarda de versão do E160.
-     *
-     * Relida sob a tranca, ela também para de dobrar: o segundo clique lê a
-     * validade JÁ reaberta pelo primeiro, não a vencida.
-     */
-    const validadeVencida = !!sobTranca.validade && sobTranca.validade < new Date();
-    const validadeNova = validadeVencida
-      ? ancoraDeNegocio(addDias(hojeLocal(), VALIDADE_PADRAO_DIAS))
-      : null;
+    if (!(await propostaTemItem(tx, orcamentoId))) return { erro: "VAZIO", expiraEm: null } as const;
+    const validadeNova = validadeReaberta(sobTranca.validade);
 
     /**
      * S-O39 (decisão da dona, 2026-08-12) — **o link dura o que a proposta
@@ -1339,7 +1403,7 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", requireModulo("orcame
 
     // E75: compartilhar É enviar — e enviar congela a versão que a noiva verá.
     // D3: reabrir uma proposta vencida também congela — a validade nova entra
-    // no snapshot que ela vai ler.
+    // no snapshot que ela vai ler, e por isso o UPDATE acima vem primeiro.
     if (sobTranca.status === "RASCUNHO" || validadeNova) {
       await criarVersaoEnviada(tx, lojaId, orcamentoId);
     }
