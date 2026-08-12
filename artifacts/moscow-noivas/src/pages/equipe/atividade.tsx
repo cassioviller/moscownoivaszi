@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Erro } from "@/components/estado";
-import { ROTULO_ACAO, resumoDetalhe } from "../financeiro/auditoria";
+import { rotuloDaAcao, resumoDetalhe } from "../financeiro/auditoria";
 import { haQuanto, instanteCurto } from "@/lib/formatos";
 
 /**
@@ -97,7 +97,7 @@ export function AtividadeEquipe() {
                         {instanteCurto(e.criadoEm).replace(", ", " às ")}
                       </span>
                       <Badge variant="secondary" className="font-normal">
-                        {ROTULO_ACAO[e.acao] ?? e.acao}
+                        {rotuloDaAcao(e.acao)}
                       </Badge>
                       <span className="text-sm">{e.usuarioNome}</span>
                       {resumoDetalhe(e) && (

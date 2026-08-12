@@ -23,7 +23,7 @@ import {
 import { AlertCircle } from "lucide-react";
 import { instanteCurto } from "@/lib/formatos";
 import {
-  ROTULO_ACAO,
+  rotuloDaAcao,
   ACOES_FILTRAVEIS,
   acaoEmDestaque,
   acaoFiltravel,
@@ -33,7 +33,7 @@ import {
 
 // Reexportados para o log de atividade da equipe (E18) — mesma trilha, outra
 // lente. Moraram aqui até a E47; hoje o núcleo é `lib/financeiro/auditoria`.
-export { ROTULO_ACAO, resumoDetalhe };
+export { rotuloDaAcao, resumoDetalhe };
 
 /** O corte do servidor. A tela precisa saber para poder AVISAR que cortou. */
 const LIMITE_TRILHA = 200;
@@ -147,7 +147,7 @@ export default function Auditoria() {
               <SelectItem value={TODOS}>Todas as ações</SelectItem>
               {ACOES_FILTRAVEIS.map((a) => (
                 <SelectItem key={a} value={a}>
-                  {ROTULO_ACAO[a]}
+                  {rotuloDaAcao(a)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -250,7 +250,7 @@ export default function Auditoria() {
                     {instanteCurto(item.criadoEm).replace(", ", " às ")}
                   </span>
                   <Badge variant={acaoEmDestaque(item.acao) ? "destructive" : "secondary"}>
-                    {ROTULO_ACAO[item.acao] ?? item.acao}
+                    {rotuloDaAcao(item.acao)}
                   </Badge>
                   <span className="text-sm font-medium">{item.usuarioNome}</span>
                   {resumo && <span className="text-sm text-muted-foreground">{resumo}</span>}

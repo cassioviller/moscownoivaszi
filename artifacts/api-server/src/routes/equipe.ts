@@ -23,7 +23,7 @@ import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { usuarioNaLoja } from "../lib/escopo-loja";
 import { registrarAuditoria } from "../lib/auditoria";
 import { hashSenha, gerarTokenConvite, encerrarSessoesDoUsuario, CONVITE_TTL_MS } from "../lib/auth";
-import { ehViolacaoUnica , erroDeValidacao } from "../lib/erros";
+import { erroDeValidacao } from "../lib/erros";
 import { randomUUID } from "node:crypto";
 
 const router: IRouter = Router();
@@ -315,28 +315,31 @@ router.post("/lojas/:lojaId/equipe/convites", async (req, res): Promise<void> =>
     criadoPorId: req.usuario!.id,
     expiraEm: new Date(Date.now() + CONVITE_TTL_MS),
   };
-  try {
-    await db.transaction(async (tx) => {
-      await tx.insert(convitesTable).values(valores);
-      await registrarAuditoria(tx, {
-        lojaId,
-        usuario: req.usuario!,
-        acao: "CONVITE_CRIADO",
-        entidade: "convite",
-        entidadeId: valores.id,
-        // O TOKEN fica de fora: quem lê a trilha (ou o CSV dela) ganharia um
-        // link de entrada válido na loja.
-        detalhe: { email, perfilId: valores.perfilId },
-      });
+  /**
+   * S-O61/E186 — **o `catch` local saiu, e o 409 continua sendo o mesmo.**
+   *
+   * Havia aqui um `if (ehViolacaoUnica(err))` que respondia
+   * `409 CONVITE_PENDENTE`. Ele foi escrito antes de existir tradução por
+   * ÍNDICE, e por isso traduzia qualquer violação de unicidade desta transação
+   * com a frase do convite. O índice `convites_loja_email_pendente_unq` agora
+   * tem entrada em `DUPLICADO_POR_INDICE`, com o mesmo código — uma grafia da
+   * mesma recusa, no lugar em que as outras quatorze moram (regra 26). A prova
+   * de equivalência é o teste que já existia: `equipe-convites-api.test.ts`
+   * segue cobrando `CONVITE_PENDENTE` no segundo convite.
+   */
+  await db.transaction(async (tx) => {
+    await tx.insert(convitesTable).values(valores);
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario: req.usuario!,
+      acao: "CONVITE_CRIADO",
+      entidade: "convite",
+      entidadeId: valores.id,
+      // O TOKEN fica de fora: quem lê a trilha (ou o CSV dela) ganharia um
+      // link de entrada válido na loja.
+      detalhe: { email, perfilId: valores.perfilId },
     });
-  } catch (err) {
-    // Unique parcial (loja,email pendente): a corrida resolve no banco.
-    if (ehViolacaoUnica(err)) {
-      res.status(409).json({ error: "CONVITE_PENDENTE", detalhe: "Use reenviar ou cancele o convite existente" });
-      return;
-    }
-    throw err;
-  }
+  });
 
   const [perfil] = await db
     .select({ nome: perfisTable.nome })

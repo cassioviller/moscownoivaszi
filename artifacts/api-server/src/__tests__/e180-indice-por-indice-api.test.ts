@@ -107,8 +107,14 @@ describe("E180 — o 23505 traduzido índice por índice", () => {
    * mapa é a maior fonte nova de `error` do repositório desde aquele épico, e
    * nasce sob a mesma régua.
    */
+  /**
+   * Eram 11; são **15** desde o E186, que contou quais índices uma rota alcança
+   * (S-O61) e promoveu quatro do genérico — o convite pendente repetido, a regra
+   * de comissão do mesmo dia, a conta paga duas vezes e a versão de proposta
+   * congelada duas vezes. A contagem trava aqui pelo mesmo motivo de sempre.
+   */
   it("todo código do mapa é MAIÚSCULA_COM_UNDERSCORE, e toda frase é frase", () => {
-    expect(Object.keys(DUPLICADO_POR_INDICE)).toHaveLength(11);
+    expect(Object.keys(DUPLICADO_POR_INDICE)).toHaveLength(15);
     for (const [indice, { error, detalhe }] of Object.entries(DUPLICADO_POR_INDICE)) {
       expect(error, indice).toMatch(/^[A-Z][A-Z_]*[A-Z]$/);
       expect(detalhe.length, indice).toBeGreaterThan(20);

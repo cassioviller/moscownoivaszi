@@ -61,22 +61,65 @@ describe("varredura — o teto da foto é o mesmo dos dois lados (S-O19)", () =>
     const literais = [...servidor.matchAll(/export const CORPO_MAX_[A-Z_]+ = "(\d+)mb";/g)];
     expect(literais.map((x) => x[0]), "o teto do corpo voltou a ser literal").toEqual([]);
 
-    const m = /export const CORPO_MAX_FOTO_BYTES = ([^;]+);/.exec(servidor);
+    const m = /export const CORPO_MAX_FOTO_BYTES =\s*([^;]+);/.exec(servidor);
     expect(m, "a constante única do corpo mudou de nome ou de forma").toBeTruthy();
     expect(m![1], "o teto do corpo tem de SAIR do teto da foto, senão os dois divergem de novo").toContain(
       "FOTO_MAX_BYTES",
     );
+    // S-O62/E186: e da MINIATURA, que viaja no mesmo corpo. Antes ela não
+    // aparecia na conta e respondia por 67% da folga chamada de "envelope".
+    expect(m![1], "o teto do corpo tem de SAIR também do teto da miniatura").toContain("THUMB_MAX_BYTES");
+  });
 
-    // eslint-disable-next-line no-eval
-    const corpo = eval(m![1]!.replace("FOTO_MAX_BYTES", String(FOTO_MAX_BYTES))) as number;
-    const fotoEmBase64 = Math.ceil(FOTO_MAX_BYTES * (4 / 3));
+  /**
+   * S-O62/E186 — **a conta do teto de CORPO cabe tudo o que a guarda ACEITA.**
+   *
+   * O E180 pregava só que o corpo cabe a foto codificada, e a folga que sobrava
+   * foi rotulada de "envelope". Medido: a porta do vestido manda **duas**
+   * imagens no mesmo corpo, e a miniatura sozinha ocupa **699.052 bytes em
+   * base64** — dois terços daquele 1 MiB. O invariante que faltava é este: o
+   * pior corpo que as guardas do servidor aprovam tem de CABER no parser, senão
+   * o 413 mudo chega antes do 422 que sabe explicar.
+   *
+   * Sem ele, subir `THUMB_MAX_BYTES` de 512 KiB para 1 MiB — uma linha — faria o
+   * parser recusar um corpo que a rota aceitaria, e nenhuma suíte falaria.
+   */
+  it("e a conta dele cabe a foto MAIS a miniatura, com margem para o 422 chegar", () => {
+    const base64 = (n: number) => 4 * Math.ceil(n / 3);
+    /**
+     * O valor sai da FONTE versionada do servidor, resolvendo as constantes
+     * umas nas outras — nenhum número deste arquivo entra na conta. Repetir o
+     * total aqui seria a segunda declaração que a S-O19 existe para matar.
+     */
+    const resolvidas: Record<string, number> = { FOTO_MAX_BYTES };
+    const constante = (nome: string): number => {
+      const m = new RegExp(`export const ${nome} =\\s*([^;]+);`).exec(servidor);
+      expect(m, `${nome} sumiu de lib/limites.ts`).toBeTruthy();
+      let expr = m![1]!;
+      for (const [k, v] of Object.entries(resolvidas)) expr = expr.replace(new RegExp(k, "g"), String(v));
+      // eslint-disable-next-line no-eval
+      const valor = eval(expr.replace(/base64Bytes\(/g, "((n)=>4*Math.ceil(n/3))(")) as number;
+      resolvidas[nome] = valor;
+      return valor;
+    };
+    const thumb = constante("THUMB_MAX_BYTES");
+    const envelope = constante("ENVELOPE_MAX_BYTES");
+    const margem = constante("MARGEM_DO_422_BYTES");
+    const corpo = constante("CORPO_MAX_FOTO_BYTES");
+
+    // O pior corpo que as guardas aprovam: a foto no teto, a miniatura no teto.
+    const piorCorpoAceito = base64(FOTO_MAX_BYTES) + base64(thumb) + envelope;
     expect(
       corpo,
-      "o corpo tem de caber a foto codificada — senão a recusa vem do parser, sem a frase que explica",
-    ).toBeGreaterThan(fotoEmBase64);
-    // E a folga é do tamanho de um envelope, não de uma segunda foto: teto de
-    // corpo generoso demais é o processo montando JSON que a guarda vai recusar.
-    expect(corpo - fotoEmBase64).toBeLessThan(FOTO_MAX_BYTES);
+      "o parser recusaria um corpo que as guardas aceitam — o 413 mudo chegando antes do 422",
+    ).toBeGreaterThan(piorCorpoAceito);
+
+    // E a margem existe para o EXCESSO chegar: quem passa do teto da foto por
+    // pouco tem de ouvir o 422 que nomeia o teto, não o 413 do parser.
+    expect(margem, "sem margem, a foto de 2 MiB + 1 KB morre no parser").toBeGreaterThan(base64(64 * 1024));
+    // Teto superior: folga generosa demais é o processo montando JSON que a
+    // guarda vai recusar de qualquer jeito.
+    expect(margem).toBeLessThan(base64(FOTO_MAX_BYTES) / 2);
   });
 
   it("e as duas portas que recebem foto montam o parser com ESSE teto", () => {
@@ -116,5 +159,16 @@ describe("varredura — o teto da foto é o mesmo dos dois lados (S-O19)", () =>
       /2\s*\*\s*1024\s*\*\s*1024/.test(readFileSync(path.join(RAIZ, f), "utf8")),
     );
     expect(reincidentes, "o teto voltou a ser escrito à mão").toEqual([]);
+
+    /**
+     * S-O62/E186 — **e o da MINIATURA junto, que era a quarta declaração.**
+     *
+     * `THUMB_MAX_BYTES = 512 * 1024` vivia em `vestidos.ts:641`, literal, três
+     * linhas abaixo do comentário que anunciava a consolidação da S-O19. A
+     * varredura enumerava as três que a sobra nomeou e passava verde sobre a
+     * quarta — é a régua guardando o que já foi consertado em vez da classe.
+     */
+    const thumbAMao = rotas.filter((f) => /512\s*\*\s*1024/.test(readFileSync(path.join(RAIZ, f), "utf8")));
+    expect(thumbAMao, "o teto da miniatura voltou a ser escrito à mão numa rota").toEqual([]);
   });
 });

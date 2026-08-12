@@ -1,4 +1,5 @@
 import type { AuditoriaItem } from "@workspace/api-client-react";
+import { ROTULO_ACAO } from "@workspace/financeiro-core";
 import { brl } from "@/lib/formatos";
 
 /**
@@ -9,84 +10,23 @@ import { brl } from "@/lib/formatos";
  */
 
 /**
- * ESPELHO de `ROTULO_ACAO` em api-server/src/lib/auditoria.ts, que rotula o
- * CSV — tela e planilha têm de chamar a mesma coisa pelo mesmo nome. Aqui o
- * mapa é FROUXO (`Record<string, …>` com fallback no código cru) de propósito:
- * ação nova nasce no servidor, e tela velha lendo trilha nova não pode quebrar.
+ * S-O52/E186 — **o mapa de rótulos deixou de ser o SEGUNDO.**
+ *
+ * Era um espelho à mão de `api-server/src/lib/auditoria.ts`, e o comentário de
+ * lá declarava o pacto desde o E47: *"a planilha da contadora e a tela têm de
+ * chamar a mesma coisa pelo mesmo nome"*. A `auditoria-espelho` passou a cobrar
+ * as CHAVES no E178 — e o texto de **três dos 43** rótulos divergia
+ * (`CARNE_COMPLETADO`, `USUARIO_EXCLUIDO`, `LOJA_EXCLUIDA`), que é exatamente o
+ * que uma varredura de chaves não vê.
+ *
+ * Ele mora em `@workspace/financeiro-core` e é reexportado daqui — nenhuma tela
+ * mudou de import. **A frouxidão continua existindo e mudou de lugar**: era do
+ * MAPA (`Record<string, string>`, para tela velha não quebrar lendo trilha nova)
+ * e passou a ser de `rotuloDaAcao`, que é onde o valor desconhecido de verdade
+ * chega — o `acao` de uma linha do banco. O mapa, agora fechado, cobra do
+ * TypeScript o rótulo de toda ação nova, garantia que só o servidor tinha.
  */
-export const ROTULO_ACAO: Record<string, string> = {
-  PARCELA_RECEBIDA: "Parcela recebida",
-  RECEBIMENTO_ESTORNADO: "Recebimento estornado",
-  CONTA_PAGA: "Conta paga",
-  PAGAMENTO_REGISTRADO: "Pagamento registrado",
-  PAGAMENTO_ESTORNADO: "Pagamento estornado",
-  ESTORNO_COMISSAO_BAIXADO: "Estorno de comissão baixado",
-  COMISSAO_FECHAMENTO_REABERTO: "Fechamento de comissão reaberto",
-  CONTRATO_CANCELADO: "Contrato cancelado",
-  MEMBRO_ADICIONADO: "Membro adicionado",
-  MEMBRO_ALTERADO: "Membro alterado",
-  MEMBRO_REMOVIDO: "Membro removido",
-  CONVITE_CRIADO: "Convite criado",
-  CONVITE_CANCELADO: "Convite cancelado",
-  PERMISSOES_ALTERADAS: "Permissões do perfil alteradas",
-  PERMISSOES_RESTAURADAS: "Permissões do perfil restauradas ao padrão",
-  ORCAMENTO_ACEITO: "Orçamento aceito pela noiva",
-  ORCAMENTO_ACEITE_DESFEITO: "Aceite do orçamento desfeito (gerencial)",
-  PROVA_CONFIRMADA: "Prova confirmada pela noiva",
-  LEADS_ANONIMIZADOS: "Noivas perdidas anonimizadas (LGPD)",
-  // O espelho tinha PARADO: estas cinco já existiam (ou passam a existir) no
-  // servidor e caíam no código cru na tela. O mapa é frouxo de propósito para
-  // não quebrar, mas "CONTABILIDADE_ENVIADA" na coluna Ação não é rótulo.
-  REMARCACAO_PEDIDA: "Remarcação pedida pela noiva",
-  CONTA_PAGAR_REMOVIDA: "Conta a pagar removida",
-  CONTABILIDADE_ENVIADA: "Período declarado à contabilidade",
-  LEAD_REMOVIDO: "Noiva removida do cadastro",
-  PARCELA_REMOVIDA: "Parcela removida",
-  // P2/E158: o carnê gerado depois empurra as avulsas para o fim da fila. O
-  // detalhe guarda o de→para por parcela — é a linha que explica por que a
-  // trilha de um recebimento antigo cita um número que a tela não mostra mais.
-  PARCELAS_RENUMERADAS: "Parcelas renumeradas",
-  CONCILIACAO_MARCADA: "Movimentos conferidos com o extrato",
-  RESERVA_REMOVIDA: "Reserva removida",
-  BLOQUEIO_REMOVIDO: "Bloqueio de vestido removido",
-  ATENDIMENTO_REMOVIDO: "Atendimento removido da agenda",
-  ORCAMENTO_REMOVIDO: "Orçamento removido",
-  AVARIA_REMOVIDA: "Avaria removida",
-  // S-M1: o sexto DELETE cru da família. Só chega aqui a cabine SEM agenda — a
-  // que tem é recusada com 409 —, e o detalhe guarda o nome dela.
-  CABINE_REMOVIDA: "Cabine removida",
-  // S-M16: os três deletes que a conferência da S-M1 achou fora da régua.
-  ITEM_ESTOQUE_REMOVIDO: "Item de estoque removido",
-  AJUSTE_REMOVIDO: "Trabalho de costura removido da fila",
-  COMISSAO_REGRA_REMOVIDA: "Regra de comissão removida",
-  // E120: a venda que trocou de dona entre o orçamento e o contrato — é ela
-  // que decide de quem é a comissão, por isso a linha existe e é filtrável.
-  CONTRATO_VENDEDORA_DIVERGENTE: "Contrato com a venda em nome de outra pessoa",
-  // E123: o desfazer da cobrança registrada por engano — depois do DELETE a
-  // trilha é o único lugar que lembra o que o registro dizia.
-  REGISTRO_COBRANCA_DESFEITO: "Registro de cobrança desfeito",
-  // S-O1 — as SEIS que a trilha gravava e o filtro não oferecia. A varredura
-  // `auditoria-espelho` passou a cobrar a união inteira do servidor, para a
-  // lista não voltar a envelhecer em silêncio.
-  //
-  // E157/P7: o carnê que perdeu uma parcela ganhou as que faltavam — quem lê o
-  // extrato depois precisa achar esta linha para entender por que há duas
-  // gerações de carnê no mesmo contrato.
-  CARNE_COMPLETADO: "Carnê completado",
-  // S-M24: cancelar a reserva solta os vestidos da noiva.
-  RESERVA_CANCELADA: "Reserva cancelada (vestidos liberados)",
-  // S-O4/E173: mover a data da reserva move a do contrato ATIVO junto — o que
-  // muda ali é o papel que a noiva assinou.
-  CONTRATO_DATA_SEGUIU_RESERVA: "Data do casamento do contrato seguiu a reserva",
-  // S-O11/E173: a reserva aberta na noiva errada passou a ter conserto, e
-  // trocar a dona é mexer em de quem é a peça.
-  RESERVA_DONA_TROCADA: "Reserva passou para outra noiva",
-  // S3: os dois atos GLOBAIS de superadmin. Eles gravam `loja_id` nulo, então
-  // não aparecem na trilha de loja nenhuma — mas o rótulo existe para o CSV e
-  // para o console da rede não cair no código cru.
-  USUARIO_EXCLUIDO: "Usuário excluído do sistema",
-  LOJA_EXCLUIDA: "Loja excluída do sistema",
-};
+export { ROTULO_ACAO, rotuloDaAcao } from "@workspace/financeiro-core";
 
 /**
  * As ações filtráveis — **derivadas do mapa de rótulos, não copiadas dele.**
@@ -106,16 +46,12 @@ export const ROTULO_ACAO: Record<string, string> = {
 export const ACOES_FILTRAVEIS: readonly string[] = Object.keys(ROTULO_ACAO);
 
 /**
- * O tipo é `string`, e **é o preço da derivação** — não descuido. `ROTULO_ACAO`
- * é frouxo de propósito (o comentário dele diz por quê), e `keyof
- * Record<string, string>` é `string`: derivar a lista do mapa custa a união
- * fechada que a lista curada dava de graça.
- *
- * A troca vale porque a garantia que importa nunca foi a do compilador. Ninguém
- * escreve `AcaoFiltravel` à mão — o valor vem da URL, em tempo de execução, e é
- * a conferência de `acaoFiltravel` que o barra. O que a união fechada pegaria a
- * mais é um literal digitado errado no código, e não há nenhum; o que a lista
- * curada deixava passar era ação sem filtro, e isso a trilha inteira sentiu.
+ * O tipo é `string`, e **a razão mudou no E186** — antes era o preço da
+ * derivação (`keyof Record<string, string>` é `string`), e o mapa agora é
+ * fechado, então `Object.keys` continua devolvendo `string[]` mas a união
+ * existe. Ele fica assim de propósito: o valor vem da **URL**, em tempo de
+ * execução, e é `acaoFiltravel` que o barra. Prometer união fechada num valor
+ * que nasce de `searchParams.get` é a garantia que engana.
  */
 export type AcaoFiltravel = string;
 

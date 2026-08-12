@@ -13,7 +13,7 @@ import {
   avariasTable,
 } from "@workspace/db";
 import { eq, and, gte, lt, isNull, isNotNull, inArray, count, sql } from "drizzle-orm";
-import { FOTO_MAX_BYTES } from "../lib/limites";
+import { FOTO_MAX_BYTES, THUMB_MAX_BYTES } from "../lib/limites";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
   ListVestidosResponse,
@@ -638,7 +638,10 @@ router.get("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): 
 // canvas. Acima disso é bug do cliente ou má-fé — recusa, não acomoda.
 // S-O19: `FOTO_MAX_BYTES` mora em `lib/limites.ts` (importado no topo) — eram
 // três declarações independentes, iguais por coincidência.
-const THUMB_MAX_BYTES = 512 * 1024;
+// S-O62/E186: e eram QUATRO — o `THUMB_MAX_BYTES` ficou aqui, literal, três
+// linhas abaixo deste comentário. Ele mora em `lib/limites.ts` junto dos
+// outros, e é ele que responde por 67% da folga do teto de CORPO: a tela manda
+// foto e miniatura no MESMO corpo.
 
 router.put("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): Promise<void> => {
   const { lojaId, vestidoId, ordem: ordemStr } = req.params;

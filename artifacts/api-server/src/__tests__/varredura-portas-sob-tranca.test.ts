@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   arquivosVarridos,
+  degrauDaTranca,
   enumerarPortas,
   escritasComTabelaDinamica,
   portasNoTexto,
@@ -70,11 +71,14 @@ import {
  *    `.for("update")` antes da escrita e aprova. Quando o `if` é falso a escrita
  *    de `:801` roda sem tranca nenhuma. Nenhuma varredura sintática resolve
  *    isso; resolve-se com corrida determinística no molde `sm7`.
- * 2. **Ela não entra no helper.** `verificarDisponibilidade({ executor: tx })`
- *    conta como releitura da guarda porque recebe o executor da transação — mas
- *    a varredura não confere o que ele pergunta lá dentro. **Vale igual para a
- *    ordem:** o `trancarContratos` de `comissao.ts:224` tranca ORDENADO por id e
- *    recebe o `tx` de fora, então nenhuma das duas contas abaixo o enxerga.
+ * 2. **Ela não confere o que o helper PERGUNTA.**
+ *    `verificarDisponibilidade({ executor: tx })` conta como releitura da guarda
+ *    porque recebe o executor da transação, e a varredura não lê o que ele
+ *    pergunta lá dentro. ~~**Vale igual para a ordem.**~~ **A metade da ORDEM
+ *    fechou no E186 (S-O59)**: a conta segue o `tx` para dentro das funções do
+ *    mesmo módulo, então `trancarContratos` (`comissao.ts:224`) e `trancarEixos`
+ *    (`agenda.ts:98`) contam nas três contas. O que sobra de fora é o helper
+ *    IMPORTADO de outro arquivo — resolução de módulo, não de projeto.
  * 3. **Ela não sabe se a linha trancada é A linha.** `PAIS` diz que trancar o
  *    lead serve para escrever no contrato; não diz que é o lead CERTO. Trancar
  *    outro lead passaria.
@@ -105,19 +109,26 @@ const sitio = (p: Porta): string => `${p.arquivo}:${p.linha} ${p.verbo}(${p.tabe
  * contagem"*, e um arquivo perdoado podia ir de 6 para 60 com a suíte verde.
  * Aqui `comissao.ts` não pode ganhar a quarta porta aberta em silêncio.
  *
- * ### `comissao.ts` — 3 portas (S-O41, 🟡)
+ * ### `comissao.ts` — 3 portas, e o MOTIVO mudou no E186 (S-O79, 🔵)
  *
- * As três escrevem `contratos.comissao_estornada_em`, e nenhuma tranca a linha
- * do contrato:
- * - `:1035` (reabrir fechamento) zera a marca de reconciliação. A transação
- *   tranca a CONTA A PAGAR (`:1011-1016`, S-M22) — não o contrato.
- * - `:1301` (fechar competência) carimba a marca. Sem tranca nenhuma.
- * - `:1407` (baixar estorno à mão) carimba a marca e o motivo. Sem tranca.
+ * **Esta tabela descreveu o defeito errado por dez épicos.** Até aqui ela dizia
+ * *"as três escrevem `contratos.comissao_estornada_em` e nenhuma tranca a linha
+ * do contrato"* — e isso **deixou de ser verdade no E176**, que criou
+ * `trancarContratos` e o chamou das três. O que sustentava a frase antiga era a
+ * varredura não enxergar o helper: `trancou=[]` nas três. Com o executor
+ * seguido (S-O59/E186), o que se mede é `trancou=[contratosTable]` nas três, e
+ * o que falta é outra coisa:
  *
- * Reabrir e fechar no mesmo segundo decidem a mesma coluna em ordens
- * diferentes: o estorno de uma venda cancelada volta a PENDENTE e é recarimbado
- * como reconciliado sem ter sido abatido, ou o contrário. É a mesma família das
- * Faixas A/B, na única tabela quente que os quatro épicos não abriram.
+ * - `:1071` (reabrir fechamento) — a lista de estornos sai de
+ *   `fechamento.estornoContratoIds`, lido no **POOL**, antes da transação.
+ * - `:1340` (fechar competência) e `:1449` (baixar estorno à mão) — a lista sai
+ *   de `estornosPendentes(tx, …)`, dentro da transação e **antes** do
+ *   `FOR UPDATE`.
+ *
+ * Nas três, a tranca chega DEPOIS da pergunta: o `releituraDaGuarda` é `null`, e
+ * é por isso que a disciplina segue ABERTA. Trancar sem repreguntar não decide
+ * nada — é o mesmo caso do autoteste *"reprova a tranca que NÃO relê a
+ * guarda"*, agora numa porta de verdade. É a **S-O79**.
  *
  * ### ~~`orcamentos.ts:1114`~~ — FECHADA, e esta varredura foi quem cobrou
  *
@@ -368,10 +379,27 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
  * delas com 500 na cara de quem vende.
  */
 describe("varredura — as trancas sobem a cadeia, e nunca descem", () => {
-  it("olha para as transações de verdade — 25 transações trancam, e são 31 trancas", () => {
+  /**
+   * S-O59/E186 — os números subiram porque a conta passou a seguir o executor
+   * para dentro dos helpers do módulo: **28 transações e 38 trancas**, contra as
+   * 25 e 31 do E180. As sete que apareceram são as mesmas duas funções vistas de
+   * cada chamador — `trancarContratos` (3×) e `trancarEixos` (2× cabine + 2×
+   * vendedora).
+   */
+  it("olha para as transações de verdade — 28 transações trancam, e são 38 trancas", () => {
     const porTransacao = trancasPorTransacao();
     expect(porTransacao.size).toBeGreaterThanOrEqual(20);
     expect([...porTransacao.values()].reduce((s, t) => s + t.length, 0)).toBeGreaterThanOrEqual(25);
+  });
+
+  /**
+   * O piso do que o E186 abriu: sem trancas via helper, a conta voltou a ser a
+   * do E180 e as três contas abaixo passam a aprovar o que não leram.
+   */
+  it("e sete delas são alcançadas SEGUINDO o executor para dentro do helper", () => {
+    const viaHelper = [...trancasPorTransacao().values()].flat().filter((t) => t.viaHelper !== null);
+    expect(viaHelper).toHaveLength(7);
+    expect([...new Set(viaHelper.map((t) => t.viaHelper))].sort()).toEqual(["trancarContratos", "trancarEixos"]);
   });
 
   it("nenhuma transação tranca uma tabela DEPOIS de outra mais funda na cadeia", () => {
@@ -379,21 +407,22 @@ describe("varredura — as trancas sobem a cadeia, e nunca descem", () => {
   });
 
   /**
-   * As cinco trancas sobre tabela sem degrau declarado. Não são erro — são
-   * decisão adiada, e a contagem trava pelo mesmo motivo que a da dívida: uma
-   * tabela sem degrau não pode ser ordenada contra as outras, e a primeira
-   * transação que a trancar JUNTO de uma tabela da cadeia abre um ciclo que
-   * ninguém conferiu.
+   * As trancas sobre tabela sem degrau declarado. Não são erro — são decisão
+   * adiada, e a contagem trava pelo mesmo motivo que a da dívida: uma tabela sem
+   * degrau não pode ser ordenada contra as outras, e a primeira transação que a
+   * trancar JUNTO de uma tabela da cadeia abre um ciclo que ninguém conferiu.
    *
-   * Hoje as cinco trancam a tabela sozinhas: `admin.ts:177` (loja),
-   * `agenda.ts:347` (cabine), `agenda.ts:1156` (ajuste) e as duas de
-   * `contas_pagar` (`comissao.ts:1046`, `financeiro.ts:435`). `contas_pagar` é a
-   * candidata mais próxima a precisar de degrau: `comissao.ts` a tranca e
-   * escreve em `contratos` sem trancar o contrato (S-O32), então o dia em que a
-   * S-O32 fechar é o dia em que as duas se encontram numa transação só.
+   * **Eram 5 e viraram 2 no E186, e o caminho é o achado.** O E180 previu que
+   * `contas_pagar` precisaria de degrau *"no dia em que a S-O32 fechar"* — e a
+   * S-O32 fechou no E176, três épicos antes desta linha ser lida de novo. Seguir
+   * o executor (S-O59) tornou o encontro visível e trouxe **duas tabelas que a
+   * previsão não citava**: `cabines` e `usuarios`, que `trancarEixos` toma antes
+   * de a transação da prova seguir para bloqueio e vestido. As três ganharam
+   * degrau; sobram `admin.ts:177` (loja) e `agenda.ts:1156` (ajuste), cada uma
+   * sozinha na sua transação.
    */
-  it("e as trancas sobre tabela fora da cadeia são 5 — cada uma sozinha na sua transação", () => {
-    expect(trancasSemDegrauDeclarado()).toHaveLength(5);
+  it("e as trancas sobre tabela fora da cadeia são 2 — cada uma sozinha na sua transação", () => {
+    expect(trancasSemDegrauDeclarado()).toHaveLength(2);
     const acompanhadas = [...trancasPorTransacao().values()]
       .filter((t) => t.some((x) => x.degrau === null) && t.length > 1)
       .map((t) => t.map((x) => `${x.arquivo}:${x.linha} ${x.tabela}`));
@@ -401,16 +430,20 @@ describe("varredura — as trancas sobem a cadeia, e nunca descem", () => {
   });
 
   /**
-   * A metade "ORDENADOS por id". Três trancas moram dentro de um laço, e as três
-   * percorrem coleção ordenada: `contratos.ts:701` (bloqueios do contrato),
-   * `reservas.ts:254` (bloqueios da reserva) e `reservas.ts:350` (vestidos
-   * vinculados). A quarta — `comissao.ts:234` — também ordena, e esta conta não
-   * a vê: ela mora num helper que RECEBE o `tx`, que é o ponto cego 2.
+   * A metade "ORDENADOS por id". Três laços estão escritos dentro da própria
+   * transação e percorrem coleção ordenada: `contratos.ts:701` (bloqueios do
+   * contrato), `reservas.ts:312` (bloqueios da reserva) e `reservas.ts:408`
+   * (vestidos vinculados).
+   *
+   * **A S-O59 dizia "3 contados e 4 existentes", e são 6.** O quarto laço é o de
+   * `trancarContratos` (`comissao.ts:230`), e ele é UM escrito e TRÊS tomados —
+   * uma vez por chamador. Contar por chamada é o que a conta precisa fazer: o
+   * deadlock não acontece na função, acontece na transação que a chama.
    */
   it("toda tranca dentro de laço percorre coleção ORDENADA", () => {
     expect(trancasEmLacoNaoOrdenado()).toEqual([]);
     const emLaco = [...trancasPorTransacao().values()].flat().filter((t) => t.laco !== null);
-    expect(emLaco).toHaveLength(3);
+    expect(emLaco).toHaveLength(6);
   });
 });
 
@@ -433,8 +466,54 @@ describe("varredura — o enumerador da ordem reconhece a inversão e o laço so
   it("aprova lead → bloqueios, que é a cadeia declarada", () => {
     const trancas = [...trancasNoTexto("sintetico.ts", naOrdem).values()].flat();
     expect(trancas.map((t) => t.tabela)).toEqual(["leadsTable", "bloqueioVestidosTable"]);
-    expect(trancas.map((t) => t.degrau)).toEqual([0, 4]);
+    expect(trancas.map((t) => t.degrau)).toEqual([degrauDaTranca("leadsTable"), degrauDaTranca("bloqueioVestidosTable")]);
     expect(trancas[1]!.lacoOrdenado).toBe(true);
+    expect(trancas.map((t) => t.viaHelper)).toEqual([null, null]);
+  });
+
+  /**
+   * S-O59/E186 — o autoteste do que o épico abriu, nas duas metades que
+   * importam: a tranca de dentro do helper CONTA, e ela conta **na posição da
+   * chamada**, não na linha em que o helper foi escrito.
+   *
+   * O segundo é o que quase passou batido: `trancarBloqueios` está declarado no
+   * topo do arquivo, muito ANTES da transação, e ordenar as trancas por número
+   * de linha o poria na frente do lead — inventando uma inversão que não
+   * existe. Foi o que a primeira versão desta conta fez.
+   */
+  const viaHelper = `
+    import { leadsTable, bloqueioVestidosTable } from "@workspace/db";
+    async function trancarBloqueios(tx, ids) {
+      for (const b of [...ids].sort()) {
+        await tx.select({ id: bloqueioVestidosTable.id }).from(bloqueioVestidosTable)
+          .where(eq(bloqueioVestidosTable.id, b)).for("update");
+      }
+    }
+    await db.transaction(async (tx) => {
+      await tx.select({ id: leadsTable.id }).from(leadsTable).where(eq(leadsTable.id, id)).for("update");
+      await trancarBloqueios(tx, ids);
+    });`;
+
+  it("segue o executor para dentro do helper — a tranca de lá conta aqui", () => {
+    const trancas = [...trancasNoTexto("sintetico.ts", viaHelper).values()].flat();
+    expect(trancas.map((t) => t.tabela)).toEqual(["leadsTable", "bloqueioVestidosTable"]);
+    expect(trancas.map((t) => t.viaHelper)).toEqual([null, "trancarBloqueios"]);
+    // O laço mora no helper, e a régua do `.sort()` o alcança igual.
+    expect(trancas[1]!.lacoOrdenado).toBe(true);
+  });
+
+  it("e a ORDEM é a da chamada, não a da linha em que o helper foi escrito", () => {
+    const trancas = [...trancasNoTexto("sintetico.ts", viaHelper).values()].flat();
+    // O helper está declarado ANTES da transação — por linha, ele viria primeiro.
+    expect(trancas[1]!.linha).toBeLessThan(trancas[0]!.linha);
+    // E mesmo assim a ordem lida é lead → bloqueio, que é a cadeia declarada.
+    expect(trancas.map((t) => t.degrau)).toEqual([degrauDaTranca("leadsTable"), degrauDaTranca("bloqueioVestidosTable")]);
+  });
+
+  it("não segue o helper que NÃO recebe o executor da transação", () => {
+    const solto = viaHelper.replace("await trancarBloqueios(tx, ids);", "await trancarBloqueios(db, ids);");
+    const trancas = [...trancasNoTexto("sintetico.ts", solto).values()].flat();
+    expect(trancas.map((t) => t.tabela)).toEqual(["leadsTable"]);
   });
 
   it("reprova a inversão — o bloqueio trancado ANTES do lead é o ciclo", () => {
@@ -446,7 +525,8 @@ describe("varredura — o enumerador da ordem reconhece a inversão e o laço so
         await tx.select({ id: leadsTable.id }).from(leadsTable).where(eq(leadsTable.id, id)).for("update");
       });`;
     const trancas = [...trancasNoTexto("sintetico.ts", invertido).values()].flat();
-    expect(trancas.map((t) => t.degrau)).toEqual([4, 0]);
+    expect(trancas.map((t) => t.degrau)).toEqual([degrauDaTranca("bloqueioVestidosTable"), degrauDaTranca("leadsTable")]);
+    expect(trancas[0]!.degrau!).toBeGreaterThan(trancas[1]!.degrau!);
   });
 
   it("reprova o laço sobre coleção solta — o `.sort()` é o que ordena as LINHAS", () => {

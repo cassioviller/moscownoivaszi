@@ -138,18 +138,39 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   `bloqueio_vestidos`, `reservas`, `contratos`, `orcamentos` e **`parcelas`
   (S-O34, a tabela onde o dinheiro mora)** — e classifica cada porta em
   **TRANCA**, **CAS** ou **ABERTA**. Hoje: **48 portas · 28 TRANCA · 8 CAS · 12
-  na dívida declarada** (3 abertas de verdade em `comissao.ts`, 2 nascimentos de
-  linha-pai, 7 do gerador da loja de demonstração). Desde o E180 ela também
-  confere a **ORDEM** das trancas (S-O33): a sequência de `FOR UPDATE` de cada
-  transação sobe os degraus de `DEGRAUS_DA_ORDEM` (`lead · reserva · avaria →
-  orçamento → contrato → parcelas → bloqueios → vestidos`) sem descer nenhum, e
-  toda tranca dentro de laço percorre coleção `.sort()`ada — deadlock é o modo de
-  falha que a ordem existe para evitar. **Quando ela fica vermelha**, ou nasceu
-  porta sem disciplina, ou uma porta fechada reabriu, ou uma porta da dívida foi
-  FECHADA — e neste caso o conserto é baixar o número na tabela `SEM_DISCIPLINA`
-  do teste. A dívida trava a CONTAGEM por arquivo, não a lista de nomes. Os
-  pontos cegos conhecidos estão listados no topo do arquivo e em
-  `portas-de-escrita.ts`.
+  na dívida declarada** (3 em `comissao.ts`, 2 nascimentos de linha-pai, 7 do
+  gerador da loja de demonstração). Desde o E180 ela também confere a **ORDEM**
+  das trancas (S-O33): a sequência de `FOR UPDATE` de cada transação sobe os
+  degraus de `DEGRAUS_DA_ORDEM` sem descer nenhum, e toda tranca dentro de laço
+  percorre coleção `.sort()`ada — deadlock é o modo de falha que a ordem existe
+  para evitar.
+  **Desde o E186 (S-O59) ela SEGUE O EXECUTOR para dentro dos helpers do
+  módulo** — a função que recebe o `tx` e toma `FOR UPDATE` lá dentro conta na
+  posição da CHAMADA, não na linha em que foi escrita. Os números subiram: **28
+  transações e 38 trancas** (eram 25 e 31), sendo **7 alcançadas por helper**
+  (`trancarContratos` ×3, `trancarEixos` ×4), e os **laços contados foram de 3
+  para 6**. A cadeia ganhou três degraus, os três achados por esse gesto:
+  `cabines → usuarios → lead · reserva · avaria · contas_pagar → orçamento →
+  contrato → parcelas → bloqueios → vestidos`, e as trancas sobre tabela sem
+  degrau caíram de **5 para 2** (loja em `admin.ts:177`, ajuste em
+  `agenda.ts:1156`). **A dívida de `comissao.ts` continua em 3 e mudou de
+  MOTIVO**: as três trancam o contrato desde o E176 e não releem a guarda depois
+  da tranca (S-O79). **Quando ela fica vermelha**, ou nasceu porta sem
+  disciplina, ou uma porta fechada reabriu, ou uma porta da dívida foi FECHADA —
+  e neste caso o conserto é baixar o número na tabela `SEM_DISCIPLINA` do teste.
+  A dívida trava a CONTAGEM por arquivo, não a lista de nomes. Os pontos cegos
+  conhecidos estão listados no topo do arquivo e em `portas-de-escrita.ts`.
+- **A varredura dos ÍNDICES ALCANÇÁVEIS por HTTP** (E186, S-O61):
+  `cd artifacts/api-server && npx vitest run src/__tests__/e186-indices-alcancaveis-api.test.ts`
+  (toca o banco — lê `pg_indexes`). Ela cruza as **restrições únicas que não são
+  PK** com as tabelas em que alguma ROTA escreve **sem `onConflict`**, e cobra
+  que cada índice alcançável tenha frase em `DUPLICADO_POR_INDICE` **ou** o
+  motivo do silêncio em `SEM_FRASE_POR_DECISAO` (`lib/erros.ts`). Hoje: **27
+  restrições · 23 alcançáveis · 15 com frase · 8 com julgamento escrito**. As 4
+  que ficam de fora são as de tabela cuja única escrita de rota é `upsert` — o
+  23505 nunca chega ao `classificarErro`. A régua irmã (`e180-indice-por-indice`)
+  confere que toda chave do mapa EXISTE no banco; as duas juntas impedem o mapa
+  de apontar para índice morto e a lista de índices mudos de crescer calada.
 - **Capturar as telas para revisão visual** (S-D1/S-D2): com o app de pé,
   `BASE_URL=http://localhost:5173 CAPTURAS_DIR=<destino absoluto>
   ./artifacts/api-server/node_modules/.bin/tsx scripts/capturar-telas.ts` —

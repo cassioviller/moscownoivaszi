@@ -152,6 +152,82 @@ export const DUPLICADO_POR_INDICE: Record<string, { error: string; detalhe: stri
     error: "PARCELA_DUPLICADA",
     detalhe: "Este contrato já tem uma parcela com este número — recarregue o carnê e tente de novo.",
   },
+
+  // ── S-O61/E186: as quatro que a conta dos ALCANÇÁVEIS trouxe ──────────────
+  //
+  // A régua acima não mudou; o que mudou é que existe uma conta dizendo quais
+  // índices uma pessoa consegue violar por HTTP, e as quatro abaixo estavam
+  // nela sem frase. **As quatro são regra 1** — perder a corrida diz o que a
+  // guarda já diz —, e a primeira delas tinha a frase escrita num `try/catch`
+  // de rota, que é a mesma dívida vista pelo avesso.
+
+  // Convidar o mesmo e-mail duas vezes — o gesto de quem não sabe se o primeiro
+  // saiu. **A frase já existia e morava na ROTA**: `equipe.ts` capturava o 23505
+  // com `ehViolacaoUnica` e respondia `CONVITE_PENDENTE`. O código é o mesmo (a
+  // tela dele está em `equipe/index.tsx:92`); o que mudou é que ele passou a
+  // sair de um lugar só. O `catch` local traduzia QUALQUER unique daquela
+  // transação com a frase do convite.
+  convites_loja_email_pendente_unq: {
+    error: "CONVITE_PENDENTE",
+    detalhe: "Já existe convite pendente para este e-mail — use reenviar ou cancele o que existe.",
+  },
+  // Duas regras de comissão para a mesma vendedora começando no mesmo dia. O
+  // dedup de `comissao.ts:452` resolve o caso comum comparando o DIA local
+  // (S-M25); a UNIQUE é do instante e continua sendo a rede da corrida.
+  comissao_regras_loja_id_vendedora_id_vigencia_inicio_unique: {
+    error: "REGRA_DE_COMISSAO_DUPLICADA",
+    detalhe: "Esta vendedora já tem uma regra de comissão começando nesta data — recarregue a tela e edite a que existe.",
+  },
+  // A rede do `CONTA_JA_PAGA` de `financeiro.ts:346`: cada conta entra em UM
+  // pagamento, e duas quitações simultâneas da mesma conta perdem por aqui.
+  pagamento_itens_conta_pagar_id_unique: {
+    error: "CONTA_JA_PAGA",
+    detalhe: "Esta conta já foi paga por outro lançamento — recarregue a lista antes de pagar de novo.",
+  },
+  // A rede da tranca que a S-O31 pôs no `POST /orcamentos/:id/link` (E166): a
+  // versão da proposta congela uma vez por número, e o segundo clique perde.
+  orcamento_versoes_numero_unq: {
+    error: "VERSAO_JA_CONGELADA",
+    detalhe: "Esta versão da proposta já foi congelada — recarregue o orçamento para ver o link que existe.",
+  },
+};
+
+/**
+ * S-O61 — **os índices alcançáveis por HTTP que seguem no genérico, cada um com
+ * o motivo escrito.**
+ *
+ * A S-O61 chamou o resto de *"dívida barata, uma linha cada"*, e a metade cara
+ * dela é decidir QUAIS merecem linha. A régua é a do E180 e não mudou: o mapa
+ * não é catálogo. O que muda é que a decisão deixou de ser silêncio — cada
+ * índice sem frase tem aqui o julgamento, e a
+ * `e186-indices-alcancaveis-api.test.ts` cobra que nenhum fique sem um dos dois.
+ * É a forma da regra 31: **o objetivo não é zerar o número, é que nenhuma linha
+ * dele siga sem julgamento.**
+ */
+export const SEM_FRASE_POR_DECISAO: Record<string, string> = {
+  // Os cinco tokens. Colidem quando dois `randomUUID`/`randomBytes` empatam, o
+  // que ninguém provoca e ninguém conserta lendo uma frase. O genérico é
+  // honesto ali — e é o mesmo veredito que o E180 já escrevia em prosa.
+  convites_token_unq: "token sorteado — a colisão é do gerador, não de quem clica",
+  lojas_captacao_token_unq: "token sorteado — idem",
+  lookbooks_token_unq: "token sorteado — idem",
+  orcamentos_publico_token_unq: "token sorteado — idem",
+  portal_tokens_token_unq: "token sorteado — idem",
+  // Um portal por noiva, e a rota que o cria já resolve a colisão com
+  // `onConflictDoUpdate` (`portal.ts:731`): regenerar o link substitui o antigo
+  // na mesma linha. O que sobra alcançando a tabela é o UPDATE de revogação,
+  // que não mexe no `lead_id`.
+  portal_tokens_lead_unq: "a porta que cria já faz upsert; o resto não toca a coluna",
+  // A conta gerada por uma recorrência num mês. O índice é PARCIAL
+  // (`recorrencia_id is not null`) e o único insert que o preenche declara
+  // `onConflictDoNothing` (`financeiro.ts:1241`), que faz o POST perdedor
+  // reportar `geradas: 0`. As outras escritas de `contas_pagar` nascem sem
+  // recorrência — a conta por tabela erra para mais, e este é o caso.
+  contas_pagar_recorrencia_unica: "índice parcial; a única porta que o preenche declara onConflictDoNothing",
+  // A conta a pagar de um fechamento de comissão. Ela é CRIADA na mesma
+  // transação que grava o fechamento (`comissao.ts:1301`), com id novo — não há
+  // segundo dono possível para a linha.
+  comissao_fechamentos_conta_pagar_id_unique: "a conta nasce na mesma transação do fechamento, com id novo",
 };
 
 /** Duck-typing em vez de `instanceof`: há dois zod no build (zod e zod/v4). */

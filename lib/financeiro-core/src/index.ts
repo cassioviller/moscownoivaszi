@@ -16,3 +16,6 @@ export * from "./saldo";
 export * from "./projecao";
 export * from "./alerta";
 export * from "./extrato";
+// S-O52/E186: os nomes das ações da trilha — o CSV da contadora e a coluna
+// "Ação" da tela deixam de ser duas listas que divergiam em três rótulos.
+export * from "./auditoria";

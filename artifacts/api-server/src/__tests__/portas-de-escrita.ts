@@ -140,17 +140,45 @@ export const COLUNAS_DE_ESTADO: Record<TabelaQuente, readonly string[]> = {
  * do E171 contava a tranca e **não a ordem**: uma porta nova invertida passava
  * verde e travava a produção.
  *
- * Tabelas do MESMO degrau são intercambiáveis: `leads`, `reservas` e `avarias`
- * são as três "linha-pai da rota", e nenhuma rota tranca duas delas.
+ * Tabelas do MESMO degrau são intercambiáveis: `leads`, `reservas`, `avarias` e
+ * `contas_pagar` são as quatro "linha-pai da rota", e nenhuma rota tranca duas
+ * delas.
  *
  * `orcamentos` entra entre o lead e o contrato porque é onde a jornada o põe —
- * e a colocação é livre de consequência hoje, por medida: das 30 transações que
+ * e a colocação é livre de consequência hoje, por medida: das 28 transações que
  * trancam, **nenhuma tranca `orcamentos` junto de outra tabela**. Ela está aqui
  * para que a primeira que o fizer seja conferida, não para reconstituir uma
  * ordem que alguém já tenha escolhido.
+ *
+ * **S-O60/E186 — `contas_pagar` entrou no primeiro degrau, e entrou porque a
+ * S-O59 a obrigou.** Enquanto a conta da ordem não seguia o executor para
+ * dentro de `trancarContratos`, as duas transações que trancam `contas_pagar`
+ * (`comissao.ts:1046`, `financeiro.ts:435`) pareciam trancá-la SOZINHAS. Com o
+ * helper visível, a de `comissao.ts` passa a tomar `contas_pagar` e depois
+ * `contratos` na mesma transação — a ordem entre as duas existe desde o E176 e
+ * ninguém a tinha declarado.
+ *
+ * Ela fica no degrau da **linha-pai da rota** porque é ali que ela é tomada nas
+ * DUAS transações (o `DELETE /comissao/fechamentos/:id` reabre o fechamento
+ * pela conta; o `DELETE /financeiro/contas/:id` apaga a própria conta), o mesmo
+ * papel que `leads`, `reservas` e `avarias` já tinham. A régua daquele degrau
+ * continua valendo, e foi remedida: **nenhuma rota tranca duas linhas dele.**
+ *
+ * **E os EIXOS DA AGENDA entraram junto, e a S-O60 não os previa.** Seguir o
+ * executor não achou uma tabela sem degrau: achou TRÊS. `trancarEixos`
+ * (`agenda.ts:98`, E161) tranca `cabines` e depois `usuarios`, e a transação que
+ * conclui a prova segue para `bloqueio_vestidos` e `vestidos` — quatro tabelas
+ * numa cadeia só, duas delas sem degrau declarado. **A ordem já estava escrita
+ * em prosa no arquivo** (*"a ordem é cabine → vendedora, sempre, nas duas
+ * portas"*, `agenda.ts:86`); o que faltava era ela ser executável. Elas ganham
+ * degrau PRÓPRIO cada uma, e não um degrau compartilhado, justamente porque a
+ * mesma transação toma as duas: tabelas do mesmo degrau são as que nenhuma rota
+ * pede juntas.
  */
 export const DEGRAUS_DA_ORDEM: readonly (readonly string[])[] = [
-  ["leadsTable", "reservasTable", "avariasTable"],
+  ["cabinesTable"],
+  ["usuariosTable"],
+  ["leadsTable", "reservasTable", "avariasTable", "contasPagarTable"],
   ["orcamentosTable"],
   ["contratosTable"],
   ["parcelasTable"],
@@ -167,6 +195,116 @@ export function degrauDaTranca(tabela: string): number | null {
 /** Os identificadores por onde uma escrita sai para o banco. */
 const EXECUTORES = new Set(["db", "tx", "executor", "exec"]);
 const VERBOS = new Set(["insert", "update", "delete"]);
+
+/**
+ * ## S-O59/E186 — a conta SEGUE o executor para dentro do helper
+ *
+ * O ponto cego 2 do E171 dizia que a varredura "não entra no helper", e a S-O59
+ * mediu o preço disso numa função só: `trancarContratos` (`comissao.ts:224`)
+ * recebe o `tx` da transação, tranca contratos ORDENADO por id, e **nenhuma das
+ * contas o via** — nem a da ordem, nem a do laço, nem a que decide a disciplina
+ * das três portas que ele protege desde o E176. Eram **3 laços contados e 4
+ * existentes**, e a dívida declarada de `comissao.ts` dizia 3 portas abertas
+ * sobre 3 portas FECHADAS.
+ *
+ * O que fecha o buraco é seguir o argumento: quando uma chamada dentro da
+ * transação passa o `tx` para uma função do MESMO módulo, o parâmetro que o
+ * recebe vira o executor daquela função, e as trancas de lá contam como se
+ * estivessem escritas no ponto da chamada.
+ *
+ * **O que continua de fora, e está declarado:** a resolução é de módulo, não de
+ * projeto — helper importado de outro arquivo segue invisível. É a mesma
+ * escolha da peneira de apelidos: o que se resolve é o que o arquivo diz por
+ * inteiro, e o resto vira caso a decidir, não silêncio.
+ */
+type FuncaoLocal = { params: string[]; corpo: ts.Node };
+
+/** As funções declaradas no módulo — as únicas em que o executor é seguível. */
+function funcoesLocais(sf: ts.SourceFile): Map<string, FuncaoLocal> {
+  const mapa = new Map<string, FuncaoLocal>();
+  const guardar = (nome: string, fn: ts.FunctionDeclaration | ts.ArrowFunction | ts.FunctionExpression): void => {
+    if (fn.body) mapa.set(nome, { params: fn.parameters.map((p) => p.name.getText(sf)), corpo: fn.body });
+  };
+  for (const stmt of sf.statements) {
+    if (ts.isFunctionDeclaration(stmt) && stmt.name) guardar(stmt.name.text, stmt);
+    if (ts.isVariableStatement(stmt)) {
+      for (const d of stmt.declarationList.declarations) {
+        if (ts.isIdentifier(d.name) && d.initializer && (ts.isArrowFunction(d.initializer) || ts.isFunctionExpression(d.initializer))) {
+          guardar(d.name.text, d.initializer);
+        }
+      }
+    }
+  }
+  return mapa;
+}
+
+/** Uma tranca vista dentro de um corpo, com a posição que a ORDENA na transação. */
+type TrancaBruta = {
+  tabela: string;
+  linha: number;
+  laco: string | null;
+  lacoOrdenado: boolean;
+  /** A posição que decide a ordem: a da tranca, ou a da CHAMADA que a alcança. */
+  posicao: number;
+  /** O nome do helper por onde ela foi alcançada, quando não é direta. */
+  viaHelper: string | null;
+};
+
+/** A expressão do laço que envolve a tranca, como texto — `null` sem laço. */
+function textoDoLaco(sf: ts.SourceFile, chamada: ts.Node, corpo: ts.Node): string | null {
+  const laco = lacoQueEnvolve(chamada, corpo);
+  if (!laco) return null;
+  return ts.isForOfStatement(laco) ? laco.expression.getText(sf) : laco.getText(sf).split("\n")[0]!.slice(0, 60);
+}
+
+/**
+ * As trancas de um corpo, seguindo o executor para dentro das funções do módulo.
+ *
+ * `visitados` corta a recursão de uma função que chame a si mesma passando o
+ * executor adiante — não há nenhuma hoje, e uma varredura que trava é pior que
+ * uma que não vê.
+ */
+function trancasNoCorpo(
+  sf: ts.SourceFile,
+  corpo: ts.Node,
+  executor: string,
+  locais: Map<string, FuncaoLocal>,
+  visitados: ReadonlySet<string> = new Set(),
+): TrancaBruta[] {
+  const out: TrancaBruta[] = [];
+
+  for (const chamada of chamadasDe(corpo, "for")) {
+    if (raizDoReceptor((chamada.expression as ts.PropertyAccessExpression).expression) !== executor) continue;
+    const texto = textoDoLaco(sf, chamada, corpo);
+    out.push({
+      tabela: tabelaDoFrom(cadeiaCompleta(chamada)) ?? "?",
+      linha: sf.getLineAndCharacterOfPosition(chamada.getStart(sf)).line + 1,
+      laco: texto,
+      lacoOrdenado: texto !== null && /\.sort\s*\(/.test(texto),
+      posicao: chamada.getStart(sf),
+      viaHelper: null,
+    });
+  }
+
+  const v = (n: ts.Node): void => {
+    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && !visitados.has(n.expression.text)) {
+      const fn = locais.get(n.expression.text);
+      if (fn) {
+        const i = n.arguments.findIndex((a) => ts.isIdentifier(a) && a.text === executor);
+        const param = i === -1 ? undefined : fn.params[i];
+        if (param) {
+          for (const t of trancasNoCorpo(sf, fn.corpo, param, locais, new Set([...visitados, n.expression.text]))) {
+            out.push({ ...t, posicao: n.getStart(sf), viaHelper: t.viaHelper ?? n.expression.text });
+          }
+        }
+      }
+    }
+    n.forEachChild(v);
+  };
+  v(corpo);
+
+  return out.sort((a, b) => a.posicao - b.posicao);
+}
 
 export type Disciplina = "TRANCA" | "CAS" | "ABERTA";
 
@@ -276,6 +414,7 @@ export function portasNoTexto(caminho: string, texto: string): Porta[] {
 
 function portasNaFonte(sf: ts.SourceFile): Porta[] {
   const apelidos = apelidosDasQuentes(sf);
+  const locais = funcoesLocais(sf);
   const portas: Porta[] = [];
 
   const visitar = (no: ts.Node): void => {
@@ -283,7 +422,7 @@ function portasNaFonte(sf: ts.SourceFile): Porta[] {
       const arg = no.arguments[0];
       const tabela = arg && ts.isIdentifier(arg) ? apelidos.get(arg.text) : undefined;
       if (tabela) {
-        portas.push(analisar(sf, no, no.expression.name.text, tabela));
+        portas.push(analisar(sf, no, no.expression.name.text, tabela, locais));
       }
     }
     no.forEachChild(visitar);
@@ -292,7 +431,13 @@ function portasNaFonte(sf: ts.SourceFile): Porta[] {
   return portas;
 }
 
-function analisar(sf: ts.SourceFile, escrita: ts.CallExpression, verbo: string, tabela: TabelaQuente): Porta {
+function analisar(
+  sf: ts.SourceFile,
+  escrita: ts.CallExpression,
+  verbo: string,
+  tabela: TabelaQuente,
+  locais: Map<string, FuncaoLocal>,
+): Porta {
   const inicio = escrita.getStart(sf);
   const linha = sf.getLineAndCharacterOfPosition(inicio).line + 1;
   const executor = raizDoReceptor((escrita.expression as ts.PropertyAccessExpression).expression);
@@ -315,6 +460,18 @@ function analisar(sf: ts.SourceFile, escrita: ts.CallExpression, verbo: string, 
   const trancadas: string[] = [];
   let releituraDaGuarda: string | null = null;
   let posPrimeiraTranca = Number.POSITIVE_INFINITY;
+  /**
+   * S-O59/E186 — **uma chamada que TRANCA não é, por isso, uma chamada que
+   * PERGUNTA.** A regra 3c abaixo aceita como releitura qualquer chamada que
+   * receba o `tx` depois da tranca, e é uma aproximação boa: quem passa o
+   * executor adiante costuma estar delegando a guarda. `trancarContratos` é o
+   * contra-exemplo — ele só toma `FOR UPDATE`, com `select({ id })`, e não
+   * relê estado nenhum. Enquanto a varredura não entrava no helper ela não
+   * tinha como saber; agora tem, e as chamadas que ela já contou como TRANCA
+   * saem da conta de releitura. Sem isto, seguir o executor promoveria a
+   * `comissao.ts:1071` a TRANCA por um motivo falso.
+   */
+  const chamadasQueSoTrancam = new Set<number>();
 
   if (corpoTx && txNome) {
     // 2. `FOR UPDATE` na linha certa: um `.for(...)` do MESMO executor, ANTES
@@ -344,6 +501,16 @@ function analisar(sf: ts.SourceFile, escrita: ts.CallExpression, verbo: string, 
       }
     }
 
+    // 2b. S-O59/E186: e as trancas que o helper toma com o `tx` que recebeu. É
+    //     a mesma tranca, escrita uma vez e chamada de três lugares — o que
+    //     mudou é que a varredura passou a enxergá-la.
+    for (const t of trancasNoCorpo(sf, corpoTx, txNome, locais)) {
+      if (t.viaHelper === null || t.posicao >= inicio) continue;
+      trancadas.push(t.tabela);
+      posPrimeiraTranca = Math.min(posPrimeiraTranca, t.posicao);
+      chamadasQueSoTrancam.add(t.posicao);
+    }
+
     // 3b. Ou um select SEM `for` depois da tranca; 3c. ou um helper que recebe o
     //     executor da transação e faz a pergunta lá dentro
     //     (`verificarDisponibilidade({ executor: tx })`).
@@ -359,7 +526,7 @@ function analisar(sf: ts.SourceFile, escrita: ts.CallExpression, verbo: string, 
           releituraDaGuarda ??= `releitura em ${tabelaDoFrom(cadeiaCompleta(n)) ?? "?"}`;
         }
         for (const a of n.arguments) {
-          if (ts.isIdentifier(a) && a.text === txNome) {
+          if (ts.isIdentifier(a) && a.text === txNome && !chamadasQueSoTrancam.has(n.getStart(sf))) {
             releituraDaGuarda ??= `guarda delegada a ${n.expression.getText(sf)}`;
           }
           if (ts.isObjectLiteralExpression(a)) {
@@ -505,6 +672,12 @@ export type Tranca = {
   laco: string | null;
   /** Com laço: a coleção percorrida está explicitamente ordenada. */
   lacoOrdenado: boolean;
+  /**
+   * S-O59 — o helper por onde a tranca foi alcançada, ou `null` quando ela está
+   * escrita na própria transação. É o que separa "a varredura viu" de "a
+   * varredura seguiu o executor".
+   */
+  viaHelper: string | null;
 };
 
 /** O `for`/`for…of`/`for…in` mais interno que envolve o nó, dentro do corpo dado. */
@@ -523,6 +696,7 @@ export function trancasNoTexto(caminho: string, texto: string): Map<string, Tran
 function trancasNaFonte(sf: ts.SourceFile): Map<string, Tranca[]> {
   const mapa = new Map<string, Tranca[]>();
   const rel = sf.fileName;
+  const locais = funcoesLocais(sf);
   const v = (no: ts.Node): void => {
     if (
       ts.isCallExpression(no) &&
@@ -534,27 +708,23 @@ function trancasNaFonte(sf: ts.SourceFile): Map<string, Tranca[]> {
         cb && (ts.isArrowFunction(cb) || ts.isFunctionExpression(cb)) ? (cb.parameters[0]?.name.getText(sf) ?? null) : null;
       if (cb && txNome) {
         const corpo = (cb as ts.ArrowFunction | ts.FunctionExpression).body;
-        const trancas: Tranca[] = [];
-        for (const chamada of chamadasDe(corpo, "for")) {
-          if (raizDoReceptor((chamada.expression as ts.PropertyAccessExpression).expression) !== txNome) continue;
-          const laco = lacoQueEnvolve(chamada, corpo);
-          const expLaco = laco
-            ? ts.isForOfStatement(laco)
-              ? laco.expression.getText(sf)
-              : laco.getText(sf).split("\n")[0]!.slice(0, 60)
-            : null;
-          const tabela = tabelaDoFrom(cadeiaCompleta(chamada)) ?? "?";
-          trancas.push({
-            arquivo: rel,
-            linha: sf.getLineAndCharacterOfPosition(chamada.getStart(sf)).line + 1,
-            tabela,
-            degrau: degrauDaTranca(tabela),
-            laco: expLaco,
-            lacoOrdenado: expLaco !== null && /\.sort\s*\(/.test(expLaco),
-          });
-        }
+        /**
+         * A ORDEM é a da POSIÇÃO na transação, não a do número de linha: a
+         * tranca alcançada por helper mora numa função declarada lá em cima
+         * (`comissao.ts:229` para uma transação de `:1035`), e ordená-la por
+         * linha a poria antes de trancas que ela sucede. `trancasNoCorpo` já
+         * devolve ordenado pela posição da CHAMADA.
+         */
+        const trancas: Tranca[] = trancasNoCorpo(sf, corpo, txNome, locais).map((t) => ({
+          arquivo: rel,
+          linha: t.linha,
+          tabela: t.tabela,
+          degrau: degrauDaTranca(t.tabela),
+          laco: t.laco,
+          lacoOrdenado: t.lacoOrdenado,
+          viaHelper: t.viaHelper,
+        }));
         if (trancas.length > 0) {
-          trancas.sort((a, b) => a.linha - b.linha);
           mapa.set(`${rel}:${sf.getLineAndCharacterOfPosition(no.getStart(sf)).line + 1}`, trancas);
         }
       }
