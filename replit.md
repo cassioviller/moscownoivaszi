@@ -121,6 +121,13 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   o dev. **O E2E completo continua sendo medido EM SÉRIE e no banco de dev** —
   não pela portabilidade, e sim pela PORTA, que worktree não isola (a entrada
   abaixo).
+- **O primeiro gesto num worktree novo é `pnpm install`, e esquecê-lo falha em
+  SILÊNCIO** (2026-08-12): sem ele o `drizzle-kit` não existe, e
+  `pnpm --filter @workspace/db run push` **sai com código 0 sem aplicar nada**.
+  Quem só olha o código de saída acredita que o schema subiu; o defeito aparece
+  bem depois, no primeiro teste de API, como `relation "lojas" does not exist` —
+  e a essa altura parece defeito de banco, não de instalação. Medido por um
+  agente que perdeu a passada inteira nisso.
 - **Worktree isola arquivo e banco, NÃO isola PORTA** (2026-08-12): o
   `playwright.config.ts` usa `5099`/`5173` com `reuseExistingServer: true`
   (as duas sobreponíveis por env desde o E188 — ver o gotcha do E179),
