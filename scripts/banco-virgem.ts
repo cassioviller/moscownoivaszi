@@ -20,26 +20,53 @@
  *      é isto que pega a S-D41, e é a única régua que a pega, porque o resumo do
  *      seed só se lê numa instalação nova;
  *   4. roda o `global-setup` do E2E inteiro e exige que ele termine sem erro;
- *   5. **roda um SPEC de verdade contra o banco descartável** (S-O73);
+ *   5. **roda TRÊS SPECS de verdade contra o banco descartável** (S-O73/S-O90);
  *   6. roda o seed DE NOVO, porque ele promete ser idempotente, e exige que a
  *      segunda passada não crie nada;
  *   7. apaga o banco, inclusive se algum passo estourar.
  *
- * **Por que o passo 5 existe (S-O73/E188).** Até aqui esta régua subia o
+ * **Por que o passo 5 existe (S-O73/E188).** Até o E188 esta régua subia o
  * `global-setup` e **não rodava um spec sequer** — e foi exatamente por essa
  * fresta que a S-O73 viveu: a fixture gravava a cor na COLUNA legada, a ficha
  * lê o ATRIBUTO desde o E149, e o E2E inteiro reprovava em banco novo
  * (`1 failed · 6 passed` em `04-vestidos`) enquanto esta régua dizia verde.
- * Setup que sobe não é tela que abre. O spec escolhido é o `04-vestidos`
- * porque ele percorre o caminho da primeira execução de ponta a ponta — login,
- * listagem, cadastro, ficha e filtro por atributo do catálogo — em 28 s a 1 min,
- * conforme o cache do Vite. Com a subida dos dois servidores, a régua inteira
- * sai de ~40 s para **1 min 20 s** (medido).
+ * Setup que sobe não é tela que abre.
  *
- * O spec sobe servidores PRÓPRIOS, em portas próprias (`E2E_API_PORT`/
+ * **Por que são três, e por que ESTES três (S-O90/E190).** O critério não é o
+ * alfabeto: é a ÁREA cujo estado no banco de dev veio de uma MIGRAÇÃO que uma
+ * instalação nova nunca rodou — que é a forma exata do defeito da S-O73. Cada
+ * um cobre uma configuração que o seed cria e uma migração que a backfillou:
+ *
+ *   - `04-vestidos` — o **catálogo de atributos** (E149, `2026-08-04-e149-cor-
+ *     para-atributo.sql`): login, listagem, cadastro, ficha e o filtro por par
+ *     `(atributoId, opcaoId)`. É o spec que a S-O73 derrubou.
+ *   - `12-permissoes` — os **perfis semeados × módulo·ação** (E172,
+ *     `2026-08-12-e172-modulos-orcamentos-e-contratos.sql`, e a `sd26` antes
+ *     dela). Chave ausente é fail-closed, e o seed é idempotente: perfil que já
+ *     existe não ganha módulo novo. **O E2E já cobrou isso uma vez** — no E172
+ *     este spec reprovou justamente porque o banco de dev tinha os perfis
+ *     semeados antes dos módulos nascerem. Num banco novo o defeito é o
+ *     espelho: é aqui que se prova que o seed sozinho monta a matriz inteira.
+ *   - `52-orcamento-vira-contrato` — a **jornada do papel que a noiva assina**,
+ *     aceite → fila → reserva inline → contrato (E162), sobre o índice único do
+ *     E158 e o snapshot do E166. Ele CONSTRÓI o próprio contrato, e é por isso
+ *     que entra: os 4 testes que uma instalação nova não roda são os que
+ *     PROCURAM um contrato pronto (`08-contratos` ×3 e `15-onda5:150`).
+ *
+ * **A decisão que a S-O90 deixou em aberto: a fixture do contrato fica FORA.**
+ * O seed não cadastra contrato porque isso é trabalho da loja (E147), e criar
+ * um só para a régua seria semear na instalação nova exatamente o que ela
+ * existe para não ter. O buraco que aquela ausência abria — "a jornada do papel
+ * é a única que uma instalação nova não prova" — fecha pelo outro lado: o `52`
+ * prova a jornada CRIANDO o contrato, que é o que a loja faz no primeiro dia.
+ * Os 4 `skip` continuam sendo ausência honesta de fixture, não vermelho.
+ *
+ * Os specs sobem servidores PRÓPRIOS, em portas próprias (`E2E_API_PORT`/
  * `E2E_WEB_PORT`): com as portas de sempre o `reuseExistingServer` do
  * `playwright.config.ts` pegaria um servidor vivo apontado para OUTRO banco, e
  * a régua mediria o dev de novo — a S-M15 pela porta em vez de pelo import.
+ * Eles rodam numa CHAMADA SÓ do Playwright, para pagar a subida dos dois
+ * servidores uma vez; o placar sai junto.
  *
  * Ele NÃO entra em suíte: `createdb`/`dropdb` pedem permissão de servidor, e a
  * suíte da API já tem um banco só e serial. É régua de mão, e o `replit.md` diz
@@ -54,13 +81,21 @@ const RAIZ = path.resolve(import.meta.dirname, "..");
 const BANCO = process.env.BANCO_VIRGEM ?? "moscow_virgem_regua";
 
 /**
- * O spec que a régua roda, e as portas em que ela sobe os servidores dele.
+ * Os specs que a régua roda, e as portas em que ela sobe os servidores deles.
+ *
+ * A escolha é por ÁREA que depende de migração antiga, e o argumento de cada um
+ * está no cabeçalho deste arquivo (S-O90). Quem acrescentar um quarto escolhe
+ * pelo mesmo critério, e diz aqui qual configuração do seed ele exercita.
  *
  * As portas NÃO são as de sempre (5099/5173) de propósito: assim a régua não
  * atropela um E2E do vizinho nem reusa o servidor dele — `reuseExistingServer`
  * fica desligado sozinho quando estas duas env estão postas.
  */
-const SPEC = "e2e/04-vestidos.spec.ts";
+const SPECS = [
+  "e2e/04-vestidos.spec.ts",
+  "e2e/12-permissoes.spec.ts",
+  "e2e/52-orcamento-vira-contrato.spec.ts",
+];
 const PORTA_API = Number(process.env.BANCO_VIRGEM_API_PORT ?? 5199);
 const PORTA_WEB = Number(process.env.BANCO_VIRGEM_WEB_PORT ?? 5273);
 
@@ -198,12 +233,25 @@ async function main(): Promise<void> {
     );
 
     passo("o `global-setup` do E2E sobe neste banco (S-D38)");
-    // O setup grava `e2e/.state.json` com os ids do banco em que rodou. Aqui ele
-    // roda contra o descartável, então o arquivo do repositório é guardado e
-    // devolvido: quem rodar esta régua no meio de outra coisa não fica com o
-    // state apontando para um banco que já foi apagado.
-    const arquivoEstado = path.join(RAIZ, "e2e/.state.json");
-    const estadoAntes = existsSync(arquivoEstado) ? readFileSync(arquivoEstado) : null;
+    /**
+     * Os DOIS arquivos que o E2E deixa no disco apontando para o banco em que
+     * rodou, guardados aqui e devolvidos no `finally` de baixo (S-O91).
+     *
+     * `e2e/.state.json` é escrito pelo `global-setup` e traz os ids desta
+     * instalação; `e2e/.auth/admin.json` é escrito pelo projeto `setup` do
+     * Playwright e traz o **cookie de uma sessão** — e o passo do spec loga no
+     * banco descartável. Guardar só o primeiro deixava o `storageState`
+     * apontando para sessão de um banco que esta régua acabou de apagar. Hoje
+     * isso é inofensivo, porque o `setup` é dependência do projeto `chromium` e
+     * reescreve o arquivo em todo run; deixa de ser no dia em que alguém rodar
+     * um spec com `--project=chromium` sozinho. São dois arquivos com uma régua
+     * só, e a régua é a mesma: **o que esta régua encosta, ela devolve**.
+     */
+    const arquivosDoE2E = [path.join(RAIZ, "e2e/.state.json"), path.join(RAIZ, "e2e/.auth/admin.json")];
+    const guardados = arquivosDoE2E.map((arquivo) => ({
+      arquivo,
+      antes: existsSync(arquivo) ? readFileSync(arquivo) : null,
+    }));
     /**
      * S-M15 — a troca da env vem ANTES do import, e a ordem é o defeito que
      * esta régua teve: `@workspace/db` abre o pool em `DATABASE_URL` no
@@ -244,34 +292,39 @@ async function main(): Promise<void> {
     }
 
     /**
-     * S-O73 — um SPEC de verdade, contra o banco descartável.
+     * S-O73/S-O90 — TRÊS specs de verdade, contra o banco descartável.
      *
-     * O `.state.json` fica de pé até aqui de propósito: é ele que diz ao spec
-     * quais são os ids desta instalação. A devolução do arquivo do repositório
-     * vem depois, no `finally` de baixo.
+     * O `.state.json` fica de pé até aqui de propósito: é ele que diz aos specs
+     * quais são os ids desta instalação. A devolução dos dois arquivos do
+     * repositório vem depois, no `finally` de baixo.
      */
-    passo("um spec do E2E ABRE A TELA neste banco (S-O73)");
+    passo("três specs do E2E ABREM A TELA neste banco (S-O73, S-O90)");
+    const oQue = "os três specs de instalação nova passam inteiros";
     try {
       if (!setupOk) {
-        afirmar("o spec do acervo passa inteiro em banco novo", false, "o setup não terminou — o spec não chega a rodar");
+        afirmar(oQue, false, "o setup não terminou — os specs não chegam a rodar");
       } else {
         try {
-          const saidaSpec = rodar(`./node_modules/.bin/playwright test ${SPEC} --reporter=line`, RAIZ, {
-            DATABASE_URL: URL_VIRGEM,
-            // O mesmo vazio que o `playwright.config.ts` põe no comando da API,
-            // e pelo mesmo motivo: o userenv do workspace define
-            // `APP_DATABASE_NAME` para todo shell, e sem o vazio o servidor do
-            // spec subiria no banco da LOJA em vez do descartável.
-            APP_DATABASE_NAME: "",
-            E2E_API_PORT: String(PORTA_API),
-            E2E_WEB_PORT: String(PORTA_WEB),
-          });
+          const saidaSpec = rodar(
+            `./node_modules/.bin/playwright test ${SPECS.join(" ")} --reporter=line`,
+            RAIZ,
+            {
+              DATABASE_URL: URL_VIRGEM,
+              // O mesmo vazio que o `playwright.config.ts` põe no comando da API,
+              // e pelo mesmo motivo: o userenv do workspace define
+              // `APP_DATABASE_NAME` para todo shell, e sem o vazio o servidor do
+              // spec subiria no banco da LOJA em vez do descartável.
+              APP_DATABASE_NAME: "",
+              E2E_API_PORT: String(PORTA_API),
+              E2E_WEB_PORT: String(PORTA_WEB),
+            },
+          );
           const resumo = saidaSpec
             .split("\n")
             .filter((l) => /\d+ (passed|failed|skipped)/.test(l))
             .map((l) => l.trim())
             .join(" · ");
-          afirmar(`o spec do acervo passa inteiro em banco novo — ${resumo}`, true, "");
+          afirmar(`${oQue} — ${resumo}`, true, "");
         } catch (e) {
           const err = e as { stdout?: string; stderr?: string };
           const saida = `${err.stdout ?? ""}\n${err.stderr ?? ""}`;
@@ -283,15 +336,17 @@ async function main(): Promise<void> {
             .map((l) => l.trim())
             .join("\n      ");
           afirmar(
-            "o spec do acervo passa inteiro em banco novo",
+            oQue,
             false,
-            `${SPEC} reprovou num banco recém-criado — o dev passa porque tem rastro de migração que a instalação nova não tem:\n      ${pistas}`,
+            `${SPECS.join(" · ")} — reprovou num banco recém-criado; o dev passa porque tem rastro de migração que a instalação nova não tem:\n      ${pistas}`,
           );
         }
       }
     } finally {
-      if (estadoAntes) writeFileSync(arquivoEstado, estadoAntes);
-      else if (existsSync(arquivoEstado)) rmSync(arquivoEstado);
+      for (const { arquivo, antes } of guardados) {
+        if (antes) writeFileSync(arquivo, antes);
+        else if (existsSync(arquivo)) rmSync(arquivo);
+      }
     }
 
     passo("o seed é idempotente — segunda passada não cria nada");

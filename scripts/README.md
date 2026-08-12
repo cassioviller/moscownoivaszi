@@ -10,10 +10,13 @@ cd artifacts/api-server && ./node_modules/.bin/tsx ../../scripts/banco-virgem.ts
 ```
 
 Cria um banco descartável, aplica o schema, roda o seed, confere que o resumo
-impresso descreve o que o banco guarda, sobe o `global-setup` do E2E e prova a
-idempotência do seed — depois apaga o banco. **É a única régua que exercita o
-ramo "banco vazio"**, que nenhuma das três suítes percorre porque todas rodam
-contra o `DATABASE_URL` de sempre. Detalhes e quando rodar: `replit.md`.
+impresso descreve o que o banco guarda, sobe o `global-setup` do E2E, **roda
+três specs de verdade contra ele** e prova a idempotência do seed — depois apaga
+o banco. **É a única régua que exercita o ramo "banco vazio"**, que nenhuma das
+três suítes percorre porque todas rodam contra o `DATABASE_URL` de sempre. Os
+três specs são escolhidos pela ÁREA que no dev veio de MIGRAÇÃO
+(`04-vestidos`, `12-permissoes`, `52-orcamento-vira-contrato`), e o argumento de
+cada um está no cabeçalho do arquivo. Detalhes e quando rodar: `replit.md`.
 
 Ela sai por `tsx` do `api-server` de propósito: este pacote não tem dependência
 nenhuma além de tipos, e um script de régua não é motivo para ganhar uma.

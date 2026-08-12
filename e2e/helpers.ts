@@ -27,7 +27,23 @@ export function lerEstado(): E2EState {
   return JSON.parse(readFileSync(path.join(__dirname, ".state.json"), "utf-8"));
 }
 
-export const API_URL = "http://localhost:5099";
+/**
+ * A API que os specs chamam DIRETO (51 dos 64 arquivos), e ela segue a porta
+ * que o `playwright.config.ts` subiu.
+ *
+ * Era a constante `http://localhost:5099`, cravada — e o E188 abriu
+ * `E2E_API_PORT` sem passar por aqui: a régua do banco virgem movia os
+ * servidores para 5199/5273 e todo `request.post(API_URL…)` continuava batendo
+ * na 5099. Medido no E190, ao pôr `12-permissoes` na régua:
+ * `apiRequestContext.post: connect EAFNOSUPPORT ::1:5099` em três testes, com o
+ * navegador falando com o banco descartável na porta certa.
+ *
+ * **O modo de falha silencioso é o pior dos dois**: com um E2E de vizinho vivo
+ * na 5099, o spec logaria no banco DELE enquanto a tela lê o desta régua — a
+ * S-M15 pela porta, que o E188 fechou para os servidores e deixou aberta para o
+ * cliente HTTP. O default não muda, e nenhum dos 171 specs enxerga diferença.
+ */
+export const API_URL = `http://localhost:${process.env.E2E_API_PORT ?? 5099}`;
 
 /**
  * E115 — cria um atendimento num horário LIVRE do expediente, tentando outras

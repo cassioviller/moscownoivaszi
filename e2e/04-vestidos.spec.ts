@@ -57,7 +57,15 @@ test.describe("Vestidos", () => {
    * comparava com `!==`, então "Verde", "verde" e "VERDE" viravam três entradas
    * no dropdown, cada uma com um pedaço do acervo. Como atributo, a cor é
    * filtrada por id de opção — grafia não entra na conta. O vestido do seed
-   * (`E2E-V900`, cor "Marfim") foi migrado pelo script do épico.
+   * (`E2E-V900`, cor "Marfim") tem o par `(Cor, Marfim)` desde o E188.
+   *
+   * **S-O89/E190 — ele afirmava o que passa com o filtro DESLIGADO.** A versão
+   * anterior escolhia "Marfim" e afirmava que a peça marfim **continuava**
+   * visível: uma asserção que o `toBeVisible` fecha no primeiro poll e que a
+   * lista inteira satisfaz. Medido: apagado o laço do par `(atributoId,
+   * opcaoId)` de `vestidos/index.tsx:255`, a suíte deu **7 passed** — verde
+   * sobre o recorte que não existe mais. É a regra 34, e o conserto é o dela:
+   * a metade que prega é a NEGATIVA, e ela vem primeiro.
    */
   test("a cor filtra pelo catálogo, e não por texto digitado", async ({ page }) => {
     await page.goto("/vestidos");
@@ -69,11 +77,19 @@ test.describe("Vestidos", () => {
     await page.getByTestId("botao-mais-filtros").click();
     const filtroCor = page.locator('[data-testid$="-atributo-cor"]');
     await expect(filtroCor).toBeVisible();
+
+    // A peça é marfim: escolher OUTRA cor tem de tirá-la da lista. Esta é a
+    // asserção que só passa com o recorte por par `(atributoId, opcaoId)`
+    // aplicado de verdade — e a única que espera a lista mudar antes de julgar.
+    await filtroCor.click();
+    await page.getByRole("option", { name: "Branco", exact: true }).click();
+    await expect(page.getByText("E2E Vestido Playwright")).toHaveCount(0);
+
+    // E a volta: com a cor DELA, ela reaparece. Filtrado por id de opção,
+    // nenhuma grafia foi comparada para isso acontecer — e o vestido sem o par
+    // no banco (o estado da S-O73 numa instalação nova) não voltaria aqui.
     await filtroCor.click();
     await page.getByRole("option", { name: "Marfim", exact: true }).click();
-
-    // Filtrou por id de opção — o vestido do seed (cor "Marfim") continua na
-    // lista, e nenhuma grafia foi comparada para isso acontecer.
     await expect(page.getByText("E2E Vestido Playwright")).toBeVisible();
   });
 

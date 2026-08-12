@@ -56,24 +56,37 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   ./node_modules/.bin/tsx ../../scripts/banco-virgem.ts`. Cria um banco
   descartável, aplica o schema com `push`, roda o seed, **confere que o resumo
   impresso descreve o que o banco guarda** (inclusive o total de PERFIS, S-O71),
-  sobe o `global-setup` do E2E inteiro, **roda um spec de verdade contra o banco
-  descartável** (`04-vestidos`, S-O73), roda o seed de novo para provar a
+  sobe o `global-setup` do E2E inteiro, **roda TRÊS specs de verdade contra o
+  banco descartável** (S-O73/S-O90), roda o seed de novo para provar a
   idempotência, e apaga o banco — inclusive se algum passo estourar. Leva
-  **1 min 20 s** (eram ~40 s antes do spec). **Rode-a antes de publicar e depois
-  de mexer no seed, no schema ou no `global-setup`.**
-  **O spec sobe servidores PRÓPRIOS, em portas próprias** (5199/5273, por
+  **1 min 1 s a 1 min 12 s** (eram ~40 s antes dos specs), e os **16 testes**
+  dos três saem numa chamada só do Playwright, que paga a subida dos servidores
+  uma vez. **Rode-a antes de publicar e depois de mexer no seed, no schema ou no
+  `global-setup`.**
+  **Os três specs são escolhidos pela ÁREA que veio de migração antiga**
+  (S-O90), nunca pelo alfabeto — cada um exercita uma configuração que o seed
+  cria e que no dev chegou por backfill: `04-vestidos` (catálogo de atributos,
+  E149), `12-permissoes` (perfis × módulo·ação, E172 — o spec que reprovou no
+  E172 justamente por o dev ter os perfis semeados antes dos módulos) e
+  `52-orcamento-vira-contrato` (a jornada aceite → contrato, que **constrói** o
+  próprio contrato). **A fixture de contrato fica FORA do seed por decisão**: o
+  seed não cadastra contrato porque isso é trabalho da loja (E147), e a jornada
+  do papel se prova criando um, não semeando um.
+  **Os specs sobem servidores PRÓPRIOS, em portas próprias** (5199/5273, por
   `E2E_API_PORT`/`E2E_WEB_PORT`), e é o único jeito de a régua não medir o banco
   do vizinho: com as portas de sempre o `reuseExistingServer` do
   `playwright.config.ts` pegaria um servidor vivo apontado para outro banco.
-  Ele existe porque **setup que sobe não é tela que abre**: até o E188 a régua
+  Eles existem porque **setup que sobe não é tela que abre**: até o E188 a régua
   parava no `global-setup` e por essa fresta o E2E inteiro reprovava em
   instalação nova enquanto ela dizia verde. As três suítes rodam contra o banco
   de `DATABASE_URL`, que existe desde antes do E147: o caminho da PRIMEIRA
   execução — o único que um ateliê novo percorre — não é exercitado por nenhuma
   delas, e foi ali que a S-D38 viveu (o setup morria com 23505
   `regra_disponibilidade_loja_id_unique` antes do primeiro spec). Ela guarda e
-  devolve o `e2e/.state.json`, então pode rodar no meio de outra coisa. Sobrepor
-  o nome do banco: `BANCO_VIRGEM=...`.
+  devolve **os dois arquivos que o E2E deixa no disco** — `e2e/.state.json` e
+  `e2e/.auth/admin.json` (S-O91) —, então pode rodar no meio de outra coisa:
+  sem o segundo, o `storageState` ficava com o cookie de uma sessão do banco que
+  a régua acabou de apagar. Sobrepor o nome do banco: `BANCO_VIRGEM=...`.
 - **A suíte de API tem um teste que só passa no working tree PRINCIPAL**, e
   três agentes já o relataram como defeito. `backup-download-api.test.ts`
   ("baixa o dump de um backup ok") reprova em **todo worktree** — porque
@@ -138,6 +151,15 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   esta reusava. A terceira execução, depois de esperar o vizinho soltar,
   repetiu a primeira na vírgula. *Escrever em paralelo, medir em série* vale
   para dois E2E na mesma máquina, não só para duas suítes de API no mesmo banco.
+  **E a porta chega ao CLIENTE HTTP dos specs desde o E190** (S-O90): 51 dos 64
+  arquivos chamam a API direto por `API_URL` (`e2e/helpers.ts`), que era a
+  constante `http://localhost:5099` cravada — o E188 moveu os servidores por env
+  e não passou por ali. Medido ao pôr `12-permissoes` na régua do banco virgem:
+  `apiRequestContext.post: connect EAFNOSUPPORT ::1:5099` em três testes, com o
+  navegador falando com o banco descartável na porta certa. O modo de falha
+  silencioso é o pior: com um E2E de vizinho vivo na 5099, o spec logaria no
+  banco DELE enquanto a tela lê o outro. Hoje `API_URL` deriva de
+  `E2E_API_PORT`, com o mesmo default.
 - **A varredura das PORTAS DE ESCRITA sob tranca** (E171, ampliada no E180):
   `cd artifacts/api-server && npx vitest run src/__tests__/varredura-portas-sob-tranca.test.ts`
   (**~2 s, não toca no banco**). Ela enumera por `git ls-files` + AST **toda
@@ -692,7 +714,10 @@ rode o codegen.
   HÁ env para trocar as portas** (`E2E_API_PORT`/`E2E_WEB_PORT`, que também
   desligam o reuso), e ela nasceu para a régua do banco virgem — mas dois E2E
   simultâneos com portas próprias **não foram medidos**, e o BANCO de dev
-  continua sendo recurso único entre eles (é a S-O93).
+  continua sendo recurso único entre eles (é a S-O93). **Desde o E190 a env
+  alcança também o `API_URL` de `e2e/helpers.ts`** — por onde 51 dos 64 arquivos
+  falam com a API —, que era `http://localhost:5099` cravado: até aqui mover a
+  porta movia só a TELA, e o cliente HTTP dos specs continuava batendo na 5099.
   **A régua é a mesma do banco — medir em série —, e ela vale
   para o E2E entre AGENTES, não só entre suítes:** confira `ps aux | grep vite`
   antes de disparar, e se um vermelho em massa vier com "connection refused",

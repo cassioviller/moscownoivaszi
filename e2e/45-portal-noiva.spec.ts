@@ -60,7 +60,18 @@ test.describe("Portal da noiva (E78)", () => {
     expect(lead.status(), await lead.text()).toBe(201);
     leadId = (await lead.json()).id;
 
-    // A proposta ENVIADA — direto no banco, como as fixtures de API.
+    /**
+     * A proposta ENVIADA — direto no banco, como as fixtures de API.
+     *
+     * **O desconto é fixture, e é PERCENTUAL de propósito (S-O86/E190).** Os
+     * dois orçamentos que este spec montava não tinham desconto nenhum, e o
+     * portal era assertado só pelo TOTAL: por essa fresta o defeito do S-O64
+     * atravessou o E166 e só caiu no E187 — a página imprimia o próprio
+     * percentual (`R$ 10,00` onde o desconto era R$ 750,00) enquanto o gêmeo
+     * público (`61-link-publico.spec.ts:87`) já pregava a conta inteira. O 61
+     * semeia desconto em VALOR; aqui é PERCENTUAL, que é a grafia em que a
+     * conta errava — as duas telas passam a ter as duas.
+     */
     orcamentoId = randomUUID();
     const admin = await db.query.usuariosTable.findFirst({
       where: (u, { eq: eq_ }) => eq_(u.email, estado.adminEmail),
@@ -71,6 +82,8 @@ test.describe("Portal da noiva (E78)", () => {
       leadId,
       vendedoraId: admin!.id,
       status: "ENVIADO",
+      descontoTipo: "PERCENTUAL",
+      descontoValor: 10,
     });
     await db.insert(orcamentoItensTable).values({
       id: randomUUID(),
@@ -97,6 +110,21 @@ test.describe("Portal da noiva (E78)", () => {
   });
 
   test.afterAll(async () => {
+    /**
+     * O contrato sai AQUI, e não no fim do teste que o cria (E190).
+     *
+     * `contratos.lead_id` é RESTRICT, e enquanto o `delete` do contrato morava
+     * na última linha do corpo do teste, qualquer falha antes dela deixava o
+     * contrato de pé — e aí este `afterAll` estourava em
+     * `Failed query: delete from "leads"`, levando junto a cabine (que os
+     * atendimentos do lead seguravam). Medido durante a medição da S-O86: dois
+     * runs vermelhos deixaram **2 leads, 2 contratos e 2 cabines** no banco de
+     * dev, e a cabine extra derrubou `18-agenda-grade` no run seguinte —
+     * "arrastar para outra cabine muda a coluna" desenha a grade por cabine.
+     * É a classe que o `replit.md` descreve: rastro de spec vira vermelho em
+     * OUTRO arquivo, um run depois, e se lê como flake.
+     */
+    if (leadId) await db.delete(contratosTable).where(eq(contratosTable.leadId, leadId));
     // O cascade do lead leva orçamento, itens, portal_token e atendimentos.
     if (leadId) await db.delete(leadsTable).where(eq(leadsTable.id, leadId));
     await db.delete(cabinesTable).where(eq(cabinesTable.id, cabineId));
@@ -135,6 +163,14 @@ test.describe("Portal da noiva (E78)", () => {
     await expect(noiva.getByText(`O lugar de ${noivaNome}`)).toBeVisible();
     await expect(noiva.getByText(`Vestido E2E ${stamp}`)).toBeVisible();
     await expect(noiva.getByText("R$ 7.500,00").first()).toBeVisible();
+
+    // S-O86: a conta FECHA na tela dela — soma, abatimento REAL e total. O
+    // rótulo traz o percentual e o valor ao lado dele é a diferença, não o
+    // percentual: R$ 750,00 sobre R$ 7.500,00, e o total desce para R$ 6.750,00.
+    await expect(noiva.getByText("Soma dos itens")).toBeVisible();
+    await expect(noiva.getByText("Desconto (10%)")).toBeVisible();
+    await expect(noiva.getByText(/−\s*R\$\s*750,00/)).toBeVisible();
+    await expect(noiva.getByText(/R\$\s*6\.750,00/).first()).toBeVisible();
 
     // O aceite (E74) — a página vira comprovante.
     await noiva.getByTestId("aceitar-portal").click();
@@ -258,12 +294,26 @@ test.describe("Portal da noiva (E78)", () => {
       where: (u, { eq: eq_ }) => eq_(u.email, estado.adminEmail),
     });
     const contratoId = randomUUID();
+    /**
+     * S-O86: o bloco do contrato dentro do portal é o QUARTO sítio da mesma
+     * conta (S-O13) e o segundo que imprimia o valor cru (S-O64). Aqui os itens
+     * somam R$ 9.200,00 e o contrato fechou em R$ 7.360,00 — os 20% de desconto
+     * valem R$ 1.840,00, e é isso que a linha tem de dizer.
+     *
+     * O percentual é **20 e não 10** porque esta página mostra a proposta E o
+     * contrato ao mesmo tempo: com o mesmo número, `getByText("Desconto (10%)")`
+     * casa nos dois blocos e o Playwright recusa em modo estrito (medido:
+     * *"strict mode violation: resolved to 2 elements"*). Percentuais distintos
+     * pregam cada bloco no seu, sem amarrar o teste à estrutura do DOM.
+     */
     await db.insert(contratosTable).values({
       id: contratoId,
       lojaId: estado.lojaId,
       leadId,
       vendedoraId: admin!.id,
-      valorTotal: 9200,
+      valorTotal: 7360,
+      descontoTipo: "PERCENTUAL",
+      descontoValor: 20,
       fechadoEm: new Date(),
     });
     await db.insert(contratoItensTable).values({
@@ -288,6 +338,9 @@ test.describe("Portal da noiva (E78)", () => {
     await expect(noiva.getByText("Seu contrato")).toBeVisible();
     await expect(noiva.getByText(`Vestido contratado ${stamp}`)).toBeVisible();
     await expect(noiva.getByText("R$ 9.200,00").first()).toBeVisible();
+    await expect(noiva.getByText("Desconto (20%)")).toBeVisible();
+    await expect(noiva.getByText(/−\s*R\$\s*1\.840,00/)).toBeVisible();
+    await expect(noiva.getByText(/R\$\s*7\.360,00/).first()).toBeVisible();
 
     // O PDF pelo MESMO token — a resposta é o papel, não uma página de erro.
     const href = await noiva.getByTestId("baixar-contrato-portal").getAttribute("href");
@@ -297,7 +350,8 @@ test.describe("Portal da noiva (E78)", () => {
     expect(pdf.headers()["content-type"]).toContain("application/pdf");
     expect((await pdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
 
+    // O contrato é apagado no `afterAll`, junto do lead — aqui ele morreria só
+    // no caminho verde, que é justamente quando não faz falta.
     await semLogin.close();
-    await db.delete(contratosTable).where(eq(contratosTable.id, contratoId));
   });
 });
