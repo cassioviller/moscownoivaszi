@@ -99,7 +99,7 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | **Ótica dos papéis** | **`2026-08-11-otica-dos-papeis/`** | **EXECUTADA — 149 achados em 14 épicos (E158–E171), as quatro faixas fechadas, mais o **E172** que os manuais fizeram nascer e o **resto das sobras em E173–E188**. O que resta dela são as sobras S-O da tabela do `EXECUCAO.md` — **21, e 20 nasceram no dia em que as antigas fecharam**; conte lá** |
+   | **Ótica dos papéis** | **`2026-08-11-otica-dos-papeis/`** | **EXECUTADA — 149 achados em 14 épicos (E158–E171), as quatro faixas fechadas, mais o **E172** que os manuais fizeram nascer, o **resto das sobras em E173–E188**, a **onda 1 (E189–E192)** e a **onda 2 (E193–E196)**. O que resta dela são as sobras S-O da tabela do `EXECUCAO.md` — **27, e a única 🟡 entre elas nasceu na onda 2**; conte lá** |
    | Revisão max | `2026-08-10-revisao-max/` | fechada como fila — 18 sobras da rodada 1 (16 fechadas) + 53 da rodada 2 (10 épicos). **Resta 1 🟡**: a S-M17, que espera dados de banco real. A **S-M10 fechou no E169** (`fe8afdd`) |
    | Rodada 6 | `2026-07-25-rodada-6/` | fechada — **ZERO sobras abertas.** Era o backlog mais pesado do repositório |
    | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — **ZERO sobras abertas** |
@@ -110,7 +110,42 @@ para o documento que manda.
    S-A2 (as fotos que faltam do caderno) e S-A27 (classificar as peças com a
    dona; o acervo tem 132 peças do legado em `moscow_base`, todas sem "Tipo de
    peça"). Toda linha de código aberta hoje está na tabela de Sobras da trilha
-   da ótica dos papéis — **conte lá, são 21** (2026-08-12, ao fim do dia).
+   da ótica dos papéis — **conte lá, são 27** (2026-08-12, depois da onda 2).
+
+   **A onda 2 (E193–E196) fechou as três 🟡 que estavam abertas, e a única 🟡
+   que restou nasceu dentro dela.** O que ela ensinou, e as três lições são de
+   MEDIÇÃO:
+
+   - **O E193** achou que a sobra pedia menos do que era: mover a data do
+     casamento pela reserva move a peça e o contrato, **e não havia trilha
+     nenhuma da data** — reserva sem contrato mudava de dia sem uma linha
+     dizendo quem mudou. A prova continua onde estava (a decisão da prova órfã,
+     pela mesma razão), e agora é DITA: `RESERVA_DATA_MOVIDA` conta quantas
+     ficaram fora da janela, e o selo âmbar entra nas quatro telas do selo
+     vermelho. Dele nasceu a **S-O117**, a única 🟡 aberta: `casamentoData` é
+     data de NEGÓCIO e a disponibilidade a lê como INSTANTE —
+     `2028-09-05T00:00:00Z` vira **2028-09-04** em fuso SP e as três janelas
+     andam um dia. A tela ancora ao meio-dia antes de mandar; **a porta não
+     obriga**.
+   - **O E194 foi acusado pela própria régua.** Ao tirar a conta do prazo do
+     `GET /ajustes` para um helper — justamente para as TRÊS portas a entregarem
+     —, a varredura do E192 passou a dizer que `Ajuste.pecaDoAcervo` **não é
+     entregue por ninguém**, porque o motor lê o corpo do handler e não segue a
+     chamada. A aresta foi de 1 para 3 e o retrato piorou. Isso tira a
+     **S-O114** do plano hipotético: hoje ela esconde uma entrega real.
+   - **O E196 achou o inverso do E184.** Lá o manual ENSINAVA a contornar
+     defeito já consertado; aqui ele CALAVA uma capacidade que existe — o selo
+     da prova órfã, do E173, **não estava em manual nenhum nove épicos depois**.
+     Só o segundo é invisível para quem lê: não há como estranhar o que não está
+     escrito. Manual é para ser **reescrito depois de cada onda**, não corrigido
+     quando alguém tropeça.
+
+   E uma nota de higiene que a sessão pagou para aprender: a **onda 2 foi
+   aberta duas vezes**. A primeira disparou quatro agentes em worktree às 18h20,
+   morreu com a sessão e deixou **quatro worktrees `locked` e dois bancos
+   `moscow_wt_*` órfãos** — e nenhuma linha de código. Quem abrir a sessão
+   seguinte confere `git worktree list` e `psql -l` antes de assumir que o que
+   está no disco é trabalho.
 
    **A composição delas é o resultado da sessão, e vale mais que o número: de
    tudo que estava aberto quando o dia começou, sobrou UMA** — a **S-O50**, que
@@ -249,8 +284,11 @@ para o documento que manda.
    ainda está em dia — esta linha envelhece a cada commit, e já envelheceu
    cinco vezes.
 
-   Hoje a régua é **API 1349 · frontend 683 · E2E 171 · typecheck verde em 5
-   projetos — o typecheck passou a incluir os 68 arquivos de `e2e/`** (S-D23,
+   Hoje a régua é **API 1382 (198 arquivos) · frontend 704 · E2E 171 ·
+   typecheck verde em 5 projetos**. Ela é MEDIDA a cada onda, e envelhece
+   depressa: quando a onda 2 abriu, este parágrafo dizia *1349 · 683* e o `main`
+   dava *1369 · 692* — a onda 1 somara 20 e 9 sem que ninguém refizesse a conta.
+   **Meça antes de citar.** O typecheck passou a incluir os 68 arquivos de `e2e/` (S-D23,
    `acdd9b3`) **e o `scripts/`** (`60adc7c`), que nenhum `tsconfig` cobria. O
    `scripts/tsconfig.json` ganhou `lib: DOM` em 2026-08-12, com o custo
    declarado no próprio arquivo: o corpo de `page.evaluate` roda no NAVEGADOR, e
