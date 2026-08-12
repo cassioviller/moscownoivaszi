@@ -1,0 +1,593 @@
+<title>Manual do Proprietário — Moscow Noivas</title>
+<style>
+  /* ── Tokens: papel e tinta. O mesmo esqueleto dos outros manuais. ─────────
+     Claro é o padrão; o escuro redefine SÓ os tokens, nas duas guardas
+     (preferência do sistema e escolha explícita). Nenhuma cor nasce dentro de
+     um bloco de tema. */
+  :root {
+    --papel:      #faf9f6;
+    --folha:      #ffffff;
+    --tinta:      #1b1f2a;
+    --tinta-fraca:#5c6170;
+    --caneta:     #2e4e8f;
+    --caneta-suave:#eef1f8;
+    --carmim:     #a32f3f;
+    --carmim-suave:#fbeff0;
+    --linha:      #e3e1db;
+    --linha-forte:#c9c6bd;
+    --chip-borda: #cfd3dd;
+    --chip-fundo: #f2f3f7;
+    --sombra:     0 1px 2px rgba(27,31,42,.05), 0 8px 24px -16px rgba(27,31,42,.28);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --papel:      #15171c;
+      --folha:      #1d2027;
+      --tinta:      #e7e5e0;
+      --tinta-fraca:#9ba1ae;
+      --caneta:     #8fadea;
+      --caneta-suave:#1e2634;
+      --carmim:     #e58a97;
+      --carmim-suave:#2b1d20;
+      --linha:      #2b2f38;
+      --linha-forte:#3d424e;
+      --chip-borda: #3a4050;
+      --chip-fundo: #232833;
+      --sombra:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"] {
+    --papel:      #15171c;
+    --folha:      #1d2027;
+    --tinta:      #e7e5e0;
+    --tinta-fraca:#9ba1ae;
+    --caneta:     #8fadea;
+    --caneta-suave:#1e2634;
+    --carmim:     #e58a97;
+    --carmim-suave:#2b1d20;
+    --linha:      #2b2f38;
+    --linha-forte:#3d424e;
+    --chip-borda: #3a4050;
+    --chip-fundo: #232833;
+    --sombra:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--papel);
+    color: var(--tinta);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 17px;
+    line-height: 1.65;
+    margin: 0;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .pagina {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 20px 96px;
+  }
+  @media (min-width: 1020px) {
+    .pagina { grid-template-columns: 232px minmax(0, 1fr); gap: 56px; padding-right: 40px; }
+  }
+
+  /* ── Cabeçalho ─────────────────────────────────────────────────────────── */
+  .capa { grid-column: 1 / -1; padding: 56px 0 36px; border-bottom: 2px solid var(--linha-forte); }
+  .eyebrow {
+    font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--caneta); font-weight: 600; margin: 0 0 14px;
+  }
+  h1 {
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    font-size: clamp(34px, 6vw, 50px);
+    line-height: 1.08; margin: 0 0 14px; font-weight: 700;
+    letter-spacing: -.015em; text-wrap: balance;
+  }
+  .subtitulo {
+    font-size: clamp(18px, 2.6vw, 21px); color: var(--tinta-fraca);
+    margin: 0 0 26px; max-width: 34em; text-wrap: balance;
+  }
+  .contexto {
+    display: flex; flex-wrap: wrap; gap: 10px 26px;
+    font-size: 14px; color: var(--tinta-fraca);
+    padding-top: 20px; border-top: 1px solid var(--linha);
+  }
+  .contexto b { color: var(--tinta); font-weight: 600; }
+
+  /* ── Índice ────────────────────────────────────────────────────────────── */
+  .indice { padding: 28px 0 0; }
+  @media (min-width: 1020px) {
+    .indice { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto; padding: 40px 0; }
+  }
+  .indice h2 {
+    font-size: 11px; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--tinta-fraca); margin: 0 0 12px; font-weight: 600;
+  }
+  .indice ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+  .indice a {
+    display: block; padding: 5px 10px; margin-left: -10px;
+    color: var(--tinta-fraca); text-decoration: none; font-size: 14.5px;
+    border-radius: 5px; border-left: 2px solid transparent;
+  }
+  .indice a:hover { color: var(--caneta); background: var(--caneta-suave); }
+  .indice a:focus-visible { outline: 2px solid var(--caneta); outline-offset: 1px; }
+  .indice .num {
+    font-variant-numeric: tabular-nums; color: var(--linha-forte);
+    margin-right: 8px; font-size: 12.5px;
+  }
+
+  /* ── Corpo ─────────────────────────────────────────────────────────────── */
+  main { padding-top: 8px; min-width: 0; }
+  section { padding: 40px 0; border-bottom: 1px solid var(--linha); max-width: 68ch; }
+  section:last-of-type { border-bottom: none; }
+
+  h2 {
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    font-size: clamp(25px, 3.6vw, 31px); line-height: 1.2;
+    margin: 0 0 8px; font-weight: 700; letter-spacing: -.01em; text-wrap: balance;
+    display: flex; align-items: baseline; gap: 14px;
+  }
+  h2 .passo {
+    font-family: system-ui, sans-serif; font-size: 13px; font-weight: 600;
+    color: var(--caneta); background: var(--caneta-suave);
+    border-radius: 999px; padding: 3px 11px; flex: none;
+    font-variant-numeric: tabular-nums; letter-spacing: 0;
+  }
+  h3 {
+    font-size: 17.5px; font-weight: 650; margin: 30px 0 8px;
+    letter-spacing: -.005em; text-wrap: balance;
+  }
+  .resumo { color: var(--tinta-fraca); margin: 0 0 22px; font-size: 16.5px; }
+  p { margin: 0 0 15px; }
+  ul { margin: 0 0 15px; padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  a { color: var(--caneta); }
+  strong { font-weight: 650; }
+
+  /* ── A citação da interface parece interface ─────────────────────────── */
+  .btn {
+    display: inline-block; font-size: 14.5px; font-weight: 550;
+    background: var(--chip-fundo); border: 1px solid var(--chip-borda);
+    border-radius: 6px; padding: 1px 8px; white-space: nowrap;
+    line-height: 1.5; color: var(--tinta);
+  }
+  .fala {
+    border-left: 3px solid var(--caneta); background: var(--caneta-suave);
+    padding: 13px 18px; margin: 0 0 16px; border-radius: 0 7px 7px 0;
+    font-size: 16px; color: var(--tinta);
+  }
+  .fala.aviso { border-left-color: var(--carmim); background: var(--carmim-suave); }
+  .fala p { margin: 0; }
+  .fala p + p { margin-top: 9px; }
+  .fala .rotulo {
+    display: block; font-size: 11px; letter-spacing: .11em; text-transform: uppercase;
+    font-weight: 600; color: var(--caneta); margin-bottom: 5px;
+  }
+  .fala.aviso .rotulo { color: var(--carmim); }
+
+  /* ── Tabelas ───────────────────────────────────────────────────────────── */
+  .rolagem { overflow-x: auto; margin: 0 0 18px; border: 1px solid var(--linha); border-radius: 9px; background: var(--folha); }
+  table { border-collapse: collapse; width: 100%; font-size: 15.5px; }
+  th, td { text-align: left; padding: 11px 15px; border-bottom: 1px solid var(--linha); vertical-align: top; }
+  th {
+    font-size: 11.5px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--tinta-fraca); font-weight: 600; background: var(--chip-fundo);
+    white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.prazo { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+
+  /* ── O caminho, em uma olhada ──────────────────────────────────────────── */
+  .trilha {
+    display: flex; flex-wrap: wrap; gap: 7px; align-items: center;
+    background: var(--folha); border: 1px solid var(--linha);
+    border-radius: 10px; padding: 18px; margin: 0 0 18px; box-shadow: var(--sombra);
+  }
+  .trilha span {
+    font-size: 14.5px; font-weight: 550; padding: 5px 11px;
+    border-radius: 6px; background: var(--chip-fundo); border: 1px solid var(--chip-borda);
+  }
+  .trilha span.fim { background: var(--caneta); border-color: var(--caneta); color: var(--folha); }
+  :root[data-theme="dark"] .trilha span.fim,
+  .trilha span.fim { color: var(--papel); }
+  .trilha i { color: var(--linha-forte); font-style: normal; font-size: 15px; }
+
+  /* ── Menu: o que ele vê ────────────────────────────────────────────────── */
+  .colunas { display: grid; grid-template-columns: 1fr; gap: 16px; margin: 0 0 18px; }
+  @media (min-width: 620px) { .colunas { grid-template-columns: 1fr 1fr; } }
+  .colunas.inteira { grid-template-columns: 1fr; }
+  .caixa {
+    background: var(--folha); border: 1px solid var(--linha);
+    border-radius: 10px; padding: 17px 19px; box-shadow: var(--sombra);
+  }
+  .caixa h4 {
+    margin: 0 0 11px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+    font-weight: 650;
+  }
+  .caixa.ve h4 { color: var(--caneta); }
+  .caixa.naove h4 { color: var(--tinta-fraca); }
+  .caixa ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+  .caixa li { margin: 0; font-size: 14.5px; padding: 3px 9px; border-radius: 5px; background: var(--chip-fundo); }
+  .caixa.naove li { color: var(--tinta-fraca); text-decoration: line-through; text-decoration-color: var(--linha-forte); }
+
+  /* ── Nota de rodapé de seção ───────────────────────────────────────────── */
+  .nota {
+    font-size: 15px; color: var(--tinta-fraca);
+    border-top: 1px solid var(--linha); padding-top: 14px; margin-top: 22px;
+  }
+  .nota b { color: var(--tinta); }
+
+  footer {
+    grid-column: 1 / -1; padding: 34px 0 0; margin-top: 8px;
+    border-top: 2px solid var(--linha-forte);
+    font-size: 14px; color: var(--tinta-fraca); max-width: 68ch;
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  :focus-visible { outline: 2px solid var(--caneta); outline-offset: 2px; border-radius: 3px; }
+</style>
+
+<div class="pagina">
+
+  <header class="capa">
+    <p class="eyebrow">Moscow Noivas · Manual de uso</p>
+    <h1>Manual do Proprietário</h1>
+    <p class="subtitulo">A loja inteira, e o dinheiro — o que só você vê, e o mês que só você fecha.</p>
+    <div class="contexto">
+      <span>Perfil: <b>Proprietária</b> (o nome na tela)</span>
+      <span>Nada fica escondido de você</span>
+      <span>Atualizado em <b>12/08/2026</b></span>
+    </div>
+  </header>
+
+  <nav class="indice" aria-label="Índice">
+    <h2>Neste manual</h2>
+    <ol>
+      <li><a href="#ve"><span class="num">—</span>O que você vê</a></li>
+      <li><a href="#outros"><span class="num">—</span>O que os outros cobrem</a></li>
+      <li><a href="#dia"><span class="num">1</span>Seu dia</a></li>
+      <li><a href="#mapa"><span class="num">2</span>O mapa do financeiro</a></li>
+      <li><a href="#acao"><span class="num">3</span>Receber e pagar</a></li>
+      <li><a href="#cobranca"><span class="num">4</span>Cobrança</a></li>
+      <li><a href="#conferir"><span class="num">5</span>Conferir o banco</a></li>
+      <li><a href="#mes"><span class="num">6</span>Fechar o mês</a></li>
+      <li><a href="#comissoes"><span class="num">7</span>Comissões</a></li>
+      <li><a href="#equipe"><span class="num">8</span>Equipe e permissões</a></li>
+      <li><a href="#loja"><span class="num">9</span>A loja e os dados</a></li>
+      <li><a href="#nao"><span class="num">—</span>Quando o sistema diz não</a></li>
+      <li><a href="#decisoes"><span class="num">—</span>O que espera você</a></li>
+    </ol>
+    <h2 style="margin-top:22px">Outros manuais</h2>
+    <ol>
+      <li><a href="vendedora.html"><span class="num">—</span>Manual da Vendedora</a></li>
+      <li><a href="recepcao.html"><span class="num">—</span>Manual da Recepção</a></li>
+      <li><a href="costureira.html"><span class="num">—</span>Manual da Costureira</a></li>
+      <li><a href="noiva.html"><span class="num">—</span>Guia da Noiva</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <section id="ve">
+      <h2>O que você vê</h2>
+      <p class="resumo"><strong>Tudo.</strong> As dezenove linhas do menu abrem para o seu perfil, e nenhuma tela do sistema é negada a você.</p>
+
+      <div class="colunas inteira" data-perfil="Proprietária">
+        <div class="caixa ve" data-menu="ve">
+          <h4>No seu menu — as dezenove</h4>
+          <ul>
+            <li>Seu dia</li><li>Noivas</li><li>Agenda</li><li>Atendimentos</li>
+            <li>Mensagens de hoje</li><li>Provas</li><li>Ajustes</li><li>Reservas</li>
+            <li>Vestidos</li><li>Catálogo</li><li>Orçamentos</li><li>Contratos</li>
+            <li>Financeiro</li><li>Folha do mês</li><li>Comissões</li><li>Minha comissão</li>
+            <li>Equipe</li><li>Permissões</li><li>Configurações</li>
+          </ul>
+        </div>
+      </div>
+
+      <p>Seis áreas do sistema decidem quem vê o quê — <strong>noivas, agenda, acervo, financeiro, comissão e administração</strong> —, e o seu perfil abre as seis. Os outros perfis abrem só as primeiras.</p>
+
+      <div class="fala aviso">
+        <span class="rotulo">Um nome errado, e ele é seu</span>
+        <p>O perfil se chama <strong>“Proprietária”</strong> na tela, no feminino, e o proprietário do ateliê é você. O nome está gravado no cadastro inicial e ecoa em mais quatro lugares.</p>
+        <p>Corrigir mexe na semente do sistema — pede um script para as instalações que já gravaram o nome antigo —, então está declarado e esperando. <strong>Este manual escreve “Proprietária” porque é o que a tela mostra</strong>; no dia em que a tela mudar, muda aqui também.</p>
+      </div>
+    </section>
+
+    <section id="outros">
+      <h2>O que os outros manuais já cobrem</h2>
+      <p class="resumo">Você faz tudo o que a equipe faz, e não vale repetir aqui o que já está escrito lá. <strong>Este manual cobre o que é só seu.</strong></p>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>Se a pergunta é</th><th>Está em</th></tr></thead>
+          <tbody>
+            <tr><td>Como se monta um orçamento, se manda para a noiva e vira contrato</td><td><a href="vendedora.html">Manual da Vendedora</a></td></tr>
+            <tr><td>Como se marca, remarca e conclui um atendimento; cabines, expediente e ausências</td><td><a href="recepcao.html">Manual da Recepção</a></td></tr>
+            <tr><td>Como funciona a fila de ajustes e confecções, e o prazo de cada peça</td><td><a href="costureira.html">Manual da Costureira</a></td></tr>
+            <tr><td>O que a noiva vê pelo link, e o que responder quando ela mandar print</td><td><a href="noiva.html">Guia da Noiva</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="nota">Vale ler os quatro uma vez. Não para operar — para saber <b>o que sua equipe está lendo</b> quando o sistema diz não.</p>
+    </section>
+
+    <section id="dia">
+      <h2><span class="passo">1</span>Seu dia</h2>
+      <p class="resumo">A tela de entrada — <em>“Seu dia, Renato”</em>. Quatro números e os avisos.</p>
+      <p>Os quatro cartões: <strong>Noivas ativas</strong> · <strong>Atendimentos hoje</strong> · <strong>Orçamentos abertos</strong> · <strong>Contratos fechados</strong>.</p>
+      <p>Ao lado do menu, o <strong>sino</strong> reúne os avisos que ninguém precisou pedir: caixa furando, comissão esquecida, noivas esfriando e presenças por confirmar. <strong>Não há rotina noturna nem e-mail</strong> — o sistema conta na hora em que você abre.</p>
+
+      <h3>O aviso que vale abrir sempre</h3>
+      <div class="fala aviso">
+        <span class="rotulo">No topo do Financeiro</span>
+        <p>“Caixa fica negativo em 14/09/2026” — <em>ou</em> — “O caixa já está negativo”.</p>
+        <p>A frase traz a conta junto: de quanto parte hoje, até onde desce e em que dia. É previsão pelo que está lançado, não adivinhação.</p>
+      </div>
+      <div class="fala">
+        <span class="rotulo">E o aviso sobre o próprio aviso</span>
+        <p>“A projeção está sem nível.”</p>
+        <p>Quer dizer que <strong>o alarme está desligado</strong>: sem informar o saldo de partida, o sistema não tem de onde contar. O link <span class="btn">Conferir o saldo →</span> leva ao lugar de corrigir. <strong>É o primeiro ajuste a fazer em instalação nova.</strong></p>
+      </div>
+    </section>
+
+    <section id="mapa">
+      <h2><span class="passo">2</span>O mapa do financeiro</h2>
+      <p class="resumo">São oito telas, e todas penduram em <span class="btn">Financeiro</span>. Uma distinção organiza as oito, e é a única que precisa entrar de cor.</p>
+
+      <div class="trilha">
+        <span>Realizado — o que se moveu</span><i>×</i>
+        <span class="fim">Previsto — o que vai vencer</span>
+      </div>
+
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>Tela</th><th>Responde</th><th>Regime</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Financeiro</strong> (fluxo de caixa)</td><td>O que entrou e saiu do ateliê</td><td>Realizado</td></tr>
+            <tr><td><strong>Contas a receber</strong></td><td>O que entra das noivas, por contrato</td><td>Previsto</td></tr>
+            <tr><td><strong>Contas a pagar</strong></td><td>Despesas, fornecedores e a folha</td><td>Previsto</td></tr>
+            <tr><td><strong>Resultado do mês</strong></td><td>O que entrou, para onde foi e quanto sobrou</td><td>Realizado</td></tr>
+            <tr><td><strong>Projeção de caixa</strong></td><td>Até onde o saldo desce, e quando</td><td>Previsto</td></tr>
+            <tr><td><strong>Cobrança</strong></td><td>Quem está em atraso, e há quanto tempo</td><td>Previsto</td></tr>
+            <tr><td><strong>Conciliação</strong></td><td>O banco bate com o sistema?</td><td>Realizado</td></tr>
+            <tr><td><strong>Auditoria</strong></td><td>Quem mexeu no dinheiro, o quê e quando</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="fala aviso">
+        <span class="rotulo">A frase mais importante do Financeiro</span>
+        <p>“Fluxo de caixa: o que entrou e saiu do ateliê — <strong>pelo que foi registrado aqui, não é o extrato do banco</strong>.”</p>
+        <p>O sistema sabe o que a loja lançou. Se um Pix não foi registrado, ele não existe para o Financeiro — e é exatamente para achar essa diferença que existe a <a href="#conferir">Conciliação</a>.</p>
+      </div>
+
+      <h3>Resultado do mês</h3>
+      <p>Traz o selo <span class="btn">Regime de caixa</span> e a frase que evita a confusão mais cara da contabilidade: <em>“O que entrou, para onde foi e quanto sobrou — pelo dinheiro que de fato se moveu no mês. <strong>Valores previstos não entram aqui.</strong>”</em></p>
+      <p>Três quadros: <strong>Recebimentos</strong>, <strong>Recebimentos por meio</strong> — para conciliar cartão, Pix e caixa físico — e <strong>Despesas por categoria</strong>. As setas do topo andam de mês em mês.</p>
+
+      <h3>Projeção de caixa</h3>
+      <p><strong>Saldo de partida</strong> é o número que você informa: é dele que a curva parte. Sem ele, o alarme fica desligado — é o “sem nível” do aviso acima. Abaixo, a <strong>curva projetada</strong> no horizonte escolhido.</p>
+
+      <h3>Auditoria</h3>
+      <p><em>“Toda ação que mexe em dinheiro deixa linha aqui: quem fez, o quê e quando.”</em> Filtre e clique em <span class="btn">Exportar CSV</span> — o arquivo leva o <strong>período inteiro do filtro</strong>, sem o corte de 200 linhas da tela.</p>
+    </section>
+
+    <section id="acao">
+      <h2><span class="passo">3</span>Receber e pagar</h2>
+      <p class="resumo">As duas telas de ação. As duas exportam CSV da janela em vista — a contadora importa sem redigitar.</p>
+
+      <h3>Contas a receber</h3>
+      <p><em>“O que entra das noivas, por contrato.”</em> Cada parcela recebe com valor, data e meio de pagamento. Recebimento parcial é aceito: a parcela fica <strong>Parcialmente paga</strong> e o saldo continua contando.</p>
+      <p>Errou? <span class="btn">Estornar este recebimento?</span> — e o estorno também deixa linha na auditoria.</p>
+
+      <h3>Contas a pagar</h3>
+      <p><em>“O que sai do caixa: despesas, fornecedores e a folha do ateliê.”</em> Três botões no topo: <span class="btn">Folha do mês</span>, <span class="btn">Lançar despesa</span> e <span class="btn">Exportar CSV</span>.</p>
+      <p>Você paga <strong>várias contas numa saída só</strong> — é o caso do dia em que se resolve o mês inteiro no banco. E os dois gestos que voltam atrás avisam antes: <span class="btn">Remover esta conta?</span> e <span class="btn">Estornar este pagamento?</span></p>
+
+      <p class="nota">Despesa que se repete todo mês — salário, aluguel, assinatura, fornecedor fixo — <b>não se lança aqui todo mês</b>. Ela é uma recorrência, e mora na Folha do mês.</p>
+    </section>
+
+    <section id="cobranca">
+      <h2><span class="passo">4</span>Cobrança</h2>
+      <p class="resumo"><em>“Acompanhe com delicadeza as parcelas em aberto. A mais atrasada vem primeiro.”</em></p>
+      <p>Três cartões dividem o atraso, e cada um filtra a lista ao ser clicado:</p>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>Faixa</th><th>O que quer dizer</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Até 30 dias</strong></td><td>Esqueceu. Uma mensagem resolve</td></tr>
+            <tr><td><strong>31 a 60 dias</strong></td><td>Já não é esquecimento — vale conversar</td></tr>
+            <tr><td><strong>Mais de 60 dias</strong></td><td>Sai em vermelho. É decisão sua, não mensagem automática</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Cada linha traz a noiva, o quanto deve e a mensagem de WhatsApp pronta — <strong>com o link do portal dela</strong>, quando ele está vivo, para que ela veja o extrato que explica a cobrança. Quando o portal venceu, a mensagem simplesmente sai sem o link.</p>
+      <p class="nota">O aviso <span class="btn">Portal vencido</span> aparece em <b>Mensagens de hoje</b>, não aqui. Se a cobrança pareceu curta demais, é lá que se descobre por quê.</p>
+      <p class="nota">Vencendo <b>hoje</b> não é atraso. A contagem começa no dia seguinte ao vencimento.</p>
+    </section>
+
+    <section id="conferir">
+      <h2><span class="passo">5</span>Conferir o banco</h2>
+      <p class="resumo">A tela que responde se o que está no sistema é o que está na conta.</p>
+      <div class="fala">
+        <span class="rotulo">Conciliação</span>
+        <p>“Suba o extrato que o seu banco exporta (OFX ou CSV) e confira o banco contra o sistema. <strong>O arquivo é lido aqui mesmo — nada sai do seu computador.</strong>”</p>
+      </div>
+      <p>O extrato não é enviado a lugar nenhum: a leitura acontece no navegador. O que a tela mostra é a diferença — o que o banco tem e o sistema não, e o contrário. <strong>É a conferência que fecha o mês com segurança</strong>, e a que descobre o Pix que ninguém lançou.</p>
+    </section>
+
+    <section id="mes">
+      <h2><span class="passo">6</span>Fechar o mês</h2>
+      <p class="resumo">Menu → <span class="btn">Folha do mês</span>. Esta é a tela mais importante deste manual, e a que o sistema desenhou como <strong>roteiro</strong> — não como formulário.</p>
+
+      <p>No topo, escolha a <strong>Competência</strong> (mês/ano). O quadro <strong>“Fechar agosto de 2026”</strong> lista os três passos, cada um com o estado e o link para resolvê-lo:</p>
+
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>#</th><th>O passo</th><th>Quando ele reclama</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="prazo">1</td>
+              <td><strong>Comissões da competência fechadas</strong></td>
+              <td>“Há vendedoras com venda no mês sem fechamento.” → <span class="btn">Fechar em Comissões →</span></td>
+            </tr>
+            <tr>
+              <td class="prazo">2</td>
+              <td><strong>Contas da competência pagas</strong></td>
+              <td>“3 contas em aberto no mês.” → <span class="btn">Pagar →</span></td>
+            </tr>
+            <tr>
+              <td class="prazo">3</td>
+              <td><strong>Período enviado à contabilidade</strong></td>
+              <td>“5 movimentos do período ainda não enviados — o envio é aqui embaixo, em <em>Fechar com a contabilidade</em>.”</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p><strong>A ordem importa</strong>, e é por isso que o roteiro existe: a comissão fechada vira conta a pagar, a conta paga entra no caixa do mês, e só então o período fecha com números que não vão mudar.</p>
+
+      <h3>As recorrências</h3>
+      <p>A folha é onde o que se repete todo mês vira conta a pagar: <em>“O que se repete todo mês — salário, aluguel, assinatura, fornecedor fixo — vira conta a pagar, e o período fecha com a contabilidade.”</em> A geração é <strong>por competência e idempotente</strong>: rodar duas vezes o mesmo mês não duplica nada.</p>
+
+      <div class="fala">
+        <span class="rotulo">Uma proteção que vale conhecer</span>
+        <p><strong>Tirar alguém da equipe desativa a recorrência dela nesta loja.</strong> Sem isso, o salário de quem já não trabalha ali renasceria todo mês, na tela de Pagar e no resultado previsto.</p>
+        <p>Desativa, <strong>não apaga</strong> — a recorrência é o que explica os salários já pagos, e apagá-la reescreveria o passado.</p>
+      </div>
+    </section>
+
+    <section id="comissoes">
+      <h2><span class="passo">7</span>Comissões</h2>
+      <p class="resumo"><em>“A faixa que a vendedora alcançar no fim do mês vale para tudo que ela vendeu — bater o próximo degrau compensa até o último dia.”</em></p>
+
+      <p>Essa frase é a regra inteira, e é o que faz a escada funcionar como incentivo: não é faixa por venda, é <strong>a faixa do mês aplicada ao mês todo</strong>.</p>
+
+      <h3>Como está o mês</h3>
+      <p>O quadro mostra o mês corrente <strong>ao vivo</strong>, vendedora por vendedora, antes de qualquer fechamento. É a resposta para “quanto vou pagar de comissão este mês?” em qualquer dia.</p>
+
+      <h3>Fechar a competência</h3>
+      <p>O botão <span class="btn">Fechar competência</span> pede confirmação e <strong>diz o que vai lançar antes de você confirmar</strong> — e enquanto a conta ainda está sendo feita, ele diz isso também (<em>“Calculando o que será lançado…”</em>) em vez de afirmar zero. O fechamento gera a <strong>conta a pagar</strong> da vendedora e é idempotente: fechar duas vezes não paga duas vezes.</p>
+      <p>Errou? <span class="btn">Reabrir o fechamento de Maria?</span> existe, e a reabertura também deixa rastro.</p>
+
+      <div class="fala aviso">
+        <span class="rotulo">O aviso que evita o esquecimento caro</span>
+        <p>“2 competências passadas ainda não foram fechadas” — com o valor em vendas e quantas vendedoras estão sem fechamento em cada uma, e o mês clicável.</p>
+        <p>É o aviso que existe porque <strong>ninguém reclama de uma comissão que ninguém sabe que existe</strong>: a vendedora não recebe, o mês passa, e a pendência acumula invisível.</p>
+      </div>
+
+      <p class="nota">A escada é <b>versionada por vigência</b>: mudar a regra hoje não reescreve o que já foi fechado. E <b>Minha comissão</b>, no menu, é o extrato da própria pessoa — cada vendedora vê o dela, mesmo sem acesso a esta tela.</p>
+    </section>
+
+    <section id="equipe">
+      <h2><span class="passo">8</span>Equipe e permissões</h2>
+      <p class="resumo">Duas telas: quem trabalha aqui, e o que cada perfil pode.</p>
+
+      <h3>Equipe</h3>
+      <p><em>“Vendedoras e demais membros vinculados a esta loja.”</em> O caminho recomendado é o <strong>convite</strong>: a própria pessoa define a senha, e você nunca digita a senha de ninguém. O convite <strong>vale 7 dias</strong>.</p>
+
+      <h3>Permissões</h3>
+      <p><em>“O que cada perfil pode fazer nesta loja. Sem personalização, segue o modelo global.”</em> Cada perfil tem, por área, três caixas: <span class="btn">Ver</span>, <span class="btn">Criar</span> e <span class="btn">Editar</span>. É aqui que se ajusta o que um perfil abre — e a mudança vale só <strong>nesta loja</strong>.</p>
+      <p>As caixas se ajudam: marcar <span class="btn">Criar</span> <strong>acende <span class="btn">Ver</span> na hora</strong>, e desmarcar <span class="btn">Ver</span> apaga as outras duas. Quem cria precisa enxergar o que criou — a tela não deixa você montar uma permissão que não faz sentido.</p>
+
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>Perfil</th><th>Noivas</th><th>Agenda</th><th>Acervo</th><th>Dinheiro</th><th>Admin</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Proprietária</strong></td><td>tudo</td><td>tudo</td><td>tudo</td><td>tudo</td><td>tudo</td></tr>
+            <tr><td><strong>Vendedora</strong></td><td>tudo</td><td>tudo</td><td>tudo</td><td>—</td><td>—</td></tr>
+            <tr><td><strong>Recepção</strong></td><td>ver e criar</td><td>tudo</td><td>só ver</td><td>—</td><td>—</td></tr>
+            <tr><td><strong>Admin</strong></td><td>tudo</td><td>tudo</td><td>tudo</td><td>tudo</td><td>tudo</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p><strong>O perfil Admin é do sistema e não se edita</strong> — o servidor recusa alterá-lo ou apagá-lo. É a garantia de que uma configuração errada não tranca todo mundo para fora.</p>
+
+      <p class="nota">Gerir equipe mexe numa tabela compartilhada entre lojas, e o sistema <b>prova o vínculo antes de escrever</b>: quem não é desta loja responde “não existe”, mesmo existindo em outra. Sem essa prova, um administrador desativaria a dona da loja vizinha.</p>
+    </section>
+
+    <section id="loja">
+      <h2><span class="passo">9</span>A loja e os dados</h2>
+      <p class="resumo">Menu → <span class="btn">Configurações</span> — <em>“O que está valendo na loja — e onde se muda.”</em> A aba é uma: <strong>Loja atual</strong>.</p>
+      <p class="nota">Existe uma segunda aba, <b>Administração</b>, e ela é do <b>superadministrador da rede</b> — quem cuida de várias lojas. Ela não aparece para você, e é de propósito: o que ela abre é o console de todas as lojas, não o da sua.</p>
+
+      <h3>Dados da loja</h3>
+      <p>Nome, endereço e telefone. <strong>Não é cadastro burocrático:</strong> é o que aparece no rodapé do portal da noiva e no botão “Falar no WhatsApp” que ela usa para chegar até você. Loja sem telefone e sem endereço deixa a noiva sem caminho de volta.</p>
+
+      <h3>Backup</h3>
+      <p><em>“Cópia do banco inteiro. A rotina agendada roda sozinha; aqui você vê a última e pode disparar uma na hora.”</em></p>
+      <p>A tela mostra um sinal colorido, quando foi o último backup, o tamanho, se foi <strong>manual ou agendado</strong> e quem disparou. <em>“Nunca rodou”</em> é o estado a não deixar parado.</p>
+
+      <h3>Privacidade (LGPD)</h3>
+      <div class="fala aviso">
+        <span class="rotulo">Antes de clicar, leia a contagem</span>
+        <p>“Isto vai anonimizar 12 noivas: nome, contato e local do casamento saem <strong>DE FORMA IRREVERSÍVEL</strong>. O funil e os relatórios continuam contando essas linhas.”</p>
+        <p>O corte é <strong>noivas perdidas há mais de 24 meses</strong>. O diálogo conta antes de agir, e não afirma número nenhum enquanto ainda está contando.</p>
+      </div>
+      <p>O ponto que torna isso seguro: <strong>os números sobrevivem</strong>. A conversão, o funil e os relatórios continuam certos — o que sai são os dados pessoais de quem não é mais cliente.</p>
+    </section>
+
+    <section id="nao">
+      <h2>Quando o sistema diz não</h2>
+      <p class="resumo">Você tem acesso a tudo, então quase todo “não” que você vê é <strong>sobre dinheiro</strong>, não sobre permissão.</p>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>O recado</th><th>O que significa</th></tr></thead>
+          <tbody>
+            <tr><td>“A projeção está sem nível”</td><td>Falta o saldo de partida — o alarme de caixa está desligado</td></tr>
+            <tr><td>“Uma competência passada ainda não foi fechada”</td><td>Comissão de mês anterior pendente. O mês é clicável</td></tr>
+            <tr><td>“A soma das parcelas não fecha com o total.”</td><td>Entrada e número de parcelas não batem com o contrato</td></tr>
+            <tr><td>“Este lead já possui um contrato ativo”</td><td>A noiva já tem contrato vivo. Cancele o anterior ou revise</td></tr>
+            <tr><td>“Nenhuma cabine ativa — a grade do dia precisa de ao menos uma.”</td><td>Ative uma cabine em Cabines &amp; horário</td></tr>
+            <tr><td>“Não consegui falar com o sistema. Tente de novo em um instante.”</td><td>O sistema não respondeu. <strong>Nada foi gravado pela metade</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="nota">Todo movimento de dinheiro — receber, estornar, pagar, fechar comissão, reabrir fechamento — deixa linha na <b>Auditoria</b>, com quem fez e quando. Quando a dúvida for “quem mexeu nisso?”, a resposta está lá, e sai em CSV.</p>
+    </section>
+
+    <section id="decisoes">
+      <h2>O que espera uma decisão sua</h2>
+      <p class="resumo">Quatro coisas que este manual e os outros quatro encontraram, e que <strong>não se resolvem escrevendo documentação</strong>. Ficam aqui porque são suas.</p>
+
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>O que</th><th>Por que espera você</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>A Recepção fecha contrato</strong></td>
+              <td>O botão <span class="btn">Gerar contrato</span> aparece para o perfil da recepção e funciona. Contrato é de quem vende — mas mudar isso é escolher o desenho do perfil, não corrigir um botão</td>
+            </tr>
+            <tr>
+              <td><strong>A Recepção não corrige a noiva que cadastrou</strong></td>
+              <td>A mesma permissão que dá contrato demais nega o conserto de um telefone digitado errado. O par se resolve junto</td>
+            </tr>
+            <tr>
+              <td><strong>A costureira não tem perfil</strong></td>
+              <td>Hoje ela entra como Recepção — e enxerga a carteira de noivas, os orçamentos e os contratos. Um perfil só com agenda é pequeno de fazer, mas mexe na semente do sistema e precisa da sua decisão sobre o que ela enxerga</td>
+            </tr>
+            <tr>
+              <td><strong>O link da proposta morre em 7 dias; a proposta vale 30</strong></td>
+              <td>A noiva que abre o WhatsApp no décimo dia lê “link expirado” numa proposta de pé. Pode ser o desenho certo — o link é a chave, a validade é o preço —, mas <strong>nunca foi uma escolha escrita</strong>: o prazo veio emprestado do convite de equipe</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>E há a quinta, menor e já dita: <strong>o perfil “Proprietária” está no gênero errado.</strong></p>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>Este manual descreve o sistema como ele está em <strong>12/08/2026</strong>. Os nomes de botão e os recados de erro são citados literalmente da tela — se algum não bater com o que você vê, o manual envelheceu, e vale avisar.</p>
+    <p>Com ele, os <strong>cinco manuais</strong> estão escritos: vendedora, recepção, costureira, noiva e proprietário.</p>
+  </footer>
+
+</div>

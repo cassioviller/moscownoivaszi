@@ -133,12 +133,13 @@ tamanho.
 | **1** | **Vendedora** | É o caminho que a trilha mirou, o que mais gente percorre e o que mais mudou. Se só uma entrega acontecer, tem que ser esta. | ✅ `3f3ec02` — `docs/manuais/vendedora.html`; achou a S-O38 e a S-O39 |
 | **2** | **Costureira** + **Guia da Noiva** | Os dois mais curtos, e os dois que hoje não têm NADA. Juntos são menos trabalho que o da vendedora. | ✅ 2026-08-12 — `costureira.html` e `noiva.html`; achou a **S-O40** e corrigiu a moldura da S-O27 |
 | **3** | **Recepção** | Muito se apoia no que a vendedora já explicou; é sobretudo agenda. | ✅ 2026-08-12 — `recepcao.html`; achou a **S-O41**, o par da S-O40 |
-| **4** | **Proprietário** | O maior, e o único que pode se apoiar nos quatro anteriores em vez de repeti-los. O financeiro inteiro é dele. | aberta |
+| **4** | **Proprietário** | O maior, e o único que pode se apoiar nos quatro anteriores em vez de repeti-los. O financeiro inteiro é dele. | ✅ 2026-08-12 — `proprietario.html`; **o plano está EXECUTADO** |
 
-As quatro páginas publicadas, para quem precisar do endereço:
+As cinco páginas publicadas, para quem precisar do endereço:
 
 | Manual | Fonte no repo | Página |
 |---|---|---|
+| Proprietário | `docs/manuais/proprietario.html` | <https://claude.ai/code/artifact/363b251a-9c61-488a-8cb9-6d1bd513f46a> |
 | Vendedora | `docs/manuais/vendedora.html` | <https://claude.ai/code/artifact/d0357a33-b02a-4247-9d98-9e16f23373ce> |
 | Recepção | `docs/manuais/recepcao.html` | <https://claude.ai/code/artifact/96055d45-f873-4228-b085-d7462c043866> |
 | Costureira | `docs/manuais/costureira.html` | <https://claude.ai/code/artifact/a9ce3b64-5d5d-4537-b653-6a41bd17f780> |
