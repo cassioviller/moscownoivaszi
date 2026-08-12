@@ -36,7 +36,7 @@ espera uma decisão sua"*.
 | ~~**E169**~~ | ~~a tela do contrato e o dinheiro miúdo~~ | C | ✅ `fe8afdd` · [relatório](execucao/E169.md) — dez itens, inclusive a **S-M10** herdada da revisão max; fecha a S-O14 por decisão |
 | ~~**E170**~~ | ~~os testes que pregavam o defeito passam a pegá-lo~~ | D | ✅ `50a4043` · [relatório](execucao/E170.md) — **3 dos 5 já tinham fechado**; nasce a **regra 34** do METODO |
 | ~~**E171**~~ | ~~a varredura que conta as portas~~ | D | ✅ `30a8377` · [relatório](execucao/E171.md) — **26 portas, não 14**; achou 4 abertas, e a 🟠 estava **dentro do E166 desta mesma sessão** — fechada em `7763ee3`, com a própria varredura cobrando a baixa da dívida |
-| ~~**E172**~~ | ~~o que cada papel pode deixa de ser dedução e vira módulo~~ | pós-manuais | ✅ [relatório](execucao/E172.md) — nasce a **Costureira**, e `orcamentos`/`contratos` saem de dentro de `leads`. **O plano pedia metade**: fechar só o contrato deixava a Recepção aprovando a proposta (**404**, não 403), que é onde o preço congela |
+| ~~**E172**~~ | ~~o que cada papel pode deixa de ser dedução e vira módulo~~ | pós-manuais | ✅ `971269c` · [relatório](execucao/E172.md) — nasce a **Costureira**, e `orcamentos`/`contratos` saem de dentro de `leads`. **O plano pedia metade**: fechar só o contrato deixava a Recepção aprovando a proposta (**404**, não 403), que é onde o preço congela |
 
 A **Faixa A é serial** — os quatro mexem nas mesmas transações. A **Faixa C
 paraleliza**. O `/code-review ultra` roda sobre a branch de cada faixa antes do
