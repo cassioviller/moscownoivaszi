@@ -27,7 +27,7 @@ import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { leadNaLoja, itemEstoqueNaLoja, ajusteDaNoiva, vestidoNaLoja, atendimentoNaLoja } from "../lib/escopo-loja";
 import { randomUUID } from "node:crypto";
 import { orcamentoVersoesTable } from "@workspace/db";
-import { conteudoEnviado } from "../lib/conteudo-orcamento";
+import { conteudoEnviado, identidadeDasPecas } from "../lib/conteudo-orcamento";
 import { criarReservaDeVestido } from "../lib/reserva-do-vestido";
 import { sql } from "drizzle-orm";
 import { gerarTokenConvite, CONVITE_TTL_MS } from "../lib/auth";
@@ -159,6 +159,9 @@ async function criarVersaoEnviada(tx: Cliente, lojaId: string, orcamentoId: stri
     // JUNTO — antes, observações e validade eram lidas da linha viva.
     observacoes: orcamento.observacoes,
     validade: orcamento.validade,
+    // S-O29: a IDENTIDADE das peças, fora do hash e na mesma ordem dos itens.
+    // O hash prende o que a proposta diz; esta lista prende o que ela é.
+    itensVestidoIds: identidadeDasPecas(orcamento.itens),
   });
 }
 
@@ -913,6 +916,56 @@ async function sobPaiTrancado<T>(
   });
 }
 
+/**
+ * S-O25 — **o teto do desconto em VALOR também se rompe pelo lado dos ITENS.**
+ *
+ * O A07.3 (E169) fechou a porta do desconto: `recusaDeDesconto` recusa
+ * R$ 4.000,00 de desconto sobre R$ 3.000,00 de itens, porque o líquido sairia
+ * clampado em R$ 0,00. Mas ela só roda quando o DESCONTO muda — e o teto é uma
+ * relação entre dois números. Mexer no outro rompe a mesma invariante:
+ *
+ * ```
+ * desconto R$ 4.000,00 sobre R$ 5.000,00 : 200   ← passa, e deve
+ * DELETE do item de R$ 2.000,00          : 204   ← bruto vira R$ 3.000,00
+ * desconto gravado                       : R$ 4000 VALOR
+ * PATCH item 5→1 (bruto 5000→1000)       : 200
+ * ```
+ *
+ * Medido em 2026-08-12. As duas portas de item não perguntavam nada sobre
+ * desconto, e o orçamento voltava a valer R$ 0,00 em silêncio — que é
+ * exatamente o estado que o S-M23 e o A07.3 existem para impedir.
+ *
+ * **Recusar é o certo, e não é beco.** A frase diz os dois números e o que
+ * fazer; quem quer mesmo tirar o item baixa o desconto primeiro, que é uma
+ * decisão de dinheiro e tem de ser consciente. Reduzir o desconto sozinho
+ * seria mudar o preço da noiva sem ninguém pedir.
+ *
+ * Roda DENTRO da transação que já tranca o pai: o bruto é lido depois da
+ * escrita, e a recusa desfaz tudo.
+ */
+class DescontoMaiorQueOsItens extends Error {
+  constructor(readonly recusa: { error: string; detalhe: string }) {
+    super(recusa.detalhe);
+  }
+}
+
+async function exigirDescontoCabendoNosItens(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  orcamentoId: string,
+): Promise<void> {
+  const [pai] = await tx
+    .select({ descontoTipo: orcamentosTable.descontoTipo, descontoValor: orcamentosTable.descontoValor })
+    .from(orcamentosTable)
+    .where(eq(orcamentosTable.id, orcamentoId));
+  if (!pai || pai.descontoTipo !== "VALOR") return;
+  const itens = await tx
+    .select()
+    .from(orcamentoItensTable)
+    .where(eq(orcamentoItensTable.orcamentoId, orcamentoId));
+  const recusa = recusaDeDesconto(pai.descontoTipo, pai.descontoValor, brutoEmCentavos(itens));
+  if (recusa) throw new DescontoMaiorQueOsItens(recusa);
+}
+
 router.post("/lojas/:lojaId/orcamentos/:orcamentoId/itens", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const orcamentoId = req.params.orcamentoId as string;
@@ -1051,6 +1104,25 @@ router.patch("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promis
     res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
+  /**
+   * S-O48 — corpo sem NENHUM campo conhecido dava **500**.
+   *
+   * `UpdateOrcamentoItemBody` só conhece `descricao`, `valorUnitario` e
+   * `quantidade`; o zod descarta o resto e devolve `{}`, e `.set({})` estoura
+   * no drizzle (*"No values to set"*). Medido em 2026-08-12 mandando
+   * `{ vestidoId }` — que é justamente o campo que alguém tentaria para trocar
+   * a peça (S-O29), e que esta rota **não** aceita de propósito.
+   *
+   * 400 com a lista do que ela aceita: quem chamou errado precisa saber o que
+   * pode mandar, e um 500 não diz nem que o pedido era inválido.
+   */
+  if (Object.keys(parsed.data).length === 0) {
+    res.status(400).json({
+      error: "CORPO_VAZIO",
+      detalhe: "Nada para alterar neste item — mande descrição, valor unitário ou quantidade.",
+    });
+    return;
+  }
 
   // E115 — mesma guarda do POST de item: acordo fechado não muda.
   const [pai] = await db
@@ -1071,13 +1143,25 @@ router.patch("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promis
   }
 
   // C4: a escrita entra na transação que tranca o pai.
-  const alterado = await sobPaiTrancado(pai.orcamentoId, async (tx) => {
-    const [item] = await tx.update(orcamentoItensTable)
-      .set(parsed.data)
-      .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)))
-      .returning();
-    return item;
-  });
+  let alterado;
+  try {
+    alterado = await sobPaiTrancado(pai.orcamentoId, async (tx) => {
+      const [item] = await tx.update(orcamentoItensTable)
+        .set(parsed.data)
+        .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)))
+        .returning();
+      // S-O25: baixar o valor ou a quantidade encolhe o bruto — o teto do
+      // desconto em VALOR se rompe pelo lado do item, não só pelo do desconto.
+      await exigirDescontoCabendoNosItens(tx, pai.orcamentoId);
+      return item;
+    });
+  } catch (err) {
+    if (err instanceof DescontoMaiorQueOsItens) {
+      res.status(422).json(err.recusa);
+      return;
+    }
+    throw err;
+  }
   if ("congelado" in alterado) {
     res.status(422).json(alterado.congelado);
     return;
@@ -1111,11 +1195,23 @@ router.delete("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promi
     }
   }
   // C4: a escrita entra na transação que tranca o pai.
-  const removido = await sobPaiTrancado(pai.orcamentoId, async (tx) => {
-    await tx.delete(orcamentoItensTable)
-      .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)));
-    return true;
-  });
+  let removido;
+  try {
+    removido = await sobPaiTrancado(pai.orcamentoId, async (tx) => {
+      await tx.delete(orcamentoItensTable)
+        .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)));
+      // S-O25: tirar o item que sustentava o desconto o deixaria maior que o
+      // total, e o líquido voltaria a clampar em R$ 0,00.
+      await exigirDescontoCabendoNosItens(tx, pai.orcamentoId);
+      return true;
+    });
+  } catch (err) {
+    if (err instanceof DescontoMaiorQueOsItens) {
+      res.status(422).json(err.recusa);
+      return;
+    }
+    throw err;
+  }
   if ("congelado" in removido) {
     res.status(422).json(removido.congelado);
     return;

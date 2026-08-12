@@ -7,7 +7,31 @@ export type ItemVivoDeOrcamento = {
   valorUnitario: number;
   quantidade: number;
   createdAt: string | Date;
+  /**
+   * S-O29: NÃO entra no hash — entra na lista de identidade que viaja ao lado
+   * (`orcamento_versoes.itens_vestido_ids`). Ver `identidadeDasPecas` abaixo.
+   */
+  vestidoId?: string | null;
 };
+
+/**
+ * S-O29 (A07.4) — **a identidade das peças, na mesma ordem canônica do hash.**
+ *
+ * O hash prende o que a proposta DIZ (tipo, descrição, valor, quantidade) e não
+ * o que ela É: trocar o `vestidoId` de um item mantendo descrição e preço não o
+ * move. A noiva prova o vestido A, aceita "Vestido tomara-que-caia marfim ·
+ * R$ 5.000,00", e o contrato pode fechar sobre o vestido B.
+ *
+ * Pôr o `vestidoId` DENTRO do hash invalidaria todo hash já gravado — o
+ * comentário de `conteudoEnviado` diz isso na letra, e uma noiva com o link na
+ * mão no deploy perderia o aceite. Então a identidade viaja separada, e a
+ * ordenação é a MESMA (`createdAt`), para as duas listas casarem por índice.
+ */
+export function identidadeDasPecas(itensVivos: readonly ItemVivoDeOrcamento[]): (string | null)[] {
+  return [...itensVivos]
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    .map((it) => it.vestidoId ?? null);
+}
 
 /**
  * E115 — o CONTEÚDO que um envio congela, numa régua só.

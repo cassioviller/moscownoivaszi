@@ -118,6 +118,28 @@ export const orcamentoVersoesTable = pgTable("orcamento_versoes", {
    */
   observacoes: text("observacoes"),
   validade: timestamp("validade", { withTimezone: true }),
+  /**
+   * S-O29 (A07.4) — **a IDENTIDADE das peças, congelada FORA do hash.**
+   *
+   * O `hash` prende `{tipo, descricao, valorUnitario, quantidade}` e nada mais
+   * (`lib/conteudo-orcamento.ts:34-39`): trocar o `vestidoId` de um item
+   * mantendo descrição e preço **não muda o hash**, e o `POST /contratos`
+   * aceita. A noiva prova o vestido A, assina uma proposta que diz "Vestido
+   * tomara-que-caia marfim · R$ 5.000,00", e o contrato fecha sobre o vestido
+   * B — e `contratos.ts` já registra que a mesma descrição sai para noivas
+   * diferentes.
+   *
+   * Por que coluna nova em vez de pôr o `vestidoId` no hash: o comentário de
+   * `conteudoEnviado` é explícito — *"o formato do `conteudo` é CONTRATO: mudar
+   * uma chave invalida todo hash já gravado"*. Uma noiva com o link na mão no
+   * momento do deploy perderia o aceite dela. Aqui a identidade viaja ao lado,
+   * na MESMA ordem de `itens`, e a conferência é independente.
+   *
+   * `null` = versão anterior a esta coluna. A conferência se desliga nela, que
+   * é exatamente o comportamento de hoje — não se pode cobrar de um snapshot o
+   * que ele nunca guardou.
+   */
+  itensVestidoIds: jsonb("itens_vestido_ids"),
   criadaEm: timestamp("criada_em", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   numeroUnq: uniqueIndex("orcamento_versoes_numero_unq").on(t.orcamentoId, t.numero),

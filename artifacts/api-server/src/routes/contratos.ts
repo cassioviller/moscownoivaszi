@@ -53,7 +53,7 @@ import {
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { vendedoraNaLoja } from "../lib/escopo-loja";
 import { leadsQueCasam } from "../lib/busca-lead";
-import { conteudoEnviado } from "../lib/conteudo-orcamento";
+import { conteudoEnviado, identidadeDasPecas } from "../lib/conteudo-orcamento";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
 
@@ -267,13 +267,15 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
      * carimbo tenha faltado: a versão é o que a noiva vê, com ou sem aceite.
      */
     let hashEsperado = orcamento.aceiteHash;
+    // S-O29: a lista de identidade vem da MESMA versão vigente, e é lida
+    // sempre — mesmo quando o hash veio do aceite carimbado.
+    const [versaoVigente] = await db
+      .select({ hash: orcamentoVersoesTable.hash, itensVestidoIds: orcamentoVersoesTable.itensVestidoIds })
+      .from(orcamentoVersoesTable)
+      .where(eq(orcamentoVersoesTable.orcamentoId, contratoData.orcamentoId))
+      .orderBy(desc(orcamentoVersoesTable.numero))
+      .limit(1);
     if (!hashEsperado) {
-      const [versaoVigente] = await db
-        .select({ hash: orcamentoVersoesTable.hash })
-        .from(orcamentoVersoesTable)
-        .where(eq(orcamentoVersoesTable.orcamentoId, contratoData.orcamentoId))
-        .orderBy(desc(orcamentoVersoesTable.numero))
-        .limit(1);
       hashEsperado = versaoVigente?.hash ?? null;
     }
     if (hashEsperado) {
@@ -284,6 +286,43 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
           detalhe:
             "Os itens mudaram depois do envio que a noiva aceitou — o contrato tem de nascer do que ela viu. " +
             "Refaça os itens como estavam, ou crie e envie um novo orçamento para novo aceite.",
+        });
+        return;
+      }
+    }
+
+    /**
+     * S-O29 (A07.4) — **o hash prende o que a proposta DIZ; esta guarda prende
+     * o que ela É.**
+     *
+     * `conteudoEnviado` congela `{tipo, descricao, valorUnitario, quantidade}`
+     * e nada mais. Trocar o `vestidoId` de um item mantendo descrição e preço
+     * **não move o hash** — e `contratos.ts` já registra que a mesma descrição
+     * sai para noivas diferentes. A noiva prova o vestido A, aceita "Vestido
+     * tomara-que-caia marfim · R$ 5.000,00", e o contrato fechava sobre o
+     * vestido B: mesmo papel, outra peça.
+     *
+     * Pôr o `vestidoId` no hash invalidaria todo hash já gravado (o comentário
+     * de `conteudoEnviado` diz isso na letra), então a identidade viaja ao
+     * lado, na mesma ordem canônica.
+     *
+     * **`null` desliga a guarda de propósito**: é versão anterior à coluna, e
+     * não se cobra de um snapshot o que ele nunca guardou. É a mesma decisão
+     * que o O7/C5 tomou para `observacoes` e `validade`.
+     */
+    const identidadeCongelada = versaoVigente?.itensVestidoIds as (string | null)[] | null | undefined;
+    if (identidadeCongelada) {
+      const identidadeViva = identidadeDasPecas(itens);
+      const divergiu =
+        identidadeViva.length !== identidadeCongelada.length ||
+        identidadeViva.some((id, i) => id !== identidadeCongelada[i]);
+      if (divergiu) {
+        res.status(422).json({
+          error: "PECA_DIVERGE_DO_ACEITE",
+          detalhe:
+            "A peça mudou depois do envio que a noiva aceitou — a descrição e o valor são os mesmos, " +
+            "mas não é o mesmo vestido. Ela provou outro. Devolva a peça original, ou envie um novo " +
+            "orçamento para novo aceite.",
         });
         return;
       }

@@ -1,0 +1,1 @@
+ALTER TABLE "orcamento_versoes" ADD COLUMN "itens_vestido_ids" jsonb;
