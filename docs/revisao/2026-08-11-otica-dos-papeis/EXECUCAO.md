@@ -7,9 +7,16 @@
 Suíte de partida: **API 1134 · frontend 536 · E2E 165 · typecheck verde em 5
 projetos**. Com **as quatro faixas fechadas**, mais os consertos que os manuais
 acharam, o **E172** que eles fizeram nascer e **o resto das sobras fechado em
-E173–E183**, a régua é **API 1330 · frontend 657 · E2E 171 · typecheck verde em
+E173–E188**, a régua é **API 1349 · frontend 683 · E2E 171 · typecheck verde em
 5 projetos** — e o E2E cobre, pela primeira vez, o **caminho público** (E166) e
 a **avaria sem noiva própria** (E167).
+
+**Desde o E188 o E2E é PORTÁTIL**: 171 passed com zero skipped no banco de dev, e
+167 dos 171 em banco virgem — os 4 que faltam dependem de contrato, que o seed
+não cria de propósito. E a régua do banco virgem **passou a rodar um spec**,
+com portas próprias (`E2E_API_PORT`/`E2E_WEB_PORT`): ela sobia o `global-setup`
+e não abria uma tela, que é exatamente por que a S-O73 sobreviveu a quatro
+agentes.
 
 **O lote 2 da Faixa C rodou em PARALELO e a medida ficou:** E179, E180, E181 e
 E182 em quatro worktrees simultâneos, **cada um com o seu banco** — a capacidade

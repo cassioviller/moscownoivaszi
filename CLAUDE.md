@@ -99,7 +99,7 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | **Ótica dos papéis** | **`2026-08-11-otica-dos-papeis/`** | **EXECUTADA — 149 achados em 14 épicos (E158–E171), as quatro faixas fechadas, mais o **E172** que os manuais fizeram nascer e o **resto das sobras em E173–E183**. O que resta dela são as sobras S-O da tabela do `EXECUCAO.md` — **17, e 15 nasceram no dia em que as antigas fecharam**; conte lá** |
+   | **Ótica dos papéis** | **`2026-08-11-otica-dos-papeis/`** | **EXECUTADA — 149 achados em 14 épicos (E158–E171), as quatro faixas fechadas, mais o **E172** que os manuais fizeram nascer e o **resto das sobras em E173–E188**. O que resta dela são as sobras S-O da tabela do `EXECUCAO.md` — **21, e 20 nasceram no dia em que as antigas fecharam**; conte lá** |
    | Revisão max | `2026-08-10-revisao-max/` | fechada como fila — 18 sobras da rodada 1 (16 fechadas) + 53 da rodada 2 (10 épicos). **Resta 1 🟡**: a S-M17, que espera dados de banco real. A **S-M10 fechou no E169** (`fe8afdd`) |
    | Rodada 6 | `2026-07-25-rodada-6/` | fechada — **ZERO sobras abertas.** Era o backlog mais pesado do repositório |
    | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — **ZERO sobras abertas** |
@@ -110,15 +110,42 @@ para o documento que manda.
    S-A2 (as fotos que faltam do caderno) e S-A27 (classificar as peças com a
    dona; o acervo tem 132 peças do legado em `moscow_base`, todas sem "Tipo de
    peça"). Toda linha de código aberta hoje está na tabela de Sobras da trilha
-   da ótica dos papéis — **conte lá, são 17** (2026-08-12, ao fim do dia).
+   da ótica dos papéis — **conte lá, são 21** (2026-08-12, ao fim do dia).
 
    **A composição delas é o resultado da sessão, e vale mais que o número: de
-   tudo que estava aberto quando o dia começou, só DUAS continuam de pé** — a
-   S-O50, que espera decisão da dona (confecção com prazo próprio pede coluna
-   nova), e a S-O52, adiada por escopo. **As outras 15 nasceram hoje**, dos
-   próprios épicos que fecharam as antigas: o resto das sobras foi executado em
-   **E173–E183**, e a régua saiu de **API 1257 · frontend 611** para **API 1330
-   · frontend 657 · E2E 171 · typecheck verde em 5 projetos**.
+   tudo que estava aberto quando o dia começou, sobrou UMA** — a **S-O50**, que
+   espera decisão da dona (confecção com prazo próprio pede coluna nova, então
+   pede migração). **As outras 20 nasceram hoje**, dos próprios épicos que
+   fecharam as antigas: o resto das sobras foi executado em **E173–E188**, e a
+   régua saiu de **API 1257 · frontend 611** para **API 1349 · frontend 683 ·
+   E2E 171 · typecheck verde em 5 projetos**.
+
+   **Três achados do dia não estavam em sobra nenhuma, e os três nasceram de
+   MEDIR o que já se acreditava saber:**
+
+   - O **E185** achou que o `POST /contratos` da noiva A prendia **o véu
+     pendurado na reserva-mãe da noiva B** (201 Created), e a adoção do E111
+     gravava o `lead_id` de A por cima: a guarda `RESERVA_DE_OUTRA_NOIVA` lia
+     `bloqueio.lead_id` cru, **e o véu não tem um**. Mais duas portas liam o
+     mesmo campo errado. População em `moscow_base` hoje: zero — o que estava
+     aberto era o mecanismo.
+   - O **E187** achou que, no desconto **percentual**, a tela exibia o próprio
+     percentual: `expected 10 to be 500` — *R$ 10,00* onde o desconto era
+     *R$ 500,00*. Eram **cinco grafias da mesma conta**, três acertando por
+     cópia e duas errando.
+   - O **E186** achou contra a própria régua: a dívida declarada de
+     `comissao.ts` dizia *"as três não trancam o contrato"* sobre portas que o
+     **E176 fechou dez épicos atrás** — a varredura media `trancou=[]` por não
+     entrar no helper, e a tabela do teste repetia a frase antiga desde então.
+
+   **E os manuais cobraram a conta que vinham dando de graça** (E184): eles
+   viraram a fonte de achado mais barata do repositório, e envelhecem a cada
+   épico que fecha. O da costureira ensinava uma **rotina de trabalho** para
+   contornar um defeito fechado naquela manhã; quatro contavam uma limitação que
+   a dona já removera; o do proprietário listava como pendente uma decisão **já
+   tomada**. A `varredura-manuais` passava verde sobre os quatro, porque confere
+   o MENU e não a prosa — nasceu a `varredura-manuais-prazos`, que prega os
+   prazos citados contra as constantes do código (**9 células, 5 constantes**).
 
    Duas capacidades novas mudaram como se trabalha aqui, e as duas estão no
    `replit.md`: **um agente pode medir a suíte de API no seu próprio banco**
@@ -222,7 +249,7 @@ para o documento que manda.
    ainda está em dia — esta linha envelhece a cada commit, e já envelheceu
    cinco vezes.
 
-   Hoje a régua é **API 1330 · frontend 657 · E2E 171 · typecheck verde em 5
+   Hoje a régua é **API 1349 · frontend 683 · E2E 171 · typecheck verde em 5
    projetos — o typecheck passou a incluir os 68 arquivos de `e2e/`** (S-D23,
    `acdd9b3`) **e o `scripts/`** (`60adc7c`), que nenhum `tsconfig` cobria. O
    `scripts/tsconfig.json` ganhou `lib: DOM` em 2026-08-12, com o custo
