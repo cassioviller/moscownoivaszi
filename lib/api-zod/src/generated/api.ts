@@ -4802,6 +4802,7 @@ export const UpdateBloqueioParams = zod.object({
 })
 
 export const UpdateBloqueioBody = zod.object({
+  "leadId": zod.string().nullish(),
   "provaDataReal": zod.coerce.date().optional(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),

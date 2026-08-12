@@ -20,6 +20,7 @@ import {
   type Cabine,
 } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
+import { SeloProvaOrfa } from "@/components/selo-prova-orfa";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -607,13 +608,17 @@ function CartaoAtendimento({
           </button>
         )}
       </div>
-      <div className="mt-1 flex items-center gap-1">
+      <div className="mt-1 flex flex-wrap items-center gap-1">
         <Badge variant="secondary" className="px-1 py-0 text-[10px] font-normal">
           {atendimento.tipo === "PROVA" ? "Prova" : "Atend."}
         </Badge>
         <span className="truncate text-[10px] text-muted-foreground">
           {SITUACAO_LABELS[atendimento.situacao] ?? atendimento.situacao}
         </span>
+        {/* S-O5: a prova cujo vestido saiu da noiva. Aqui é o card mais
+            apertado do app, então o selo entra compacto — e é a tela que a
+            loja lê o dia inteiro, então é a que mais precisa dele. */}
+        <SeloProvaOrfa atendimento={atendimento} compacto />
       </div>
     </div>
   );

@@ -27,6 +27,7 @@ import { CACHE_ESTAVEL } from "@/lib/cache";
 import { instanteHora } from "@/lib/formatos";
 import { diaLocal } from "@/lib/financeiro/datas";
 import { ancoraDaSemana, colunasDaGrade, diasDaSemana } from "@/lib/agenda-telas";
+import { SeloProvaOrfa } from "@/components/selo-prova-orfa";
 
 /**
  * Visão semanal (E20) — a grade da recepcionista: semana × cabine, cada célula
@@ -244,6 +245,10 @@ export default function AgendaSemana() {
                                     {a.tipo === "PROVA" ? "Prova" : "Atendimento"}
                                     {a.situacao === "FALTOU" && " · faltou"}
                                   </span>
+                                  {/* S-O5: a semana é onde a loja se organiza
+                                      com antecedência — é o melhor lugar para
+                                      descobrir, e não na véspera. */}
+                                  <SeloProvaOrfa atendimento={a} compacto />
                                 </li>
                               );
                             })}

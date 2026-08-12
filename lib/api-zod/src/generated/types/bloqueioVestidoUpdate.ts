@@ -7,6 +7,8 @@
  */
 
 export interface BloqueioVestidoUpdate {
+  /** @nullable */
+  leadId?: string | null;
   provaDataReal?: Date;
   /** @nullable */
   retiradaDataReal?: Date | null;

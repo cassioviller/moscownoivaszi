@@ -264,6 +264,36 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
             throw new ReservaPresaAContrato(presos.length);
           }
         }
+        /**
+         * S-O5/R8 — **as provas que perdem o vestido aqui, contadas aqui.**
+         *
+         * Este soft-cancel devolve as peças ao acervo e não toca em
+         * `atendimentos`: a prova segue AGENDADO apontando um bloqueio que a
+         * disponibilidade e o EXCLUDE do banco já não enxergam. Medido em
+         * 2026-08-12: a peça foi reservada por outra noiva (201) com a prova da
+         * primeira ainda de pé.
+         *
+         * A ironia é a âncora: o `DELETE /bloqueios` (`:867`) **recusa com 409**
+         * porque os atendimentos sumiriam junto (E115), e o comentário dele
+         * manda usar o soft-cancel — a única saída sem guarda nenhuma.
+         *
+         * Decisão da dona em 2026-08-12: **a prova FICA** e a tela a marca como
+         * órfã (`lib/prova-orfa.ts`), porque o sistema não sabe se a noiva
+         * desistiu ou está trocando de vestido, e cancelar sozinho perderia o
+         * horário dela. O que a trilha ganha é o NÚMERO: sem ele, "quantas
+         * noivas ficaram com prova marcada para um vestido que não é mais
+         * delas" não se responde depois do fato.
+         */
+        const provasQuePerderamOVestido = bloqueiosDaReserva.length > 0
+          ? await tx.select({ id: atendimentosTable.id })
+              .from(atendimentosTable)
+              .where(and(
+                inArray(atendimentosTable.bloqueioId, bloqueiosDaReserva.map((b) => b.id)),
+                eq(atendimentosTable.tipo, "PROVA"),
+                inArray(atendimentosTable.situacao, ["AGENDADO", "EM_ATENDIMENTO"]),
+              ))
+          : [];
+
         await registrarAuditoria(tx, {
           lojaId,
           usuario: req.usuario!,
@@ -274,6 +304,8 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
             leadId: reserva.leadId,
             casamentoData: reserva.casamentoData,
             bloqueiosSoltos: bloqueiosDaReserva.length,
+            provasQuePerderamOVestido: provasQuePerderamOVestido.length,
+            provasIds: provasQuePerderamOVestido.map((p) => p.id),
           },
         });
         // A constraint EXCLUDE do banco não enxerga o status da reserva —
@@ -349,6 +381,68 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
             updatedAt: new Date(),
           })
           .where(eq(bloqueioVestidosTable.id, bloqueio.id));
+      }
+
+      /**
+       * S-O4/R6 — **"todos os bloqueios vinculados" não era todo mundo: o
+       * CONTRATO ficava para trás.**
+       *
+       * O comentário acima declara a doutrina — *"reserva é a fonte da verdade
+       * da data operacional"* — e ela para no bloqueio. O contrato ATIVO
+       * preso àquelas peças guarda a própria `dataCasamento`
+       * (`schema/contratos.ts:42`), e é ELA que o PDF assinado
+       * (`lib/contrato-pdf.ts`) e o portal da noiva (`portal.ts:259`) mostram.
+       *
+       * **Medido em 2026-08-12:** reserva movida para 2028-04-02, contrato
+       * parado em 2028-03-13 — **20 dias**, em silêncio, com o papel da noiva
+       * dizendo o dia errado.
+       *
+       * Uma correção ao diagnóstico da sobra, que dizia que as duas portas
+       * mandavam a pessoa para a outra: **não mandam**. O `PATCH /contratos`
+       * confere a data contra o BLOQUEIO (`contratos.ts:1017-1027`), e o
+       * bloqueio já se moveu junto — medido, ele responde **200**. O beco não
+       * existe; o que existe é a divergência calada, que é pior, porque
+       * ninguém vai procurar.
+       *
+       * Só contrato **ATIVO**: cancelado é história, e reescrever a data de um
+       * contrato encerrado falsificaria o que foi assinado.
+       */
+      const idsVinculados = vinculados.map((b) => b.id);
+      const contratosAtualizados = idsVinculados.length > 0
+        ? await tx.update(contratosTable)
+            .set({ dataCasamento: dados.casamentoData, updatedAt: new Date() })
+            .where(and(
+              eq(contratosTable.status, "ATIVO"),
+              eq(contratosTable.lojaId, lojaId),
+              inArray(
+                contratosTable.id,
+                tx.select({ id: contratoBloqueiosTable.contratoId })
+                  .from(contratoBloqueiosTable)
+                  .where(inArray(contratoBloqueiosTable.bloqueioId, idsVinculados)),
+              ),
+            ))
+            .returning({ id: contratosTable.id })
+        : [];
+
+      if (contratosAtualizados.length > 0) {
+        /**
+         * A trilha porque **o papel da noiva mudou**. Um contrato assinado que
+         * passa a dizer outra data sem rastro é a classe que o E94 fechou para
+         * o dinheiro: todo movimento deixa marca, e a data do casamento é o
+         * dado que a noiva confere primeiro.
+         */
+        await registrarAuditoria(tx, {
+          lojaId,
+          usuario: req.usuario!,
+          acao: "CONTRATO_DATA_SEGUIU_RESERVA",
+          entidade: "reserva",
+          entidadeId: reserva.id,
+          detalhe: {
+            de: reserva.casamentoData,
+            para: dados.casamentoData,
+            contratos: contratosAtualizados.map((c) => c.id),
+          },
+        });
       }
       return { ok: true as const };
     });
@@ -749,6 +843,74 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
     return;
   }
 
+  /**
+   * S-O11 — **a reserva aberta na noiva ERRADA passa a ter conserto.**
+   *
+   * A adoção do E162 (A02.4) só alcança a reserva SEM dona: ela entra nas
+   * candidatas do contrato e é adotada no fechamento. Quem escolheu a noiva
+   * errada no combobox ficava com a peça presa no nome de outra, e o único
+   * caminho era apagar — que o E115 recusa quando a reserva carrega prova,
+   * avaria ou contrato. Era a metade do A02.4 que não entrou.
+   *
+   * Duas guardas, e as duas são sobre não desmentir papel já assinado:
+   *
+   * 1. **Contrato ATIVO preso** — ali o nome da noiva está no contrato e no
+   *    PDF. Trocar a dona por baixo dele venderia a peça de uma para outra sem
+   *    que o contrato soubesse. 409 legível, apontando o caminho (cancelar o
+   *    contrato).
+   * 2. **Reserva-mãe de outra noiva** — o bloqueio pendurado numa reserva-mãe
+   *    herda o dono dela (`donoDoBloqueio`, E167/V14). Deixar as duas pontas
+   *    discordarem criaria o estado que a S-O11 existe para desfazer.
+   */
+  if (dados.leadId !== undefined && dados.leadId !== existente.leadId) {
+    if (dados.leadId !== null && !(await leadNaLoja(dados.leadId, lojaId))) {
+      res.status(422).json({
+        error: "REFERENCIA_INVALIDA",
+        detalhe: "Esta noiva não é desta loja.",
+        campos: [{ campo: "leadId", motivo: "A noiva não existe nesta loja" }],
+      });
+      return;
+    }
+
+    const presos = await db.select({ contratoId: contratoBloqueiosTable.contratoId })
+      .from(contratoBloqueiosTable)
+      .innerJoin(contratosTable, eq(contratosTable.id, contratoBloqueiosTable.contratoId))
+      .where(and(
+        eq(contratoBloqueiosTable.bloqueioId, bloqueioId),
+        eq(contratosTable.status, "ATIVO"),
+      ));
+    const legado = await db.select({ id: contratosTable.id }).from(contratosTable)
+      .where(and(
+        eq(contratosTable.bloqueioVestidoId, bloqueioId),
+        eq(contratosTable.status, "ATIVO"),
+      ));
+    if (presos.length + legado.length > 0) {
+      res.status(409).json({
+        error: "RESERVA_COM_CONTRATO",
+        detalhe:
+          `${presos.length + legado.length} contrato(s) ativo(s) preso(s) a esta reserva — ` +
+          "o nome da noiva já está no contrato assinado. Cancele o contrato antes de trocar a noiva.",
+        contratosAtivos: presos.length + legado.length,
+      });
+      return;
+    }
+
+    if (existente.reservaId) {
+      const [mae] = await db.select({ leadId: reservasTable.leadId }).from(reservasTable)
+        .where(and(eq(reservasTable.id, existente.reservaId), eq(reservasTable.lojaId, lojaId)));
+      if (mae && mae.leadId !== dados.leadId) {
+        res.status(422).json({
+          error: "RESERVA_MAE_DE_OUTRA_NOIVA",
+          detalhe:
+            "Este vestido está pendurado na reserva de outra noiva. Troque a noiva na reserva inteira, " +
+            "ou solte o vestido dela antes.",
+          campos: [{ campo: "leadId", motivo: "A reserva-mãe é de outra noiva" }],
+        });
+        return;
+      }
+    }
+  }
+
   // E61: null é "desfaça" (limpa a data), ausente é "não mexa" — por isso o
   // teste é contra undefined, não o ??, que engoliria o null.
   const candidato: BloqueioJanelasInput = {
@@ -828,6 +990,10 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
 
     const [bloqueio] = await tx.update(bloqueioVestidosTable)
       .set({
+        // S-O11: `undefined` continua sendo "não mexa" — a troca de dona só
+        // acontece quando o corpo traz `leadId`, e `null` a devolve a SEM DONA,
+        // que é o estado que a adoção do E162 já sabe resolver.
+        leadId: dados.leadId,
         provaDataReal: dados.provaDataReal,
         retiradaDataReal: dados.retiradaDataReal,
         devolucaoDataReal: dados.devolucaoDataReal,
@@ -841,6 +1007,27 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
       })
       .where(and(eq(bloqueioVestidosTable.id, bloqueioId), eq(bloqueioVestidosTable.lojaId, lojaId)))
       .returning();
+
+    /**
+     * S-O11 — trocar a dona de uma reserva é mexer em de quem é a peça, e a
+     * pergunta "por que esta reserva mudou de noiva?" só tem uma resposta
+     * possível depois do fato: esta linha. O detalhe guarda as DUAS pontas,
+     * porque `de` não existe em lugar nenhum depois da escrita.
+     */
+    if (dados.leadId !== undefined && dados.leadId !== existente.leadId) {
+      await registrarAuditoria(tx, {
+        lojaId,
+        usuario: req.usuario!,
+        acao: "RESERVA_DONA_TROCADA",
+        entidade: "bloqueio",
+        entidadeId: bloqueioId,
+        detalhe: {
+          de: existente.leadId,
+          para: dados.leadId,
+          vestidoId: existente.vestidoId,
+        },
+      });
+    }
     return { bloqueio: bloqueio! };
   });
   if ("conflitos" in atualizado) {

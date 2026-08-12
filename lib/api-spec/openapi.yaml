@@ -5908,6 +5908,16 @@ components:
     BloqueioVestidoUpdate:
       type: object
       properties:
+        # S-O11 — a reserva aberta na noiva ERRADA não tinha conserto.
+        #
+        # A adoção do E162 só alcança a reserva SEM dona (`leadId` nulo): quem
+        # escolheu a noiva errada no combobox ficava com a peça presa no nome de
+        # outra, e o único caminho era apagar a reserva — que o E115 recusa
+        # quando ela carrega prova, avaria ou contrato.
+        #
+        # O servidor recusa a troca com contrato ATIVO preso: ali o nome da
+        # noiva já está no papel assinado.
+        leadId: { type: ["string", "null"] }
         provaDataReal: { type: string, format: date-time }
         # E61: null EXPLÍCITO desfaz a movimentação registrada errada (a data
         # volta a "não aconteceu"); campo ausente segue significando "não mexa".

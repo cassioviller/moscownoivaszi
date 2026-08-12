@@ -86,6 +86,14 @@ export const ACOES_AUDITORIA = [
   "RESERVA_REMOVIDA",
   // S-M24: cancelar a reserva solta os vestidos — nao deixava trilha nenhuma.
   "RESERVA_CANCELADA",
+  // S-O4: mover a data da reserva move a data do CONTRATO ATIVO junto — e o
+  // que muda ali é o papel que a noiva assinou. Sem trilha, um contrato passa
+  // a dizer outra data sem ninguém saber quem o mudou.
+  "CONTRATO_DATA_SEGUIU_RESERVA",
+  // S-O11: a reserva aberta na noiva errada passou a ter conserto, e trocar a
+  // dona é mexer em de quem é a peça. O `de` não existe em lugar nenhum depois
+  // da escrita — se não estiver aqui, está perdido.
+  "RESERVA_DONA_TROCADA",
   "BLOQUEIO_REMOVIDO",
   "ATENDIMENTO_REMOVIDO",
   "ORCAMENTO_REMOVIDO",
@@ -167,6 +175,8 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   CONCILIACAO_MARCADA: "Movimentos conferidos com o extrato",
   RESERVA_REMOVIDA: "Reserva removida",
   RESERVA_CANCELADA: "Reserva cancelada (vestidos liberados)",
+  CONTRATO_DATA_SEGUIU_RESERVA: "Data do casamento do contrato seguiu a reserva",
+  RESERVA_DONA_TROCADA: "Reserva passou para outra noiva",
   BLOQUEIO_REMOVIDO: "Bloqueio de vestido removido",
   ATENDIMENTO_REMOVIDO: "Atendimento removido da agenda",
   ORCAMENTO_REMOVIDO: "Orçamento removido",

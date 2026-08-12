@@ -9,6 +9,7 @@ import {
 import { hojeLocal, addDias, diaLocal } from "@/lib/financeiro/datas";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { SeloProvaOrfa } from "@/components/selo-prova-orfa";
 import { Button } from "@/components/ui/button";
 import { diaMesAbrevAno, instanteMesAbrev, instanteMesAno } from "@/lib/formatos";
 import {
@@ -150,6 +151,10 @@ export default function Provas() {
                             <Badge variant="secondary">
                               {ROTULO_SITUACAO[p.situacao] ?? p.situacao}
                             </Badge>
+                            {/* S-O5: esta é a fila de quem VAI experimentar, e
+                                é onde a loja se prepara — o vestido que já não
+                                é da noiva precisa aparecer aqui, não na cabine. */}
+                            <SeloProvaOrfa atendimento={p} />
                             {vestido && (
                               <span className="text-xs text-muted-foreground">
                                 {vestido.codigo} · {vestido.nome}

@@ -48,6 +48,7 @@ import { AlertCircle, Plus, Pencil, CalendarPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl, etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS, ROTULO_ORIGEM, instanteDia, instanteDiaHora } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
+import { SeloProvaOrfa } from "@/components/selo-prova-orfa";
 import { ehNaoEncontrado, mensagemApi } from "@/lib/erro-api";
 import { proximoPasso } from "@/lib/proximo-passo";
 import { proximaVisita } from "@/lib/proxima-visita";
@@ -486,6 +487,12 @@ export default function NoivaDetalhe() {
                   >
                     {instanteDiaHora(visita.inicio)}
                   </Link>
+                  {/* S-O5: esta é a linha que a recepção lê quando a noiva
+                      liga perguntando "que dia é minha prova?". Se o vestido
+                      saiu dela, é aqui que se descobre antes de responder. */}
+                  <div className="mt-1">
+                    <SeloProvaOrfa atendimento={visita} />
+                  </div>
                 </div>
               )}
             </div>

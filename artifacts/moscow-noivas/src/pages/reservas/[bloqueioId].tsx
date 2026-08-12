@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ComboboxNoiva } from "@/components/combobox-noiva";
 import { Link, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -293,6 +294,38 @@ export default function ReservaDetalhe() {
     }
   };
 
+  /**
+   * S-O11 — **trocar a noiva da reserva**, que era a metade do A02.4 que não
+   * entrou.
+   *
+   * A adoção do E162 só alcança a reserva SEM dona. Quem escolheu a noiva
+   * errada no combobox ficava com a peça presa no nome de outra, e o único
+   * caminho era apagar a reserva — que o E115 recusa quando ela carrega prova,
+   * avaria ou contrato ativo. O servidor recusa a troca com contrato ATIVO
+   * preso (o nome dela já está no papel assinado), e a frase do 409 diz o
+   * caminho; aqui a tela só a repete.
+   */
+  const [trocandoNoiva, setTrocandoNoiva] = useState(false);
+  const [noivaEscolhida, setNoivaEscolhida] = useState<string | null>(null);
+  const trocarNoiva = () =>
+    comToast(
+      async () => {
+        await updateBloqueio.mutateAsync({
+          lojaId: activeLojaId!,
+          bloqueioId: bloqueioId!,
+          data: { leadId: noivaEscolhida },
+        });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getGetBloqueioQueryKey(activeLojaId!, bloqueioId!) }),
+          queryClient.invalidateQueries({ queryKey: getListBloqueiosQueryKey(activeLojaId!) }),
+        ]);
+        setTrocandoNoiva(false);
+        setNoivaEscolhida(null);
+      },
+      "Reserva passou para a outra noiva",
+      "Não deu para trocar a noiva desta reserva",
+    );
+
   const registrarMovimentacao = (campo: "retiradaDataReal" | "devolucaoDataReal" | "lavagemConcluidaEm") =>
     comToast(
       async () => {
@@ -515,6 +548,78 @@ export default function ReservaDetalhe() {
               ? <>a {diaMesAnoLongo(reserva.ocupacaoFim)}.</>
               : <>(em aberto, peça ainda fora).</>}
           </p>
+        </section>
+      )}
+
+      {/* S-O11 — de quem é esta reserva, e como consertar quando é de outra.
+          Fica no topo de propósito: quem abre a ficha por engano descobre aqui
+          que ela é da noiva errada, antes de registrar movimentação nela. */}
+      {podeMovimentar && (
+        <section className="space-y-3">
+          <h2 className="text-xs uppercase tracking-wider text-muted-foreground">De quem é</h2>
+          <Card>
+            <CardContent className="pt-6 space-y-3">
+              {trocandoNoiva ? (
+                <>
+                  <p className="text-sm">
+                    Passar esta reserva para outra noiva. O vestido, as datas e as provas ficam
+                    onde estão — muda só de quem ela é.
+                  </p>
+                  <ComboboxNoiva
+                    lojaId={activeLojaId!}
+                    value={noivaEscolhida}
+                    onChange={setNoivaEscolhida}
+                    ariaLabel="Noiva desta reserva"
+                    placeholder="Escolha a noiva certa"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      disabled={!noivaEscolhida || noivaEscolhida === reserva.leadId || updateBloqueio.isPending}
+                      onClick={trocarNoiva}
+                      data-testid="confirmar-troca-de-noiva"
+                    >
+                      Passar para esta noiva
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setTrocandoNoiva(false);
+                        setNoivaEscolhida(null);
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm">
+                    {reserva.lead?.noivaNome ? (
+                      <>
+                        Reserva de <strong>{reserva.lead.noivaNome}</strong>.
+                      </>
+                    ) : (
+                      <>
+                        Esta reserva <strong>ainda não tem noiva</strong> — ela será adotada quando
+                        um contrato prender esta peça.
+                      </>
+                    )}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setNoivaEscolhida(reserva.leadId ?? null);
+                      setTrocandoNoiva(true);
+                    }}
+                    data-testid="trocar-noiva-da-reserva"
+                  >
+                    Trocar a noiva
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </section>
       )}
 

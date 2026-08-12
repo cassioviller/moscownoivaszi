@@ -1453,6 +1453,8 @@ export interface AvariaInput {
 }
 
 export interface BloqueioVestidoUpdate {
+  /** @nullable */
+  leadId?: string | null;
   provaDataReal?: string;
   /** @nullable */
   retiradaDataReal?: string | null;
