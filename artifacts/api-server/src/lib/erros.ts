@@ -220,6 +220,42 @@ export function classificarErro(err: unknown): Classificacao {
   }
 
   /**
+   * S-O3 — **o `integer` que o gerador de zod perde chega ao banco, e o banco
+   * responde 500.**
+   *
+   * O spec declara `quantidade: { type: integer, minimum: 1 }` e o orval
+   * traduz para `zod.number().min(1)`: **o `integer` some**. Medido em
+   * 2026-08-12 — são **115 `type: integer` no spec e ZERO `.int()` no zod
+   * gerado** (`varredura-restricoes-do-spec.test.ts`), e a tradução do
+   * `integer` simplesmente não existe.
+   *
+   * O valor fracionário atravessa a borda inteira e morre no `INSERT`, com
+   * **22P02** (*invalid input syntax for type integer*). Medido: `quantidade:
+   * 2.5` num item de orçamento respondia **500 ERRO_INTERNO** — "quebrei"
+   * onde a verdade é "você mandou um número que não é inteiro".
+   *
+   * Consertar campo a campo seriam 115 guardas, e o P5 já mostrou que se
+   * conserta um por vez conforme dói. Esta linha fecha a CLASSE pela outra
+   * ponta: o erro passa a ser **400 legível** em toda porta, e não um 500 numa.
+   *
+   * 22003 (`numeric_value_out_of_range`) é a irmã — o número cabe no tipo do
+   * zod e não cabe no da coluna. Mesma família, mesma resposta.
+   */
+  if (code === "22P02" || code === "22003") {
+    return {
+      status: 400,
+      body: {
+        error: "VALOR_FORA_DO_FORMATO",
+        detalhe:
+          "Um dos valores enviados não tem o formato que este campo aceita — " +
+          "confira se os números que deveriam ser inteiros não têm casas decimais.",
+      },
+      logLevel: "warn",
+      logMsg: "Valor fora do formato da coluna (o zod gerado não traduz `integer` — S-O3)",
+    };
+  }
+
+  /**
    * S-D19/E143 — a corrida que o mapa não conhecia.
    *
    * Dois INSERTs simultâneos contra o EXCLUDE gist de `bloqueio_vestidos` nem
