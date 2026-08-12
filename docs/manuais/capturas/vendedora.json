@@ -1,0 +1,24 @@
+{
+  "manual": "vendedora",
+  "gerado": "2026-08-12T01:37:50.433Z",
+  "loja": "demo-manuais-loja",
+  "sessao": "camila@moscownoivas.com",
+  "ambiente": {
+    "locale": "pt-BR",
+    "timezone": "America/Sao_Paulo",
+    "viewport": "1280×860 @2×",
+    "tema": "claro"
+  },
+  "capturas": [
+    "vendedora-menu.png",
+    "vendedora-noivas.png",
+    "vendedora-nova-noiva.png",
+    "vendedora-ficha.png",
+    "vendedora-funil.png",
+    "vendedora-agendar.png",
+    "vendedora-orcamento.png",
+    "vendedora-proposta-da-noiva.png",
+    "vendedora-contrato.png",
+    "vendedora-mensagens.png"
+  ]
+}

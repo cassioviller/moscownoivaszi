@@ -217,6 +217,12 @@
   .caixa li { margin: 0; font-size: 14.5px; padding: 3px 9px; border-radius: 5px; background: var(--chip-fundo); }
   .caixa.naove li { color: var(--tinta-fraca); text-decoration: line-through; text-decoration-color: var(--linha-forte); }
 
+  /* ── Os prints ─────────────────────────────────────────────────────────
+     A página web não os carrega: `scripts/prints-dos-manuais.ts` preenche
+     estas âncoras na hora de imprimir o PDF. Vazia, a figura não ocupa
+     espaço — sem isto o `<figure>` do navegador deixaria um vão de 1em. */
+  figure.print:empty { display: none; margin: 0; }
+
   /* ── Nota de rodapé de seção ───────────────────────────────────────────── */
   .nota {
     font-size: 15px; color: var(--tinta-fraca);
@@ -298,6 +304,7 @@
           </ul>
         </div>
       </div>
+      <figure class="print" data-print="menu"></figure>
       <p><strong><span class="btn">Minha comissão</span> é exceção, e é sua.</strong> Ela aparece mesmo você não tendo o módulo de comissões, porque é o <strong>seu próprio extrato</strong> — o que você ganhou, não o da loja.</p>
       <div class="fala">
         <span class="rotulo">Se algum botão responder</span>
@@ -331,12 +338,16 @@
         <span class="rotulo">Depois do contrato, a Origem trava</span>
         <p>“A noiva já fechou contrato — o relatório de conversão já contou esta origem, e mudá-la agora reescreveria um número lido.”</p>
       </div>
+      <figure class="print" data-print="nova-noiva"></figure>
       <p>Salvou, o sistema abre a ficha dela direto.</p>
+      <figure class="print" data-print="noivas"></figure>
     </section>
 
     <section id="ficha">
       <h2><span class="passo">2</span>A ficha da noiva</h2>
       <p class="resumo">É a tela para onde você volta o tempo todo. Ela não tem abas — tem uma faixa no topo e oito blocos abaixo.</p>
+
+      <figure class="print" data-print="ficha"></figure>
 
       <h3>A faixa “próximo passo”</h3>
       <p>Aparece só quando há o que fazer, e diz a frase da situação dela com o botão junto.</p>
@@ -384,6 +395,8 @@
       <p>Escolha o <strong>Tipo</strong>: “Atendimento” ou <strong>“Prova”</strong>.</p>
       <p><strong>Prova exige a reserva do vestido.</strong> É a regra que impede duas noivas de provarem a mesma peça no mesmo sábado. Se a noiva ainda não tem reserva, <strong>você cria ali mesmo</strong>, sem sair da tela: escolha o vestido, confirme a data do casamento e clique <span class="btn">Criar reserva</span>.</p>
 
+      <figure class="print" data-print="agendar"></figure>
+
       <h3>O horário é uma grade de botões, não um campo</h3>
       <p>Você escolhe cabine, vendedora e data — e o sistema <strong>acende só os horários que existem</strong>. O horário apagado tem o motivo escrito nele; passe o mouse para ler:</p>
       <div class="fala">
@@ -401,6 +414,8 @@
     <section id="orcamento">
       <h2><span class="passo">6</span>O orçamento</h2>
       <p class="resumo">Ficha → bloco Orçamentos → <span class="btn">Novo orçamento</span></p>
+
+      <figure class="print" data-print="orcamento"></figure>
 
       <h3>Lançar os itens</h3>
       <p>Escolha o <strong>Tipo</strong> do item: Vestido, Acessório, Estoque, Serviço ou Ajuste. Escolhendo do catálogo, <strong>descrição e preço vêm sozinhos</strong>. Todos os tipos têm a opção <span class="btn">— avulso (digitar) —</span> para o que não está cadastrado.</p>
@@ -436,6 +451,7 @@
       <p><strong>A proposta não sai vazia.</strong> Sem nenhum item, o sistema responde <em>“A proposta não tem nenhum item — lance o vestido antes de mandar o link para a noiva.”</em> Isso protege uma venda inteira: uma proposta de R$ 0,00 aceita pela noiva travava o orçamento em aprovado e impedia lançar o vestido depois.</p>
 
       <h3>O que a noiva vê</h3>
+      <figure class="print" data-print="proposta-da-noiva"></figure>
       <p>O nome dela e o da loja, os itens, o desconto, o total, a validade — e o botão de aceitar. Ao aceitar, a página vira comprovante: <em>“Você aceitou esta proposta em …”</em>.</p>
       <p>Você acompanha pela própria tela do orçamento: o subtítulo diz <em>“aberto pela noiva em …”</em> ou <em>“link enviado, ainda não aberto”</em>, e o chip diz <strong>“Aceito pela noiva”</strong> ou <strong>“Sem aceite da noiva”</strong>.</p>
 
@@ -476,6 +492,7 @@
 
       <h3>A tela do contrato</h3>
       <p>Traz <strong>“Valor total”</strong>, <strong>“Falta receber”</strong>, a forma de pagamento, o CPF, o vestido e os itens. Abaixo, o plano de pagamento, parcela por parcela, com o estado de cada uma: Prevista, Paga, Parcial, Atrasada, Cancelada.</p>
+      <figure class="print" data-print="contrato"></figure>
       <p class="nota">Você pode <span class="btn">Baixar PDF</span> a qualquer momento — inclusive de contrato cancelado, e nesse caso <b>o papel sai com a tarja de cancelado</b>. É de propósito: esse é justamente o documento que prova o cancelamento.</p>
     </section>
 
@@ -539,10 +556,12 @@
         <li><strong>“Aceites esperando contrato”</strong> — <em>“A noiva já disse sim — o vestido só fica dela quando o contrato fechar.”</em> Cada linha traz o valor, há quantos dias, e quantas peças estão sem reserva, com o botão <span class="btn">Gerar contrato</span></li>
         <li><strong>“Orçamentos vencendo — próximas 72h”</strong> — o lembrete antes de a validade passar em silêncio</li>
       </ul>
+      <figure class="print" data-print="mensagens"></figure>
       <p class="nota">O bloco de valores em aberto é do financeiro e não aparece para você.</p>
 
       <h3>O funil</h3>
       <p>Noivas → vista de funil. Onze colunas, do “Novo” ao “Devolvido”. Arraste o card, ou use o menu dele.</p>
+      <figure class="print" data-print="funil"></figure>
       <p>O card <strong>acende quando a noiva está parada</strong>: amarelo depois de <strong>7 dias</strong> sem contato, vermelho depois de <strong>14</strong>. Só as etapas de negociação envelhecem — quem já fechou contrato não fica amarela por não receber mensagem.</p>
 
       <h3>Provas e Reservas</h3>

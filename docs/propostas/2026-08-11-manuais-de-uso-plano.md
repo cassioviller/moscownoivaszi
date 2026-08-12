@@ -118,10 +118,35 @@ coberta.** São 171 specs. Onde o manual descreve um caminho que nenhum spec
 cruza, isso é dito — e vira candidato a spec novo, exatamente como o E166 fez
 com o caminho público (que tinha ZERO).
 
-**d) Nenhuma captura de tela na primeira versão.** `scripts/capturar-telas.ts`
+**d) Nenhuma captura de tela na primeira versão.** ~~`scripts/capturar-telas.ts`
 existe e faz 27 rotas × claro/escuro/390px, mas imagem é a parte que apodrece
-mais rápido e mais silenciosamente. Texto primeiro; imagem depois, se o Renato
-pedir, e gerada por script para poder ser refeita em lote.
+mais rápido e mais silenciosamente.~~ Texto primeiro; imagem depois, **se o
+Renato pedir, e gerada por script para poder ser refeita em lote**.
+
+> **O Renato pediu (2026-08-12): "manual pdf com prints".** A régua se cumpriu
+> como estava escrita — o texto veio primeiro, os cinco manuais existiam antes
+> da primeira imagem, e a imagem nasceu **por script**, não colada à mão.
+> Foram precisas três peças, e a ordem delas é o achado:
+>
+> 1. **`scripts/loja-de-demonstracao.ts`** — a loja dos prints. As capturas
+>    sairiam da loja do E2E, e a primeira amostra provou que ela não serve:
+>    **1.289 leads**, e os visíveis na primeira tela eram *"Noiva Combobox
+>    mspc8…"*, *"E2E Reabrir 178…"*, todos com *"Casamento a definir"*. Nomes
+>    inventados, telefones de faixa reservada, nenhum CPF, e **datas relativas a
+>    hoje** — um casamento em data fixa envelhece e o print passa a mostrar
+>    contagem negativa.
+> 2. **`scripts/prints-dos-manuais.ts`** — captura e imprime. A sessão é a do
+>    **perfil de cada manual** (o admin é superadmin, e o menu dele no manual da
+>    vendedora seria a mentira que a varredura existe para impedir); o tour
+>    modal é apagado antes de existir; o PDF sai do **mesmo HTML** da página
+>    publicada, com as imagens injetadas nas âncoras `<figure data-print>`.
+> 3. **A folha de impressão**, dentro do script: o índice lateral some, a seção
+>    não quebra no meio do título, e o tema é claro fixo.
+>
+> Duas coisas que a primeira rodada ensinou, e as duas estão consertadas: o
+> recorte `aside` do menu virava **duas páginas** de PDF (imagem estreita
+> esticada à largura da folha), e o campo de data saía **`mm/dd/yyyy`** — a
+> **S-O42**, que é a S-D2 com outra causa.
 
 ## A ordem, em quatro entregas
 

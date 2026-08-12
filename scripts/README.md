@@ -48,3 +48,28 @@ O pacote nasceu do template com um `src/hello.ts` que imprimia
 vazio. Três anos de scaffolding sobrevivendo ao lado de um script real — e o
 `typecheck` do repo abria um `tsc` a mais por causa do arquivo de exemplo.
 Ficou o que se usa.
+
+## `loja-de-demonstracao.ts` e `prints-dos-manuais.ts` — os prints dos manuais
+
+Os dois andam juntos, nesta ordem, com o app de pé (os dois servidores do
+`playwright.config.ts`):
+
+```bash
+APP_DATABASE_NAME= pnpm --filter @workspace/api-server exec tsx ../../scripts/loja-de-demonstracao.ts
+BASE_URL=http://localhost:5173 APP_DATABASE_NAME= \
+  pnpm --filter @workspace/api-server exec tsx ../../scripts/prints-dos-manuais.ts vendedora
+```
+
+O primeiro semeia a **loja de demonstração** (`demo-manuais-loja`) — idempotente,
+nomes inventados, datas relativas a hoje. O segundo captura as telas com a
+sessão do **perfil daquele manual** e imprime o PDF em `docs/manuais/pdf/`.
+
+Onde entram os prints é o próprio HTML do manual que declara, em
+`<figure class="print" data-print="nome"></figure>`. Âncora sem captura sai
+vazia e o script avisa na saída.
+
+**Não confunda com `capturar-telas.ts`**, que é da revisão de design: três
+variantes por rota, sessão de admin, manifest de ambiente. A diferença que mais
+morde está registrada na **S-O42**: o `--lang=pt-BR` sozinho não fixa a locale
+da INTERFACE do Chromium deste ambiente — sem `LANG`/`LANGUAGE` no `env` do
+`launch`, o `<input type=date>` sai `mm/dd/yyyy`.
