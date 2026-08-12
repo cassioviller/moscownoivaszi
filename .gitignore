@@ -67,3 +67,7 @@ docs/revisao/*/capturas/**/*.png
 # bytes, conferida). Ele entrou por engano num `git add -A` (S37, `85d5108`) e
 # saiu em seguida: evidência versiona uma vez, na forma que se lê.
 /*.zip
+
+# Derivado de `scripts/prints-dos-manuais.ts`: o manual com os prints em base64
+# (5 MB). O PDF e os PNGs são versionados; esta cópia HTML é só para publicar.
+docs/manuais/pdf/*.html

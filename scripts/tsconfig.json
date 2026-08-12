@@ -16,7 +16,14 @@
     "incremental": false,
     // Script de linha de comando é Node puro: `node:child_process`, `node:fs`,
     // `process`, `import.meta.dirname`.
-    "types": ["node"]
+    "types": ["node"],
+    // …com UMA exceção declarada: o corpo de `page.evaluate` roda no NAVEGADOR,
+    // e sem `dom` aqui o `document` de dentro dele não compila
+    // (`prints-dos-manuais.ts` desenha os realces por lá). O custo é conhecido:
+    // o resto do pacote passa a enxergar `document`/`window` como se
+    // existissem em Node — se algum script os usar fora de um `evaluate`, o
+    // typecheck aprova e o `tsx` estoura em tempo de execução.
+    "lib": ["ES2023", "DOM"]
   },
   "include": ["."]
 }
