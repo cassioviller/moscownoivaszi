@@ -19,11 +19,34 @@ para o documento que manda.
    compararam cláusula por cláusula com o que o sistema faz, e o plano
    (`docs/propostas/2026-08-13-o-contrato-vira-regra-plano.md`) fechou **12
    épicos, E211–E222, em quatro ondas** — ordenadas não por cláusula nem por
-   valor, mas por **de onde vem o dado**. **A Onda A está EXECUTADA inteira**:
-   E211 (`0c8874a`), E212 (`a88d7ead`) e E213 (`fa7d838`). Com E214 (`0c15cda`),
-   E216 (`eaa4e90`) e E221 (`fcc24e9`), são **6 de 12**. A tabela do
-   `EXECUCAO.md` é a fila; **conte, não deduza** — hoje são **11 sobras** e
-   **4 pendências que não são software**.
+   valor, mas por **de onde vem o dado**. **As Ondas A e B estão EXECUTADAS**,
+   menos o E219: E211 (`0c8874a`), E212 (`a88d7ead`), E213 (`fa7d838`), E214
+   (`0c15cda`), E216 (`eaa4e90`), E218 (`f8ab561`), E221 (`fcc24e9`) e E222
+   (`31422db`) — **8 de 12**. A tabela do `EXECUCAO.md` é a fila; **conte, não
+   deduza** — hoje são **21 sobras** (1 🟠, 5 🟡, 15 🔵) e **4 pendências que não
+   são software**. O que resta tem plano próprio:
+   [`2026-08-13-fechar-o-contrato-plano.md`](docs/propostas/2026-08-13-fechar-o-contrato-plano.md).
+
+   **O E219 está BLOQUEADO, e o motivo é o achado que ordena o resto:** a porta
+   que ele guardaria **não existe**. `contrato_itens` e `contrato_bloqueios`
+   recebem escrita num sítio só — o `INSERT` do `POST /contratos` —, então trocar
+   de traje hoje é cancelar o contrato e fazer outro.
+
+   **Quatro épicos seguidos ensinaram a mesma coisa, de quatro formas: o plano
+   deste contrato supõe portas que o sistema não tem.** No E213 a régua faltava
+   na porta AO LADO (o `POST /receber` recusava os R$ 515,00 que as outras três
+   leituras mostravam); no E222 o campo existia e **nenhuma tela** o oferecia (1
+   de 723); no E219 a porta não existe; no E215 a porta existe, o campo é
+   **opcional**, e por isso está em **0 de 723**. Por isso a primeira pergunta de
+   cada épico virou *quantos passam por aqui hoje* — respondida com
+   `git ls-files` e um `SELECT`, antes da primeira linha, e nos quatro casos ela
+   mudou o tamanho do épico.
+
+   **E o banco de `DATABASE_URL` é o `heliumdb`, não o `moscow_base`.** Os dois
+   existem e não contam a mesma história: `moscow_base` tem **0 contratos e 0
+   parcelas**. Três relatórios desta trilha nasceram dizendo `moscow_base` sobre
+   medições que saíram do `heliumdb` (corrigido em `1d9ccff`). **Rode
+   `SELECT current_database()` antes de escrever o nome do banco num relatório.**
 
    Os três da Onda A estabeleceram o mecanismo que a Onda B reusa: **uma cobrança
    nasce de um fato do contrato**, a conta é **DERIVADA** (cresce todo dia, e
@@ -339,12 +362,13 @@ para o documento que manda.
    ainda está em dia — esta linha envelhece a cada commit, e já envelheceu
    cinco vezes.
 
-   Hoje a régua é **API 1467 (207 arquivos) · frontend 803 (90 arquivos) ·
-   E2E 171 · typecheck verde em 5 projetos** (medida em 2026-08-13, no E213, e as
-   três em série). Ela é MEDIDA a cada onda, e envelhece depressa: este parágrafo
-   já disse *1389 · 704* enquanto seis épicos do contrato somavam 78 testes de
-   API e 99 de frontend sem que ninguém refizesse a conta — e antes disso dizia
-   *1349 · 683* com o `main` em *1369 · 692*. **Meça antes de citar.** E **o
+   Hoje a régua é **API 1537 (213 arquivos) · frontend 823 (91 arquivos) ·
+   E2E 171 · typecheck verde em 5 projetos** (medida em 2026-08-13, depois de
+   integrar o lote de cinco agentes, e as três em série). Ela é MEDIDA a cada
+   onda, e envelhece depressa: este parágrafo já disse *1389 · 704* enquanto seis
+   épicos do contrato somavam 78 testes de API e 99 de frontend sem que ninguém
+   refizesse a conta — e antes disso dizia *1349 · 683* com o `main` em
+   *1369 · 692*. **Meça antes de citar.** E **o
    frontend pode não estar verde**, pela S-O119 — o helper `emDiasISO` fabrica a data
    como instante e o código a lê como dia, então o arquivo `ajustes-prazo`
    reprova entre 00:00 e 03:00 UTC e passa nas outras 21 horas. **Régua que
