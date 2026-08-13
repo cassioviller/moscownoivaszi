@@ -46,7 +46,7 @@ A ordem não é por cláusula nem por valor: é por **de onde vem o dado**.
 
 | Épico | Tese | Cláusula | Migração? | Estado |
 |---|---|---|---|---|
-| **E211** | **a data que muda tem preço** — o E193 já grava `RESERVA_DATA_MOVIDA`; falta contar as trocas e reajustar (+10% ano seguinte, +20% na 2ª, +30% na 3ª) | 17ª §2º e §3º | sim (valor novo em `parcelas.origem`) | aberto |
+| ~~**E211**~~ | ~~a data que muda tem preço~~ | 17ª §2º e §3º | rodada e conferida | ✅ `0c8874a` · [relatório](execucao/E211.md) — o reajuste vira PARCELA (não engorda `valorTotal`, senão a base do próximo cresce sozinha) e o degrau vira COLUNA (não contagem da trilha). **O aviso aparece antes do clique**, porque o botão move na hora e a vendedora descobriria a cobrança depois de prometer a data. Duas lições caras: o `drizzle-kit push` **mentiu** ("Changes applied" sem aplicar nada), e a suíte cobrou **5 reprovações que eram todas régua certa** — inclusive a do snapshot, que enumera pelo VERSIONAMENTO e reprovou de novo depois do `generate` |
 | **E212** | **o atraso na devolução tem preço** — `ATRASO_DEVOLUCAO` já existe em `disponibilidade.ts:60`; falta cobrar (1 diária/dia + R$ 250; 10 dias = extravio, 4×) | 16ª e §§ | sim (origem) | aberto |
 | **E213** | **a parcela vencida tem multa e juros** — `caixa.ts:239` já sabe que venceu; falta 2% + 1% ao mês | 9ª | provável (perdão registrado) | aberto |
 
