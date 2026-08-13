@@ -62,6 +62,7 @@ import { identificarImagem } from "../lib/imagem";
 import { atributosDaLoja, vestidoNaLoja, confeccaoPodeVirarPeca } from "../lib/escopo-loja";
 import { erroDeValidacao } from "../lib/erros";
 import { intervaloValidado } from "../lib/intervalo";
+import { ancoraDeNegocio } from "@workspace/financeiro-core";
 
 const router: IRouter = Router();
 
@@ -234,11 +235,13 @@ router.get("/lojas/:lojaId/vestidos/disponibilidade", async (req, res): Promise<
   ]);
 
   // "Se eu criar uma RESERVA_CASAMENTO com casamentoData = data, quais
-  // vestidos conflitam?" — meio-dia São Paulo (fuso fixo -03:00).
+  // vestidos conflitam?" — meio-dia São Paulo, pela âncora da casa (S-O117:
+  // este `T12:00:00-03:00` escrito à mão era a quinta grafia de
+  // `ancoraDeNegocio`, e a única fora dela).
   const candidato: BloqueioJanelasInput = {
     id: "__candidato__",
     tipo: "RESERVA_CASAMENTO",
-    casamentoData: new Date(`${data}T12:00:00-03:00`),
+    casamentoData: ancoraDeNegocio(data),
     provaDataReal: null,
     retiradaDataReal: null,
     devolucaoDataReal: null,

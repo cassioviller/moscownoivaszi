@@ -122,6 +122,24 @@ export function ancoraDeNegocio(dia: string): Date {
   return new Date(`${dia}T12:00:00-03:00`);
 }
 
+/**
+ * A mesma âncora para uma data de negócio que chegou pela PORTA, já coagida a
+ * `Date` pelo zod.
+ *
+ * S-O117: a tela ancora antes de mandar (`diaParaISO`), e por isso o dia só
+ * escorrega para quem fala com a API direto — `new Date("2028-09-05")` em
+ * JavaScript é meia-noite UTC, que é 21h do dia 4 em São Paulo. Quem lê aquilo
+ * como INSTANTE perde um dia; ancorar na entrada faz o dia UTC e o dia local
+ * coincidirem, e aí tanto faz por qual régua o leitor pergunta.
+ *
+ * O dia é o dia UTC do que chegou (`diaDeNegocio`): quem manda um instante de
+ * fim de noite em SP (`23:00-03:00`, que já é o dia seguinte em UTC) recebe o
+ * dia seguinte. É a definição de data de negócio, não um efeito colateral.
+ */
+export function reancorarDataDeNegocio(data: Date | string): Date {
+  return ancoraDeNegocio(diaDeNegocio(data));
+}
+
 /** Dias inteiros entre dois dias YYYY-MM-DD (b − a). */
 export function diasEntre(a: string, b: string): number {
   const dia = (s: string) => {

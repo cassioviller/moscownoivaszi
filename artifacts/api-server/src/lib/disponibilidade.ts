@@ -11,8 +11,14 @@
  * - Duas janelas conflitam se sobrepõem E pelo menos uma é FISICA
  *   (PROVA × PROVA é permitido — o vestido está na loja).
  * - "Hoje" é SEMPRE parâmetro injetado, nunca `new Date()` interno.
+ * - Há DOIS tipos de data aqui, e confundi-los é erro de um dia (S-O117):
+ *   `inicio`/`fim` da manutenção e as datas REAIS (prova, retirada, devolução,
+ *   lavagem) são INSTANTES — o dia delas é o dia local, `diaLocal`.
+ *   `casamentoData` é data de NEGÓCIO — o dia dela é o dia UTC do que foi
+ *   gravado, `diaDeNegocio`, a mesma régua de `financeiro-core/datas.ts`.
  */
 import { and, eq, isNull, ne, or, type SQL } from "drizzle-orm";
+import { diaDeNegocio } from "@workspace/financeiro-core";
 import {
   db,
   bloqueioVestidosTable,
@@ -210,7 +216,10 @@ export function janelasDoBloqueio(
 
   // RESERVA_CASAMENTO
   if (!b.casamentoData) return [];
-  const dataCasamento = diaLocal(b.casamentoData);
+  // S-O117: dia de NEGÓCIO, não instante. Lida em fuso da loja, a meia-noite
+  // UTC que um cliente de API manda (`new Date("2028-09-05")`) devolvia
+  // 2028-09-04, e as três janelas — prova, uso e lavagem — andavam um dia.
+  const dataCasamento = diaDeNegocio(b.casamentoData);
   const inicioUsoPrevisto = addDias(dataCasamento, -regra.usoDiasAntes);
   const fimUsoPrevisto = addDias(dataCasamento, regra.usoDiasDepois);
 

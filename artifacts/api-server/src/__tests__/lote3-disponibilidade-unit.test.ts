@@ -232,6 +232,37 @@ describe("janelasDoBloqueio — RESERVA_CASAMENTO", () => {
   });
 });
 
+/**
+ * S-O117 — `casamentoData` é data de NEGÓCIO, não instante.
+ *
+ * A tela ancora ao meio-dia SP antes de mandar (`diaParaISO`), e por isso o
+ * defeito não aparece clicando. Cliente de API que mande o dia cru —
+ * `2028-09-05T00:00:00.000Z`, que é o que `new Date("2028-09-05")` produz em
+ * JavaScript — recebia as TRÊS janelas um dia atrás, porque a leitura era em
+ * fuso da loja: meia-noite UTC do dia 5 é 21h do dia 4 em São Paulo.
+ */
+describe("janelasDoBloqueio — casamentoData é data de NEGÓCIO (S-O117)", () => {
+  // D = 05/09/2028 escrito CRU (meia-noite UTC). Com REGRA_DEFAULT:
+  //   PROVA   [2028-08-22, 2028-09-01]
+  //   USO     [2028-09-02, 2028-09-07]
+  //   LAVAGEM [2028-09-08, 2028-09-14]
+  const CRU = new Date("2028-09-05T00:00:00.000Z");
+
+  it("meia-noite UTC não empurra as três janelas um dia para trás", () => {
+    const janelas = janelasDoBloqueio(bloqueio({ casamentoData: CRU }), REGRA_DEFAULT, "2028-01-10");
+    expect(porMotivo(janelas, "PROVA")).toMatchObject({ inicio: "2028-08-22", fim: "2028-09-01" });
+    expect(porMotivo(janelas, "USO")).toMatchObject({ inicio: "2028-09-02", fim: "2028-09-07" });
+    expect(porMotivo(janelas, "LAVAGEM")).toMatchObject({ inicio: "2028-09-08", fim: "2028-09-14" });
+  });
+
+  it("o dia cru e o mesmo dia ancorado ao meio-dia SP descrevem as MESMAS janelas", () => {
+    const ancorado = new Date("2028-09-05T12:00:00-03:00");
+    expect(janelasDoBloqueio(bloqueio({ casamentoData: CRU }), REGRA_DEFAULT, "2028-01-10")).toEqual(
+      janelasDoBloqueio(bloqueio({ casamentoData: ancorado }), REGRA_DEFAULT, "2028-01-10"),
+    );
+  });
+});
+
 describe("janelasDoBloqueio — MANUTENCAO", () => {
   it("gera janela única FISICA [dia(inicio), dia(fim)]", () => {
     const janelas = janelasDoBloqueio(

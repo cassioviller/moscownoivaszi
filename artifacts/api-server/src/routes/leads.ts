@@ -37,7 +37,7 @@ import {
   whatsappUtilizavel,
   WHATSAPP_INUTILIZAVEL,
 } from "@workspace/funil-core";
-import { addDias, addMeses, hojeLocal, inicioDoDia } from "@workspace/financeiro-core";
+import { addDias, addMeses, hojeLocal, inicioDoDia, reancorarDataDeNegocio } from "@workspace/financeiro-core";
 import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
@@ -201,6 +201,12 @@ router.post("/lojas/:lojaId/leads", async (req, res): Promise<void> => {
     id: randomUUID(),
     lojaId,
     ...parsed.data,
+    // S-O117: a data do casamento é dia de NEGÓCIO, e é ela que a sazonalidade
+    // agrupa por `to_char at time zone SP` trinta linhas abaixo. Meia-noite UTC
+    // gravada crua cai no mês anterior na virada de mês.
+    ...(parsed.data.casamentoData
+      ? { casamentoData: reancorarDataDeNegocio(parsed.data.casamentoData) }
+      : {}),
   }).returning();
 
   // Lead recém-criado nunca tem contato registrado — explícito para o campo
@@ -600,8 +606,14 @@ router.patch("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => 
 
   const carimbo = parsed.data.etapa ? carimboEtapa(parsed.data.etapa, existente) : {};
 
+  // S-O117: mesma âncora da criação — corrigir a data pela ficha não pode
+  // gravar um instante diferente do que a criação grava para o mesmo dia.
+  const dataDoCasamento = resto.casamentoData
+    ? { casamentoData: reancorarDataDeNegocio(resto.casamentoData) }
+    : {};
+
   const [lead] = await db.update(leadsTable)
-    .set({ ...resto, ...perda, ...carimbo, updatedAt: new Date() })
+    .set({ ...resto, ...dataDoCasamento, ...perda, ...carimbo, updatedAt: new Date() })
     .where(and(eq(leadsTable.id, leadId as string), eq(leadsTable.lojaId, lojaId as string)))
     .returning();
 

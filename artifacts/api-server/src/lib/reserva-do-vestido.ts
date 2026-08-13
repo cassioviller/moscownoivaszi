@@ -1,6 +1,7 @@
 import { db, bloqueioVestidosTable, vestidosTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
+import { reancorarDataDeNegocio } from "@workspace/financeiro-core";
 import {
   verificarDisponibilidade,
   ocupacaoFisica,
@@ -37,10 +38,18 @@ export type DesfechoCriarReserva =
 
 export async function criarReservaDeVestido(params: CriarReservaParams): Promise<DesfechoCriarReserva> {
   const id = randomUUID();
+  /**
+   * S-O117 — a porta obriga. As duas portas recebem a data já coagida a `Date`
+   * pelo zod, e o que chega delas vai para a coluna e para a conta das janelas.
+   * Ancorar aqui, uma vez, é o que faz as duas gravarem o mesmo instante para o
+   * mesmo dia — e o que faz a comparação SQL (`gte(casamentoData, hoje)`) e o
+   * `to_char at time zone` da sazonalidade acertarem o dia sem saber disso.
+   */
+  const casamentoData = params.casamentoData ? reancorarDataDeNegocio(params.casamentoData) : null;
   const candidato: BloqueioJanelasInput = {
     id,
     tipo: params.tipo,
-    casamentoData: params.casamentoData ?? null,
+    casamentoData,
     provaDataReal: null,
     retiradaDataReal: null,
     devolucaoDataReal: null,
@@ -70,7 +79,7 @@ export async function criarReservaDeVestido(params: CriarReservaParams): Promise
       vestidoId: params.vestidoId,
       leadId: params.leadId ?? null,
       tipo: params.tipo,
-      casamentoData: params.casamentoData ?? null,
+      casamentoData,
       inicio: params.inicio ?? null,
       fim: params.fim ?? null,
       observacao: params.observacao ?? null,

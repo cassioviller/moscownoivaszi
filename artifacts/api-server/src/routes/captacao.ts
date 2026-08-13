@@ -12,6 +12,7 @@ import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { gerarTokenConvite } from "../lib/auth";
 import { randomUUID } from "node:crypto";
 import { whatsappUtilizavel } from "@workspace/funil-core";
+import { reancorarDataDeNegocio } from "@workspace/financeiro-core";
 
 /**
  * Captação externa (E19): o formulário do site/Instagram cria o lead sozinho —
@@ -77,7 +78,10 @@ router.post("/captacao/leads", async (req, res): Promise<void> => {
     noivaNome: noivaNome.trim(),
     noivoNome: noivoNome?.trim() || null,
     whatsapp: whatsapp?.trim() || null,
-    casamentoData: casamentoData ?? null,
+    // S-O117: é a porta MENOS controlada do sistema — quem posta aqui é o
+    // formulário do site, e nada garante que ele ancore o dia como a tela da
+    // loja ancora. A âncora é do servidor.
+    casamentoData: casamentoData ? reancorarDataDeNegocio(casamentoData) : null,
     origem: origem ?? "SITE",
     // E77: o checkbox do formulário vira carimbo — quando ELA consentiu.
     consentimentoEm: consentimento ? new Date() : null,

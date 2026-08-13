@@ -51,7 +51,7 @@ import {
   reservaComDonos,
 } from "../lib/dono-do-bloqueio";
 import { FOTO_MAX_BYTES as AVARIA_FOTO_MAX_BYTES } from "../lib/limites";
-import { addDias, ancoraDeNegocio, hojeLocal } from "@workspace/financeiro-core";
+import { addDias, ancoraDeNegocio, hojeLocal, reancorarDataDeNegocio } from "@workspace/financeiro-core";
 
 const router: IRouter = Router();
 
@@ -204,7 +204,9 @@ router.post("/lojas/:lojaId/reservas", async (req, res): Promise<void> => {
     id: randomUUID(),
     lojaId,
     leadId: parsed.data.leadId,
-    casamentoData: parsed.data.casamentoData,
+    // S-O117: dia de negócio ancorado ao meio-dia SP — o dia UTC e o dia local
+    // passam a ser o mesmo, e o recorte `futuras` desta mesma rota acerta.
+    casamentoData: reancorarDataDeNegocio(parsed.data.casamentoData),
   }).returning();
 
   const fullReserva = await db.query.reservasTable.findFirst({
@@ -227,7 +229,18 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
     res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
-  const dados = parsed.data;
+  /**
+   * S-O117 — a data do casamento é dia de NEGÓCIO, e é ancorada UMA vez, aqui.
+   * Daqui ela desce para cinco escritas (a reserva, o candidato de janela, o
+   * bloqueio, o contrato ATIVO e a conta das provas que ficam para trás), e
+   * ancorar em cada uma delas seria a quinta grafia da mesma conta.
+   */
+  const dados = {
+    ...parsed.data,
+    ...(parsed.data.casamentoData
+      ? { casamentoData: reancorarDataDeNegocio(parsed.data.casamentoData) }
+      : {}),
+  };
 
   const [reserva] = await db.select().from(reservasTable)
     .where(and(eq(reservasTable.id, reservaId), eq(reservasTable.lojaId, lojaId)));

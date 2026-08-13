@@ -50,6 +50,7 @@ import {
   liquidoEmCentavos,
   montarPlanoParcelas,
   reais,
+  reancorarDataDeNegocio,
   STATUS_ABERTO,
   temCarne,
 } from "@workspace/financeiro-core";
@@ -577,17 +578,21 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
     if (
       contratoData.dataCasamento &&
       bloqueio.casamentoData &&
-      diaLocal(contratoData.dataCasamento) !== diaLocal(bloqueio.casamentoData)
+      // S-O117: as DUAS são data de negócio. Lidas em fuso da loja, um lado
+      // ancorado ao meio-dia (o que a tela manda) e o outro cru (o que um
+      // cliente de API manda) davam dias diferentes para o MESMO dia, e a
+      // guarda recusava o contrato com "a data não bate com a da reserva".
+      diaDeNegocio(contratoData.dataCasamento) !== diaDeNegocio(bloqueio.casamentoData)
     ) {
       // S-D8/E122: a FRASE morava no campo do CÓDIGO — `mensagemApi` mapeia
       // por código e o cru chegava à vendedora. Agora há código, e o detalhe
       // diz as duas datas em jeito de gente.
       const ddmmaaaa = (ymd: string) => ymd.split("-").reverse().join("/");
-      const dataReserva = ddmmaaaa(diaLocal(bloqueio.casamentoData));
+      const dataReserva = ddmmaaaa(diaDeNegocio(bloqueio.casamentoData));
       res.status(422).json({
         error: "DATA_DIVERGE_DA_RESERVA",
         detalhe:
-          `A data do casamento no contrato (${ddmmaaaa(diaLocal(contratoData.dataCasamento))}) ` +
+          `A data do casamento no contrato (${ddmmaaaa(diaDeNegocio(contratoData.dataCasamento))}) ` +
           `não bate com a da reserva do vestido (${dataReserva}). Ajuste a data ou a reserva.`,
         campos: [
           { campo: "dataCasamento", motivo: `A reserva do vestido é para ${dataReserva}` },
@@ -812,7 +817,11 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       descontoTipo,
       descontoValor,
       formaPagamento: contratoData.formaPagamento ?? null,
-      dataCasamento: contratoData.dataCasamento ?? null,
+      // S-O117: a data que o contrato CONGELA é dia de negócio — é ela que o
+      // PDF imprime e que a guarda acima compara com a da reserva.
+      dataCasamento: contratoData.dataCasamento
+        ? reancorarDataDeNegocio(contratoData.dataCasamento)
+        : null,
       dataRetirada: contratoData.dataRetirada ?? null,
       dataDevolucao: contratoData.dataDevolucao ?? null,
       observacoes: contratoData.observacoes ?? null,
@@ -1116,7 +1125,7 @@ router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<v
     for (const bloqueio of bloqueios) {
       if (
         bloqueio.casamentoData &&
-        diaLocal(parsed.data.dataCasamento) !== diaLocal(bloqueio.casamentoData)
+        diaDeNegocio(parsed.data.dataCasamento) !== diaDeNegocio(bloqueio.casamentoData)
       ) {
         res.status(422).json({
           error: "DATA_DIVERGE_DA_RESERVA",
@@ -1147,7 +1156,7 @@ router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<v
           candidato: {
             id: bloqueio.id,
             tipo: "RESERVA_CASAMENTO",
-            casamentoData: parsed.data.dataCasamento,
+            casamentoData: reancorarDataDeNegocio(parsed.data.dataCasamento),
             provaDataReal: null,
             retiradaDataReal: null,
             devolucaoDataReal: null,
@@ -1188,7 +1197,15 @@ router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<v
    * de ser ATIVO no meio — e a resposta é o mesmo 422 da guarda lenta.
    */
   const [contrato] = await db.update(contratosTable)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    // S-O117: mesma âncora do POST — corrigir a data pelo PATCH não pode
+    // gravar um instante que a guarda de divergência leia como outro dia.
+    .set({
+      ...parsed.data,
+      ...(parsed.data.dataCasamento
+        ? { dataCasamento: reancorarDataDeNegocio(parsed.data.dataCasamento) }
+        : {}),
+      updatedAt: new Date(),
+    })
     .where(and(
       eq(contratosTable.id, contratoId as string),
       eq(contratosTable.lojaId, lojaId as string),
