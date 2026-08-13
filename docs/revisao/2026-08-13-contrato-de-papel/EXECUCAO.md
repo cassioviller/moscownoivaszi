@@ -15,9 +15,9 @@ Contado em 13/08/2026:
 
 | natureza | quantos | estado |
 |---|---|---|
-| Épicos de código (E211–E222) | **12** | **5 executados** (E211, E212, E214, E216, E221) |
-| Sobras abertas | **10** | 1 da auditoria + 2 do E212 + 2 do E214 + 3 do E216 + 2 do E221 — **conte a tabela, não esta linha** |
-| Pendências que **não são software** | **3** | abertas |
+| Épicos de código (E211–E222) | **12** | **6 executados** (E211, E212, E213, E214, E216, E221) — **a Onda A fechou inteira** |
+| Sobras abertas | **11** | 1 da auditoria + 2 do E212 + 2 do E214 + 3 do E216 + 2 do E221 + 1 do E213 — **conte a tabela, não esta linha** |
+| Pendências que **não são software** | **4** | abertas (a P4 nasceu no E213) |
 | Decisões da dona ainda abertas | **2** (D4, D7) | travam só o E220 |
 
 **Nada trava o começo.** A Fase 0 fechou seis das sete perguntas; as duas que
@@ -63,7 +63,7 @@ antes de podar, e é o que está feito acima: só `eaa4e90` (E216) tem o mesmo
 |---|---|---|---|---|
 | ~~**E211**~~ | ~~a data que muda tem preço~~ | 17ª §2º e §3º | rodada e conferida | ✅ `0c8874a` · [relatório](execucao/E211.md) — o reajuste vira PARCELA (não engorda `valorTotal`, senão a base do próximo cresce sozinha) e o degrau vira COLUNA (não contagem da trilha). **O aviso aparece antes do clique**, porque o botão move na hora e a vendedora descobriria a cobrança depois de prometer a data. Duas lições caras: o `drizzle-kit push` **mentiu** ("Changes applied" sem aplicar nada), e a suíte cobrou **5 reprovações que eram todas régua certa** — inclusive a do snapshot, que enumera pelo VERSIONAMENTO e reprovou de novo depois do `generate` |
 | ~~**E212**~~ | ~~o atraso na devolução tem preço~~ | 16ª e §§ | rodada e conferida (**origem + coluna**) | ✅ `a88d7ead` · [relatório](execucao/E212.md) — **a decisão da dona vale 6×, e a conta é que a fez**: "um dia de aluguel" é o aluguel **÷ os dias da janela** (R$ 3.000 / 6 = R$ 500), porque com a outra leitura nove dias custam R$ 27.250,00 e o décimo — que é EXTRAVIO, o pior caso do instrumento — custa R$ 12.000,00: **o décimo dia devolveria R$ 15.250,00 ao locatário**. As duas faixas são EXCLUSIVAS (o §1º só vale abaixo do caput) e **o extravio NÃO leva a multa**, que o caput não menciona. O §2º REPARTE: três peças atrasadas pagam três diárias e **uma** multa, numa parcela só — por isso o vínculo mora no CONTRATO. A peça que **nunca saiu** não atrasa; a que **ainda está fora** conta até hoje, e é o que torna esta a única cobrança cujo valor depende do dia do clique — daí a trilha obrigatória. Oito réguas cobraram, e **uma acusou código certo**: a varredura de trancas lia o CAS como porta ABERTA porque `atrasoParcelaId` não estava em `COLUNAS_DE_ESTADO` — a dívida fechou em 12, não 13 |
-| **E213** | **a parcela vencida tem multa e juros** — `caixa.ts:239` já sabe que venceu; falta 2% + 1% ao mês | 9ª | provável (perdão registrado) | aberto |
+| ~~**E213**~~ | ~~a parcela vencida tem multa e juros~~ | 9ª | rodada e conferida (**enum + 2 colunas**) | ✅ `fa7d838` · [relatório](execucao/E213.md) — **a Onda A fecha.** A base é a PARCELA e a decisão da dona não é preferência: o **CDC art. 52 §1º** limita a multa a *"dois por cento do valor da prestação"*, e a leitura literal cobraria os 2% do CONTRATO **de novo a cada parcela atrasada** — dez em atraso dariam 20% do contrato numa cláusula que diz 2%. **O plano dizia que faltava a conta; faltava a conta E o teto da porta**: com a 9ª ligada, o `POST /receber` RECUSAVA os R$ 515,00 devidos por uma parcela de R$ 500,00 (`expected 200 "OK", got 422`), dizendo à vendedora que ela cobrava demais enquanto a fila, o carnê e o portal mostravam os R$ 515,00 — **quatro leituras do mesmo número, e a única que decide dizia não**. A imputação quita no principal e **cristaliza só o que entra a mais** (linha `MORA`, PAGA), porque conta DERIVADA não sobrevive ao pagamento do principal: a parcela ficava PARCIAL devendo R$ 15,00 que o sistema dizia não existir. Medido em `moscow_base`: **110 parcelas vencidas, R$ 1.476,00 de multa e R$ 538,25 de juros** que o instrumento manda cobrar. A varredura de trancas **acusou código certo pela segunda vez em dois épicos seguidos** (S-C33), e o relatório abre com o achado sobre si mesmo: **o épico chegou escrito e sem UMA medição** — os vermelhos são reprodução, não gravação |
 
 ### Onda B — as guardas e os limites
 
@@ -103,7 +103,8 @@ antes de podar, e é o que está feito acima: só `eaa4e90` (E216) tem o mesmo
 | **S-C31** | **O recebimento PARCIAL é datado pelo último pedaço no caixa.** `parcelas.recebidoEm` guarda só o último recebimento, e o extrato/conciliação datam por ele: R$ 300,00 que entraram em 01/03 são contados no caixa realizado de 15/03, quando os R$ 700,00 quitaram. Não é defeito do recibo — o E221 fez a trilha passar a saber o dia de CADA ato, e agora há de onde tirar a data certa | 🔵 | E221 | aberta |
 | **S-C10** | **Os "61 das 63 avarias" envelheceram, e ainda sustentam decisões de desenho.** O número nasceu no E110 e é citado em **8 sítios versionados** — `e167-avaria-fecha-api.test.ts:27` e `:111`, `revisao-reserva-avaria-api.test.ts:21`, `so18-reserva-por-id-api.test.ts:59`, `routes/contratos.ts:538`, `routes/reservas.ts:1714`, `reservas/[bloqueioId].tsx:153` e `openapi.yaml:5934`. Medido em `moscow_base` no E214: **116 bloqueios, TODOS com `lead_id` próprio, nenhum sem dono, e ZERO avarias.** Os comentários argumentam com ele ("prova quando é provável"; o botão que a tela desenha), então não é troca de texto — é remedir e decidir se o argumento sobrevive | 🟡 | E214 | aberta |
 | **S-C32** | **O atraso não tem FILA — só se descobre abrindo a ficha daquela reserva.** O E212 pôs a conta e o botão em `reservas/[bloqueioId].tsx`, e `ATRASO_DEVOLUCAO` **não aparece em tela nenhuma além dela** (medido: um único sítio em `moscow-noivas/src`, e é o comentário que o próprio E212 escreveu). A peça que não voltou soma uma diária por dia em silêncio: quem não abrir aquela ficha não sabe que ela existe, e o valor cresce sozinho. É o oposto do reajuste do E211, que nasce do gesto de mover a data — aqui o fato é a AUSÊNCIA de gesto, e ausência não notifica ninguém | 🟡 | E212 | aberta |
-| **S-C33** | **`COLUNAS_DE_ESTADO` é lista curada à mão, e coluna de estado nova nasce invisível para a detecção de CAS.** A varredura de trancas leu a porta do E212 como ABERTA enquanto o `where` da escrita repetia exatamente a condição lida — só porque `contratos.atrasoParcelaId` não estava na lista. O E212 consertou POR COLUNA (acrescentou a dela), e **nada obriga a lista a ficar completa**: é a classe que a conferência de 2026-08-05 achou na S30 (*"trava a lista, não a contagem"*), agora do lado das colunas. A régua acusa código certo, que é a direção mais cara — quem for fechar troca a lista por um derivado do schema | 🔵 | E212 | aberta |
+| **S-C33** | **`COLUNAS_DE_ESTADO` é lista curada à mão, e coluna de estado nova nasce invisível para a detecção de CAS.** A varredura de trancas leu a porta do E212 como ABERTA enquanto o `where` da escrita repetia exatamente a condição lida — só porque `contratos.atrasoParcelaId` não estava na lista. O E212 consertou POR COLUNA (acrescentou a dela), e **nada obriga a lista a ficar completa**: é a classe que a conferência de 2026-08-05 achou na S30 (*"trava a lista, não a contagem"*), agora do lado das colunas. A régua acusa código certo, que é a direção mais cara — quem for fechar troca a lista por um derivado do schema. **O E213 é a segunda evidência, em dois épicos seguidos**: `parcelas.moraPerdoadaEm` nasceu invisível igual, e as DUAS portas do perdão apareceram como abertas estando sob CAS de verdade (`"routes/contratos.ts": 1` virou `3` no vermelho reproduzido). Duas colunas, dois épicos, o mesmo ponto cego — a lista curada não é sustentável | 🔵 | E212 | aberta |
+| **S-C34** | **A mensagem de cobrança cobra a multa e não a NOMEIA.** `whatsapp.ts:78` imprime `brl(p.totalVencido)`, e o `totalVencido` passou a incluir multa e juros no E213 (`cobranca.ts:154`). A noiva recebe *"um valor em aberto: **R$ 515,00**, há 30 dias"* de uma parcela de **R$ 500,00** — confere o carnê, vê R$ 500,00, e liga para a loja. É o **oposto** do que o próprio E213 fez no portal, onde o acréscimo vem com a conta escrita ao lado, e pela razão declarada lá: número maior sem explicação é o que gera a ligação. Uma linha na mensagem | 🟡 | E213 | aberta |
 | **S-C11** | **A avaria não tem porta de EDIÇÃO.** `custo_reparo`, `tipo` e `justificativa_da_taxa` só entram no `POST` de nascimento; não há `PATCH /avarias/:id`. Quem digitou R$ 1.500,00 onde eram R$ 150,00 só tem o caminho de apagar e refazer — e o E115 recusa apagar quando a avaria sustenta cobrança viva, além de a foto-prova sair junto. Não fecha buraco de régua (o E214 confere no nascimento e na cobrança), mas é gesto que falta a quem usa | 🟡 | E214 | aberta |
 
 ## Pendências que não são software
@@ -116,7 +117,9 @@ Nenhuma delas se fecha com código, e as três são da dona:
 | **P2** | **Olhar os contratos JÁ ASSINADOS** com a página 6 | Eles carregam o CNPJ errado. Quantos são, e o que fazer, é decisão jurídica |
 | **P3** | **Preencher os dados reais da loja** em *Configurações → Dados da loja* | O banco ainda tem o exemplo (`12.345.678/0001-99`, "Rua das Noivas, 123"), e o real está no contrato: Rua Luis Jacinto 297, Centro, São José dos Campos, CEP 12243-260. **O lugar é a tela, não o código** — o seed é parametrizado por env de propósito |
 
-Uma quarta, menor: a frase de fecho do molde está truncada (*"em duas vias de
+| **P4** | **Escolher o índice da correção monetária** da cláusula 9ª | A cláusula manda corrigir e **não nomeia índice**, e IPCA, IGP-M e INPC dão três números para a mesma dívida — escolher um por conta própria seria inventar cláusula. O E213 cobra a multa e os juros e **declara** que não corrige, na tela e na trilha: *"Sem correção monetária — o contrato não nomeia índice."* Enquanto a decisão não vier, a ausência fica dita em vez de calada |
+
+Uma quinta, menor: a frase de fecho do molde está truncada (*"em duas vias de
 igual"*, faltando "teor e forma").
 
 ## Decisões ainda abertas
@@ -169,12 +172,15 @@ muda.
 
 ## A ordem sugerida
 
-1. **E211** — a data que muda tem preço. Não depende de nada, usa dado que já
-   existe, e é a única regra do contrato que o ateliê **perde dinheiro** por não
-   ter.
-2. **E212** e **E213** — mesma natureza, mesma fonte de dado. Os três juntos
-   estabelecem o mecanismo *"uma cobrança nasce de um fato do contrato"*, que a
-   Onda B reusa.
+**Os itens 1 e 2 estão FEITOS, e com eles a Onda A inteira.** O que vem primeiro
+agora é o **E222**, pela razão do item 3 — e o mecanismo que os três da Onda A
+estabeleceram (*"uma cobrança nasce de um fato do contrato"*, com a conta
+DERIVADA e o fato datado no banco) é o que a Onda B reusa. Ele já foi escrito
+três vezes: reajuste (E211), atraso (E212) e mora (E213).
+
+1. ~~**E211** — a data que muda tem preço.~~ ✅ `0c8874a`
+2. ~~**E212** e **E213** — mesma natureza, mesma fonte de dado.~~ ✅ `a88d7ead`
+   e `fa7d838`
 3. **E222** — sobe na frente da Onda B porque é a única cláusula em que o sistema
    hoje **deixa acontecer** o que o contrato proíbe.
 4. O resto da Onda B (**E214**, **E218**, **E219**), em qualquer ordem.
