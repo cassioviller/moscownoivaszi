@@ -1,0 +1,1 @@
+CREATE INDEX "audit_log_loja_entidade_idx" ON "audit_log" USING btree ("loja_id","entidade_id");
