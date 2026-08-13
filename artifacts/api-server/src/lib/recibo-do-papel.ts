@@ -81,7 +81,7 @@ const ACAO_RECEBIMENTO = "PARCELA_RECEBIDA";
  * `destinoPago: "manter"` o dinheiro FICA — e o recibo dele continua valendo,
  * porque o pagamento aconteceu e não foi devolvido.
  */
-function ehEstorno(linha: LinhaDaTrilha, parcela: { id: string; contratoId: string }): boolean {
+function ehEstorno(linha: LinhaDaTrilha, parcela: ParcelaDoRecibo): boolean {
   if (linha.acao === "RECEBIMENTO_ESTORNADO") return linha.entidadeId === parcela.id;
   if (linha.acao === "CONTRATO_CANCELADO" && linha.entidadeId === parcela.contratoId) {
     const detalhe = linha.detalhe as { destinoPago?: unknown } | null;
@@ -89,6 +89,20 @@ function ehEstorno(linha: LinhaDaTrilha, parcela: { id: string; contratoId: stri
   }
   return false;
 }
+
+/**
+ * O que este módulo precisa saber de uma parcela — id, contrato e o acumulado.
+ *
+ * ESTRUTURAL de propósito, e não `Parcela` (S-C31): o caixa realizado passa a
+ * ler os mesmos atos para datar cada recebimento pelo dia dele, e ele monta a
+ * consulta com o recorte que precisa, não com a linha inteira do drizzle. A
+ * linha do drizzle continua entrando igual — ela tem os três campos.
+ */
+export type ParcelaDoRecibo = {
+  id: string;
+  contratoId: string;
+  valorRecebido?: number | null;
+};
 
 /** A linha de trilha que este módulo lê — o subconjunto de `AuditLog`. */
 export type LinhaDaTrilha = Pick<
@@ -135,7 +149,10 @@ export type RecibosDaParcela = {
  * Os recibos de UMA parcela, a partir da trilha dela. Pura: sem banco, sem
  * Express — quem carrega as linhas é a rota, que é quem tem o escopo.
  */
-export function recibosDaParcela(parcela: Parcela, trilha: LinhaDaTrilha[]): RecibosDaParcela {
+export function recibosDaParcela(
+  parcela: ParcelaDoRecibo,
+  trilha: readonly LinhaDaTrilha[],
+): RecibosDaParcela {
   const corte = trilha
     .filter((l) => ehEstorno(l, parcela))
     .reduce<Date | null>((maior, l) => (!maior || l.criadoEm > maior ? l.criadoEm : maior), null);

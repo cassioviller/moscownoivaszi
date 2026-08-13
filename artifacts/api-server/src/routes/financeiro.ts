@@ -88,6 +88,11 @@ import { montarContasDaCompetencia, TIPOS_RECORRENCIA } from "../lib/recorrencia
 import { montarCsv, responderCsv } from "../lib/csv";
 import { intervaloValidado } from "../lib/intervalo";
 import { movimentosDoFluxo, linhasCsvFluxo } from "../lib/fluxo";
+// S-C31 — o caixa realizado data cada recebimento pelo dia dele, e o dia de
+// cada ato mora na trilha desde o E221. A régua está em
+// `lib/recebimentos-do-caixa.ts`; a leitura é a mesma do recibo da cláusula 7ª.
+import { porRecebimento, type ParcelaDoCaixa } from "../lib/recebimentos-do-caixa";
+import { parcelasComRecebimentoNaJanela, trilhaDosRecebimentos } from "../lib/recibos-do-banco";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
 
@@ -922,6 +927,47 @@ const HORIZONTE_ALERTA = 30;
 // motores recortam com a régua exata (instante no fuso da loja).
 const MESES_TENDENCIA_FLUXO = 6;
 
+/**
+ * S-C31 — as parcelas do caixa REALIZADO da janela, uma linha por recebimento.
+ *
+ * As três leituras do realizado (fluxo, CSV do fluxo e DRE) recortavam por
+ * `parcelas.recebido_em`, que guarda **só o último pedaço**: R$ 300,00 que
+ * entraram em 01/03 eram contados no dia 15/03, quando os R$ 700,00 quitaram a
+ * parcela. Aqui a mesma janela é respondida em dois passos, e os dois são
+ * necessários:
+ *
+ * 1. **quem entra na consulta** — o `recebido_em` da janela (o de sempre) MAIS
+ *    as parcelas com um ato dentro dela e o `recebido_em` fora (sem isso, o mês
+ *    do pedaço antigo continuaria vazio);
+ * 2. **como cada linha é datada** — `porRecebimento` divide o que a trilha
+ *    fecha e deixa intacto o que ela não fecha.
+ *
+ * O total do período NÃO muda por isso: o que muda é o dia (e a forma) de cada
+ * pedaço. Quem recorta a janela continua sendo o motor do `financeiro-core`,
+ * sobre o superconjunto que o SQL entrega.
+ */
+async function realizadoPorRecebimento<T extends ParcelaDoCaixa>(
+  lojaId: string,
+  parcelas: readonly T[],
+): Promise<T[]> {
+  const alvos = parcelas.flatMap((p) => [p.id, p.contratoId]);
+  return porRecebimento(parcelas, await trilhaDosRecebimentos(lojaId, alvos));
+}
+
+/** O `WHERE` do passo 1: o `recebido_em` da janela ou um ato dentro dela. */
+async function recebidasNaJanela(lojaId: string, iniYMD: string, fimYMD: string) {
+  const de = inicioDoDia(iniYMD);
+  const ate = inicioDoDia(addDias(fimYMD, 1));
+  const comAto = await parcelasComRecebimentoNaJanela(lojaId, de, ate);
+  return and(
+    eq(parcelasTable.lojaId, lojaId),
+    or(
+      and(isNotNull(parcelasTable.recebidoEm), gte(parcelasTable.recebidoEm, de), lt(parcelasTable.recebidoEm, ate)),
+      ...(comAto.length > 0 ? [inArray(parcelasTable.id, comAto)] : []),
+    ),
+  );
+}
+
 router.get("/lojas/:lojaId/financeiro/fluxo", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const query = GetFluxoCaixaQueryParams.safeParse(req.query);
@@ -939,12 +985,7 @@ router.get("/lojas/:lojaId/financeiro/fluxo", async (req, res): Promise<void> =>
 
   const [parcelasRecebidas, pagamentos, parcelasAbertas, contasAbertas] = await Promise.all([
     db.query.parcelasTable.findMany({
-      where: and(
-        eq(parcelasTable.lojaId, lojaId),
-        isNotNull(parcelasTable.recebidoEm),
-        gte(parcelasTable.recebidoEm, inicioDoDia(janelaIni)),
-        lt(parcelasTable.recebidoEm, inicioDoDia(addDias(janelaFim, 1))),
-      ),
+      where: await recebidasNaJanela(lojaId, janelaIni, janelaFim),
       with: { contrato: { with: { lead: true } } },
     }),
     db.query.pagamentosTable.findMany({
@@ -964,10 +1005,15 @@ router.get("/lojas/:lojaId/financeiro/fluxo", async (req, res): Promise<void> =>
       .where(and(eq(contasPagarTable.lojaId, lojaId), eq(contasPagarTable.status, "PREVISTA"))),
   ]);
 
-  const resumo = resumoCaixa(parcelasRecebidas, pagamentos, intervalo);
+  // S-C31 — uma linha por RECEBIMENTO, e não por parcela: os quatro números
+  // desta resposta (resumo, porMeio, tendência e movimentos) datam cada pedaço
+  // pelo dia em que ele entrou. O total do período não muda.
+  const recebimentos = await realizadoPorRecebimento(lojaId, parcelasRecebidas);
+
+  const resumo = resumoCaixa(recebimentos, pagamentos, intervalo);
   // S21: a montagem morava inline aqui; foi para lib/fluxo.ts para o export
   // CSV derivar da MESMA linha do tempo em vez de copiá-la.
-  const movimentos = movimentosDoFluxo(parcelasRecebidas, pagamentos, intervalo);
+  const movimentos = movimentosDoFluxo(recebimentos, pagamentos, intervalo);
 
   res.json(
     GetFluxoCaixaResponse.parse({
@@ -975,8 +1021,8 @@ router.get("/lojas/:lojaId/financeiro/fluxo", async (req, res): Promise<void> =>
       resumo,
       // Por MEIO (E50): as MESMAS entradas do resumo — soma em centavos
       // inteiros no core, então `porMeio.total === resumo.entradas` por construção.
-      porMeio: entradasPorMeio(parcelasRecebidas, intervalo),
-      tendencia: tendenciaCaixa(parcelasRecebidas, pagamentos, {
+      porMeio: entradasPorMeio(recebimentos, intervalo),
+      tendencia: tendenciaCaixa(recebimentos, pagamentos, {
         meses: MESES_TENDENCIA_FLUXO,
         ate: compHoje,
       }),
@@ -1009,12 +1055,7 @@ router.get("/lojas/:lojaId/financeiro/fluxo/exportar", async (req, res): Promise
 
   const [parcelasRecebidas, pagamentos] = await Promise.all([
     db.query.parcelasTable.findMany({
-      where: and(
-        eq(parcelasTable.lojaId, lojaId),
-        isNotNull(parcelasTable.recebidoEm),
-        gte(parcelasTable.recebidoEm, inicioDoDia(intervalo.iniYMD)),
-        lt(parcelasTable.recebidoEm, inicioDoDia(addDias(intervalo.fimYMD, 1))),
-      ),
+      where: await recebidasNaJanela(lojaId, intervalo.iniYMD, intervalo.fimYMD),
       with: { contrato: { with: { lead: true } } },
     }),
     db.query.pagamentosTable.findMany({
@@ -1027,8 +1068,11 @@ router.get("/lojas/:lojaId/financeiro/fluxo/exportar", async (req, res): Promise
     }),
   ]);
 
-  const movimentos = movimentosDoFluxo(parcelasRecebidas, pagamentos, intervalo);
-  const resumo = resumoCaixa(parcelasRecebidas, pagamentos, intervalo);
+  // S-C31 — a MESMA divisão da rota do fluxo: o pacote da contabilidade fecha
+  // com a tela por construção, e agora as duas datam cada pedaço pelo dia dele.
+  const recebimentos = await realizadoPorRecebimento(lojaId, parcelasRecebidas);
+  const movimentos = movimentosDoFluxo(recebimentos, pagamentos, intervalo);
+  const resumo = resumoCaixa(recebimentos, pagamentos, intervalo);
   responderCsv(
     res,
     `fluxo-${intervalo.iniYMD}-a-${intervalo.fimYMD}`,
@@ -1054,12 +1098,7 @@ router.get("/lojas/:lojaId/financeiro/dre", async (req, res): Promise<void> => {
 
   const [parcelasRecebidas, pagamentos] = await Promise.all([
     db.select().from(parcelasTable).where(
-      and(
-        eq(parcelasTable.lojaId, lojaId),
-        isNotNull(parcelasTable.recebidoEm),
-        gte(parcelasTable.recebidoEm, inicioDoDia(intervalo.iniYMD)),
-        lt(parcelasTable.recebidoEm, inicioDoDia(addDias(intervalo.fimYMD, 1))),
-      ),
+      await recebidasNaJanela(lojaId, intervalo.iniYMD, intervalo.fimYMD),
     ),
     db.query.pagamentosTable.findMany({
       where: and(
@@ -1071,7 +1110,11 @@ router.get("/lojas/:lojaId/financeiro/dre", async (req, res): Promise<void> => {
     }),
   ]);
 
-  const dre = dreDoIntervalo(parcelasRecebidas, pagamentos, intervalo);
+  // S-C31 — o pedaço que entrou em 28/02 fica em FEVEREIRO. Sem isto o DRE de
+  // março ganhava os R$ 1.000,00 inteiros e o de fevereiro fechava R$ 300,00
+  // a menos, porque `recebido_em` é o dia do último pedaço.
+  const recebimentos = await realizadoPorRecebimento(lojaId, parcelasRecebidas);
+  const dre = dreDoIntervalo(recebimentos, pagamentos, intervalo);
 
   res.json(
     GetDreResponse.parse({
@@ -1079,7 +1122,7 @@ router.get("/lojas/:lojaId/financeiro/dre", async (req, res): Promise<void> => {
       intervalo,
       ...dre,
       // A régua do E50: `porMeio.total === receitas` por construção.
-      porMeio: entradasPorMeio(parcelasRecebidas, intervalo),
+      porMeio: entradasPorMeio(recebimentos, intervalo),
     }),
   );
 });
