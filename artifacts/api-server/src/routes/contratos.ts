@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import {
   db,
+  auditLogTable,
   contratosTable,
   contratoItensTable,
   parcelasTable,
@@ -1246,6 +1247,78 @@ router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<v
   }
 
   /**
+   * **S-C90 — o § único do objeto vale também na porta em que a retirada se
+   * MOVE**, e não só nas duas em que o carnê nasce.
+   *
+   * > **PARÁGRAFO ÚNICO (do objeto)** — Em caso de parcelamento, o restante do
+   * > valor deverá ser pago em até **20 dias antes da data da retirada**.
+   *
+   * O E218 fechou `POST /contratos` (`:462`) e `gerar-plano` (`:2523`), que são
+   * as duas portas por onde o CARNÊ entra. Desde o E224 a `dataRetirada` deixou
+   * de existir só na API e passou a ter tela — e a tela chama o `PATCH`, que é
+   * a porta por onde a retirada ANDA. Mover a retirada para perto deixa o carnê
+   * inteiro fora do prazo sem uma linha dizendo isso: a régua morde a data que
+   * não se mexeu e ignora a que se mexeu. É a lição do E172, exatamente como o
+   * parágrafo do expediente acima.
+   *
+   * **Exemplo numérico, e é o do teste:** contrato de R$ 2.000,00 em duas
+   * parcelas, 10/07/2026 e 20/08/2026. Retirada declarada em 04/09/2026 → o
+   * limite do § único é **15/08/2026**, e R$ 1.000,00 — metade da venda — só
+   * entram **5 dias depois de a peça sair pela porta**. O `POST` recusaria isso
+   * com 422; o `PATCH` gravava 200.
+   *
+   * **Três decisões, e as três estreitam a régua de propósito:**
+   *
+   * 1. **Só quando a retirada está no corpo.** O carnê não muda por aqui, então
+   *    PATCH que não mexe na retirada não pode criar violação nenhuma — e
+   *    conferir mesmo assim travaria a correção de um telefone num contrato que
+   *    já nasceu fora do prazo. Mesma forma da guarda do expediente.
+   * 2. **Só o CARNÊ** (`origem: PLANO`), que é o que a cláusula chama de *"o
+   *    restante do valor"*. Avaria (E214), atraso na devolução (E212) e mora
+   *    (E213) nascem DEPOIS da retirada por definição — a régua do E218 já
+   *    decidiu isso, e aplicá-la a elas recusaria três cobranças que este mesmo
+   *    contrato criou.
+   * 3. **Só o que está EM ABERTO.** A cláusula garante que o dinheiro entra
+   *    antes de a peça sair; parcela já recebida já cumpriu. No `POST` e no
+   *    `gerar-plano` a distinção não existe (todo carnê nasce PREVISTO), e é
+   *    aqui que ela aparece pela primeira vez.
+   *
+   * A que vence por ÚLTIMO é a que decide, como no `gerar-plano`: se ela cabe
+   * no limite, todas cabem.
+   */
+  if (parsed.data.dataRetirada) {
+    const carneEmAberto = await db
+      .select({ vencimento: parcelasTable.vencimento, numero: parcelasTable.numero })
+      .from(parcelasTable)
+      .where(and(
+        eq(parcelasTable.contratoId, contratoId as string),
+        eq(parcelasTable.lojaId, lojaId as string),
+        eq(parcelasTable.origem, "PLANO"),
+        inArray(parcelasTable.status, [...STATUS_ABERTO]),
+      ));
+    const ultima = carneEmAberto.reduce<Date | null>(
+      (maior, p) => (maior === null || p.vencimento > maior ? p.vencimento : maior),
+      null,
+    );
+    const foraDoPrazo = ultima ? foraDoPrazoDaRetirada(ultima, parsed.data.dataRetirada) : null;
+    if (foraDoPrazo) {
+      res.status(422).json({
+        error: "CARNE_DEPOIS_DO_PRAZO",
+        detalhe: foraDoPrazo.detalhe,
+        // O campo é a RETIRADA, e não as parcelas como no POST: aqui quem se
+        // mexeu foi ela, e é o que a vendedora tem na mão para corrigir.
+        campos: [
+          {
+            campo: "dataRetirada",
+            motivo: `Para esta retirada o carnê em aberto teria de vencer até ${foraDoPrazo.limite.split("-").reverse().join("/")}`,
+          },
+        ],
+      });
+      return;
+    }
+  }
+
+  /**
    * O PATCH grava `dataCasamento` sem repetir NENHUMA das duas provas que o
    * POST faz sobre ela: a coerência com `bloqueio.casamentoData` e o
    * `verificarDisponibilidade` da peça. Fechar o contrato para 10/05 e depois
@@ -1844,7 +1917,31 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("contrat
         contratoId: existente.contratoId,
         numero: Number(maior) + 1,
         origem: "MORA",
-        descricao: `Multa e juros (cláusula 9ª) — ${mora?.explicacao ?? ""}`.slice(0, 200),
+        /**
+         * **S-C71 — o corte em 200 comia a declaração, e não havia coluna
+         * pedindo o corte.**
+         *
+         * Era `.slice(0, 200)` sobre uma frase de **209** caracteres, e o que
+         * ficava de fora era exatamente *"Sem correção monetária — o contrato
+         * não nomeia índice."* — a linha que o E213 escreveu **para a régua não
+         * esconder o próprio alcance**. O carnê dizia à noiva, no portal,
+         * *"…o contrato não nomei"*.
+         *
+         * O 200 era um palpite sobre o banco. Medido no `heliumdb` em
+         * 2026-08-13 (`SELECT current_database()` conferido):
+         * `parcelas.descricao` é **`text`**, `character_maximum_length` NULO —
+         * não há limite a respeitar, e a maior descrição gravada hoje tem
+         * **52** caracteres. O spec também não impõe teto
+         * (`Parcela.descricao: { type: ["string","null"] }`).
+         *
+         * Encurtar a frase na origem seria a outra saída, e ela custa a mesma
+         * coisa que o corte: `explicacaoDaMora` é **UMA** frase, a que a tela
+         * imprime e a que o carnê guarda (S-C50), e o que sobraria de fora seria
+         * de novo a parte que declara o que a conta NÃO tem. Piorava com o
+         * número: R$ 12.500,00 vencidos há 120 dias dão 216 caracteres, e
+         * `dias` de três algarismos empurrava mais um para fora a cada casa.
+         */
+        descricao: `Multa e juros (cláusula 9ª) — ${mora?.explicacao ?? ""}`,
         valorPrevisto: reais(aMoraC),
         vencimento: existente.vencimento,
         status: "PAGA",
@@ -2201,6 +2298,73 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/estornar", async (req, res): Pro
       // parcela está estornada. O que ele NÃO faz é auditar de novo.
       return { parcela: atual };
     }
+    /**
+     * **S-C70 — o estorno devolve o PAGAMENTO, e o pagamento pode ter criado
+     * outra linha do carnê.**
+     *
+     * O E213 fez o que entra além do principal virar parcela própria
+     * (`origem: MORA`, nascida PAGA na mesma transação do recebimento). Este
+     * estorno zerava só a parcela que a URL nomeia. Medido com sonda no caso
+     * da cláusula 9ª — R$ 500,00 vencidos há 30 dias, R$ 515,00 recebidos,
+     * estorno em seguida:
+     *
+     *     [{"origem":"MORA","status":"PAGA","previsto":15,"recebido":15},
+     *      {"origem":"PLANO","status":"PREVISTA","previsto":500,"recebido":null}]
+     *
+     * A loja devolveu **R$ 515,00** à noiva e o carnê seguia dizendo que
+     * **R$ 15,00 foram pagos** — no caixa realizado, no DRE e no fluxo, presos
+     * a uma dívida que voltou a ser PREVISTA.
+     *
+     * **A assimetria é que diz qual é o conserto certo:** o cancelamento do
+     * contrato NÃO tem o defeito, porque seleciona por `contratoId` (`:1546`) —
+     * a linha de MORA entra em `idsComRecebimento` e é zerada junto sob
+     * `destinoPago: "estornar"`. O avulso é o único caminho que enxerga uma
+     * parcela e não o pagamento, e é isso que esta consulta corrige.
+     *
+     * **CANCELADA, não PREVISTA** — e é a régua do cancelamento, não uma
+     * escolha nova. A mora é DERIVADA (`mora.ts`): com o principal de volta a
+     * PREVISTA, a conta da 9ª volta a ser calculada do zero sobre o saldo em
+     * aberto. Uma linha de MORA PREVISTA seria a MESMA multa cobrada duas
+     * vezes — uma pela linha, outra pela derivação.
+     *
+     * **O vínculo é a trilha, e ela é a única que o guarda.** `parcelas` não
+     * tem coluna apontando a parcela de origem; quem sabe qual linha nasceu de
+     * qual recebimento é o `MORA_RECEBIDA` que o E213 grava com
+     * `parcelaDeOrigemId` — append-only, e nenhuma rota a apaga. O `where` do
+     * UPDATE não confia só no id que veio de lá: confere loja, contrato,
+     * origem e o status PAGA.
+     */
+    const linhasDaMora = await tx
+      .select({ id: auditLogTable.entidadeId })
+      .from(auditLogTable)
+      .where(and(
+        eq(auditLogTable.lojaId, lojaId as string),
+        eq(auditLogTable.acao, "MORA_RECEBIDA"),
+        sql`${auditLogTable.detalhe}->>'parcelaDeOrigemId' = ${existente.id}`,
+      ));
+    const moraCancelada = linhasDaMora.length > 0
+      ? await tx.update(parcelasTable)
+          .set({
+            status: "CANCELADA",
+            valorRecebido: null,
+            recebidoEm: null,
+            formaRecebimento: null,
+            // Os mesmos dois carimbos que o estorno avulso e o em massa já
+            // limpam: movimento que deixou de existir não continua conferido,
+            // e o da contadora alimenta o `isNull` do próximo envio.
+            conciliadoEm: null,
+            enviadoContabilidadeEm: null,
+          })
+          .where(and(
+            inArray(parcelasTable.id, linhasDaMora.map((l) => l.id)),
+            eq(parcelasTable.lojaId, lojaId as string),
+            eq(parcelasTable.contratoId, existente.contratoId),
+            eq(parcelasTable.origem, "MORA"),
+            eq(parcelasTable.status, "PAGA"),
+          ))
+          .returning()
+      : [];
+
     await registrarAuditoria(tx, {
       lojaId: lojaId as string,
       usuario: req.usuario!,
@@ -2215,8 +2379,39 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/estornar", async (req, res): Pro
         // O que o estorno desfez — some da parcela, fica na trilha.
         valorRecebido: existente.valorRecebido,
         recebidoEm: existente.recebidoEm,
+        // S-C70: o dinheiro devolvido é o do PAGAMENTO, e parte dele podia
+        // estar noutra linha. Sem estes dois, "por que saíram R$ 515,00 de uma
+        // parcela de R$ 500,00?" não tem resposta depois do fato. A soma é em
+        // CENTAVOS inteiros, como todo dinheiro deste repositório.
+        linhasDeMoraCanceladas: moraCancelada.length,
+        valorDaMoraCancelada: reais(
+          moraCancelada.reduce((acc, m) => acc + centavos(m.valorPrevisto), 0),
+        ),
       },
     });
+    /**
+     * Uma linha por parcela de MORA desfeita, e a entidade é ELA — quem abrir a
+     * trilha daquela linha do carnê tem de ler ali por que ela morreu, do mesmo
+     * jeito que o `MORA_RECEBIDA` conta por que ela nasceu. As duas pontas da
+     * 9ª deixam rastro: a que cobrou, a que perdoou e agora a que devolveu.
+     */
+    for (const m of moraCancelada) {
+      await registrarAuditoria(tx, {
+        lojaId: lojaId as string,
+        usuario: req.usuario!,
+        acao: "MORA_ESTORNADA",
+        entidade: "parcela",
+        entidadeId: m.id,
+        detalhe: {
+          contratoId: existente.contratoId,
+          parcelaDeOrigemId: existente.id,
+          // `valorRecebido` já foi zerado pelo UPDATE acima; o previsto da
+          // linha de MORA é o mesmo número, porque ela nasce quitada.
+          valor: m.valorPrevisto,
+          numero: m.numero,
+        },
+      });
+    }
     return { parcela: atualizada };
   });
 

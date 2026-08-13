@@ -80,8 +80,11 @@ import {
  * com as 28 transações e as 38 trancas inalteradas — o E191 não criou tranca
  * nenhuma, ele fez as que já existiam decidirem alguma coisa.
  *
- * **HOJE (2026-08-13, base `c34ac62`): 304 arquivos · 56 portas · 32 TRANCA ·
- * 11 CAS · 13 ABERTA · 29 transações · 40 trancas.** As três tabelas acima são
+ * **HOJE (2026-08-13, base `4ada7c3`): 304 arquivos · 57 portas · 33 TRANCA ·
+ * 11 CAS · 13 ABERTA · 29 transações · 40 trancas.** A porta a mais é a da
+ * S-C70: o estorno avulso passou a CANCELAR a linha de `MORA` que aquele
+ * recebimento criou, dentro da transação que já trancava o contrato — **um
+ * `update` novo em `parcelas`, nenhuma tranca nova**. As três tabelas acima são
  * história e ficam por isso; o número corrente mora nos dois retratos travados
  * (`RETRATO`, `RETRATO_DA_ORDEM`), e ele é travado por IGUALDADE desde a
  * S-C46 — **enquanto foi piso, esta prosa envelheceu 8 portas, 1 transação e 2
@@ -175,7 +178,7 @@ const sitio = (p: Porta): string => `${p.arquivo}:${p.linha} ${p.verbo}(${p.tabe
  * **Medido em 2026-08-13 (S-C46), base `c34ac62`: 304 arquivos-fonte
  * versionados.**
  */
-const RETRATO = { TRANCA: 32, CAS: 11, ABERTA: 13 } as const;
+const RETRATO = { TRANCA: 33, CAS: 11, ABERTA: 13 } as const;
 
 /**
  * O retrato da ORDEM, travado pelo mesmo critério — e é ele que estava 1 e 2
@@ -380,13 +383,16 @@ describe("varredura — a enumeração das portas de escrita", () => {
    * das três disciplinas contadas mais abaixo, porque toda porta tem
    * exatamente uma.
    *
-   * **56 medidas em 2026-08-13.** O título anterior dizia 48 até a S-C11
-   * remedir e achar oito de atraso — uma dela mesma (a parcela que segue o
-   * valor corrigido da avaria) e sete acumuladas nos épicos da trilha do
-   * contrato. O piso era `>= 22` e nada reprovava; hoje o número é igualdade,
-   * que é o que obriga a próxima a ser explicada.
+   * **57 medidas em 2026-08-13.** O título dizia 48 até a S-C11 remedir e achar
+   * oito de atraso — uma dela mesma (a parcela que segue o valor corrigido da
+   * avaria) e sete acumuladas nos épicos da trilha do contrato. O piso era
+   * `>= 22` e nada reprovava; hoje o número é igualdade, que é o que obriga a
+   * próxima a ser explicada — e a **57ª foi explicada por esta régua**: a S-C70
+   * abriu o `update` que CANCELA a linha de `MORA` no estorno avulso
+   * (`contratos.ts`), e o vermelho `expected 57 to be 56` foi o que cobrou este
+   * parágrafo.
    */
-  it("acha as portas — são 56, e o total é o retrato somado", () => {
+  it("acha as portas — são 57, e o total é o retrato somado", () => {
     expect(portas.length).toBe(RETRATO.TRANCA + RETRATO.CAS + RETRATO.ABERTA);
   });
 
@@ -792,7 +798,7 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
    * - **8 → 11 por CAS** é drift ANTERIOR, medido pela S-C11 e não causado por
    *   ela: os pisos eram `>=` e ninguém os subiu depois do E212 e do E213.
    */
-  it("e o censo das disciplinas é o retrato — 32 TRANCA · 11 CAS · 13 ABERTA", () => {
+  it("e o censo das disciplinas é o retrato — 33 TRANCA · 11 CAS · 13 ABERTA", () => {
     const conta = { TRANCA: 0, CAS: 0, ABERTA: 0 };
     for (const p of portas) conta[p.disciplina] += 1;
     expect(conta).toEqual(RETRATO);

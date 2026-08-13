@@ -165,6 +165,12 @@ export const ACOES_AUDITORIA = [
   // contrapartida do perdão — as duas pontas da 9ª deixam rastro, a que cobrou
   // e a que abriu mão.
   "MORA_RECEBIDA",
+  // S-C70: a linha de MORA desfeita pelo estorno do recebimento que a criou.
+  // O estorno avulso enxergava a parcela e não o PAGAMENTO: devolvia R$ 515,00
+  // à noiva e deixava R$ 15,00 PAGOS no carnê, no caixa e no DRE. A linha
+  // morre CANCELADA (a régua do cancelamento), e quem abrir a trilha DELA
+  // precisa ler por que ela morreu — o `MORA_RECEBIDA` já conta por que nasceu.
+  "MORA_ESTORNADA",
   // S-M1: o sexto DELETE cru, que o E115 não alcançou. A cabine é o único cuja
   // cascata leva ATENDIMENTOS inteiros — a guarda nova recusa apagar cabine com
   // agenda, e o rastro cobre a que não tem: depois do DELETE não sobra linha de
@@ -257,6 +263,7 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   MORA_PERDOADA: "Multa e juros da parcela vencida perdoados (cláusula 9ª)",
   MORA_RESTABELECIDA: "Multa e juros da parcela vencida restabelecidos (cláusula 9ª)",
   MORA_RECEBIDA: "Multa e juros recebidos (cláusula 9ª)",
+  MORA_ESTORNADA: "Multa e juros devolvidos com o estorno do recebimento (cláusula 9ª)",
   CABINE_REMOVIDA: "Cabine removida",
   ITEM_ESTOQUE_REMOVIDO: "Item de estoque removido",
   AJUSTE_REMOVIDO: "Trabalho de costura removido da fila",
