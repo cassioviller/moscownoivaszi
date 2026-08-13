@@ -1,6 +1,8 @@
 import ts from "typescript";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { getTableColumns, type Table } from "drizzle-orm";
+import * as schema from "@workspace/db/schema";
 import { arquivosVersionados } from "./arquivos-versionados";
 
 /**
@@ -114,26 +116,124 @@ export const PAIS: Record<TabelaQuente, readonly string[]> = {
  * As colunas que decidem ESTADO em cada tabela — as que uma corrida muda embaixo
  * de quem já leu. São elas que a releitura tem de trazer e que o CAS tem de
  * repetir no `where`.
+ *
+ * ## S-C33 — a lista sai do SCHEMA, e não da mão de quem leu
+ *
+ * Até 2026-08-13 esta constante era uma lista escrita à mão, e **coluna de
+ * estado nova nascia invisível para a detecção de CAS**. Isso custou dois
+ * épicos seguidos, e nos dois a régua acusou código CERTO — que é a direção
+ * cara, porque manda consertar o que não está quebrado:
+ *
+ * - **E212** — `contratos.atrasoParcelaId` fora da lista, e a varredura leu a
+ *   porta como ABERTA enquanto o `where` da escrita repetia exatamente a
+ *   condição lida.
+ * - **E213** — `parcelas.moraPerdoadaEm` fora da lista, e as DUAS portas do
+ *   perdão apareceram abertas estando sob CAS de verdade: `contratos.ts` contava
+ *   **3** portas sem disciplina onde há **1**.
+ *
+ * Os dois consertos foram POR COLUNA, o que não impede a terceira vez. É a
+ * mesma classe que a conferência de 2026-08-05 achou na S30 (*"trava a lista,
+ * não a contagem"*), agora do lado das colunas.
+ *
+ * ## O CRITÉRIO, declarado
+ *
+ * Uma coluna de estado responde **"em que ponto isto está?"** ou **"isto já
+ * aconteceu?"**. No schema deste repositório ela tem exatamente duas grafias, e
+ * as duas são legíveis pelo drizzle sem adivinhação:
+ *
+ * 1. **`status`** — a coluna `pgEnum` que nomeia o estágio. Cinco tabelas
+ *    quentes, quatro têm uma (`bloqueio_vestidos` não tem: quem cancela um
+ *    bloqueio data o cancelamento).
+ * 2. **O FATO DATADO** — `timestamp` **ANULÁVEL** cujo nome diz que o ato
+ *    aconteceu. Este repositório soletra isso de duas maneiras, e as duas
+ *    contam: sufixo **`Em`** (`moraPerdoadaEm`, `canceladoEm`) e sufixo
+ *    **`DataReal`** (`bloqueio_vestidos.retiradaDataReal`, `devolucaoDataReal`,
+ *    `provaDataReal` — o "real" existe justamente para separar o que ACONTECEU
+ *    do que estava previsto, e é sobre `devolucaoDataReal` que a cláusula 16ª
+ *    decide se a peça voltou). A **anulabilidade** é o que faz o sufixo
+ *    significar alguma coisa: `contratos.fechadoEm` é `notNull` com default,
+ *    nasce preenchida e nunca responde "já?"; `parcelas.moraPerdoadaEm` nasce
+ *    vazia e a resposta é a presença. `createdAt`/`updatedAt` ficam de fora
+ *    pelas duas peneiras — sufixo `At` e `notNull`.
+ *
+ * O critério é conservador de propósito na direção que importa. Coluna de
+ * estado FORA da lista faz a varredura acusar código certo (E212, E213);
+ * coluna que não é estado DENTRO da lista faz a varredura **aprovar** porta sem
+ * disciplina, que é a régua que autoriza. Por isso as grafias são estreitas e o
+ * que elas não pegam entra à mão, uma exceção por vez, com o motivo escrito.
+ *
+ * ## O que a grafia NÃO pega, e por que a exceção é melhor que abrir o critério
+ *
+ * `contratos.atrasoParcelaId` é estado — responde *"este atraso já virou
+ * parcela?"* — e está escrito como **vínculo**, não como data. Abrir o critério
+ * para "FK anulável" pegaria junto `contratos.orcamentoId`,
+ * `contratos.bloqueioVestidoId`, `bloqueio_vestidos.leadId`,
+ * `bloqueio_vestidos.reservaId` e `orcamentos.atendimentoId` — **cinco colunas
+ * de PARENTESCO**, que dizem de quem a linha é e não em que ponto ela está.
+ * Cinco falsos por um verdadeiro, na direção que autoriza: a exceção nomeada
+ * custa menos e diz mais.
  */
-export const COLUNAS_DE_ESTADO: Record<TabelaQuente, readonly string[]> = {
-  // E212 — `atrasoParcelaId` É coluna de estado: ela responde "este atraso já
-  // virou parcela?", e o CAS sobre ela é a guarda inteira do duplo clique
-  // (cláusula 16ª). Sem ela na lista, a varredura lia a porta do E212 como
-  // ABERTA enquanto o `where` da escrita repetia exatamente a condição lida —
-  // a classe da "régua que mede menos do que anuncia" (E186/E199), aqui na
-  // direção que acusa código certo.
-  contratosTable: ["status", "canceladoEm", "atrasoParcelaId"],
-  reservasTable: ["status"],
-  orcamentosTable: ["status", "aceitoEm", "aprovadoEm", "publicoAbertoEm"],
-  bloqueioVestidosTable: ["canceladoEm"],
-  // E213 — `moraPerdoadaEm` É coluna de estado, pela MESMA razão que
-  // `contratos.atrasoParcelaId` entrou no E212: ela responde "esta multa já foi
-  // perdoada?", e o CAS sobre ela é a guarda do duplo clique nas duas direções
-  // (perdoar só o que não está perdoado, restabelecer só o que está). Duas
-  // colunas de estado nasceram em dois épicos seguidos e as duas nasceram
-  // invisíveis para esta varredura — é a S-C33 medindo a si mesma.
-  parcelasTable: ["status", "recebidoEm", "conciliadoEm", "enviadoContabilidadeEm", "moraPerdoadaEm"],
+const ESTADO_QUE_A_GRAFIA_NAO_PEGA: Partial<Record<TabelaQuente, readonly string[]>> = {
+  // E212, cláusula 16ª — o CAS sobre ela é a guarda inteira do duplo clique.
+  // Removê-la é medível: `reservas.ts` vai de 4 para 5 e a dívida de 13 para 14.
+  contratosTable: ["atrasoParcelaId"],
 };
+
+/** Uma coluna do drizzle, no pouco que este critério precisa saber dela. */
+export type ColunaDoSchema = { columnType: string; notNull: boolean };
+
+/**
+ * O critério, em código — as duas grafias e nada mais.
+ *
+ * Exportado separado de `colunasDeEstadoDe` porque é ele que o autoteste da
+ * varredura prega com colunas sintéticas: o critério nasce VERDE sobre o schema
+ * de hoje, e régua que nunca se viu vermelha é decoração. Aqui o vermelho fica
+ * gravado — a coluna que ele TEM de recusar está escrita ao lado da que ele tem
+ * de aceitar.
+ */
+export function ehColunaDeEstado(chave: string, coluna: ColunaDoSchema): boolean {
+  if (chave === "status" && coluna.columnType === "PgEnumColumn") return true;
+  return /(Em|DataReal)$/.test(chave) && coluna.columnType === "PgTimestamp" && !coluna.notNull;
+}
+
+/** As colunas que a grafia recusa e que a exceção nomeada devolve. */
+export function excecoesDe(tabela: TabelaQuente): readonly string[] {
+  return ESTADO_QUE_A_GRAFIA_NAO_PEGA[tabela] ?? [];
+}
+
+/**
+ * O nome quente ↔ a tabela do drizzle, escrito uma vez.
+ *
+ * É a ponte que faz a derivação existir, e ela é EXPLÍCITA de propósito: um
+ * `schema[nome]` indexado por string passaria por cima do compilador e um erro
+ * de digitação viraria "tabela sem coluna de estado", que é a régua aprovando
+ * em silêncio. Tabela quente nova custa uma linha aqui, ao lado da de `PAIS` e
+ * da de `NOMES_NO_BANCO` — e nenhuma em `COLUNAS_DE_ESTADO`, que é o que a
+ * S-C33 comprou.
+ */
+const TABELAS_DO_SCHEMA: Record<TabelaQuente, Table> = {
+  bloqueioVestidosTable: schema.bloqueioVestidosTable,
+  reservasTable: schema.reservasTable,
+  contratosTable: schema.contratosTable,
+  orcamentosTable: schema.orcamentosTable,
+  parcelasTable: schema.parcelasTable,
+};
+
+/**
+ * As colunas de estado de UMA tabela, pelo critério acima. Exportada porque é
+ * o critério que a varredura prega — não o resultado dele.
+ */
+export function colunasDeEstadoDe(tabela: TabelaQuente): string[] {
+  const colunas = getTableColumns(TABELAS_DO_SCHEMA[tabela]);
+  const derivadas = Object.entries(colunas)
+    .filter(([chave, coluna]) => ehColunaDeEstado(chave, coluna))
+    .map(([chave]) => chave);
+  return [...derivadas, ...excecoesDe(tabela)];
+}
+
+const derivadasPorTabela: Partial<Record<TabelaQuente, readonly string[]>> = {};
+for (const t of TABELAS_QUENTES) derivadasPorTabela[t] = colunasDeEstadoDe(t);
+export const COLUNAS_DE_ESTADO = derivadasPorTabela as Record<TabelaQuente, readonly string[]>;
 
 /**
  * A ORDEM em que as trancas se tomam, em degraus — S-O33, o ponto cego 4 do E171.

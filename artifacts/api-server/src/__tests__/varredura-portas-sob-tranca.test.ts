@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   arquivosVarridos,
+  colunasDeEstadoDe,
   degrauDaTranca,
+  ehColunaDeEstado,
   enumerarPortas,
   escritasComTabelaDinamica,
+  excecoesDe,
   portasNoTexto,
   sqlCruEscrevendoEmTabelaQuente,
   trancasEmLacoNaoOrdenado,
@@ -11,7 +14,10 @@ import {
   trancasNoTexto,
   trancasPorTransacao,
   trancasSemDegrauDeclarado,
+  COLUNAS_DE_ESTADO,
+  TABELAS_QUENTES,
   type Porta,
+  type TabelaQuente,
 } from "./portas-de-escrita";
 
 /**
@@ -49,7 +55,8 @@ import {
  * quatro tabelas e deixou de fora justamente aquela onde o dinheiro mora: o
  * E158 já tivera de trancá-la (`contratos.ts:1229`) e a varredura que conta as
  * portas não a contava. Ela custou uma linha em `TABELAS_QUENTES`, uma em
- * `PAIS`, uma em `COLUNAS_DE_ESTADO` e uma em `NOMES_NO_BANCO` — e trouxe **15
+ * `PAIS`, uma em `COLUNAS_DE_ESTADO` (a S-C33 aposentou ESTA: as colunas saem do
+ * schema desde 2026-08-13) e uma em `NOMES_NO_BANCO` — e trouxe **15
  * portas de uma vez**, das quais **14 já tinham disciplina** (11 sob tranca, 3
  * por CAS). A décima quinta é o gerador da demonstração, que já estava perdoado
  * pelo mesmo motivo que as outras seis dele.
@@ -217,7 +224,9 @@ const SEM_DISCIPLINA: Record<string, number> = {
    * lida (`mora_perdoada_em IS NULL` para perdoar, `IS NOT NULL` para
    * desfazer). A varredura só passou a enxergá-las depois de `moraPerdoadaEm`
    * entrar em `COLUNAS_DE_ESTADO`, que é a S-C33 acontecendo pela segunda vez
-   * em dois épicos seguidos.
+   * em dois épicos seguidos. **A terceira vez não acontece**: a S-C33 fechou e
+   * a lista sai do schema — `moraPerdoadaEm` seria vista sozinha, por ser um
+   * `timestamp` anulável terminado em `Em`.
    */
   "artifacts/api-server/src/routes/contratos.ts": 1,
   /**
@@ -255,6 +264,11 @@ const SEM_DISCIPLINA: Record<string, number> = {
    *   `canceladoEm`: **a régua media menos do que anuncia**, e desta vez na
    *   direção que acusa código certo. `atrasoParcelaId` entrou na lista
    *   (`portas-de-escrita.ts`), e com ela a porta passou a medir CAS.
+   *
+   * **A S-C33 fechou e esta linha é a prova de que a exceção vale:**
+   * `atrasoParcelaId` é o único estado que a grafia derivada não pega — ele é
+   * VÍNCULO, não data. Removê-la da lista de exceções faz esta contagem ir de
+   * **4 para 5** e a dívida de **13 para 14**, medido.
    */
   "artifacts/api-server/src/routes/reservas.ts": 4,
   // Era 6; a sétima é o carnê (`:525`), que só ficou visível quando `parcelas`
@@ -301,6 +315,150 @@ describe("varredura — a enumeração das portas de escrita", () => {
 
   it("nenhum SQL cru escreve nas quatro tabelas quentes", () => {
     expect(sqlCruEscrevendoEmTabelaQuente()).toEqual([]);
+  });
+});
+
+/**
+ * S-C33 — a régua medindo a si mesma: `COLUNAS_DE_ESTADO` sai do SCHEMA.
+ *
+ * A constante era lista escrita à mão, e **coluna de estado nova nascia
+ * invisível para a detecção de CAS**. O preço apareceu em dois épicos seguidos,
+ * e nos dois a régua acusou código CERTO — a direção cara, porque manda
+ * consertar o que não está quebrado:
+ *
+ * - **E212** — sem `contratos.atrasoParcelaId` na lista, a porta media ABERTA
+ *   com o `where` da escrita repetindo exatamente a condição lida.
+ * - **E213** — sem `parcelas.moraPerdoadaEm`, `contratos.ts` contava **3**
+ *   portas sem disciplina onde há **1**: as DUAS portas do perdão apareciam
+ *   abertas estando sob CAS de verdade.
+ *
+ * Os dois consertos foram POR COLUNA, o que não impede a terceira vez. O
+ * critério que os substitui está declarado em `portas-de-escrita.ts` e tem duas
+ * grafias — `status` enum, e `timestamp` ANULÁVEL terminado em `Em` —, mais uma
+ * exceção nomeada para o que a grafia não pega.
+ *
+ * **A troca não mexeu em contagem nenhuma, e é o resultado.** Medido nas duas
+ * pontas sobre a mesma base (`2dc9eec0`), com o enumerador antigo e o novo lado
+ * a lado: **303 arquivos · 55 portas · 31 TRANCA · 11 CAS · 13 ABERTA**, e o
+ * mapa por arquivo idêntico nos quatro nomes. O derivado enxerga **seis colunas
+ * que a lista curada não tinha** — `bloqueio_vestidos.lavagemConcluidaEm`,
+ * `contratos.comissaoEstornadaEm`, `orcamentos.publicoExpiraEm` e as três
+ * `bloqueio_vestidos.*DataReal` — e **nenhuma porta de hoje as repete no `where`
+ * nem as projeta na tranca**, então nenhuma porta mudou de disciplina. Não subiu
+ * dívida escondida nem se perdoou porta: o que mudou não é o retrato, é que a
+ * próxima coluna de estado nasce VISTA.
+ *
+ * **O quanto cada metade do critério pesa foi medido tirando-a.** Sem a grafia
+ * do fato datado a dívida vai de 13 para **18** (`expected 18 to be 13`) e o CAS
+ * cai de 11 para 6 (`expected 6 to be greater than or equal to 8`); sem a
+ * exceção nomeada, `reservas.ts` vai de 4 para 5 e a dívida para **14**
+ * (`expected 14 to be 13`). Nenhuma das duas é decoração.
+ */
+describe("varredura — as colunas de estado saem do schema, não da mão de quem leu", () => {
+  /**
+   * O que a lista curada dizia no dia em que foi aposentada (base `2dc9eec0`,
+   * depois do E212 e do E213). É PISO, não igualdade: coluna nova entra de
+   * graça — que é o épico inteiro —, e coluna que SUMISSE do derivado fica
+   * vermelha aqui. A assimetria é a régua: sobrar aprova código certo, faltar
+   * aprova porta aberta.
+   */
+  const CURADA_ATE_2026_08_13: Record<TabelaQuente, readonly string[]> = {
+    contratosTable: ["status", "canceladoEm", "atrasoParcelaId"],
+    reservasTable: ["status"],
+    orcamentosTable: ["status", "aceitoEm", "aprovadoEm", "publicoAbertoEm"],
+    bloqueioVestidosTable: ["canceladoEm"],
+    parcelasTable: ["status", "recebidoEm", "conciliadoEm", "enviadoContabilidadeEm", "moraPerdoadaEm"],
+  };
+
+  it("o derivado contém tudo o que a lista curada sabia — nada se perdeu na troca", () => {
+    for (const t of TABELAS_QUENTES) {
+      const perdidas = CURADA_ATE_2026_08_13[t].filter((c) => !COLUNAS_DE_ESTADO[t].includes(c));
+      expect({ [t]: perdidas }).toEqual({ [t]: [] });
+    }
+  });
+
+  /**
+   * O piso da S-D31 aplicado às colunas: conjunto vazio faria toda porta medir
+   * ABERTA e a dívida explodir — e conjunto vazio em UMA tabela passaria
+   * despercebido no total.
+   */
+  it("nenhuma tabela quente fica sem coluna de estado", () => {
+    for (const t of TABELAS_QUENTES) expect(COLUNAS_DE_ESTADO[t].length).toBeGreaterThan(0);
+    expect(COLUNAS_DE_ESTADO).toEqual(
+      Object.fromEntries(TABELAS_QUENTES.map((t) => [t, colunasDeEstadoDe(t)])),
+    );
+  });
+
+  /**
+   * **Exceção que a grafia já pega é exceção MORTA**, e lista morta é o começo
+   * da lista curada de novo. No dia em que `atrasoParcelaId` virar
+   * `atrasoParceladoEm`, ou em que o critério abrir, esta linha fica vermelha e
+   * cobra a baixa — do mesmo jeito que `SEM_DISCIPLINA` cobra a da dívida.
+   */
+  it("e toda exceção nomeada é necessária — nenhuma delas cabe na grafia", () => {
+    const mortas: string[] = [];
+    for (const t of TABELAS_QUENTES) {
+      const pelaGrafia = colunasDeEstadoDe(t).filter((c) => !excecoesDe(t).includes(c));
+      for (const e of excecoesDe(t)) if (pelaGrafia.includes(e)) mortas.push(`${t}.${e}`);
+    }
+    expect(mortas).toEqual([]);
+    // Uma só hoje: o vínculo que responde "este atraso já virou parcela?".
+    expect(TABELAS_QUENTES.flatMap((t) => excecoesDe(t).map((c) => `${t}.${c}`))).toEqual([
+      "contratosTable.atrasoParcelaId",
+    ]);
+  });
+
+  /**
+   * O autoteste do CRITÉRIO, com colunas sintéticas — o mesmo motivo do
+   * autoteste do enumerador: ele nasce verde sobre o schema de hoje. Cada par
+   * abaixo é uma peneira do critério isolada, e a coluna recusada está ao lado
+   * da aceita para que a diferença seja legível.
+   */
+  it("aceita as duas grafias do estado, e recusa o que se parece com elas", () => {
+    const ts = (notNull: boolean) => ({ columnType: "PgTimestamp", notNull });
+    // 1. `status` enum — o estágio nomeado.
+    expect(ehColunaDeEstado("status", { columnType: "PgEnumColumn", notNull: true })).toBe(true);
+    // 2. O fato datado: timestamp ANULÁVEL cujo nome diz que o ato aconteceu. É
+    //    esta grafia que teria pego `moraPerdoadaEm` no E213 sem ninguém
+    //    escrever uma linha.
+    expect(ehColunaDeEstado("moraPerdoadaEm", ts(false))).toBe(true);
+    expect(ehColunaDeEstado("devolvidoEm", ts(false))).toBe(true);
+    // A segunda soletração do mesmo fato — o `real` que separa o que ACONTECEU
+    // do previsto, e é sobre ele que a cláusula 16ª decide se a peça voltou.
+    expect(ehColunaDeEstado("devolucaoDataReal", ts(false))).toBe(true);
+    // Mas a data PREVISTA não é fato: ela diz o combinado, não o ocorrido.
+    expect(ehColunaDeEstado("devolucaoDataPrevista", ts(false))).toBe(false);
+    // `fechadoEm` é `notNull` com default: nasce preenchida e nunca responde "já?".
+    expect(ehColunaDeEstado("fechadoEm", ts(true))).toBe(false);
+    // `createdAt`/`updatedAt` caem pelas duas peneiras — sufixo `At` e `notNull`.
+    expect(ehColunaDeEstado("updatedAt", ts(true))).toBe(false);
+    // Data de NEGÓCIO com sufixo parecido não é fato: `validade` é prazo, e
+    // `publicoToken` é texto.
+    expect(ehColunaDeEstado("validade", ts(false))).toBe(false);
+    expect(ehColunaDeEstado("publicoToken", { columnType: "PgText", notNull: false })).toBe(false);
+    // O enum que CLASSIFICA não é o enum que decide estágio: `parcelas.origem` e
+    // `bloqueio_vestidos.tipo` nascem com a linha e não mudam.
+    expect(ehColunaDeEstado("origem", { columnType: "PgEnumColumn", notNull: true })).toBe(false);
+    expect(ehColunaDeEstado("tipo", { columnType: "PgEnumColumn", notNull: true })).toBe(false);
+    // E o vínculo de PARENTESCO fica de fora da grafia de propósito — é ele que
+    // obriga `atrasoParcelaId` a ser exceção nomeada em vez de regra aberta.
+    expect(ehColunaDeEstado("orcamentoId", { columnType: "PgText", notNull: false })).toBe(false);
+  });
+
+  /**
+   * **CONFIGURAÇÃO não é estado**, e a diferença é a pergunta que a coluna
+   * responde: a regra diz *como a loja funciona*, e continua a mesma depois da
+   * corrida que o CAS existe para arbitrar. As quatro que o E222 acrescentou a
+   * `regra_disponibilidade` são o caso vivo — e o critério as recusa pelas duas
+   * peneiras ao mesmo tempo (tipo errado e `notNull`), o que é o que se quer de
+   * uma régua: recusar por mais de um motivo, não por sorte de nome.
+   */
+  it("e a REGRA da loja não é estado — as quatro colunas do E222 ficam de fora", () => {
+    const inteiro = { columnType: "PgInteger", notNull: true };
+    expect(ehColunaDeEstado("retiradaAberturaMinutos", inteiro)).toBe(false);
+    expect(ehColunaDeEstado("retiradaFechamentoMinutos", inteiro)).toBe(false);
+    expect(ehColunaDeEstado("retiradaFechamentoSabadoMinutos", inteiro)).toBe(false);
+    expect(ehColunaDeEstado("retiradaDias", { columnType: "PgJsonb", notNull: true })).toBe(false);
   });
 });
 
