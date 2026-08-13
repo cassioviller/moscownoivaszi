@@ -69,6 +69,7 @@ import {
 } from "../helpers";
 import { linkWhatsApp } from "@/lib/whatsapp";
 import { reservasForaDaData } from "@/lib/reservas-fora-da-data";
+import { reajustePrevisto } from "@/lib/reajuste-da-troca";
 
 const STATUS_ORCAMENTO: Record<string, string> = {
   RASCUNHO: "Rascunho",
@@ -577,12 +578,41 @@ export default function NoivaDetalhe() {
                     Mover ajusta as peças e o contrato ativo para {diaMesAno(avisoDeData.dia)}.
                   </span>
                 </p>
-                {avisoDeData.foraDaData.map((r) => (
+                {avisoDeData.foraDaData.map((r) => {
+                  /**
+                   * **E211 — o preço aparece ANTES do clique** (cláusula 17ª
+                   * §§2º e 3º).
+                   *
+                   * O botão move na hora, sem diálogo. Cobrar 10% do contrato
+                   * depois disso seria a vendedora descobrir o reajuste **depois
+                   * de já ter prometido a data à noiva** — e ela não teria como
+                   * saber, porque a cláusula não está em tela nenhuma.
+                   *
+                   * A conta é a MESMA do servidor (`financeiro-core`), não uma
+                   * segunda grafia: o que a tela acrescenta é saber qual
+                   * contrato perguntar (`lib/reajuste-da-troca.ts`).
+                   */
+                  const reajuste = reajustePrevisto({
+                    contratos: contratosDaNoiva,
+                    deDia: r.dia,
+                    paraDia: avisoDeData.dia,
+                  });
+                  return (
                   <div key={r.reservaId} className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-sm">
                       {diaMesAno(r.dia)}
                       {r.pecas.length > 0 && (
                         <span className="text-muted-foreground"> · {r.pecas.join(" · ")}</span>
+                      )}
+                      {reajuste && (
+                        <span
+                          className="text-destructive block text-xs font-medium"
+                          data-testid={`reajuste-previsto-${r.reservaId}`}
+                        >
+                          Mudar para o ano seguinte reajusta o contrato em{" "}
+                          {reajuste.percentual}% — {brl(reajuste.valor)} a mais, cobrado como
+                          parcela (cláusula 17ª).
+                        </span>
                       )}
                     </span>
                     {podeMoverReserva && (
@@ -611,7 +641,8 @@ export default function NoivaDetalhe() {
                       </Button>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 

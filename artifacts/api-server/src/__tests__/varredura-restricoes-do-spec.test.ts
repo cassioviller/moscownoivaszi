@@ -101,12 +101,16 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
    * perguntar se aquele campo precisa mesmo ser inteiro na borda. Se precisar,
    * a rota guarda (como P5) e o número aqui sobe junto, com a decisão escrita.
    */
-  it("115 `type: integer` no spec, e o zod gerado não traduz nenhum", () => {
+  it("116 `type: integer` no spec, e o zod gerado não traduz nenhum", () => {
     const inteiros = inteirosDoSpec();
     expect(
       inteiros.length,
       "acrescentou um `integer` ao spec? Confira se a rota precisa guardá-lo (P5) e atualize esta contagem",
-    ).toBe(115);
+      // E211: 115 → 116. O novo é `Contrato.reajustesDeData`, e a decisão que
+      // esta régua obriga a tomar está tomada: ele é campo de RESPOSTA, não de
+      // entrada — ninguém o manda pela borda, então não há rota para guardá-lo.
+      // A tela o lê para saber qual degrau da escada do §3º vem agora.
+    ).toBe(116);
 
     // A outra ponta: se um dia o gerador aprender `.int()`, este número deixa
     // de ser zero e a régua acima vira ruído — é o sinal de trocar a varredura

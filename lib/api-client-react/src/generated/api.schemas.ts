@@ -2003,6 +2003,7 @@ export const ParcelaOrigem = {
   PLANO: 'PLANO',
   AVULSA: 'AVULSA',
   AVARIA: 'AVARIA',
+  REAJUSTE_DATA: 'REAJUSTE_DATA',
 } as const;
 
 export type ParcelaStatus = typeof ParcelaStatus[keyof typeof ParcelaStatus];
@@ -2122,6 +2123,7 @@ export interface Contrato {
   canceladoEm?: string | null;
   /** @nullable */
   dataCasamento?: string | null;
+  reajustesDeData?: number;
   /** @nullable */
   dataRetirada?: string | null;
   /** @nullable */

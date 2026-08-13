@@ -13,4 +13,5 @@ export const ParcelaOrigem = {
   PLANO: 'PLANO',
   AVULSA: 'AVULSA',
   AVARIA: 'AVARIA',
+  REAJUSTE_DATA: 'REAJUSTE_DATA',
 } as const;

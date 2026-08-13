@@ -163,7 +163,16 @@ export const parcelaStatusEnum = pgEnum("parcela_status", [
  * O default é `AVULSA` de propósito: é o que uma linha inserida por quem não
  * conhece esta régua deve ser, e é a única das três que não tem consequência.
  */
-export const parcelaOrigemEnum = pgEnum("parcela_origem", ["PLANO", "AVULSA", "AVARIA"]);
+/**
+ * De onde a linha de cobrança veio.
+ *
+ * `REAJUSTE_DATA` nasceu no E211: a cláusula 17ª §§2º e 3º do contrato manda
+ * reajustar o total quando a noiva move o casamento para o ano seguinte, e o
+ * reajuste entra como parcela própria — não engorda `valorTotal` — pelo mesmo
+ * desenho da AVARIA, para aparecer na cobrança e na comissão como qualquer
+ * outro dinheiro, e para a origem dizer por que ele existe.
+ */
+export const parcelaOrigemEnum = pgEnum("parcela_origem", ["PLANO", "AVULSA", "AVARIA", "REAJUSTE_DATA"]);
 
 export const contaPagarTipoEnum = pgEnum("conta_pagar_tipo", [
   "DESPESA",

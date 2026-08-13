@@ -51,7 +51,14 @@ import {
   reservaComDonos,
 } from "../lib/dono-do-bloqueio";
 import { FOTO_MAX_BYTES as AVARIA_FOTO_MAX_BYTES } from "../lib/limites";
-import { addDias, ancoraDeNegocio, hojeLocal, reancorarDataDeNegocio } from "@workspace/financeiro-core";
+import {
+  addDias,
+  ancoraDeNegocio,
+  diaDeNegocio,
+  hojeLocal,
+  reajusteDaTrocaDeData,
+  reancorarDataDeNegocio,
+} from "@workspace/financeiro-core";
 
 const router: IRouter = Router();
 
@@ -504,8 +511,13 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
                   .where(inArray(contratoBloqueiosTable.bloqueioId, idsVinculados)),
               ),
             ))
-            .returning({ id: contratosTable.id })
+            .returning({
+              id: contratosTable.id,
+              valorTotal: contratosTable.valorTotal,
+              reajustesDeData: contratosTable.reajustesDeData,
+            })
         : [];
+
 
       /**
        * S-O97 — **mover a data move a peça e o contrato, e a PROVA fica onde
@@ -532,6 +544,73 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
        */
       const diaDeCasamentoNovo = diaLocal(dados.casamentoData);
       const mudouDeDia = diaLocal(reserva.casamentoData) !== diaDeCasamentoNovo;
+
+      /**
+       * **E211 — a data que muda tem PREÇO** (contrato, cláusula 17ª §§2º e 3º).
+       *
+       * > *"As trocas de datas para o ano seguinte sofrerão reajuste automático
+       * > de 10% do valor total do contrato"* — e 20% na segunda troca, 30% na
+       * > terceira.
+       *
+       * Era a única regra do contrato que fazia o ateliê **perder dinheiro** por
+       * não estar no sistema: o gesto de mover a data existe desde o E193 e
+       * deixa rastro (`RESERVA_DATA_MOVIDA`, abaixo), e ninguém contava nem
+       * cobrava.
+       *
+       * Mora AQUI, junto da propagação, porque é o mesmo fato: quem move a data
+       * da reserva move a do contrato, e é a do contrato que a cláusula
+       * reajusta. Uma rota separada de "cobrar reajuste" deixaria os dois
+       * gestos desalinhados no dia em que alguém movesse a data por outra porta.
+       *
+       * O reajuste vira **parcela**, não aumento de `valorTotal`: mesmo desenho
+       * da avaria (`:1588`), para aparecer na cobrança e na comissão como
+       * qualquer dinheiro — e para a base do próximo reajuste continuar sendo o
+       * que foi ASSINADO, não o que já foi reajustado.
+       */
+      const reajustes: { contratoId: string; percentual: number; valor: number }[] = [];
+      if (mudouDeDia && contratosAtualizados.length > 0) {
+        for (const contrato of contratosAtualizados) {
+          const reajuste = reajusteDaTrocaDeData({
+            deDia: diaDeNegocio(reserva.casamentoData),
+            paraDia: diaDeNegocio(dados.casamentoData),
+            trocasCobradasAntes: contrato.reajustesDeData,
+            valorTotal: contrato.valorTotal,
+          });
+          // `null` é a resposta certa da maioria das trocas — mesmo ano não
+          // incide. A porta só cobra o que a cláusula manda cobrar.
+          if (!reajuste) continue;
+
+          const [{ maior }] = await tx
+            .select({ maior: sql<number>`coalesce(max(${parcelasTable.numero}), 0)` })
+            .from(parcelasTable)
+            .where(eq(parcelasTable.contratoId, contrato.id));
+
+          await tx.insert(parcelasTable).values({
+            id: randomUUID(),
+            lojaId,
+            contratoId: contrato.id,
+            numero: Number(maior) + 1,
+            origem: "REAJUSTE_DATA",
+            descricao:
+              `Reajuste por troca de data (${reajuste.percentual}%) — ` +
+              `casamento movido para ${diaDeNegocio(dados.casamentoData)}`,
+            valorPrevisto: reajuste.valor,
+            // Dia de negócio, e não `new Date()`: das 21h à meia-noite o
+            // instante cru joga o vencimento para o dia seguinte (S-O117).
+            vencimento: ancoraDeNegocio(hojeLocal()),
+          });
+
+          await tx.update(contratosTable)
+            .set({ reajustesDeData: contrato.reajustesDeData + 1, updatedAt: new Date() })
+            .where(eq(contratosTable.id, contrato.id));
+
+          reajustes.push({
+            contratoId: contrato.id,
+            percentual: reajuste.percentual,
+            valor: reajuste.valor,
+          });
+        }
+      }
       let provasParaTras: { id: string }[] = [];
       if (mudouDeDia && idsVinculados.length > 0) {
         const regra = await buscarRegra(lojaId, tx);

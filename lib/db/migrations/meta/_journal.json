@@ -127,6 +127,13 @@
       "when": 1786525117230,
       "tag": "0017_panoramic_madame_hydra",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1786595774997,
+      "tag": "0018_tired_excalibur",
+      "breakpoints": true
     }
   ]
 }

@@ -40,6 +40,19 @@ export const contratosTable = pgTable("contratos", {
   canceladoMotivo: text("cancelado_motivo"),
   canceladoEm: timestamp("cancelado_em", { withTimezone: true }),
   dataCasamento: timestamp("data_casamento", { withTimezone: true }),
+  /**
+   * E211 — quantas trocas de data **já foram COBRADAS** neste contrato.
+   *
+   * É o degrau da escada do §3º (10% → 20% → 30%), e é coluna e não contagem
+   * da trilha de propósito: decidir dinheiro lendo o JSON de `audit_log` faria
+   * a cobrança depender do formato de um detalhe de auditoria, que existe para
+   * contar a história e não para ser fonte de cálculo. A trilha continua
+   * narrando; a coluna é quem responde "qual é o próximo degrau".
+   *
+   * Conta o que foi COBRADO, não o que foi movido: troca dentro do mesmo ano
+   * não incide (§2º) e não anda a escada.
+   */
+  reajustesDeData: integer("reajustes_de_data").notNull().default(0),
   dataRetirada: timestamp("data_retirada", { withTimezone: true }),
   dataDevolucao: timestamp("data_devolucao", { withTimezone: true }),
   observacoes: text("observacoes"),

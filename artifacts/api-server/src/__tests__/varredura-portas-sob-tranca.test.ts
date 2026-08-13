@@ -203,12 +203,33 @@ const SEM_DISCIPLINA: Record<string, number> = {
   // Era 2; a S-O31 (`POST /link`) fechou e a contagem caiu — o vermelho desta
   // linha foi o que cobrou a baixa. Resta o nascimento de `POST /orcamentos`.
   "artifacts/api-server/src/routes/orcamentos.ts": 1,
-  "artifacts/api-server/src/routes/reservas.ts": 1,
+  /**
+   * De 1 para 3 no E211 — as duas novas são o reajuste da troca de data
+   * (cláusula 17ª §§2º e 3º), e estão **julgadas e absolvidas, não perdoadas**:
+   *
+   * - o `INSERT` da parcela do reajuste é **nascimento**: a linha não existe,
+   *   não há estado anterior a reler, e a unicidade que importa é a do `id`
+   *   gerado — o mesmo critério do `POST /reservas` logo acima;
+   * - o `UPDATE contratos SET reajustes_de_data` **é serializado pela linha do
+   *   contrato**, e não por um `FOR UPDATE` que a varredura enxergue: o
+   *   `UPDATE … RETURNING` que propaga `dataCasamento` (`:493`) já tomou o
+   *   lock daquela linha alguns statements antes. Em READ COMMITTED, quem chega
+   *   depois **bloqueia ali, relê a versão nova quando o primeiro commita, e o
+   *   `returning()` devolve o `reajustesDeData` já incrementado** — que é
+   *   exatamente o degrau certo para a segunda troca.
+   *
+   * A segunda é a que merece o olho de quem reabrir: ela depende de um lock
+   * IMPLÍCITO, tomado por outra sentença. Se algum dia a propagação da data
+   * deixar de passar por aquele `UPDATE`, esta conta perde a serialização em
+   * silêncio — e é por isso que ela fica declarada aqui em vez de resolvida com
+   * um comentário no código.
+   */
+  "artifacts/api-server/src/routes/reservas.ts": 3,
   // Era 6; a sétima é o carnê (`:525`), que só ficou visível quando `parcelas`
   // virou tabela quente no E180. Mesma família das outras seis, mesmo veredito.
   "scripts/loja-de-demonstracao.ts": 7,
 };
-const TOTAL_SEM_DISCIPLINA = 9;
+const TOTAL_SEM_DISCIPLINA = 11;
 
 describe("varredura — a enumeração das portas de escrita", () => {
   /**
@@ -355,7 +376,7 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
     expect(hoje).toEqual(SEM_DISCIPLINA);
   });
 
-  it("o total da dívida é 9 — 2 nascimentos e 7 do gerador da demo", () => {
+  it("o total da dívida é 11 — 4 de nascimento/serialização implícita e 7 do gerador da demo", () => {
     expect(abertas.length).toBe(TOTAL_SEM_DISCIPLINA);
     expect(Object.values(SEM_DISCIPLINA).reduce((s, n) => s + n, 0)).toBe(TOTAL_SEM_DISCIPLINA);
   });

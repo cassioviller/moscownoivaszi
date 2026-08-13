@@ -41,6 +41,7 @@ export interface Contrato {
   canceladoEm?: Date | null;
   /** @nullable */
   dataCasamento?: Date | null;
+  reajustesDeData?: number;
   /** @nullable */
   dataRetirada?: Date | null;
   /** @nullable */

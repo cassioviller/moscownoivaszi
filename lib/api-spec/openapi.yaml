@@ -6477,6 +6477,10 @@ components:
         canceladoMotivo: { type: ["string", "null"] }
         canceladoEm: { type: ["string", "null"], format: date-time }
         dataCasamento: { type: ["string", "null"], format: date-time }
+        # E211 — quantas trocas de data JÁ FORAM COBRADAS (cláusula 17ª §3º).
+        # A tela precisa dele para avisar o valor ANTES de mover: sem o degrau,
+        # ela não sabe se a próxima troca custa 10, 20 ou 30 por cento.
+        reajustesDeData: { type: integer }
         dataRetirada: { type: ["string", "null"], format: date-time }
         dataDevolucao: { type: ["string", "null"], format: date-time }
         observacoes: { type: ["string", "null"] }
@@ -6605,7 +6609,7 @@ components:
         # resposta STRIPAVA a coluna e a tela voltava a perguntar
         # `parcelas.length > 0`: um reparo de avaria cobrado antes do carnê
         # sumia com o "Gerar plano" para sempre.
-        origem: { type: string, enum: [PLANO, AVULSA, AVARIA] }
+        origem: { type: string, enum: [PLANO, AVULSA, AVARIA, REAJUSTE_DATA] }
         # PARCIAL (E49): a noiva pagou parte. O dinheiro entrou no caixa e o
         # resto (valorPrevisto − valorRecebido) segue cobrável.
         status: { type: string, enum: [PREVISTA, PARCIAL, PAGA, CANCELADA] }
