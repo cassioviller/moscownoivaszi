@@ -35,6 +35,19 @@ describe("Recorte futuras/passadas de bloqueios (E87)", () => {
     agent = await loginComLoja(f.vendedoraEmail, f.lojaId);
     leadId = (await criarLead(f)).id;
 
+    /**
+     * `ancorarCasamento: false` (S-O119) — aqui o instante CRU é o assunto.
+     *
+     * O helper ancora por padrão desde o E197, porque é o que a porta faz. Este
+     * teste precisa do oposto: ele grava *"ontem às 22h de São Paulo"*, cujo dia
+     * UTC já é hoje, para provar que o recorte `futuras` classifica pelo dia da
+     * LOJA e não pelo do timestamptz. Com a âncora, aquela linha viraria
+     * meio-dia de hoje e o caso de fronteira deixaria de existir — o teste
+     * passaria sem provar nada, que é a regra 34.
+     *
+     * É também o retrato da linha LEGADA: tudo que foi gravado antes do E197
+     * pode ter esta forma, e o recorte continua respondendo por ela.
+     */
     const reserva = async (casamentoData: Date) =>
       (
         await criarBloqueio(f, {
@@ -42,6 +55,7 @@ describe("Recorte futuras/passadas de bloqueios (E87)", () => {
           vestidoId: (await criarVestido(f)).id,
           leadId,
           casamentoData,
+          ancorarCasamento: false,
         })
       ).id;
 

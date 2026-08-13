@@ -1,0 +1,124 @@
+import { describe, expect, it } from "vitest";
+import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { ancoraDeNegocio, diaDeNegocio, reancorarDataDeNegocio } from "@workspace/financeiro-core";
+
+/**
+ * **S-O119 — fixture que grava direto no banco imita a porta, ou mente sobre
+ * ela.**
+ *
+ * A S-O117 (E197) fez toda porta ancorar `casamentoData` ao meio-dia de São
+ * Paulo, e por isso o dia UTC e o dia da loja passaram a ser o mesmo. Quem
+ * escreve **direto no banco** não passa por porta nenhuma: fixture de teste e
+ * `global-setup` do E2E gravam o que quiserem, e o instante que fabricam carrega
+ * a HORA em que a suíte rodou.
+ *
+ * O sintoma medido: entre 00:00 e 03:00 UTC — 21h à meia-noite em SP — o dia UTC
+ * já virou e `hojeLocal()` não, então toda data fabricada "a N dias de hoje" é
+ * lida como `N+1`. A suíte do frontend reprovava três horas por noite e passava
+ * nas outras 21.
+ *
+ * ## Por que esta varredura é ESTREITA de propósito
+ *
+ * A tentação é varrer a fabricação: *"teste que faz `new Date()` e chama
+ * `.toISOString()`"*. **Medido, isso dá 32 arquivos e ~55 sítios**, e quase
+ * todos são carimbo de tempo LEGÍTIMO — a hora de um pagamento, a linha de uma
+ * trilha, o `createdAt` de uma auditoria. Ali o instante é o certo, e listá-los
+ * seria a doença da S-O83: errar para mais pede julgamento a mais e nunca
+ * dispensa o julgamento devido.
+ *
+ * O que separa o defeito do carimbo não é a fabricação — **é o campo que
+ * recebe**. `casamentoData` e `dataCasamento` são data de NEGÓCIO: o servidor as
+ * lê com `diaDeNegocio`, e o dia delas é o dia UTC do que foi gravado. Então a
+ * régua pergunta uma coisa só: *alguma escrita DIRETA (fora de porta) põe um
+ * instante não ancorado num campo de data de negócio?*
+ */
+
+const RAIZ = execSync("git rev-parse --show-toplevel").toString().trim();
+
+/** Os campos que o servidor lê como DIA, não como instante. */
+const CAMPOS_DE_NEGOCIO = ["casamentoData", "dataCasamento"] as const;
+
+/**
+ * Os arquivos que escrevem no banco sem passar por porta: os helpers de fixture
+ * da suíte de API e o `global-setup` do E2E. Um spec que chame `POST` está
+ * coberto pela âncora do E197 e não entra aqui.
+ */
+const ESCRITORES_DIRETOS = ["artifacts/api-server/src/__tests__/helpers.ts", "e2e/global-setup.ts"];
+
+function linhas(rel: string): { n: number; texto: string }[] {
+  return readFileSync(join(RAIZ, rel), "utf8")
+    .split("\n")
+    .map((texto, i) => ({ n: i + 1, texto }));
+}
+
+describe("varredura — data de negócio escrita direto no banco (S-O119)", () => {
+  it("os escritores diretos existem, e a lista não envelheceu em silêncio", () => {
+    // Régua da régua: se um destes arquivos for renomeado, a varredura passa a
+    // não varrer nada e ficaria verde por vacuidade — que é a regra 34.
+    for (const rel of ESCRITORES_DIRETOS) {
+      expect(() => readFileSync(join(RAIZ, rel), "utf8"), `${rel} sumiu`).not.toThrow();
+    }
+  });
+
+  it("toda escrita direta de data de negócio passa por âncora", () => {
+    const semAncora: string[] = [];
+
+    for (const rel of ESCRITORES_DIRETOS) {
+      const todas = linhas(rel);
+      for (const { n, texto } of todas) {
+        const campo = CAMPOS_DE_NEGOCIO.find((c) => new RegExp(`\\b${c}\\s*:`).test(texto));
+        if (!campo) continue;
+        // Declaração de tipo (`casamentoData: Date`) não é escrita.
+        if (/:\s*(Date|string)\b/.test(texto)) continue;
+        /**
+         * A SENTENÇA, não a linha. O valor pode ser um ternário quebrado em
+         * quatro linhas — foi o que aconteceu ao abrir a saída
+         * `ancorarCasamento: false`, e a varredura acusou o próprio conserto
+         * (mesma forma do E194). Ler só a linha do campo mediria a formatação,
+         * não a conta.
+         */
+        const sentenca = todas
+          .slice(n - 1, n + 3)
+          .map((l) => l.texto)
+          .join(" ");
+        // A âncora pode vir na sentença, ou de uma variável já ancorada — que é
+        // o caso do `global-setup`, onde `casamento` é ancorado acima.
+        const ancorado = /reancorarDataDeNegocio|ancoraDeNegocio|T12:00:00-03:00/.test(sentenca);
+        const viaVariavelAncorada = /casamentoData:\s*(casamento|candidato\.casamentoData)\b/.test(sentenca);
+        if (!ancorado && !viaVariavelAncorada) semAncora.push(`${rel}:${n} — ${texto.trim()}`);
+      }
+    }
+
+    expect(semAncora, `escrita direta de data de NEGÓCIO sem âncora:\n${semAncora.join("\n")}`)
+      .toEqual([]);
+  });
+
+  it("a âncora é a mesma dos dois lados — a do E2E é escrita à mão e tem de bater", () => {
+    // O `global-setup` não pode importar `@workspace/financeiro-core` (roda
+    // antes de qualquer build de workspace), então repete a conta. Aqui ela é
+    // conferida contra a original, para as duas não divergirem em silêncio.
+    const dia = "2028-09-05";
+    const daCasa = ancoraDeNegocio(dia);
+    const doE2E = new Date(`${dia}T12:00:00-03:00`);
+    expect(doE2E.toISOString()).toBe(daCasa.toISOString());
+    expect(daCasa.toISOString()).toBe("2028-09-05T15:00:00.000Z");
+  });
+
+  it("ancorada, a data lê o MESMO dia pelas duas réguas — a qualquer hora", () => {
+    // O defeito em uma linha: sem âncora, estas duas leituras discordam durante
+    // três horas por noite. Com âncora, nunca.
+    const naVirada = new Date("2026-08-13T02:30:00.000Z"); // 23:30 de 12/08 em SP
+    const diaDaLoja = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" })
+      .format(naVirada);
+
+    expect(diaDeNegocio(naVirada)).toBe("2026-08-13");
+    expect(diaDaLoja).toBe("2026-08-12");
+
+    const ancorada = reancorarDataDeNegocio(ancoraDeNegocio(diaDaLoja));
+    expect(diaDeNegocio(ancorada)).toBe(diaDaLoja);
+    expect(new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(ancorada))
+      .toBe(diaDaLoja);
+  });
+});

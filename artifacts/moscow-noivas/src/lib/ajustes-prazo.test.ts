@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ancoraDeNegocio } from "@workspace/financeiro-core";
 import {
   ajustesComPrazoApertado,
   casamentoDeReferencia,
@@ -15,6 +16,40 @@ function emDias(n: number): string {
     new Date(Date.now() + n * 24 * 3_600_000),
   );
 }
+
+/**
+ * O mesmo dia de `emDias`, como INSTANTE — e ancorado ao meio-dia da loja
+ * (S-O119).
+ *
+ * A versão anterior fazia `new Date()` + n dias e `.toISOString()`, o que
+ * fabrica um instante com a HORA de quando a suíte roda. O código do outro lado
+ * lê aquilo como dia de NEGÓCIO (`diasAteCasamento` = `diasEntre(hojeLocal(),
+ * diaDeNegocio(iso))`), e entre 00:00 e 03:00 UTC — 21h à meia-noite em São
+ * Paulo — o dia UTC já é amanhã enquanto `hojeLocal()` ainda é hoje: **todo
+ * `emDiasISO(n)` lia como `n+1`**, e o assert do limiar exato reprovava. A suíte
+ * ficava vermelha três horas por noite e passava nas outras 21.
+ *
+ * Ancorando, `diaDeNegocio` do que sai daqui é exatamente `emDias(n)`, e a
+ * distância medida é `n` a qualquer hora. **Régua que depende da hora em que
+ * roda não é régua.**
+ */
+function emDiasISO(n: number): string {
+  return ancoraDeNegocio(emDias(n)).toISOString();
+}
+
+const trabalho = (over: {
+  prova?: string | null;
+  casBloqueio?: string | null;
+  casNoiva?: string | null;
+  status?: string;
+}) => ({
+  status: over.status ?? "PENDENTE",
+  proximaProva: over.prova ?? null,
+  atendimento: {
+    bloqueio: over.casBloqueio ? { casamentoData: over.casBloqueio } : null,
+    lead: over.casNoiva ? { casamentoData: over.casNoiva } : null,
+  },
+});
 
 describe("ajustesComPrazoApertado — o cartão do painel conta o que a fila mostra (E132)", () => {
   it("pendente com prova em 3 dias entra; em 10 dias fica fora", () => {
@@ -140,24 +175,6 @@ describe("ajustesComPrazoApertado — o cartão do painel conta o que a fila mos
  * confecção não tem bloqueio, por definição.
  */
 describe("urgenteAjuste — a COR, separada do RECORTE (S-O27)", () => {
-  const emDiasISO = (n: number) => {
-    const d = new Date();
-    d.setDate(d.getDate() + n);
-    return d.toISOString();
-  };
-  const trabalho = (over: {
-    prova?: string | null;
-    casBloqueio?: string | null;
-    casNoiva?: string | null;
-    status?: string;
-  }) => ({
-    status: over.status ?? "PENDENTE",
-    proximaProva: over.prova ?? null,
-    atendimento: {
-      bloqueio: over.casBloqueio ? { casamentoData: over.casBloqueio } : null,
-      lead: over.casNoiva ? { casamentoData: over.casNoiva } : null,
-    },
-  });
 
   it("a CONFECÇÃO com casamento perto é vermelha — era cinza na fila", () => {
     // Sem bloqueio: é a definição de confecção. A fila lia `bloqueio.casamentoData`
@@ -218,5 +235,47 @@ describe("urgenteAjuste — a COR, separada do RECORTE (S-O27)", () => {
 
   it("o casamento do BLOQUEIO continua valendo quando existe", () => {
     expect(urgenteAjuste(trabalho({ casBloqueio: emDiasISO(10), casNoiva: emDiasISO(90) }))).toBe(true);
+  });
+});
+
+/**
+ * **S-O119 — a régua não pode depender da hora em que roda.**
+ *
+ * Este bloco existe porque o de cima passava 21 horas por dia e reprovava nas
+ * outras 3, e ninguém tinha como saber disso sem esperar a madrugada. Aqui o
+ * relógio é CRAVADO na janela que reprovava, então o defeito volta a ser
+ * reproduzível ao meio-dia — e o conserto (ancorar `emDiasISO`) fica pregado.
+ *
+ * Só o limiar EXATO cai quando a régua escorrega um dia: os outros asserts do
+ * arquivo têm folga (`<= 14` contra 5, 10 e 20 dias), e é por isso que o defeito
+ * atravessou tantos épicos com um único teste vermelho.
+ */
+describe("urgenteAjuste — o limiar não se move com a hora do relógio (S-O119)", () => {
+  // 02:30Z de 13/08 é 23:30 de **12/08** em São Paulo: o dia UTC já virou e o da
+  // loja não. É exatamente a janela em que a suíte reprovava.
+  const NA_VIRADA = new Date("2026-08-13T02:30:00.000Z");
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NA_VIRADA);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("o dia da loja e o dia UTC discordam — é a premissa do teste", () => {
+    expect(new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date()))
+      .toBe("2026-08-12");
+    expect(new Date().toISOString().slice(0, 10)).toBe("2026-08-13");
+  });
+
+  it("na virada, prova em 7 dias continua urgente e em 8 continua não", () => {
+    expect(urgenteAjuste(trabalho({ prova: emDiasISO(7), casNoiva: emDiasISO(90) }))).toBe(true);
+    expect(urgenteAjuste(trabalho({ prova: emDiasISO(8), casNoiva: emDiasISO(9) }))).toBe(false);
+  });
+
+  it("na virada, o teto de 14 dias do casamento também não escorrega", () => {
+    expect(urgenteAjuste(trabalho({ casNoiva: emDiasISO(14) }))).toBe(true);
+    expect(urgenteAjuste(trabalho({ casNoiva: emDiasISO(15) }))).toBe(false);
   });
 });

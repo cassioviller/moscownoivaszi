@@ -31,6 +31,22 @@ function diaLocal(d: Date): string {
 }
 
 /**
+ * O INSTANTE de uma data de negócio: meio-dia de São Paulo (S-O119).
+ *
+ * A fixture abaixo escreve `casamentoData` **direto no banco**, sem passar por
+ * porta — e portas ancoram desde o E197. Sem ancorar aqui, o que fica gravado é
+ * um instante com a HORA em que a suíte subiu, e `diaDeNegocio` (que é como o
+ * servidor lê a data do casamento) discorda de `diaLocal` (que é como esta
+ * fixture calcula a ocupação) durante três horas por noite.
+ *
+ * Mesma conta de `ancoraDeNegocio` no `financeiro-core`, escrita aqui porque o
+ * `global-setup` roda antes de qualquer build de workspace e importa só o db.
+ */
+function ancoraDeNegocioLocal(d: Date): Date {
+  return new Date(`${diaLocal(d)}T12:00:00-03:00`);
+}
+
+/**
  * Setup de dados E2E — idempotente (IDs fixos "e2e-*"; roda quantas vezes
  * for preciso sem duplicar). Se o banco estiver virgem (sem admin), roda o
  * seed oficial primeiro. Os IDs criados vão para e2e/.state.json, lido
@@ -317,7 +333,10 @@ export default async function globalSetup() {
   // nas rotas, e a constraint EXCLUDE do banco lê estas colunas.
   const [bloqueio] = await db.select().from(bloqueioVestidosTable).where(eq(bloqueioVestidosTable.id, "e2e-bloqueio-1"));
   await garantir(bloqueio, () => {
-    const casamento = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+    // S-O119: ancorado, para que o dia que o servidor lê (`diaDeNegocio`, dia
+    // UTC) e o dia que a ocupação abaixo grava (`diaLocal`) sejam o MESMO a
+    // qualquer hora em que a suíte suba.
+    const casamento = ancoraDeNegocioLocal(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000));
     const retirada = new Date(casamento.getTime() - 3 * 24 * 60 * 60 * 1000);
     const devolucao = new Date(casamento.getTime() + 2 * 24 * 60 * 60 * 1000);
     return db.insert(bloqueioVestidosTable).values({

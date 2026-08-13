@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import request from "supertest";
+import { reancorarDataDeNegocio } from "@workspace/financeiro-core";
 import {
   db,
   pool,
@@ -327,7 +328,12 @@ export async function criarReserva(
       id: randomUUID(),
       lojaId: f.lojaId,
       leadId: params.leadId,
-      casamentoData: params.casamentoData,
+      // S-O119: a fixture escreve DIRETO no banco, e a porta ancora desde o
+      // E197. Sem ancorar aqui, um teste que passe `new Date(Date.now() + N)`
+      // grava um instante com a hora em que a suíte rodou, e o servidor — que lê
+      // esta coluna como dia de NEGÓCIO — enxerga outro dia por três horas
+      // toda noite. Fixture que grava direto imita a porta, ou mente sobre ela.
+      casamentoData: reancorarDataDeNegocio(params.casamentoData),
       status: params.status,
     })
     .returning();
@@ -371,6 +377,20 @@ export interface CriarBloqueioParams {
   vestidoId: string;
   tipo: BloqueioVestido["tipo"];
   casamentoData?: Date | null;
+  /**
+   * S-O119 — a saída explícita da âncora, para quem TESTA o instante cru.
+   *
+   * Por padrão o helper ancora, porque fixture que grava direto no banco tem de
+   * imitar a porta (que ancora desde o E197) — senão a suíte exercita um estado
+   * que o sistema não sabe mais produzir. Mas há teste cujo assunto É o
+   * instante de fronteira: o E87 grava *"ontem às 22h de São Paulo"*, cujo dia
+   * UTC já é hoje, justamente para provar que o recorte `futuras` classifica
+   * pelo dia da LOJA. Ancorar aquilo apagaria o caso sob teste.
+   *
+   * Quem passa `false` está dizendo *"quero a linha legada, não a que a porta
+   * escreveria"* — e tem de dizer por quê, no lugar da chamada.
+   */
+  ancorarCasamento?: boolean;
   leadId?: string | null;
   reservaId?: string | null;
   provaDataReal?: Date | null;
@@ -392,7 +412,13 @@ export async function criarBloqueio(
   const candidato: BloqueioJanelasInput = {
     id,
     tipo: params.tipo,
-    casamentoData: params.casamentoData ?? null,
+    // S-O119: mesma âncora de `criarReserva`, e pela mesma razão — este helper
+    // é `db.insert` direto, e a ocupação logo abaixo é derivada desta data.
+    // `ancorarCasamento: false` é a saída para quem testa o instante cru.
+    casamentoData:
+      params.casamentoData && params.ancorarCasamento !== false
+        ? reancorarDataDeNegocio(params.casamentoData)
+        : (params.casamentoData ?? null),
     provaDataReal: params.provaDataReal ?? null,
     retiradaDataReal: params.retiradaDataReal ?? null,
     devolucaoDataReal: params.devolucaoDataReal ?? null,
