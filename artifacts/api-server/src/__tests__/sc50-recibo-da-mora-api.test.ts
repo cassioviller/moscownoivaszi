@@ -123,7 +123,7 @@ describe("S-C50 — o pagamento com multa é UM recibo, e ele diz a multa", () =
   // O mesmo desembrulho do E165/E221: o NBSP do `brl` (escapado, S-C30) e o
   // escape de parênteses do formato, para o assert comparar texto de gente.
   const textoDoPdf = (bytes: Buffer) =>
-    bytes.toString("latin1").replace(/ /g, " ").replace(/\\([()])/g, "$1");
+    bytes.toString("latin1").replace(/\u00a0/g, " ").replace(/\\([()])/g, "$1");
 
   /**
    * **A tese.** Um pagamento, um papel — e o papel vale o que a noiva pagou.

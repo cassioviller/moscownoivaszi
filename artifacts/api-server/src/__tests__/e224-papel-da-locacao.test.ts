@@ -30,7 +30,7 @@ import { pdfDoContrato, type ContratoComPapel } from "../lib/contrato-do-papel";
 const texto = (bytes: Uint8Array) =>
   Buffer.from(bytes)
     .toString("latin1")
-    .replace(/ /g, " ")
+    .replace(/\u00a0/g, " ")
     .replace(/\\([()])/g, "$1");
 
 const base = {
