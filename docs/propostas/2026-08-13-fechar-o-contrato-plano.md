@@ -3,6 +3,23 @@
 **Aberto em 13/08/2026**, depois de a sessão fechar E213, E222 e E218.
 Base: `3b26e8a4` · Trilha: [`2026-08-13-contrato-de-papel/`](../revisao/2026-08-13-contrato-de-papel/EXECUCAO.md)
 
+> ## ⚠️ Este plano envelheceu no mesmo dia, e é isso que ele documenta
+>
+> **Atualizado em 13/08/2026, depois do lote de cinco agentes** (`c34ac624`).
+> Três coisas que ele afirma já eram falsas horas depois de escritas:
+>
+> - **"13 sobras"** — são **21**. Seis fecharam no lote e **catorze nasceram
+>   dele**, que é o que se espera de trabalho que termina em varredura.
+> - **A "leva B" já foi executada**: S-C30 (virou régua, 9 sítios), S-C33 (o
+>   derivado do schema) e S-C10 (o número morto) estão fechadas.
+> - **O `main` foi publicado** (`11e5ba89..c34ac624`) e a **S-C63 foi rodada** em
+>   `moscow_base`, com as duas colunas conferidas no banco.
+>
+> **A lição é a do ponteiro, e vale mais que o plano:** documento que descreve
+> estado envelhece a cada commit, e quem abre a sessão seguinte lê o estado velho
+> como se fosse o de hoje — foi a S-A5 da arqueologia, e o `CLAUDE.md` já pagou
+> por isso. **Conte na tabela do `EXECUCAO.md`, nunca aqui.**
+
 Este plano cobre **tudo o que ainda está aberto** na trilha do contrato: os
 épicos que faltam, os dois que precisam nascer, as 13 sobras, as 4 pendências da
 dona e os dois itens de fora da fila.

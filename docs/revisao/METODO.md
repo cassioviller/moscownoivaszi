@@ -235,6 +235,22 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
 10. Um épico por commit, escopo fechado, "visto de passagem" para o resto. *(R6)*
 11. Mudou o que a trilha grava, ou o formato do que alguma tela lê, roda o E2E
     completo antes do commit. *(R6, descoberta na execução — crítica 8)*
+
+    **Emenda de 2026-08-13, a pedido da dona: o E2E completo roda UMA VEZ POR
+    LOTE, e não por commit.** A régua continua obrigatória — o que muda é a
+    frequência. Os números que a justificam foram medidos no dia: **E2E 7 min,
+    suíte de API 10 min**, com o E2E rodado 2× e a suíte 3× numa sessão de três
+    épicos. O gargalo nunca foi o E2E.
+
+    **O que se perde está declarado, e não é pequeno: LOCALIZAÇÃO.** Um vermelho
+    ao fim de dois épicos não diz qual dos dois quebrou, e a bisseção devolve o
+    tempo economizado. Por isso a suíte de API completa **continua sendo por
+    commit** — é ela que pega o efeito colateral em arquivo que ninguém abriu, e
+    foi assim que as varreduras do E222 cobraram.
+
+    Durante o trabalho, mede-se o ARQUIVO tocado (6 s), não a suíte (596 s):
+    duas das três rodadas completas daquela sessão serviram só para descobrir
+    contagem de varredura que um arquivo teria dito.
 12. Todo "visto de passagem" sai das notas do épico e entra na tabela de
     **Sobras** do rastreador da rodada, no MESMO commit que o viu. Achado
     preservado só na nota do épico não vira trabalho: ninguém lê a nota de um
