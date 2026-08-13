@@ -529,11 +529,22 @@
       <p><strong>Reserve ali mesmo</strong>, no botão <span class="btn">Reservar agora</span> ao lado. Você consegue fazer isso mesmo sem o módulo de acervo — a venda é de quem vende.</p>
 
       <h3>Depois: os dados e o carnê</h3>
-      <p><strong>“Vendedora da venda”</strong> — se for diferente da do orçamento, o sistema avisa que a comissão vai para quem está selecionada, e registra a troca · <strong>“CPF da noiva”</strong> · <strong>“Forma de pagamento”</strong> · <strong>“Data do casamento”</strong> · <strong>“Entrada (R$)”</strong> · <strong>“Nº de parcelas”</strong> · <strong>“1ª parcela vence em”</strong>.</p>
+      <p><strong>“Vendedora da venda”</strong> — se for diferente da do orçamento, o sistema avisa que a comissão vai para quem está selecionada, e registra a troca · <strong>“CPF da noiva”</strong> · <strong>“Forma de pagamento”</strong> · <strong>“Data do casamento”</strong> · <strong>“Retirada”</strong> · <strong>“Devolução”</strong> · <strong>“Entrada (R$)”</strong> · <strong>“Nº de parcelas”</strong> · <strong>“1ª parcela vence em”</strong>.</p>
+
+      <h3>A retirada e a devolução já vêm sugeridas</h3>
+      <p><strong>Os dois campos nascem preenchidos</strong> a partir da reserva: a peça sai no primeiro dia em que ela é sua e volta no último, nos horários do contrato — a locação começa às 10:30 do dia da retirada e termina às 18:00 do dia da devolução (cláusula 5ª). <strong>Os dois são opcionais</strong>: apague o que ainda não foi combinado.</p>
+      <p>A loja <strong>retira e devolve de terça a sexta, das 10:30 às 19:00, e no sábado das 10:30 às 18:00</strong> (cláusula 4ª). Quando a janela da reserva cai em domingo ou segunda, a sugestão anda para o primeiro dia de expediente, e o diálogo diz que andou:</p>
+      <div class="fala aviso">
+        <p>“A reserva segura a peça de 06/09/2028 a 11/09/2028, e a loja não abre em todos esses dias — sugerimos retirada em 06/09/2028 e devolução em 12/09/2028.”</p>
+      </div>
+      <p class="nota">Casamento de sábado quase sempre cai nesse caso: a peça voltaria numa segunda, e a loja está fechada.</p>
+      <p><strong>Preencher a retirada liga o prazo do carnê</strong> (parágrafo único da cláusula 8ª): o restante tem de estar pago <strong>até 20 dias antes</strong> dela. Se alguma parcela vencer depois disso, o diálogo avisa <em>antes</em> de você clicar, dizendo até que dia o carnê pode vencer.</p>
+
       <p><strong>A prévia do carnê aparece enquanto você digita</strong>, e é exatamente o que vai ser gravado. As parcelas vencem todo mês no mesmo dia; se o dia não existir no mês — 31 em fevereiro —, cai no último dia do mês. A entrada, se houver, vence hoje.</p>
 
       <h3>A tela do contrato</h3>
-      <p>Traz <strong>“Valor total”</strong>, <strong>“Falta receber”</strong>, a forma de pagamento, o CPF, o vestido e os itens. Abaixo, o plano de pagamento, parcela por parcela, com o estado de cada uma: Prevista, Paga, Parcial, Atrasada, Cancelada.</p>
+      <p>Traz <strong>“Valor total”</strong>, <strong>“Falta receber”</strong>, a forma de pagamento, o CPF, o vestido, os itens e <strong>“Retirada e devolução”</strong>. Abaixo, o plano de pagamento, parcela por parcela, com o estado de cada uma: Prevista, Paga, Parcial, Atrasada, Cancelada.</p>
+      <p><strong>As datas se corrigem sem cancelar nada</strong>: o botão <span class="btn">Alterar</span> (ou <span class="btn">Informar</span>, quando ainda não há data) abre o diálogo com os dois campos. Contrato cancelado não muda mais.</p>
       <figure class="print" data-print="contrato"></figure>
 
       <p>Abaixo, <strong>o carnê inteiro</strong> — a parcela paga sai riscada, e a próxima traz a data:</p>
@@ -581,6 +592,9 @@
             <tr><td>“Uma janela de manutenção não segura a peça para a noiva — crie uma reserva de casamento para vendê-la.”</td><td>Aquele bloqueio é de manutenção, não reserva</td></tr>
             <tr><td>“Este lead já possui um contrato ativo”</td><td>A noiva já tem contrato vivo</td></tr>
             <tr><td>“A soma das parcelas não fecha com o total.”</td><td>Revise entrada e número de parcelas</td></tr>
+            <tr><td data-tela="A loja não retira nem devolve ">“A loja não retira nem devolve no domingo. A loja retira e devolve terça a sexta, das 10:30 às 19:00; sábado, das 10:30 às 18:00 (cláusula 4ª).”</td><td>Escolha um dia de expediente. O diálogo já avisa antes do clique</td></tr>
+            <tr><td data-tela=" está fora do expediente de ">“18:30 está fora do expediente de sábado (10:30 às 18:00).”</td><td>No sábado a loja fecha mais cedo — 18:30 cabe na quarta, não no sábado</td></tr>
+            <tr><td data-tela="dias antes da retirada ">“O contrato pede o restante pago até 20 dias antes da retirada (parágrafo único) — até 17/08/2028.”</td><td>Antecipe o carnê, ou combine a retirada mais tarde</td></tr>
           </tbody>
         </table>
       </div>

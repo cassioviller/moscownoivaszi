@@ -4,6 +4,7 @@ import {
   descricaoDoExpedienteDeRetirada,
   expedienteDeRetirada,
   foraDoExpedienteDeRetirada,
+  fraseDaRecusaDeRetirada,
 } from "@workspace/agenda-core";
 
 /**
@@ -55,7 +56,8 @@ export async function recusaDeExpedienteDeRetirada(
   if (retirada) {
     return {
       error: "RETIRADA_FORA_DO_EXPEDIENTE",
-      detalhe: `${retirada.detalhe} A loja retira e devolve ${expediente} (cláusula 4ª).`,
+      // E224: a frase saiu daqui para o módulo puro, que a TELA também importa.
+      detalhe: fraseDaRecusaDeRetirada(retirada, exp),
       campos: [{ campo: "dataRetirada", motivo: `Expediente de retirada: ${expediente}` }],
     };
   }
@@ -63,7 +65,7 @@ export async function recusaDeExpedienteDeRetirada(
   if (devolucao) {
     return {
       error: "DEVOLUCAO_FORA_DO_EXPEDIENTE",
-      detalhe: `${devolucao.detalhe} A loja retira e devolve ${expediente} (cláusula 4ª).`,
+      detalhe: fraseDaRecusaDeRetirada(devolucao, exp),
       campos: [{ campo: "dataDevolucao", motivo: `Expediente de retirada: ${expediente}` }],
     };
   }

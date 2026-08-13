@@ -161,19 +161,45 @@ test.describe("Orçamento vira contrato (E120 + E162)", () => {
     await expect(dialogo.getByTestId(`peca-sem-reserva-${vestidoId}`)).toHaveCount(0);
     await expect(dialogo.getByText(/Vestido do gate/)).toBeVisible();
 
+    /**
+     * S-C35/E224 — a retirada e a devolução, sugeridas pela reserva.
+     *
+     * O casamento é **sábado 15/05/2027**, e é o caso que a régua existe para
+     * pegar: a janela de uso vai de quarta 12 a **segunda 17**, e a loja não
+     * retira nem devolve na segunda (cláusula 4ª). A devolução anda para a
+     * **terça 18**, e o diálogo diz que andou. A hora é a da 5ª: 10:30 e 18:00.
+     */
+    await expect(dialogo.getByTestId("input-data-retirada")).toHaveValue("2027-05-12T10:30");
+    await expect(dialogo.getByTestId("input-data-devolucao")).toHaveValue("2027-05-18T18:00");
+    await expect(dialogo.getByTestId("aviso-janela-da-reserva")).toContainText("18/05/2027");
+
     // 4. O contrato fecha POR DENTRO do gate — a reserva recém-criada vai junto.
     await dialogo.getByLabel(/1ª parcela vence em/).fill("2026-09-10");
     await dialogo.getByRole("button", { name: "Gerar contrato" }).click();
 
     await expect(page).toHaveURL(/\/contratos\/[0-9a-f-]+$/);
 
+    // E a ficha do contrato lê as duas de volta, COM a hora — não só o dia.
+    // (`instanteCurto` é o pt-BR com vírgula: "12/05/2027, 10:30".)
+    const datasNaFicha = page.getByTestId("datas-da-locacao");
+    await expect(datasNaFicha).toContainText("12/05/2027, 10:30");
+    await expect(datasNaFicha).toContainText("18/05/2027, 18:00");
+
     // A prova do dinheiro (B1): a venda é da Maria, não de quem clicou. E a
     // prova do gate: o contrato prende a reserva que o diálogo criou.
     const [contrato] = await db
-      .select({ id: contratosTable.id, vendedoraId: contratosTable.vendedoraId })
+      .select({
+        id: contratosTable.id,
+        vendedoraId: contratosTable.vendedoraId,
+        dataRetirada: contratosTable.dataRetirada,
+        dataDevolucao: contratosTable.dataDevolucao,
+      })
       .from(contratosTable)
       .where(eq(contratosTable.leadId, leadId));
     expect(contrato.vendedoraId).toBe(mariaId);
+    // E224: os INSTANTES no banco, no relógio da loja — 10:30 SP = 13:30 UTC.
+    expect(contrato.dataRetirada?.toISOString()).toBe("2027-05-12T13:30:00.000Z");
+    expect(contrato.dataDevolucao?.toISOString()).toBe("2027-05-18T21:00:00.000Z");
     const [reserva] = await db
       .select({ leadId: bloqueioVestidosTable.leadId })
       .from(bloqueioVestidosTable)

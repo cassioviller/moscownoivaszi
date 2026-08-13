@@ -10,6 +10,12 @@ import {
   useRemoveParcela,
   useListRecibos,
   getListRecibosQueryKey,
+  // E224 — o PRIMEIRO chamador de `PATCH /contratos/:id` no frontend. A porta
+  // existe no spec desde sempre e nenhuma tela a usava: corrigir a retirada
+  // digitada errada só era possível cancelando o contrato e fazendo outro.
+  useUpdateContrato,
+  useGetDisponibilidade,
+  getGetDisponibilidadeQueryKey,
   type Parcela,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -50,7 +56,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { brl, diaParaISO, statusContratoLabel, instanteDia, diaMesAno } from "@/lib/formatos";
+import { brl, diaParaISO, statusContratoLabel, instanteDia, instanteCurto, diaMesAno } from "@/lib/formatos";
+// E224 — as datas da locação (cláusulas 4ª e 5ª), com a régua da tela.
+import {
+  expedienteEmFrase,
+  isoParaLocal,
+  localParaISO,
+  recusaDoExpediente,
+} from "@/lib/retirada-devolucao";
 import { fraseEstornoParcela, fraseRemocaoParcela } from "@/lib/financeiro/confirmacoes";
 import { recibosPorParcela } from "@/lib/recibos-da-parcela";
 import { DialogoReceberParcela, rotuloParcela } from "@/components/dialogo-receber-parcela";
@@ -128,6 +141,11 @@ export default function ContratoDetail() {
   const [numParcelas, setNumParcelas] = useState("1");
   const [primeiroVencimento, setPrimeiroVencimento] = useState("");
 
+  // E224 — as datas da locação (cláusulas 4ª e 5ª)
+  const [locacaoOpen, setLocacaoOpen] = useState(false);
+  const [retiradaEditada, setRetiradaEditada] = useState("");
+  const [devolucaoEditada, setDevolucaoEditada] = useState("");
+
   // Receber parcela
   const [parcelaReceber, setParcelaReceber] = useState<Parcela | null>(null);
 
@@ -139,6 +157,15 @@ export default function ContratoDetail() {
   });
 
   const cancelar = useCancelarContrato();
+  const atualizarContrato = useUpdateContrato();
+  /**
+   * E224 — o expediente da 4ª, para a tela dizer a recusa antes de a porta
+   * dizê-la. Mesma `queryKey` das telas de agenda e do diálogo de fecho: uma
+   * requisição na rede.
+   */
+  const regraDaLoja = useGetDisponibilidade(activeLojaId!, {
+    query: { queryKey: getGetDisponibilidadeQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
   const gerarPlano = useGerarPlanoParcelas();
   const estornar = useEstornarParcela();
   const remover = useRemoveParcela();
@@ -365,6 +392,52 @@ export default function ContratoDetail() {
     }
   };
 
+  /**
+   * **E224 — a retirada e a devolução se CORRIGEM.**
+   *
+   * Fechar só a porta do nascimento seria o meio conserto do E172: a vendedora
+   * digitaria a retirada errada e o único caminho de volta seria cancelar o
+   * contrato e fazer outro — que é o mesmo beco que o E219 achou nos itens.
+   * O `PATCH /contratos/:id` já conferia a cláusula 4ª desde o E222 (a porta ao
+   * lado que aquele épico mediu); o que faltava era quem a chamasse.
+   *
+   * O campo esvaziado manda `null` de propósito: apagar a data é uma decisão
+   * tão legítima quanto trocá-la, e `undefined` deixaria a antiga no banco.
+   */
+  const abrirLocacao = () => {
+    setRetiradaEditada(isoParaLocal(contrato.dataRetirada));
+    setDevolucaoEditada(isoParaLocal(contrato.dataDevolucao));
+    setLocacaoOpen(true);
+  };
+
+  const onSalvarLocacao = async () => {
+    try {
+      await atualizarContrato.mutateAsync({
+        lojaId: activeLojaId!,
+        contratoId: id!,
+        data: {
+          dataRetirada: localParaISO(retiradaEditada) ?? undefined,
+          dataDevolucao: localParaISO(devolucaoEditada) ?? undefined,
+        },
+      });
+      await queryClient.invalidateQueries({
+        queryKey: getGetContratoQueryKey(activeLojaId!, id!),
+      });
+      toast({ title: "Datas da locação salvas" });
+      setLocacaoOpen(false);
+    } catch (err) {
+      toast({
+        title: "Não deu para salvar as datas",
+        // As duas recusas do E222 chegam com `detalhe` citando o expediente por
+        // extenso — a segunda perna de `mensagemApi`. Pôr os dois códigos no
+        // dicionário local TROCARIA essa frase por uma pior: o dicionário vence
+        // o `detalhe`, e nenhuma frase de tela sabe a que horas a loja abre.
+        description: mensagemApi(err, "Confira as datas e tente de novo.", MENSAGENS_ERRO),
+        variant: "destructive",
+      });
+    }
+  };
+
   const onGerarPlano = async () => {
     const entradaValor = parseValor(entrada);
     if (entradaValor !== null && (Number.isNaN(entradaValor) || entradaValor < 0)) {
@@ -551,6 +624,33 @@ export default function ContratoDetail() {
                 <p className="font-medium">{contrato.vestidoDescricao}</p>
               </div>
             )}
+            {/* S-C35/E224 — a retirada e a devolução da cláusula 5ª. Elas eram
+                gravadas pela API, impressas no PDF e não tinham onde ser
+                lidas nem escritas: 1 contrato em 723 com retirada, nenhum com
+                devolução. `instanteCurto` e não `diaMesAno`, porque a HORA é o
+                que a 4ª decide — e o dia sozinho não diz a que horas voltar. */}
+            <div data-testid="datas-da-locacao">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-muted-foreground text-sm">Retirada e devolução</span>
+                {podeMexer && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={abrirLocacao}
+                    data-testid="button-editar-locacao"
+                  >
+                    {contrato.dataRetirada || contrato.dataDevolucao ? "Alterar" : "Informar"}
+                  </Button>
+                )}
+              </div>
+              <p className="font-medium">
+                {contrato.dataRetirada ? instanteCurto(contrato.dataRetirada) : "Retirada não informada"}
+                {" · "}
+                {contrato.dataDevolucao
+                  ? instanteCurto(contrato.dataDevolucao)
+                  : "devolução não informada"}
+              </p>
+            </div>
             {/* S-O66/E187: `itens` sai da consulta para uma CONST antes do
                 `length > 0`. A asserção que estava logo abaixo
                 (`brutoEmCentavos(contrato.itens!)`) existia porque o TypeScript
@@ -850,6 +950,73 @@ export default function ContratoDetail() {
           </CardContent>
         </Card>
       </div>
+
+      {/* E224 — as datas da locação, corrigíveis. O `PATCH /contratos/:id`
+          confere a cláusula 4ª desde o E222; o que faltava era a tela. */}
+      <Dialog open={locacaoOpen} onOpenChange={setLocacaoOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Retirada e devolução</DialogTitle>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void onSalvarLocacao();
+            }}
+          >
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="data-retirada">Retirada</Label>
+                <Input
+                  id="data-retirada"
+                  type="datetime-local"
+                  value={retiradaEditada}
+                  onChange={(e) => setRetiradaEditada(e.target.value)}
+                  data-testid="input-data-retirada"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="data-devolucao">Devolução</Label>
+                <Input
+                  id="data-devolucao"
+                  type="datetime-local"
+                  value={devolucaoEditada}
+                  onChange={(e) => setDevolucaoEditada(e.target.value)}
+                  data-testid="input-data-devolucao"
+                />
+              </div>
+            </div>
+            <p className="text-muted-foreground text-sm">
+              A loja retira e devolve {expedienteEmFrase(regraDaLoja.data)} (cláusula 4ª). Os dois
+              campos são opcionais — deixe em branco o que ainda não foi combinado.
+            </p>
+            {/* A recusa da 4ª antes do clique, com a mesma frase do servidor. */}
+            {(recusaDoExpediente(retiradaEditada, regraDaLoja.data) ||
+              recusaDoExpediente(devolucaoEditada, regraDaLoja.data)) && (
+              <div
+                className="space-y-1 rounded-md border border-destructive bg-destructive/10 p-3 text-sm"
+                data-testid="recusa-do-expediente"
+              >
+                {recusaDoExpediente(retiradaEditada, regraDaLoja.data) && (
+                  <p>{recusaDoExpediente(retiradaEditada, regraDaLoja.data)}</p>
+                )}
+                {recusaDoExpediente(devolucaoEditada, regraDaLoja.data) && (
+                  <p>{recusaDoExpediente(devolucaoEditada, regraDaLoja.data)}</p>
+                )}
+              </div>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setLocacaoOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={atualizarContrato.isPending}>
+                {atualizarContrato.isPending ? "Salvando…" : "Salvar"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Cancelamento do contrato */}
       <Dialog open={cancelarOpen} onOpenChange={setCancelarOpen}>

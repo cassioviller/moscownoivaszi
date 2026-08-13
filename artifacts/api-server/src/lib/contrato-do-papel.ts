@@ -52,9 +52,13 @@ export const dataBR = new Intl.DateTimeFormat("pt-BR", {
  * contrato fechado às 21h30 de 28/07 em São Paulo grava `2026-07-29T00:30Z`, e
  * o formatador UTC imprimia "29/07/2026" no papel que a noiva assina. Todo
  * contrato fechado entre 21h e a meia-noite saía com a data um dia à frente, e
- * a divergência era permanente porque o PDF é regerado do mesmo campo. As
- * outras datas do documento (casamento, retirada, vencimento) SÃO dias civis e
- * continuam em UTC — é por isso que existem dois formatadores.
+ * a divergência era permanente porque o PDF é regerado do mesmo campo.
+ *
+ * **S-C36/E224 — esta nota dizia "casamento, RETIRADA, vencimento" como dias
+ * civis, e a retirada saiu da lista.** Era verdade até o E222, que fez a HORA
+ * dos dois campos decidir o veredito da porta (cláusula 4ª, 10:30 às 19:00):
+ * `dataRetirada` e `dataDevolucao` são INSTANTES desde então, e o formatador de
+ * dia civil os lia em UTC. Casamento e vencimento continuam sendo dias.
  */
 export const dataBRInstante = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
@@ -62,6 +66,29 @@ export const dataBRInstante = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
   timeZone: "America/Sao_Paulo",
 });
+
+/**
+ * **O instante da locação, como o papel tem de dizê-lo: dia E hora.**
+ *
+ * A 5ª fixa que a locação começa às **10:30** do dia da retirada e termina às
+ * **18:00** do dia da devolução — e *"Retirada: 06/09/2028"* não diz à noiva a
+ * que horas ela vem buscar o vestido, que é a informação que as cláusulas 4ª e
+ * 5ª existem para fixar. Enquanto os dois campos estavam em 1 de 723 contratos
+ * (S-C35) a omissão não aparecia; o gesto do E224 os põe em toda venda.
+ */
+const dataHoraBRInstante = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "America/Sao_Paulo",
+});
+export function instanteDaLocacaoBR(instante: Date | null | undefined): string | undefined {
+  // O pt-BR separa dia e hora por vírgula ("06/09/2028, 10:30"); o papel lê
+  // melhor com a preposição, e a frase é a mesma da cláusula.
+  return instante ? dataHoraBRInstante.format(instante).replace(", ", " às ") : undefined;
+}
 export const brl = (v: number) =>
   Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -172,8 +199,9 @@ export function pdfDoContrato(contrato: ContratoComPapel): Uint8Array {
     cobrancasExtras: extras.length > 0 ? extras : undefined,
     totalExtras: extras.length > 0 ? brl(totalExtrasC / 100) : undefined,
     dataCasamento: contrato.dataCasamento ? dataBR.format(contrato.dataCasamento) : undefined,
-    dataRetirada: contrato.dataRetirada ? dataBR.format(contrato.dataRetirada) : undefined,
-    dataDevolucao: contrato.dataDevolucao ? dataBR.format(contrato.dataDevolucao) : undefined,
+    // S-C36/E224: INSTANTES, com a hora da 5ª e no relógio da loja — não dias.
+    dataRetirada: instanteDaLocacaoBR(contrato.dataRetirada),
+    dataDevolucao: instanteDaLocacaoBR(contrato.dataDevolucao),
     dataContrato: dataBRInstante.format(contrato.fechadoEm),
     observacao: contrato.observacoes ?? undefined,
   });

@@ -151,11 +151,20 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
   });
 
   it("molde é a exceção declarada, e continua sendo exceção", () => {
-    // Se os moldes crescerem, a promessa "citamos literalmente" vira letra
-    // morta sem ninguém decidir isso. Seis é o que a medição do E210 achou:
-    // 5 chips de botão (3 rótulos distintos) e 1 recado.
+    /**
+     * Se os moldes crescerem, a promessa "citamos literalmente" vira letra
+     * morta sem ninguém decidir isso. Seis era o que a medição do E210 achou:
+     * 5 chips de botão (3 rótulos distintos) e 1 recado.
+     *
+     * **E224 subiu para 9, e os três novos têm a MESMA causa**: os recados das
+     * cláusulas 4ª e 8ª §único são montados com a CONFIGURAÇÃO da loja dentro
+     * (o expediente de retirada vem de `regra_disponibilidade`, o prazo vem de
+     * `PRAZO_ANTES_DA_RETIRADA_DIAS`), então não existe no código a frase
+     * inteira que a vendedora lê — existe o pedaço fixo e o resto é dado. É o
+     * mesmo caso do `Mover para ${diaMesAno(...)}` que criou este mecanismo.
+     */
     const moldes = todas().filter((c) => c.molde);
-    expect(moldes.length).toBe(6);
+    expect(moldes.length).toBe(9);
     // E o molde tem de ser mais curto que o exibido — senão não é molde, é uma
     // citação literal com um atributo pendurado.
     for (const m of moldes) {

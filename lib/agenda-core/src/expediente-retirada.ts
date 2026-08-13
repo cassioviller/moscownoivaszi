@@ -199,3 +199,53 @@ export function foraDoExpedienteDeRetirada(
   }
   return null;
 }
+
+/**
+ * **A frase inteira da recusa da 4ª — uma grafia só, nos dois lados da borda.**
+ *
+ * E224: ela morava montada dentro de `api-server/lib/expediente-de-retirada.ts`,
+ * e ali bastava enquanto só o servidor recusava. A tela passou a dizer a mesma
+ * coisa ANTES do clique (o molde do E211), e uma segunda grafia da mesma frase é
+ * a classe de defeito do E187 — cinco escritas da conta de desconto, três
+ * acertando por cópia e duas errando. Aqui a frase é uma.
+ */
+export function fraseDaRecusaDeRetirada(
+  recusa: ForaDoExpediente,
+  exp: ExpedienteDeRetirada,
+): string {
+  return `${recusa.detalhe} A loja retira e devolve ${descricaoDoExpedienteDeRetirada(exp)} (cláusula 4ª).`;
+}
+
+/**
+ * O primeiro dia de expediente da 4ª a partir de `dia` (inclusive), ou `null`
+ * quando a semana inteira está fechada.
+ *
+ * **Ela anda para a FRENTE, e nunca para trás** (E224). A peça não sai nem volta
+ * num dia em que a loja não abre: quem retira espera o próximo dia de
+ * expediente, e quem devolve devolve nele. Andar para trás na retirada tiraria a
+ * peça da loja ANTES do que a reserva segura — em cima da janela de prova da
+ * própria noiva ou do uso da anterior.
+ *
+ * `dia` é um dia civil `YYYY-MM-DD`; a busca para em 7 passos porque uma semana
+ * cobre todos os dias possíveis.
+ */
+export function proximoDiaDeExpedienteDeRetirada(
+  dia: string,
+  exp: ExpedienteDeRetirada,
+): string | null {
+  if (exp.dias.length === 0) return null;
+  let candidato = dia;
+  for (let i = 0; i < 7; i++) {
+    // Âncora ao meio-dia de SP: o dia da semana de um dia civil não pode
+    // depender da hora, que é a confusão da S-O117.
+    if (exp.dias.includes(diaDaSemanaLocal(`${candidato}T12:00:00-03:00`))) return candidato;
+    candidato = somarUmDia(candidato);
+  }
+  return null;
+}
+
+/** Aritmética de dia civil em UTC-meio-dia — imune a DST e a fuso. */
+function somarUmDia(dia: string): string {
+  const [ano, mes, diaMes] = dia.split("-").map(Number);
+  return new Date(Date.UTC(ano!, mes! - 1, diaMes!, 12) + 86_400_000).toISOString().slice(0, 10);
+}

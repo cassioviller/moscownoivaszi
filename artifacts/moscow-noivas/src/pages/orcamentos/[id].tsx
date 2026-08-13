@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useGetOrcamento,
@@ -32,6 +32,9 @@ import {
   useDesfazerAceiteOrcamento,
   useListEquipe,
   getListEquipeQueryKey,
+  // E224: a régua da loja — a janela de uso da reserva e o expediente da 4ª.
+  useGetDisponibilidade,
+  getGetDisponibilidadeQueryKey,
   type OrcamentoItem,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -97,6 +100,17 @@ import { opcoesDeVendedora } from "@/lib/equipe-select";
 import { planoDaDigitacao } from "@/lib/financeiro/plano";
 import { PreviaDoCarne } from "@/components/previa-do-carne";
 import { diaDeNegocio, hojeLocal } from "@/lib/financeiro/datas";
+// E224 — o gesto da retirada e da devolução (cláusulas 4ª e 5ª).
+import {
+  expedienteEmFrase,
+  localParaISO,
+  recusaDoExpediente,
+  sugestaoDaLocacao,
+} from "@/lib/retirada-devolucao";
+// E218 — o § único: o carnê vence até 20 dias ANTES da retirada. A guarda
+// existe na porta desde então e nunca disparou, porque 722 dos 723 contratos
+// não declaravam retirada. Este épico a acorda, e a tela passa a dizê-la antes.
+import { foraDoPrazoDaRetirada } from "@/lib/financeiro/reserva";
 
 // E95: não existe aritmética de dinheiro neste arquivo. O `round2` que morava
 // aqui era a terceira cópia de uma conta que o servidor faz em centavos —
@@ -167,6 +181,15 @@ const gerarContratoSchema = z.object({
   cpf: z.string().optional(),
   formaPagamento: z.string().optional(),
   dataCasamento: z.string().optional(),
+  /**
+   * E224 (cláusulas 4ª e 5ª) — **os dois campos continuam OPCIONAIS**, e é a
+   * decisão medida do E222: 1 de 723 contratos tinha data de retirada, nenhum
+   * tinha devolução, e uma régua que as exigisse recusaria o fecho de contrato
+   * que sempre funcionou. A 4ª diz a que horas a loja abre, não que toda
+   * locação declare a hora. `datetime-local`, porque a HORA é o que a 4ª decide.
+   */
+  dataRetirada: z.string().optional(),
+  dataDevolucao: z.string().optional(),
   entrada: z.string(),
   numParcelas: z.string(),
   primeiroVencimento: z.string().min(1, "Informe o primeiro vencimento"),
@@ -481,7 +504,7 @@ export default function OrcamentoDetail() {
 
   const contratoForm = useForm<GerarContratoValues>({
     resolver: zodResolver(gerarContratoSchema),
-    defaultValues: { vendedoraId: "", cpf: "", formaPagamento: "", dataCasamento: "", entrada: "0", numParcelas: "1", primeiroVencimento: "" },
+    defaultValues: { vendedoraId: "", cpf: "", formaPagamento: "", dataCasamento: "", dataRetirada: "", dataDevolucao: "", entrada: "0", numParcelas: "1", primeiroVencimento: "" },
   });
 
   // F16/C2: o carnê que a tela vai criar, calculado ao vivo enquanto a
@@ -507,6 +530,81 @@ export default function OrcamentoDetail() {
       }),
     [totais.liquidoC, entradaDigitada, numParcelasDigitado, primeiroVencimento],
   );
+
+  /**
+   * **E224 — a régua da loja, que decide as duas datas da locação.**
+   *
+   * Uma consulta só, e a mesma `queryKey` do selo da prova fora da janela e das
+   * três telas de agenda: o react-query devolve o cache e a rede vê uma
+   * requisição. Ela traz as DUAS respostas de que este diálogo precisa — a
+   * janela de uso da reserva (`usoDiasAntes`/`usoDiasDepois`) e o expediente da
+   * cláusula 4ª (as quatro colunas que o E222 criou).
+   */
+  const regraDaLoja = useGetDisponibilidade(activeLojaId!, {
+    query: { queryKey: getGetDisponibilidadeQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+  const casamentoDigitado = contratoForm.watch("dataCasamento");
+  const retiradaDigitada = contratoForm.watch("dataRetirada");
+  const devolucaoDigitada = contratoForm.watch("dataDevolucao");
+
+  /** A sugestão da 5ª para a data do casamento que está no formulário. */
+  const sugestaoDaReserva = useMemo(
+    () => sugestaoDaLocacao(casamentoDigitado, regraDaLoja.data),
+    [casamentoDigitado, regraDaLoja.data],
+  );
+
+  /**
+   * **Preenche o que está VAZIO, e nunca reescreve o que a vendedora digitou.**
+   *
+   * A sugestão precisa seguir a data do casamento — ela pode ser digitada
+   * dentro do próprio diálogo (é o que `reservarInline` já exige) —, e um
+   * `reset` na abertura só cobriria a noiva cuja ficha já tem a data. Campo
+   * preenchido é decisão de gente e fica onde está.
+   */
+  useEffect(() => {
+    if (!contratoOpen || !sugestaoDaReserva) return;
+    if (!contratoForm.getValues("dataRetirada")) {
+      contratoForm.setValue("dataRetirada", sugestaoDaReserva.retirada);
+    }
+    if (!contratoForm.getValues("dataDevolucao")) {
+      contratoForm.setValue("dataDevolucao", sugestaoDaReserva.devolucao);
+    }
+  }, [contratoOpen, sugestaoDaReserva, contratoForm]);
+
+  /**
+   * As duas recusas da 4ª, ditas ANTES do clique — mesmo motor e mesma frase do
+   * servidor (`lib/retirada-devolucao.ts`). É o molde do E211: a vendedora
+   * ainda tem a noiva na frente quando lê o recado.
+   */
+  const recusaDaRetirada = useMemo(
+    () => recusaDoExpediente(retiradaDigitada, regraDaLoja.data),
+    [retiradaDigitada, regraDaLoja.data],
+  );
+  const recusaDaDevolucao = useMemo(
+    () => recusaDoExpediente(devolucaoDigitada, regraDaLoja.data),
+    [devolucaoDigitada, regraDaLoja.data],
+  );
+
+  /**
+   * **E218 acordado — o § único cobra o carnê contra a retirada.**
+   *
+   * `POST /contratos` recusa com 422 `CARNE_DEPOIS_DO_PRAZO` toda parcela que
+   * vença a menos de 20 dias da retirada, e a guarda existe desde o E218 sem
+   * nunca ter disparado: 722 dos 723 contratos não declaravam retirada. Ao
+   * preencher o campo, a tela liga a régua — então ela tem de dizer o que vai
+   * acontecer, e não descobrir no 422. O `campo` da resposta do servidor é
+   * `parcelas`, que não é campo deste formulário: sem este aviso o recado cairia
+   * num toast atrás do diálogo.
+   */
+  const avisoDoPrazoDoCarne = useMemo(() => {
+    const retiradaISO = localParaISO(retiradaDigitada);
+    if (!retiradaISO || !plano.linhas) return null;
+    for (const p of plano.linhas) {
+      const fora = foraDoPrazoDaRetirada(p.vencimento, retiradaISO);
+      if (fora) return fora.detalhe;
+    }
+    return null;
+  }, [retiradaDigitada, plano.linhas]);
 
   // Desconto (aplicado via PATCH; estado local só para os inputs).
   const [descontoTipo, setDescontoTipo] = useState<string>("");
@@ -846,6 +944,11 @@ export default function OrcamentoDetail() {
       cpf: "",
       formaPagamento: "",
       dataCasamento: lead?.casamentoData?.slice(0, 10) ?? "",
+      // E224: em branco de propósito — o efeito acima os preenche com a
+      // sugestão da 5ª assim que a régua da loja e a data do casamento existem,
+      // e deixa em branco quando não há o que sugerir.
+      dataRetirada: "",
+      dataDevolucao: "",
       entrada: "0",
       numParcelas: "1",
       primeiroVencimento: "",
@@ -894,6 +997,16 @@ export default function OrcamentoDetail() {
           cpf: values.cpf || undefined,
           formaPagamento: (values.formaPagamento || undefined) as (typeof FORMAS)[number] | undefined,
           dataCasamento: values.dataCasamento ? diaParaISO(values.dataCasamento) : undefined,
+          /**
+           * E224 — INSTANTES, e o fuso é o da LOJA. `new Date(valor)` sobre o
+           * que um `datetime-local` devolve vale o relógio de QUEM CLICOU, e a
+           * hora é justamente o que a cláusula 4ª decide (10:30 às 19:00): uma
+           * vendedora em outro fuso fecharia contrato com retirada fora do
+           * expediente sem digitar nada de errado. `localParaISO` ancora em
+           * -03:00, como `diaParaISO` faz para o dia de negócio.
+           */
+          dataRetirada: localParaISO(values.dataRetirada) ?? undefined,
+          dataDevolucao: localParaISO(values.dataDevolucao) ?? undefined,
           parcelas,
         },
       });
@@ -922,6 +1035,14 @@ export default function OrcamentoDetail() {
         "RESERVA_DE_OUTRA_NOIVA",
         "RESERVA_JA_CONTRATADA",
         "RESERVA_CANCELADA",
+        /**
+         * E224 — não é recusa de reserva, e entra aqui pela MESMA razão que as
+         * seis de cima: o `campo` que o servidor aponta (`parcelas`) não existe
+         * neste formulário, então `aplicarErroDoServidor` devolve `false` e o
+         * recado cairia num toast atrás do diálogo aberto. A caixa é o lugar de
+         * todo recado sem campo. O aviso acima já o antecipa; isto é o cinto.
+         */
+        "CARNE_DEPOIS_DO_PRAZO",
       ]);
       if (corpo?.error && DO_GATE.has(corpo.error)) {
         const motivos = [
@@ -1818,6 +1939,76 @@ export default function OrcamentoDetail() {
                   </FormItem>
                 )}
               />
+              {/* S-C35/E224 — o gesto que faltava. As duas colunas existem
+                  desde sempre, o spec as declara, a API as grava e o PDF as
+                  imprime; até aqui só se chegava nelas pela API, e o banco
+                  mostrava 1 contrato em 723 com retirada e NENHUM com
+                  devolução. Os dois campos seguem OPCIONAIS (decisão do E222):
+                  a 4ª diz a que horas a loja abre, não que toda locação
+                  declare a hora. */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2" data-testid="datas-da-locacao">
+                <FormField
+                  control={contratoForm.control}
+                  name="dataRetirada"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Retirada</FormLabel>
+                      <FormControl>
+                        <Input type="datetime-local" data-testid="input-data-retirada" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={contratoForm.control}
+                  name="dataDevolucao"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Devolução</FormLabel>
+                      <FormControl>
+                        <Input type="datetime-local" data-testid="input-data-devolucao" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <p className="text-muted-foreground text-xs">
+                A loja retira e devolve {expedienteEmFrase(regraDaLoja.data)} (cláusula 4ª). A locação
+                começa e termina nos horários da cláusula 5ª — os dois campos são opcionais.
+              </p>
+              {/* A sugestão teve de andar por dia fechado: dito, e não
+                  escondido. Silêncio no caso comum (o aviso que aparece sempre
+                  não é lido por ninguém). */}
+              {sugestaoDaReserva?.aviso && (
+                <div
+                  className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm"
+                  data-testid="aviso-janela-da-reserva"
+                >
+                  {sugestaoDaReserva.aviso}
+                </div>
+              )}
+              {/* As duas recusas da 4ª, ANTES do clique — a porta continua
+                  sendo a autoridade, mas ela não pode ser a primeira a contar. */}
+              {(recusaDaRetirada || recusaDaDevolucao) && (
+                <div
+                  className="space-y-1 rounded-md border border-destructive bg-destructive/10 p-3 text-sm"
+                  data-testid="recusa-do-expediente"
+                >
+                  {recusaDaRetirada && <p>{recusaDaRetirada}</p>}
+                  {recusaDaDevolucao && <p>{recusaDaDevolucao}</p>}
+                </div>
+              )}
+              {/* E218/E224 — o § único, que a retirada preenchida ACORDA. */}
+              {avisoDoPrazoDoCarne && (
+                <div
+                  className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm"
+                  data-testid="aviso-prazo-do-carne"
+                >
+                  {avisoDoPrazoDoCarne}
+                </div>
+              )}
               <div className="grid grid-cols-3 gap-4">
                 <FormField
                   control={contratoForm.control}
