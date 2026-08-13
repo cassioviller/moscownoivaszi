@@ -122,7 +122,23 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
       // E213: 119 → 120. O novo é `MoraDaParcela.dias`, e é de RESPOSTA — dias
       // corridos desde o vencimento, que o servidor conta e ninguém manda pela
       // borda. Não há rota para guardá-lo.
-    ).toBe(120);
+      //
+      // E222: 120 → 128, e são OITO porque o expediente de retirada aparece
+      // duas vezes no spec — os quatro campos em `RegraDisponibilidade`
+      // (resposta) e os mesmos quatro em `RegraDisponibilidadeInput` (entrada).
+      // Os três de minutos são `retiradaAberturaMinutos`,
+      // `retiradaFechamentoMinutos` e `retiradaFechamentoSabadoMinutos`; o
+      // quarto é o `items` de `retiradaDias`, que conta como integer por dentro
+      // do array.
+      //
+      // **Os de ENTRADA a rota guarda**, e é a decisão que esta régua obriga a
+      // tomar: o `PUT /disponibilidade/regras` recusa abertura ≥ fechamento
+      // (`HORARIO_DE_RETIRADA_INVALIDO`, e no sábado também) e semana sem dia
+      // nenhum (`SEM_DIA_DE_RETIRADA`). Sem essas duas paredes o expediente
+      // salvaria invertido e `foraDoExpedienteDeRetirada` recusaria as 24 horas
+      // do dia — a mesma parede que o expediente de ATENDIMENTO já tinha, agora
+      // no segundo.
+    ).toBe(128);
 
     // A outra ponta: se um dia o gerador aprender `.int()`, este número deixa
     // de ser zero e a régua acima vira ruído — é o sinal de trocar a varredura

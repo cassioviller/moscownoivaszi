@@ -12,3 +12,7 @@
  */
 export * from "./slots";
 export * from "./mover";
+// E222 — o SEGUNDO expediente: retirada e devolução (cláusulas 4ª e 5ª). O que
+// já existia governa atendimento, e está certo para provas; este governa a peça
+// saindo e voltando. O ateliê tem dois calendários, e o modelo tinha um.
+export * from "./expediente-retirada";

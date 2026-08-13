@@ -176,6 +176,13 @@
       "when": 1786621934802,
       "tag": "0024_next_sheva_callister",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1786629235017,
+      "tag": "0025_last_captain_flint",
+      "breakpoints": true
     }
   ]
 }

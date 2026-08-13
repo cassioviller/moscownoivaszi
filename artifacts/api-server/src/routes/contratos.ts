@@ -71,6 +71,9 @@ import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
 // E213 — a multa e os juros da cláusula 9ª, derivados num lugar só.
 import { moraDe } from "../lib/mora-da-parcela";
+// E222 — o expediente de RETIRADA e DEVOLUÇÃO (cláusula 4ª), que não é o de
+// atendimento. As duas portas que gravam as datas passam pela mesma guarda.
+import { recusaDeExpedienteDeRetirada } from "../lib/expediente-de-retirada";
 
 const router: IRouter = Router();
 
@@ -258,6 +261,21 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
     ));
   if (ativoExistente) {
     res.status(409).json({ error: "CONTRATO_ATIVO_DUPLICADO", detalhe: "Este lead já possui um contrato ativo" });
+    return;
+  }
+
+  /**
+   * **E222 — a retirada e a devolução cabem no expediente da 4ª.**
+   *
+   * As duas datas eram gravadas **como vieram**: o sistema aceitava retirada num
+   * domingo às 23h sem uma palavra, para um ateliê que retira e devolve de terça
+   * a sábado. Não era contradição com o horário que já existia — o de lá governa
+   * ATENDIMENTO (as provas, sete dias até as 20h, e certo para provas). São dois
+   * expedientes, e o modelo conhecia um.
+   */
+  const foraDoExpediente = await recusaDeExpedienteDeRetirada(lojaId, contratoData);
+  if (foraDoExpediente) {
+    res.status(422).json(foraDoExpediente);
     return;
   }
 
@@ -1173,6 +1191,19 @@ router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<v
       error: "CONTRATO_NAO_ATIVO",
       detalhe: "Contrato cancelado é registro morto — ele não se edita.",
     });
+    return;
+  }
+
+  /**
+   * **E222 — a MESMA guarda do POST**, e é aqui que o meio conserto moraria: o
+   * `PATCH` é a porta por onde a retirada e a devolução são corrigidas depois do
+   * fecho, e fechar só a de nascimento deixaria a de edição aberta. É a lição do
+   * E172 (fechar uma porta sem medir a porta ao lado dela é meio conserto) e a
+   * mesma razão pela qual o parágrafo abaixo existe para a `dataCasamento`.
+   */
+  const foraDoExpediente = await recusaDeExpedienteDeRetirada(lojaId as string, parsed.data);
+  if (foraDoExpediente) {
+    res.status(422).json(foraDoExpediente);
     return;
   }
 

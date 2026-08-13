@@ -22,4 +22,24 @@ export interface RegraDisponibilidadeInput {
      * @items.maximum 6
      */
   diasFuncionamento?: number[];
+  /**
+     * @items.minimum 0
+     * @items.maximum 6
+     */
+  retiradaDias?: number[];
+  /**
+     * @minimum 0
+     * @maximum 1440
+     */
+  retiradaAberturaMinutos?: number;
+  /**
+     * @minimum 0
+     * @maximum 1440
+     */
+  retiradaFechamentoMinutos?: number;
+  /**
+     * @minimum 0
+     * @maximum 1440
+     */
+  retiradaFechamentoSabadoMinutos?: number;
 }

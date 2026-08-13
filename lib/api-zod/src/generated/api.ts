@@ -3455,6 +3455,18 @@ export const getDisponibilidadeResponseEstoqueLavagemDiasDepoisMin = 0;
 export const getDisponibilidadeResponseDiasFuncionamentoItemMin = 0;
 export const getDisponibilidadeResponseDiasFuncionamentoItemMax = 6;
 
+export const getDisponibilidadeResponseRetiradaDiasItemMin = 0;
+export const getDisponibilidadeResponseRetiradaDiasItemMax = 6;
+
+export const getDisponibilidadeResponseRetiradaAberturaMinutosMin = 0;
+export const getDisponibilidadeResponseRetiradaAberturaMinutosMax = 1440;
+
+export const getDisponibilidadeResponseRetiradaFechamentoMinutosMin = 0;
+export const getDisponibilidadeResponseRetiradaFechamentoMinutosMax = 1440;
+
+export const getDisponibilidadeResponseRetiradaFechamentoSabadoMinutosMin = 0;
+export const getDisponibilidadeResponseRetiradaFechamentoSabadoMinutosMax = 1440;
+
 
 
 export const GetDisponibilidadeResponse = zod.object({
@@ -3467,7 +3479,11 @@ export const GetDisponibilidadeResponse = zod.object({
   "estoqueLavagemDiasDepois": zod.number().min(getDisponibilidadeResponseEstoqueLavagemDiasDepoisMin),
   "atendimentoAberturaHora": zod.number(),
   "atendimentoFechamentoHora": zod.number(),
-  "diasFuncionamento": zod.array(zod.number().min(getDisponibilidadeResponseDiasFuncionamentoItemMin).max(getDisponibilidadeResponseDiasFuncionamentoItemMax)).describe('Dias da semana em que a loja abre: 0=domingo … 6=sábado (E38)')
+  "diasFuncionamento": zod.array(zod.number().min(getDisponibilidadeResponseDiasFuncionamentoItemMin).max(getDisponibilidadeResponseDiasFuncionamentoItemMax)).describe('Dias da semana em que a loja abre: 0=domingo … 6=sábado (E38)'),
+  "retiradaDias": zod.array(zod.number().min(getDisponibilidadeResponseRetiradaDiasItemMin).max(getDisponibilidadeResponseRetiradaDiasItemMax)).optional().describe('Dias em que a loja retira e devolve: 0=domingo … 6=sábado (cláusula 4ª)'),
+  "retiradaAberturaMinutos": zod.number().min(getDisponibilidadeResponseRetiradaAberturaMinutosMin).max(getDisponibilidadeResponseRetiradaAberturaMinutosMax).optional(),
+  "retiradaFechamentoMinutos": zod.number().min(getDisponibilidadeResponseRetiradaFechamentoMinutosMin).max(getDisponibilidadeResponseRetiradaFechamentoMinutosMax).optional(),
+  "retiradaFechamentoSabadoMinutos": zod.number().min(getDisponibilidadeResponseRetiradaFechamentoSabadoMinutosMin).max(getDisponibilidadeResponseRetiradaFechamentoSabadoMinutosMax).optional()
 })
 
 
@@ -3481,6 +3497,18 @@ export const setDisponibilidadeBodyEstoqueLavagemDiasDepoisMin = 0;
 export const setDisponibilidadeBodyDiasFuncionamentoItemMin = 0;
 export const setDisponibilidadeBodyDiasFuncionamentoItemMax = 6;
 
+export const setDisponibilidadeBodyRetiradaDiasItemMin = 0;
+export const setDisponibilidadeBodyRetiradaDiasItemMax = 6;
+
+export const setDisponibilidadeBodyRetiradaAberturaMinutosMin = 0;
+export const setDisponibilidadeBodyRetiradaAberturaMinutosMax = 1440;
+
+export const setDisponibilidadeBodyRetiradaFechamentoMinutosMin = 0;
+export const setDisponibilidadeBodyRetiradaFechamentoMinutosMax = 1440;
+
+export const setDisponibilidadeBodyRetiradaFechamentoSabadoMinutosMin = 0;
+export const setDisponibilidadeBodyRetiradaFechamentoSabadoMinutosMax = 1440;
+
 
 
 export const SetDisponibilidadeBody = zod.object({
@@ -3492,7 +3520,11 @@ export const SetDisponibilidadeBody = zod.object({
   "estoqueLavagemDiasDepois": zod.number().min(setDisponibilidadeBodyEstoqueLavagemDiasDepoisMin).optional(),
   "atendimentoAberturaHora": zod.number().optional(),
   "atendimentoFechamentoHora": zod.number().optional(),
-  "diasFuncionamento": zod.array(zod.number().min(setDisponibilidadeBodyDiasFuncionamentoItemMin).max(setDisponibilidadeBodyDiasFuncionamentoItemMax)).optional()
+  "diasFuncionamento": zod.array(zod.number().min(setDisponibilidadeBodyDiasFuncionamentoItemMin).max(setDisponibilidadeBodyDiasFuncionamentoItemMax)).optional(),
+  "retiradaDias": zod.array(zod.number().min(setDisponibilidadeBodyRetiradaDiasItemMin).max(setDisponibilidadeBodyRetiradaDiasItemMax)).optional(),
+  "retiradaAberturaMinutos": zod.number().min(setDisponibilidadeBodyRetiradaAberturaMinutosMin).max(setDisponibilidadeBodyRetiradaAberturaMinutosMax).optional(),
+  "retiradaFechamentoMinutos": zod.number().min(setDisponibilidadeBodyRetiradaFechamentoMinutosMin).max(setDisponibilidadeBodyRetiradaFechamentoMinutosMax).optional(),
+  "retiradaFechamentoSabadoMinutos": zod.number().min(setDisponibilidadeBodyRetiradaFechamentoSabadoMinutosMin).max(setDisponibilidadeBodyRetiradaFechamentoSabadoMinutosMax).optional()
 })
 
 
@@ -3500,6 +3532,18 @@ export const setDisponibilidadeResponseEstoqueLavagemDiasDepoisMin = 0;
 
 export const setDisponibilidadeResponseDiasFuncionamentoItemMin = 0;
 export const setDisponibilidadeResponseDiasFuncionamentoItemMax = 6;
+
+export const setDisponibilidadeResponseRetiradaDiasItemMin = 0;
+export const setDisponibilidadeResponseRetiradaDiasItemMax = 6;
+
+export const setDisponibilidadeResponseRetiradaAberturaMinutosMin = 0;
+export const setDisponibilidadeResponseRetiradaAberturaMinutosMax = 1440;
+
+export const setDisponibilidadeResponseRetiradaFechamentoMinutosMin = 0;
+export const setDisponibilidadeResponseRetiradaFechamentoMinutosMax = 1440;
+
+export const setDisponibilidadeResponseRetiradaFechamentoSabadoMinutosMin = 0;
+export const setDisponibilidadeResponseRetiradaFechamentoSabadoMinutosMax = 1440;
 
 
 
@@ -3513,7 +3557,11 @@ export const SetDisponibilidadeResponse = zod.object({
   "estoqueLavagemDiasDepois": zod.number().min(setDisponibilidadeResponseEstoqueLavagemDiasDepoisMin),
   "atendimentoAberturaHora": zod.number(),
   "atendimentoFechamentoHora": zod.number(),
-  "diasFuncionamento": zod.array(zod.number().min(setDisponibilidadeResponseDiasFuncionamentoItemMin).max(setDisponibilidadeResponseDiasFuncionamentoItemMax)).describe('Dias da semana em que a loja abre: 0=domingo … 6=sábado (E38)')
+  "diasFuncionamento": zod.array(zod.number().min(setDisponibilidadeResponseDiasFuncionamentoItemMin).max(setDisponibilidadeResponseDiasFuncionamentoItemMax)).describe('Dias da semana em que a loja abre: 0=domingo … 6=sábado (E38)'),
+  "retiradaDias": zod.array(zod.number().min(setDisponibilidadeResponseRetiradaDiasItemMin).max(setDisponibilidadeResponseRetiradaDiasItemMax)).optional().describe('Dias em que a loja retira e devolve: 0=domingo … 6=sábado (cláusula 4ª)'),
+  "retiradaAberturaMinutos": zod.number().min(setDisponibilidadeResponseRetiradaAberturaMinutosMin).max(setDisponibilidadeResponseRetiradaAberturaMinutosMax).optional(),
+  "retiradaFechamentoMinutos": zod.number().min(setDisponibilidadeResponseRetiradaFechamentoMinutosMin).max(setDisponibilidadeResponseRetiradaFechamentoMinutosMax).optional(),
+  "retiradaFechamentoSabadoMinutos": zod.number().min(setDisponibilidadeResponseRetiradaFechamentoSabadoMinutosMin).max(setDisponibilidadeResponseRetiradaFechamentoSabadoMinutosMax).optional()
 })
 
 

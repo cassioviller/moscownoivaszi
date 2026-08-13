@@ -6116,6 +6116,21 @@ components:
           type: array
           description: "Dias da semana em que a loja abre: 0=domingo … 6=sábado (E38)"
           items: { type: integer, minimum: 0, maximum: 6 }
+        # E222 — o SEGUNDO expediente (cláusula 4ª): retirada e devolução. O de
+        # cima governa ATENDIMENTO (provas, sete dias até as 20h, vindo do
+        # caderno pela S-A8 e certo para provas). Este governa a peça saindo e
+        # voltando: ter–sex 10:30–19:00, sábado até 18:00. Não é contradição —
+        # é o segundo calendário que o negócio sempre teve e o modelo não tinha.
+        retiradaDias:
+          type: array
+          description: "Dias em que a loja retira e devolve: 0=domingo … 6=sábado (cláusula 4ª)"
+          items: { type: integer, minimum: 0, maximum: 6 }
+        # Em MINUTOS desde a meia-noite, e não em horas como o de atendimento:
+        # a cláusula abre às 10:30, e hora inteira não escreve meia hora.
+        retiradaAberturaMinutos: { type: integer, minimum: 0, maximum: 1440 }
+        retiradaFechamentoMinutos: { type: integer, minimum: 0, maximum: 1440 }
+        # O sábado tem o seu, porque o contrato dá a ele expediente mais curto.
+        retiradaFechamentoSabadoMinutos: { type: integer, minimum: 0, maximum: 1440 }
     RegraDisponibilidadeInput:
       type: object
       properties:
@@ -6134,6 +6149,14 @@ components:
         diasFuncionamento:
           type: array
           items: { type: integer, minimum: 0, maximum: 6 }
+        # E222 — o expediente de retirada/devolução (cláusula 4ª). Mesma unidade
+        # da resposta: MINUTOS desde a meia-noite, porque a cláusula abre 10:30.
+        retiradaDias:
+          type: array
+          items: { type: integer, minimum: 0, maximum: 6 }
+        retiradaAberturaMinutos: { type: integer, minimum: 0, maximum: 1440 }
+        retiradaFechamentoMinutos: { type: integer, minimum: 0, maximum: 1440 }
+        retiradaFechamentoSabadoMinutos: { type: integer, minimum: 0, maximum: 1440 }
 
     # ── Reservas ──
     Reserva:

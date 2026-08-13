@@ -58,6 +58,35 @@ export const regraDisponibilidadeTable = pgTable("regra_disponibilidade", {
    * perde a venda; o que ele não faz é oferecer domingo como dia de rotina.
    */
   diasFuncionamento: jsonb("dias_funcionamento").$type<number[]>().notNull().default([0, 1, 2, 3, 4, 5, 6]),
+  /**
+   * **O SEGUNDO expediente** — E222, cláusula 4ª do instrumento de locação.
+   *
+   * As três colunas acima governam **atendimento** (as provas): sete dias até as
+   * 20h, vindas do caderno de papel pela S-A8, e certas para provas. Estas
+   * governam **retirada e devolução**, que o contrato trata como outro
+   * expediente: **terça a sexta, 10:30–19:00; sábado, 10:30–18:00**.
+   *
+   * Não é contradição com o de cima — é ausência. Um ateliê que prova aos
+   * domingos e só entrega de terça a sábado é coerente; o modelo é que tinha um
+   * calendário onde o negócio tem dois.
+   *
+   * Os defaults são os do papel, e a loja edita como edita o resto. A régua que
+   * os lê é `expedienteDeRetirada` (`@workspace/agenda-core`), e é ela também
+   * que escreve o recado da recusa — porque quem lê é a vendedora com a noiva na
+   * frente, e um código de erro não diz a que horas voltar.
+   */
+  retiradaDias: jsonb("retirada_dias").$type<number[]>().notNull().default([2, 3, 4, 5, 6]),
+  /** Minutos desde a meia-noite. 630 = 10:30 (4ª). */
+  retiradaAberturaMinutos: integer("retirada_abertura_minutos").notNull().default(630),
+  /** 1140 = 19:00 (4ª), de terça a sexta. */
+  retiradaFechamentoMinutos: integer("retirada_fechamento_minutos").notNull().default(1140),
+  /**
+   * 1080 = 18:00 (4ª), só no sábado. É coluna própria porque o instrumento dá ao
+   * sábado um expediente mais curto, e não uma exceção de calendário: um número
+   * só teria de escolher entre recusar retirada às 18:30 numa quarta (que o
+   * contrato permite) ou aceitá-la no sábado (que ele não permite).
+   */
+  retiradaFechamentoSabadoMinutos: integer("retirada_fechamento_sabado_minutos").notNull().default(1080),
 });
 
 export const insertRegraDisponibilidadeSchema = createInsertSchema(regraDisponibilidadeTable);

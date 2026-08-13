@@ -46,6 +46,8 @@ import {
   ausenciaQueCobre,
   diaLocalYMD,
   expedienteDaRegra,
+  // E222 — o segundo expediente, o de retirada e devolução (cláusula 4ª).
+  expedienteDeRetirada,
   DETALHE_RECUSA,
   SLOT_MINUTOS,
   type MotivoRecusa,
@@ -1378,6 +1380,46 @@ router.put("/lojas/:lojaId/disponibilidade/regras", async (req, res): Promise<vo
       error: "SEM_DIA_DE_FUNCIONAMENTO",
       detalhe: "Sem nenhum dia aberto, a agenda fica fechada a semana inteira — escolha ao menos um.",
       campos: [{ campo: "diasFuncionamento", motivo: "Escolha ao menos um dia da semana" }],
+    });
+    return;
+  }
+
+  /**
+   * **E222 — as mesmas duas paredes, agora no expediente de RETIRADA.**
+   *
+   * A conferência é sobre o valor EFETIVO e não sobre o corpo, pela razão que o
+   * bloco de cima já paga: este é um upsert parcial, e mandar só o fechamento
+   * sobre uma regra que já tem abertura produz o mesmo estado que mandar os
+   * dois. Sem isso, o expediente de retirada podia ser salvo invertido — e aí
+   * `foraDoExpedienteDeRetirada` recusaria as 24 horas do dia, com o contrato
+   * inteiro travado e nenhuma tela dizendo por quê.
+   */
+  const retiradaEfetiva = expedienteDeRetirada(atual);
+  const rAbertura = parsed.data.retiradaAberturaMinutos ?? retiradaEfetiva.aberturaMinutos;
+  const rFechamento = parsed.data.retiradaFechamentoMinutos ?? retiradaEfetiva.fechamentoMinutos;
+  const rSabado = parsed.data.retiradaFechamentoSabadoMinutos ?? retiradaEfetiva.fechamentoSabadoMinutos;
+  const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  if (rAbertura >= rFechamento || rAbertura >= rSabado) {
+    res.status(422).json({
+      error: "HORARIO_DE_RETIRADA_INVALIDO",
+      detalhe:
+        `A loja retiraria a partir das ${hhmm(rAbertura)} e fecharia às ${hhmm(rFechamento)} ` +
+        `(${hhmm(rSabado)} no sábado): sem nenhum horário entre os dois, nenhuma retirada seria aceita.`,
+      campos: [
+        {
+          campo: "retiradaFechamentoMinutos",
+          motivo: "O fechamento tem de ser depois da abertura, no sábado também",
+        },
+      ],
+    });
+    return;
+  }
+  if (parsed.data.retiradaDias && parsed.data.retiradaDias.length === 0) {
+    res.status(422).json({
+      error: "SEM_DIA_DE_RETIRADA",
+      detalhe:
+        "Sem nenhum dia de retirada, nenhuma data de retirada ou devolução seria aceita — escolha ao menos um.",
+      campos: [{ campo: "retiradaDias", motivo: "Escolha ao menos um dia da semana" }],
     });
     return;
   }

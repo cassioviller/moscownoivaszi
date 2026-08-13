@@ -24,4 +24,25 @@ export interface RegraDisponibilidade {
      * @items.maximum 6
      */
   diasFuncionamento: number[];
+  /**
+     * Dias em que a loja retira e devolve: 0=domingo … 6=sábado (cláusula 4ª)
+     * @items.minimum 0
+     * @items.maximum 6
+     */
+  retiradaDias?: number[];
+  /**
+     * @minimum 0
+     * @maximum 1440
+     */
+  retiradaAberturaMinutos?: number;
+  /**
+     * @minimum 0
+     * @maximum 1440
+     */
+  retiradaFechamentoMinutos?: number;
+  /**
+     * @minimum 0
+     * @maximum 1440
+     */
+  retiradaFechamentoSabadoMinutos?: number;
 }

@@ -51,6 +51,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { mensagemApi } from "@/lib/erro-api";
 import { minutosDaProva, opcoesDeDuracaoDaProva, slotsDaProva } from "@/lib/duracao-da-prova";
+// E222 — a conversão entre "HH:MM" (a tela) e minutos desde a meia-noite (o
+// servidor) mora no agenda-core, e é a mesma que o recado da recusa usa.
+import { hhmmParaMinutos as minutosDoRelogio, minutosParaHHMM as hhmm } from "@workspace/agenda-core";
 
 /**
  * Cabines & horário de atendimento (porte da /atendimentos/config do
@@ -190,12 +193,37 @@ export default function ConfigAtendimentos() {
     dias: number[];
     duracaoProvaMin: string;
     lavagemEstoqueDias: string;
+    // E222 — o SEGUNDO expediente, o de retirada e devolução (cláusula 4ª). Em
+    // "HH:MM" porque a cláusula abre 10:30, e hora inteira não escreve meia
+    // hora; o servidor conta em minutos desde a meia-noite.
+    retiradaAbertura: string;
+    retiradaFechamento: string;
+    retiradaFechamentoSabado: string;
+    retiradaDias: number[];
   }>({
-    defaultValues: { abertura: "", fechamento: "", dias: [], duracaoProvaMin: "", lavagemEstoqueDias: "" },
+    defaultValues: {
+      abertura: "",
+      fechamento: "",
+      dias: [],
+      duracaoProvaMin: "",
+      lavagemEstoqueDias: "",
+      retiradaAbertura: "",
+      retiradaFechamento: "",
+      retiradaFechamentoSabado: "",
+      retiradaDias: [],
+    },
     values: regra
       ? {
           abertura: String(regra.atendimentoAberturaHora),
           fechamento: String(regra.atendimentoFechamentoHora),
+          // E222 — os quatro do expediente de retirada. O fallback é o do
+          // contrato, e acompanha o default do schema pela mesma razão escrita
+          // na linha dos dias de atendimento: a mesma premissa em três lugares
+          // é a mesma que pode divergir em três.
+          retiradaAbertura: hhmm(regra.retiradaAberturaMinutos ?? 630),
+          retiradaFechamento: hhmm(regra.retiradaFechamentoMinutos ?? 1140),
+          retiradaFechamentoSabado: hhmm(regra.retiradaFechamentoSabadoMinutos ?? 1080),
+          retiradaDias: regra.retiradaDias ?? [2, 3, 4, 5, 6],
           // Dias em que a loja abre (E38): 0=domingo … 6=sábado. O fallback
           // acompanha o default do schema (S-A8: era `[1..6]` aqui e no
           // servidor, e os dois tinham de mudar juntos — a mesma premissa
@@ -217,7 +245,47 @@ export default function ConfigAtendimentos() {
   useConfirmarSaida(sujoParaConfirmar(form.formState, nomeCabine.trim() !== ""));
 
   const salvarHorario = async () => {
-    const { abertura, fechamento, dias, duracaoProvaMin, lavagemEstoqueDias } = form.getValues();
+    const {
+      abertura,
+      fechamento,
+      dias,
+      duracaoProvaMin,
+      lavagemEstoqueDias,
+      retiradaAbertura,
+      retiradaFechamento,
+      retiradaFechamentoSabado,
+      retiradaDias,
+    } = form.getValues();
+    // E222 — "HH:MM" na tela, minutos desde a meia-noite no servidor.
+    const rAbertura = minutosDoRelogio(retiradaAbertura);
+    const rFechamento = minutosDoRelogio(retiradaFechamento);
+    const rSabado = minutosDoRelogio(retiradaFechamentoSabado);
+    if (rAbertura === null || rFechamento === null || rSabado === null) {
+      toast({
+        title: "Horário de retirada inválido",
+        description: "Informe as três horas no formato 10:30.",
+        variant: "destructive",
+      });
+      return;
+    }
+    // A mesma parede do servidor, e no sábado também: sem isso o expediente
+    // salvaria invertido e nenhuma retirada seria aceita depois.
+    if (rAbertura >= rFechamento || rAbertura >= rSabado) {
+      toast({
+        title: "Horário de retirada inválido",
+        description: "A abertura tem de ser antes do fechamento, no sábado também.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (retiradaDias.length === 0) {
+      toast({
+        title: "Escolha ao menos um dia de retirada",
+        description: "Sem nenhum dia, nenhuma data de retirada ou devolução seria aceita.",
+        variant: "destructive",
+      });
+      return;
+    }
     const a = Number(abertura);
     const f = Number(fechamento);
     const lavagemEstoque = Number(lavagemEstoqueDias);
@@ -274,11 +342,26 @@ export default function ConfigAtendimentos() {
           atendimentoAberturaHora: a,
           atendimentoFechamentoHora: f,
           diasFuncionamento: [...dias].sort((x, y) => x - y),
+          // E222 — o segundo expediente (cláusula 4ª), salvo no mesmo gesto.
+          retiradaAberturaMinutos: rAbertura,
+          retiradaFechamentoMinutos: rFechamento,
+          retiradaFechamentoSabadoMinutos: rSabado,
+          retiradaDias: [...retiradaDias].sort((x, y) => x - y),
         },
       });
       // Salvou: o que estava sujo virou o valor do servidor. Sem este reset o
       // `keepDirtyValues` continuaria protegendo campos que já não divergem.
-      form.reset({ abertura, fechamento, dias, duracaoProvaMin, lavagemEstoqueDias });
+      form.reset({
+        abertura,
+        fechamento,
+        dias,
+        duracaoProvaMin,
+        lavagemEstoqueDias,
+        retiradaAbertura,
+        retiradaFechamento,
+        retiradaFechamentoSabado,
+        retiradaDias,
+      });
       await queryClient.invalidateQueries({
         queryKey: getGetDisponibilidadeQueryKey(activeLojaId!),
       });
@@ -475,6 +558,91 @@ export default function ConfigAtendimentos() {
                   como disponível de novo. Zero desliga a lavagem da conta.
                 </p>
               </div>
+              {/* E222 — o SEGUNDO expediente. O de cima governa ATENDIMENTO
+                  (as provas, e está certo: o ateliê atende sete dias, com hora
+                  marcada até aos domingos — S-A8). Este governa a peça SAINDO e
+                  VOLTANDO, que a cláusula 4ª do contrato trata separado. Ficam
+                  no mesmo cartão de propósito: quem vem mudar horário tem de
+                  ver que são dois, senão muda um achando que mudou os dois. */}
+              <div className="space-y-4 border-t pt-4">
+                <div>
+                  <Label className="text-sm font-medium">Retirada e devolução</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Quando a loja entrega a peça e a recebe de volta — o contrato de locação
+                    (cláusula 4ª) trata isso separado das provas. Fora deste expediente, o
+                    contrato recusa a data e diz o porquê.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="retirada-abertura">Abre</Label>
+                    <Input
+                      id="retirada-abertura"
+                      type="time"
+                      className="w-32"
+                      data-testid="retirada-abertura"
+                      {...form.register("retiradaAbertura")}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="retirada-fechamento">Fecha</Label>
+                    <Input
+                      id="retirada-fechamento"
+                      type="time"
+                      className="w-32"
+                      data-testid="retirada-fechamento"
+                      {...form.register("retiradaFechamento")}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    {/* O sábado tem o seu porque o contrato dá a ele expediente
+                        mais curto — um número só recusaria 18:30 numa quarta
+                        (que o contrato permite) ou aceitaria no sábado (que
+                        ele não permite). */}
+                    <Label htmlFor="retirada-fechamento-sabado">Fecha no sábado</Label>
+                    <Input
+                      id="retirada-fechamento-sabado"
+                      type="time"
+                      className="w-32"
+                      data-testid="retirada-fechamento-sabado"
+                      {...form.register("retiradaFechamentoSabado")}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Dias de retirada e devolução</Label>
+                  <Controller
+                    control={form.control}
+                    name="retiradaDias"
+                    render={({ field }) => (
+                      <div className="flex flex-wrap gap-1.5">
+                        {DIAS_ROTULO.map((rot, n) => {
+                          const aberto = field.value.includes(n);
+                          return (
+                            <Button
+                              key={n}
+                              type="button"
+                              size="sm"
+                              variant={aberto ? "default" : "outline"}
+                              aria-pressed={aberto}
+                              data-testid={`dia-retirada-${n}`}
+                              onClick={() =>
+                                field.onChange(
+                                  aberto
+                                    ? field.value.filter((d) => d !== n)
+                                    : [...field.value, n],
+                                )
+                              }
+                            >
+                              {rot}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  />
+                </div>
+              </div>
               <Button
                 variant="outline"
                 onClick={salvarHorario}
@@ -488,7 +656,15 @@ export default function ConfigAtendimentos() {
               {regra
                 ? `${regra.atendimentoAberturaHora}h às ${regra.atendimentoFechamentoHora}h · ${
                     regra.diasFuncionamento?.map((d) => DIAS_ROTULO[d]).join(", ") ?? "—"
-                  } · prova de ${minutosDaProva(regra.provaDuracao)} min`
+                  } · prova de ${minutosDaProva(regra.provaDuracao)} min` +
+                  // E222 — quem só LÊ a tela também precisa saber que são dois
+                  // expedientes; sem esta linha o segundo só existiria para
+                  // quem tem permissão de editar.
+                  ` · retirada ${hhmm(regra.retiradaAberturaMinutos ?? 630)}–${hhmm(
+                    regra.retiradaFechamentoMinutos ?? 1140,
+                  )} (sáb. até ${hhmm(regra.retiradaFechamentoSabadoMinutos ?? 1080)}) · ${
+                    (regra.retiradaDias ?? [2, 3, 4, 5, 6]).map((d) => DIAS_ROTULO[d]).join(", ")
+                  }`
                 : "Carregando…"}
             </p>
           )}
