@@ -156,7 +156,7 @@ vive fora do sistema.
 | **17ª §1º** | sem troca às **sextas e sábados** | ❌ |
 | **17ª §2º** | troca de data para o ano seguinte: **+10%** no total | ❌ **e este é o mais próximo de nascer.** O E193 acabou de ensinar o sistema a mover a data (`routes/reservas.ts:564` grava `RESERVA_DATA_MOVIDA` na trilha) — o gesto existe, o rastro existe, e **ninguém conta as trocas nem reajusta** |
 | **17ª §3º** | **2ª troca +20%, 3ª +30%** | ❌ o sistema não conta quantas vezes a data mudou; o dado está na trilha e nada o lê |
-| **18ª** | pagamento integral no ato → devolve o excedente à reserva se cancelar até **___ dias** antes | ❌ e **a cláusula está incompleta no papel** — o prazo nunca foi preenchido. Não dá para implementar antes de a dona dizer o número |
+| **18ª** | pagamento integral no ato → devolve o excedente à reserva se cancelar até **___ dias** antes | ❌ **e o prazo é CAMPO, não regra** (decisão da dona, 13/08/2026): ele é negociado a cada contrato, como a data e o valor. Então não é constante — é **coluna em `contratos`**, ausente hoje, e a devolução do excedente também não existe |
 | **19ª** | sem vínculo trabalhista | ⬜ |
 | **20ª** | proibido transferir ou subcontratar | ⬜ |
 

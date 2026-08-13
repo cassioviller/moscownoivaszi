@@ -266,10 +266,20 @@ nenhum deles se resolve escrevendo código.
 2. **Quem assina e quem recebe são pessoas diferentes, sem uma linha ligando as
    duas.** A LOCADORA é representada por *Renato Nascimento de Brito*; o PIX é o
    CPF de *Karina Shabalina*.
-3. **A Cláusula 18ª tem uma lacuna que nunca foi preenchida no molde**: *"se
-   comunicar o cancelamento até _____ dias antes"*. O prazo que dispara a
-   devolução do excedente **não existe**, então a cláusula é inaplicável como
-   está.
+3. ~~**A Cláusula 18ª tem uma lacuna que nunca foi preenchida no molde.**~~
+   **NÃO É DEFEITO — é campo de preenchimento**, decidido pela dona em
+   13/08/2026: o *"até _____ dias antes"* da 18ª é **negociado a cada contrato**,
+   como a data, o valor e o nome do locatário.
+
+   O engano foi meu, e a causa merece ficar escrita: as outras lacunas do molde
+   moram em tabelas e em linhas de identificação, onde "espaço em branco" se lê
+   como campo. Esta mora **no meio da prosa de uma cláusula**, e ali eu li como
+   frase incompleta. **A forma do documento me enganou sobre a natureza do
+   vazio** — e é a mesma classe do erro do horário: julguei pela aparência em vez
+   de perguntar o que aquilo é.
+
+   Para o sistema, a diferença é grande: não é constante, é **coluna no
+   contrato**.
 4. **A frase de fecho está truncada** — *"em duas vias de igual"*, faltando
    "teor e forma".
 

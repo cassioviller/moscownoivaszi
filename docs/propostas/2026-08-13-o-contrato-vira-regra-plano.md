@@ -51,15 +51,14 @@ D2, D5 e D6 de uma vez — e já corrigiu um erro meu:
   inteiro** — tanto que o exemplo semeado hoje, `12.345.678/0001-99`, é
   **inválido**. O número que vai impresso em todo contrato entra sem conferência.
   Entra no E220.
+- **D3 — resolvida em 13/08/2026: o prazo da 18ª é CAMPO, não regra.** O
+  *"até _____ dias antes"* é negociado a cada contrato, como a data e o valor.
+  **Isso muda o desenho:** não é constante no código, é **coluna em
+  `contratos`**, preenchida no fecho e impressa na cláusula.
 
-### A que a régua ainda NÃO consegue responder
-
-Ela não sobrevive a "o contrato está certo" porque **o contrato não diz** — o
-molde ficou em branco. (A outra desta lista era o CNPJ, respondida acima.)
-
-| # | pergunta | por que a régua não resolve |
-|---|---|---|
-| **D3** | **Cláusula 18ª: até quantos dias antes?** — *"se comunicar o cancelamento até _____ dias antes"* | O molde tem a **lacuna em branco**. Não há regra a seguir porque não há regra escrita |
+  Foi correção de um engano meu: li a lacuna como frase incompleta porque ela
+  mora no meio da prosa, e não numa tabela como as outras lacunas do molde. **A
+  forma do documento me enganou sobre a natureza do vazio.**
 
 ### As que seguem abertas por escolha, não por impedimento
 
@@ -163,15 +162,18 @@ rescisão. Sem ele, a 12ª não tem como ser aplicada por máquina nenhuma.
 
 ### E217 — a rescisão calcula (8ª §2º, 11ª, 12ª, 13ª e §§)
 
-Depende do E216 e da decisão D3. O cancelamento hoje só carimba motivo e data.
-Passa a calcular:
+Depende do E216. O cancelamento hoje só carimba motivo e data. Passa a calcular:
 
 - reserva (40%) **nunca volta** (8ª §2º);
 - pago além da reserva → devolve **deduzindo 60%** (11ª);
 - peça exclusiva → multa **integral** (12ª);
 - locadora rescinde → devolve o **não prestado** (13ª);
 - prazo de devolução: **30 dias** (13ª §3º), que vira conta a pagar com
-  vencimento — dívida da loja, e o financeiro já sabe representá-la.
+  vencimento — dívida da loja, e o financeiro já sabe representá-la;
+- **nasce a coluna do prazo da 18ª** (D3): quantos dias antes da retirada o
+  cancelamento ainda devolve o excedente à reserva. É **negociado por contrato**,
+  então é campo do fecho, não constante — e sem valor preenchido a cláusula não
+  dispara, porque o sistema não inventa prazo que ninguém acordou.
 
 ### E218 — a entrada de 40% e o prazo de 20 dias (8ª §1º e § único do objeto)
 
@@ -249,8 +251,8 @@ não existe recibo nenhum (medido: zero ocorrências no código). O recebimento 
 
 ## A ordem sugerida, se for para começar hoje
 
-1. **D3** — a única pergunta que ainda trava um épico (o prazo da 18ª, no E217).
-   O D1 saiu da fila: o CNPJ é o final 93.
+1. **Nada trava mais.** Das sete perguntas da Fase 0, seis estão respondidas, e a
+   sétima (D7 — guardar representante legal e PIX) é escolha, não impedimento.
 2. **E211** (a data que muda tem preço) — não depende de decisão nenhuma, usa
    dado que já existe, e é dinheiro que o contrato manda cobrar e ninguém cobra.
 3. **E212** e **E213** — mesma natureza, mesma fonte de dado.
