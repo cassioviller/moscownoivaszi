@@ -15,8 +15,8 @@ Contado em 13/08/2026:
 
 | natureza | quantos | estado |
 |---|---|---|
-| Épicos de código (E211–E222) | **12** | **6 executados** (E211, E212, E213, E214, E216, E221) — **a Onda A fechou inteira** |
-| Sobras abertas | **11** | 1 da auditoria + 2 do E212 + 2 do E214 + 3 do E216 + 2 do E221 + 1 do E213 — **conte a tabela, não esta linha** |
+| Épicos de código (E211–E222) | **12** | **7 executados** (E211, E212, E213, E214, E216, E221, E222) · **1 bloqueado** (E219: a porta que ele guardaria não existe) |
+| Sobras abertas | **13** | 1 da auditoria + 2 do E212 + 2 do E214 + 3 do E216 + 2 do E221 + 1 do E213 + 2 do E222 — **conte a tabela, não esta linha** |
 | Pendências que **não são software** | **4** | abertas (a P4 nasceu no E213) |
 | Decisões da dona ainda abertas | **2** (D4, D7) | travam só o E220 |
 
@@ -69,10 +69,10 @@ antes de podar, e é o que está feito acima: só `eaa4e90` (E216) tem o mesmo
 
 | Épico | Tese | Cláusula | Migração? | Estado |
 |---|---|---|---|---|
-| **E222** | **o ateliê tem DOIS expedientes e o sistema conhece um** — nasce o de retirada/devolução (ter–sex 10:30–19:00, sáb até 18:00), e `dataRetirada`/`dataDevolucao` passam a ser validadas. Hoje o sistema aceita retirada num domingo às 23h | 4ª e 5ª | sim | aberto |
+| ~~**E222**~~ | ~~o ateliê tem DOIS expedientes e o sistema conhece um~~ | 4ª e 5ª | rodada e conferida (**4 colunas**) | ✅ `31422db` · [relatório](execucao/E222.md) — **a medição mudou o tamanho do épico antes de uma linha de código**: são **723 contratos, 1 com `dataRetirada` e ZERO com `dataDevolucao`**, e **nenhuma tela cita os dois campos** (`git ls-files`) — só se chega neles pela API, que é o formato do E197. Daí as datas continuarem OPCIONAIS e a migração não corrigir linha nenhuma. Não era contradição com o horário que existia — o de lá governa ATENDIMENTO (sete dias até as 20h, do caderno pela S-A8, e **certo para provas**); é ausência, e o modelo tinha um calendário onde o negócio tem dois. O vermelho: `expected 201 to be 422` — o contrato nascia com a peça saindo **num domingo às 23h**. **O PATCH entrou junto** (`expected 200 to be 422`), senão o caminho era fechar no sábado e corrigir para domingo depois. O sábado tem **coluna própria** porque um número só recusaria 18:30 numa quarta ou aceitaria no sábado; o fechamento é **inclusivo** aqui e exclusivo na agenda (prova tem duração, retirar é ato) |
 | ~~**E214**~~ | ~~a taxa de limpeza e a de dano ganham faixa~~ | 14ª e 15ª | rodada e conferida | ✅ `0c15cda` + `6d1e860` (a migração renumerada) + `1c439d5` (a régua da moeda, que este épico deixou vermelha no `main`) · [relatório](execucao/E214.md) — as duas cláusulas viram réguas de **formas diferentes** (a da limpeza é absoluta, a do dano é 5× o aluguel DAQUELA peça), e é isso que obriga o `tipo`: sem ele, `custo_reparo` é um número sem régua. O teto sai de `contrato_itens.valor_unitario`, que o sistema tinha e não usava — **R$ 9.000,00 cabem no vestido de R$ 3.000,00 e não cabem no véu de R$ 400,00**. A régua não vira parede — o que VIOLA um número do papel entra com justificativa, gravada na avaria e na trilha. **Peça fora de contrato: a 15ª NÃO alcança o caso** — não barra, e diz que não conferiu (decisão que eu escrevi ao contrário primeiro; medir derrubou o argumento, e a conta está no relatório). **As duas portas conferem**, e a razão entra também na cobrança para não haver beco (apagar a avaria destruiria a foto-prova). Fora do escopo aparente: `listContratos` desce os `itens` no recorte por noiva, e a conta do `ENVELOPE_MAX_BYTES` foi **refeita para dois campos de texto**, não esticada |
 | **E218** | **a entrada sugere 40% e o plano respeita os 20 dias** — nada compara `parcelas.vencimento` com `contratos.dataRetirada` | 8ª §1º e § único | não | aberto |
-| **E219** | **a troca de traje tem prazo** — sem troca após 7 dias, nem às sextas e sábados | 17ª e §1º | não | aberto |
+| **E219** | **a troca de traje tem prazo** — sem troca após 7 dias, nem às sextas e sábados | 17ª e §1º | não | **BLOQUEADO — a porta que ele guardaria não existe.** O plano diz *"é guarda na porta que edita itens do contrato"*, e essa porta é suposição: enumerado por `git ls-files`, `contratoItensTable` e `contratoBloqueiosTable` recebem escrita em **UM sítio** — o `INSERT` dentro do `POST /contratos` (`contratos.ts:904` e `:916`). Os outros três arquivos que as citam (`portal.ts`, `reservas.ts`, `vestidos.ts`) só LEEM. Não há `PATCH`, `PUT` nem `DELETE` de item: **hoje trocar de traje é cancelar o contrato e fazer outro**. Fechá-lo pede antes um épico de PORTA (trocar peça, libertar a reserva antiga, prender a nova, refazer o snapshot de preço) — decidido em 13/08 que ele espera |
 
 ### Onda C — o que o sistema não sabe
 
@@ -104,6 +104,8 @@ antes de podar, e é o que está feito acima: só `eaa4e90` (E216) tem o mesmo
 | **S-C10** | **Os "61 das 63 avarias" envelheceram, e ainda sustentam decisões de desenho.** O número nasceu no E110 e é citado em **8 sítios versionados** — `e167-avaria-fecha-api.test.ts:27` e `:111`, `revisao-reserva-avaria-api.test.ts:21`, `so18-reserva-por-id-api.test.ts:59`, `routes/contratos.ts:538`, `routes/reservas.ts:1714`, `reservas/[bloqueioId].tsx:153` e `openapi.yaml:5934`. Medido em `moscow_base` no E214: **116 bloqueios, TODOS com `lead_id` próprio, nenhum sem dono, e ZERO avarias.** Os comentários argumentam com ele ("prova quando é provável"; o botão que a tela desenha), então não é troca de texto — é remedir e decidir se o argumento sobrevive | 🟡 | E214 | aberta |
 | **S-C32** | **O atraso não tem FILA — só se descobre abrindo a ficha daquela reserva.** O E212 pôs a conta e o botão em `reservas/[bloqueioId].tsx`, e `ATRASO_DEVOLUCAO` **não aparece em tela nenhuma além dela** (medido: um único sítio em `moscow-noivas/src`, e é o comentário que o próprio E212 escreveu). A peça que não voltou soma uma diária por dia em silêncio: quem não abrir aquela ficha não sabe que ela existe, e o valor cresce sozinho. É o oposto do reajuste do E211, que nasce do gesto de mover a data — aqui o fato é a AUSÊNCIA de gesto, e ausência não notifica ninguém | 🟡 | E212 | aberta |
 | **S-C33** | **`COLUNAS_DE_ESTADO` é lista curada à mão, e coluna de estado nova nasce invisível para a detecção de CAS.** A varredura de trancas leu a porta do E212 como ABERTA enquanto o `where` da escrita repetia exatamente a condição lida — só porque `contratos.atrasoParcelaId` não estava na lista. O E212 consertou POR COLUNA (acrescentou a dela), e **nada obriga a lista a ficar completa**: é a classe que a conferência de 2026-08-05 achou na S30 (*"trava a lista, não a contagem"*), agora do lado das colunas. A régua acusa código certo, que é a direção mais cara — quem for fechar troca a lista por um derivado do schema. **O E213 é a segunda evidência, em dois épicos seguidos**: `parcelas.moraPerdoadaEm` nasceu invisível igual, e as DUAS portas do perdão apareceram como abertas estando sob CAS de verdade (`"routes/contratos.ts": 1` virou `3` no vermelho reproduzido). Duas colunas, dois épicos, o mesmo ponto cego — a lista curada não é sustentável | 🔵 | E212 | aberta |
+| **S-C35** | **A retirada e a devolução não têm onde ser preenchidas.** As duas colunas existem desde sempre, a API grava, o PDF do contrato imprime os dois rótulos — e **nenhuma tela oferece o campo** (0 sítios em `artifacts/moscow-noivas/src`, enumerado por `git ls-files`). Medido: **1 de 723 contratos** tem data de retirada, nenhum tem devolução. O E222 pôs a régua na porta; enquanto o gesto faltar, o expediente da 4ª só é exercido por quem chama a API — o formato do E197 | 🟡 | E222 | aberta |
+| **S-C36** | **O PDF do contrato imprime "Retirada" e "Devolucao" sempre vazios.** `contrato-pdf.ts:128-129` desenha as duas linhas a partir de campos que ninguém preenche. Não é defeito de código: é a mesma ausência da S-C35 vista no papel que a noiva leva para casa, e fecha junto com ela | 🔵 | E222 | aberta |
 | **S-C34** | **A mensagem de cobrança cobra a multa e não a NOMEIA.** `whatsapp.ts:78` imprime `brl(p.totalVencido)`, e o `totalVencido` passou a incluir multa e juros no E213 (`cobranca.ts:154`). A noiva recebe *"um valor em aberto: **R$ 515,00**, há 30 dias"* de uma parcela de **R$ 500,00** — confere o carnê, vê R$ 500,00, e liga para a loja. É o **oposto** do que o próprio E213 fez no portal, onde o acréscimo vem com a conta escrita ao lado, e pela razão declarada lá: número maior sem explicação é o que gera a ligação. Uma linha na mensagem | 🟡 | E213 | aberta |
 | **S-C11** | **A avaria não tem porta de EDIÇÃO.** `custo_reparo`, `tipo` e `justificativa_da_taxa` só entram no `POST` de nascimento; não há `PATCH /avarias/:id`. Quem digitou R$ 1.500,00 onde eram R$ 150,00 só tem o caminho de apagar e refazer — e o E115 recusa apagar quando a avaria sustenta cobrança viva, além de a foto-prova sair junto. Não fecha buraco de régua (o E214 confere no nascimento e na cobrança), mas é gesto que falta a quem usa | 🟡 | E214 | aberta |
 
@@ -181,8 +183,18 @@ três vezes: reajuste (E211), atraso (E212) e mora (E213).
 1. ~~**E211** — a data que muda tem preço.~~ ✅ `0c8874a`
 2. ~~**E212** e **E213** — mesma natureza, mesma fonte de dado.~~ ✅ `a88d7ead`
    e `fa7d838`
-3. **E222** — sobe na frente da Onda B porque é a única cláusula em que o sistema
-   hoje **deixa acontecer** o que o contrato proíbe.
-4. O resto da Onda B (**E214**, **E218**, **E219**), em qualquer ordem.
+3. ~~**E222** — a única cláusula em que o sistema **deixa acontecer** o que o
+   contrato proíbe.~~ ✅ `31422db`
+4. O resto da Onda B: **E218**. O **E214** fechou (`0c15cda`), e o **E219** está
+   **bloqueado** — a porta que ele guardaria não existe, e a linha dele na fila
+   traz a enumeração que prova.
+
+   **Três épicos seguidos ensinaram a mesma coisa, e ela vale para os que
+   faltam: o plano deste contrato supõe portas que o sistema não tem.** No E213
+   a régua faltava na porta AO LADO (o `POST /receber` recusava o dinheiro que
+   as outras três leituras mostravam); no E222 o campo existia e **nenhuma tela
+   o oferecia**; no E219 a porta **não existe**. A primeira pergunta de cada um
+   dos que restam passa a ser *quantos passam por aqui hoje* — e ela se responde
+   com `git ls-files` e um `SELECT`, antes de qualquer linha.
 5. **E215** → **E216** → **E217**, nesta ordem (o E217 depende do E216).
 6. **D4** e **D7** respondidas → **E220** e **E221**.
