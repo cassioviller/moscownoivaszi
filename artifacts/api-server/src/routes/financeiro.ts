@@ -70,6 +70,7 @@ import {
   GetDreResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
+import { moraDe } from "../lib/mora-da-parcela";
 import { usuarioNaLoja } from "../lib/escopo-loja";
 import { ultimoContatoPorLead } from "../lib/ultimo-contato";
 // C10/E104: `addDias`/`inicioDoDia` são régua de DATA DE NEGÓCIO e moram no
@@ -154,7 +155,11 @@ router.get("/lojas/:lojaId/financeiro/parcelas", async (req, res): Promise<void>
         }
       : p,
   );
-  res.json(ListParcelasResponse.parse(comContato));
+  // E213 — a multa e os juros da cláusula 9ª entram DERIVADOS, pelo mesmo
+  // helper que o carnê, o portal e o recebimento usam. Esta é a fila de
+  // cobrança: é aqui que a vendedora vê que a parcela de R$ 500,00 já deve
+  // R$ 515,00 antes de mandar a mensagem.
+  res.json(ListParcelasResponse.parse(comContato.map((p) => ({ ...p, mora: moraDe(p) }))));
 });
 
 router.post("/lojas/:lojaId/financeiro/contas-pagar", async (req, res): Promise<void> => {

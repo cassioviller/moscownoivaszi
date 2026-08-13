@@ -15,4 +15,5 @@ export const ParcelaOrigem = {
   AVARIA: 'AVARIA',
   REAJUSTE_DATA: 'REAJUSTE_DATA',
   ATRASO_DEVOLUCAO: 'ATRASO_DEVOLUCAO',
+  MORA: 'MORA',
 } as const;

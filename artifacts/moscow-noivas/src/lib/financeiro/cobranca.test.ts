@@ -185,3 +185,49 @@ describe("rotuloContato", () => {
     expect(rotuloContato("2026-06-21T00:30:00.000Z")).toBe("20/06/2026 às 21:30");
   });
 });
+
+/**
+ * **E213 — a fila cobra o que a noiva vê no portal** (cláusula 9ª).
+ *
+ * A soma desta fila é o número que a vendedora manda no WhatsApp
+ * (`msgCobranca` o imprime) e que o portal da noiva já mostra com multa e juros
+ * desde este épico. Somar só o principal aqui deixaria duas verdades para a
+ * mesma dívida — com a noiva lendo a maior.
+ *
+ * A conta NÃO é refeita na tela: ela vem do servidor em `p.mora`, calculada uma
+ * vez no `financeiro-core`. É a lição do E187, que achou cinco grafias da mesma
+ * conta de desconto — três acertando por cópia e duas errando.
+ */
+describe("agingDeParcelas — a multa e os juros da 9ª entram no total (E213)", () => {
+  const comMora = (dias: number, mora: Partial<{ total: number; perdoada: boolean }>) =>
+    vencida(dias, {
+      mora: {
+        dias,
+        saldo: 100,
+        multa: 2,
+        juros: dias / 30,
+        acrescimo: 2 + dias / 30,
+        total: mora.total ?? 100,
+        perdoada: mora.perdoada ?? false,
+        explicacao: "",
+      },
+    } as Partial<ParcelaComNoiva>);
+
+  it("o total da noiva é o saldo COM o acréscimo, não o principal", () => {
+    // R$ 100,00 vencidos há 30 dias: 2% = R$ 2,00 + 1% × 30/30 = R$ 1,00.
+    const r = agingDeParcelas([comMora(30, { total: 103 })], HOJE);
+    expect(r.noivas[0]!.totalVencido).toBe(103);
+  });
+
+  it("perdoada volta a somar só o principal — o perdão vale para a fila também", () => {
+    const r = agingDeParcelas([comMora(30, { total: 103, perdoada: true })], HOJE);
+    expect(r.noivas[0]!.totalVencido).toBe(100);
+  });
+
+  it("sem `mora` no payload, a fila continua somando o saldo aberto", () => {
+    // Cliente antigo em cache, ou parcela que ainda não venceu na conta do
+    // servidor: a ausência não pode virar zero nem `NaN`.
+    const r = agingDeParcelas([vencida(30)], HOJE);
+    expect(r.noivas[0]!.totalVencido).toBe(100);
+  });
+});

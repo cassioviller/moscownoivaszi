@@ -5598,7 +5598,17 @@ export const GetPortalResponse = zod.object({
   "valorPrevisto": zod.number(),
   "valorRecebido": zod.number().nullable(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA'])
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "mora": zod.union([zod.object({
+  "dias": zod.number(),
+  "saldo": zod.number(),
+  "multa": zod.number(),
+  "juros": zod.number(),
+  "acrescimo": zod.number(),
+  "total": zod.number(),
+  "perdoada": zod.boolean(),
+  "explicacao": zod.string().optional()
+}),zod.null()]).optional()
 })),
   "recibos": zod.array(zod.object({
   "id": zod.string(),
@@ -5847,12 +5857,24 @@ export const ListContratosResponse = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO']),
+  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO', 'MORA']),
   "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
   "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "conciliadoEm": zod.coerce.date().nullish(),
+  "mora": zod.union([zod.object({
+  "dias": zod.number(),
+  "saldo": zod.number(),
+  "multa": zod.number(),
+  "juros": zod.number(),
+  "acrescimo": zod.number(),
+  "total": zod.number(),
+  "perdoada": zod.boolean(),
+  "explicacao": zod.string().optional()
+}),zod.null()]).optional(),
+  "moraPerdoadaEm": zod.coerce.date().nullish(),
+  "moraPerdoadaMotivo": zod.string().nullish(),
   "contrato": zod.union([zod.object({
   "leadId": zod.string(),
   "lead": zod.union([zod.object({
@@ -5987,12 +6009,24 @@ export const CreateContratoResponse = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO']),
+  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO', 'MORA']),
   "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
   "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "conciliadoEm": zod.coerce.date().nullish(),
+  "mora": zod.union([zod.object({
+  "dias": zod.number(),
+  "saldo": zod.number(),
+  "multa": zod.number(),
+  "juros": zod.number(),
+  "acrescimo": zod.number(),
+  "total": zod.number(),
+  "perdoada": zod.boolean(),
+  "explicacao": zod.string().optional()
+}),zod.null()]).optional(),
+  "moraPerdoadaEm": zod.coerce.date().nullish(),
+  "moraPerdoadaMotivo": zod.string().nullish(),
   "contrato": zod.union([zod.object({
   "leadId": zod.string(),
   "lead": zod.union([zod.object({
@@ -6094,12 +6128,24 @@ export const GetContratoResponse = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO']),
+  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO', 'MORA']),
   "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
   "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "conciliadoEm": zod.coerce.date().nullish(),
+  "mora": zod.union([zod.object({
+  "dias": zod.number(),
+  "saldo": zod.number(),
+  "multa": zod.number(),
+  "juros": zod.number(),
+  "acrescimo": zod.number(),
+  "total": zod.number(),
+  "perdoada": zod.boolean(),
+  "explicacao": zod.string().optional()
+}),zod.null()]).optional(),
+  "moraPerdoadaEm": zod.coerce.date().nullish(),
+  "moraPerdoadaMotivo": zod.string().nullish(),
   "contrato": zod.union([zod.object({
   "leadId": zod.string(),
   "lead": zod.union([zod.object({
@@ -6211,12 +6257,24 @@ export const UpdateContratoResponse = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO']),
+  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO', 'MORA']),
   "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
   "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "conciliadoEm": zod.coerce.date().nullish(),
+  "mora": zod.union([zod.object({
+  "dias": zod.number(),
+  "saldo": zod.number(),
+  "multa": zod.number(),
+  "juros": zod.number(),
+  "acrescimo": zod.number(),
+  "total": zod.number(),
+  "perdoada": zod.boolean(),
+  "explicacao": zod.string().optional()
+}),zod.null()]).optional(),
+  "moraPerdoadaEm": zod.coerce.date().nullish(),
+  "moraPerdoadaMotivo": zod.string().nullish(),
   "contrato": zod.union([zod.object({
   "leadId": zod.string(),
   "lead": zod.union([zod.object({
@@ -6372,12 +6430,24 @@ export const CancelarContratoResponse = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO']),
+  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO', 'MORA']),
   "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
   "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "conciliadoEm": zod.coerce.date().nullish(),
+  "mora": zod.union([zod.object({
+  "dias": zod.number(),
+  "saldo": zod.number(),
+  "multa": zod.number(),
+  "juros": zod.number(),
+  "acrescimo": zod.number(),
+  "total": zod.number(),
+  "perdoada": zod.boolean(),
+  "explicacao": zod.string().optional()
+}),zod.null()]).optional(),
+  "moraPerdoadaEm": zod.coerce.date().nullish(),
+  "moraPerdoadaMotivo": zod.string().nullish(),
   "contrato": zod.union([zod.object({
   "leadId": zod.string(),
   "lead": zod.union([zod.object({
@@ -6468,12 +6538,24 @@ export const ListParcelasResponseItem = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO']),
+  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO', 'MORA']),
   "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
   "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "conciliadoEm": zod.coerce.date().nullish(),
+  "mora": zod.union([zod.object({
+  "dias": zod.number(),
+  "saldo": zod.number(),
+  "multa": zod.number(),
+  "juros": zod.number(),
+  "acrescimo": zod.number(),
+  "total": zod.number(),
+  "perdoada": zod.boolean(),
+  "explicacao": zod.string().optional()
+}),zod.null()]).optional(),
+  "moraPerdoadaEm": zod.coerce.date().nullish(),
+  "moraPerdoadaMotivo": zod.string().nullish(),
   "contrato": zod.union([zod.object({
   "leadId": zod.string(),
   "lead": zod.union([zod.object({
@@ -6515,12 +6597,124 @@ export const ReceberParcelaResponse = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO']),
+  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO', 'MORA']),
   "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
   "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "conciliadoEm": zod.coerce.date().nullish(),
+  "mora": zod.union([zod.object({
+  "dias": zod.number(),
+  "saldo": zod.number(),
+  "multa": zod.number(),
+  "juros": zod.number(),
+  "acrescimo": zod.number(),
+  "total": zod.number(),
+  "perdoada": zod.boolean(),
+  "explicacao": zod.string().optional()
+}),zod.null()]).optional(),
+  "moraPerdoadaEm": zod.coerce.date().nullish(),
+  "moraPerdoadaMotivo": zod.string().nullish(),
+  "contrato": zod.union([zod.object({
+  "leadId": zod.string(),
+  "lead": zod.union([zod.object({
+  "noivaNome": zod.string(),
+  "whatsapp": zod.string().nullish(),
+  "ultimoContatoEm": zod.coerce.date().nullish()
+}),zod.null()]).optional()
+}),zod.null()]).optional()
+})
+
+
+/**
+ * A decisão da dona foi automático COM gesto de perdoar: o contrato diz "deverá incidir", então o padrão é cumprir a cláusula, e quem quiser abrir mão diz por quê. O motivo é gravado na parcela — e não só na trilha —, porque é por ele que a tela desenha o selo: só na trilha, a próxima leitura veria uma parcela vencida sem acréscimo e sem explicação ao lado.
+ * @summary Abre mão da multa e dos juros da cláusula 9ª (E213)
+ */
+export const PerdoarMoraParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "parcelaId": zod.coerce.string()
+})
+
+export const perdoarMoraBodyMotivoMax = 300;
+
+
+
+export const PerdoarMoraBody = zod.object({
+  "motivo": zod.string().min(1).max(perdoarMoraBodyMotivoMax)
+})
+
+export const PerdoarMoraResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "contratoId": zod.string(),
+  "numero": zod.number(),
+  "descricao": zod.string().nullish(),
+  "valorPrevisto": zod.number(),
+  "vencimento": zod.coerce.date(),
+  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO', 'MORA']),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
+  "recebidoEm": zod.coerce.date().nullish(),
+  "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "conciliadoEm": zod.coerce.date().nullish(),
+  "mora": zod.union([zod.object({
+  "dias": zod.number(),
+  "saldo": zod.number(),
+  "multa": zod.number(),
+  "juros": zod.number(),
+  "acrescimo": zod.number(),
+  "total": zod.number(),
+  "perdoada": zod.boolean(),
+  "explicacao": zod.string().optional()
+}),zod.null()]).optional(),
+  "moraPerdoadaEm": zod.coerce.date().nullish(),
+  "moraPerdoadaMotivo": zod.string().nullish(),
+  "contrato": zod.union([zod.object({
+  "leadId": zod.string(),
+  "lead": zod.union([zod.object({
+  "noivaNome": zod.string(),
+  "whatsapp": zod.string().nullish(),
+  "ultimoContatoEm": zod.coerce.date().nullish()
+}),zod.null()]).optional()
+}),zod.null()]).optional()
+})
+
+
+/**
+ * Perdoar é reversível, e a trilha guarda as duas pontas (`MORA_PERDOADA` e `MORA_RESTABELECIDA`). Desfazer não recalcula nada — a conta é derivada, então ela volta sozinha ao valor de hoje.
+ * @summary Desfaz o perdão da multa e dos juros (E213)
+ */
+export const RestabelecerMoraParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "parcelaId": zod.coerce.string()
+})
+
+export const RestabelecerMoraResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "contratoId": zod.string(),
+  "numero": zod.number(),
+  "descricao": zod.string().nullish(),
+  "valorPrevisto": zod.number(),
+  "vencimento": zod.coerce.date(),
+  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO', 'MORA']),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
+  "recebidoEm": zod.coerce.date().nullish(),
+  "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "conciliadoEm": zod.coerce.date().nullish(),
+  "mora": zod.union([zod.object({
+  "dias": zod.number(),
+  "saldo": zod.number(),
+  "multa": zod.number(),
+  "juros": zod.number(),
+  "acrescimo": zod.number(),
+  "total": zod.number(),
+  "perdoada": zod.boolean(),
+  "explicacao": zod.string().optional()
+}),zod.null()]).optional(),
+  "moraPerdoadaEm": zod.coerce.date().nullish(),
+  "moraPerdoadaMotivo": zod.string().nullish(),
   "contrato": zod.union([zod.object({
   "leadId": zod.string(),
   "lead": zod.union([zod.object({
@@ -6545,12 +6739,24 @@ export const EstornarParcelaResponse = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO']),
+  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO', 'MORA']),
   "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
   "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "conciliadoEm": zod.coerce.date().nullish(),
+  "mora": zod.union([zod.object({
+  "dias": zod.number(),
+  "saldo": zod.number(),
+  "multa": zod.number(),
+  "juros": zod.number(),
+  "acrescimo": zod.number(),
+  "total": zod.number(),
+  "perdoada": zod.boolean(),
+  "explicacao": zod.string().optional()
+}),zod.null()]).optional(),
+  "moraPerdoadaEm": zod.coerce.date().nullish(),
+  "moraPerdoadaMotivo": zod.string().nullish(),
   "contrato": zod.union([zod.object({
   "leadId": zod.string(),
   "lead": zod.union([zod.object({
@@ -6596,12 +6802,24 @@ export const GerarPlanoParcelasResponseItem = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO']),
+  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO', 'MORA']),
   "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
   "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "conciliadoEm": zod.coerce.date().nullish(),
+  "mora": zod.union([zod.object({
+  "dias": zod.number(),
+  "saldo": zod.number(),
+  "multa": zod.number(),
+  "juros": zod.number(),
+  "acrescimo": zod.number(),
+  "total": zod.number(),
+  "perdoada": zod.boolean(),
+  "explicacao": zod.string().optional()
+}),zod.null()]).optional(),
+  "moraPerdoadaEm": zod.coerce.date().nullish(),
+  "moraPerdoadaMotivo": zod.string().nullish(),
   "contrato": zod.union([zod.object({
   "leadId": zod.string(),
   "lead": zod.union([zod.object({
@@ -6642,12 +6860,24 @@ export const CreateParcelaAvulsaResponse = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO']),
+  "origem": zod.enum(['PLANO', 'AVULSA', 'AVARIA', 'REAJUSTE_DATA', 'ATRASO_DEVOLUCAO', 'MORA']),
   "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
   "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "conciliadoEm": zod.coerce.date().nullish(),
+  "mora": zod.union([zod.object({
+  "dias": zod.number(),
+  "saldo": zod.number(),
+  "multa": zod.number(),
+  "juros": zod.number(),
+  "acrescimo": zod.number(),
+  "total": zod.number(),
+  "perdoada": zod.boolean(),
+  "explicacao": zod.string().optional()
+}),zod.null()]).optional(),
+  "moraPerdoadaEm": zod.coerce.date().nullish(),
+  "moraPerdoadaMotivo": zod.string().nullish(),
   "contrato": zod.union([zod.object({
   "leadId": zod.string(),
   "lead": zod.union([zod.object({

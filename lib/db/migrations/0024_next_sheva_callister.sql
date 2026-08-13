@@ -1,0 +1,1 @@
+ALTER TYPE "public"."parcela_origem" ADD VALUE 'MORA';

@@ -49,6 +49,27 @@ export const parcelasTable = pgTable("parcelas", {
   // aqui. A versão anterior deste comentário dizia o contrário e não via esse
   // custo.
   enviadoContabilidadeEm: timestamp("enviado_contabilidade_em", { withTimezone: true }),
+  /**
+   * E213 — o PERDÃO da multa e dos juros da cláusula 9ª.
+   *
+   * **O que o banco guarda é o perdão, e não a conta.** A mora é derivada a
+   * cada leitura (`financeiro-core/mora.ts`), pela mesma razão do `estaAtrasada`
+   * que ela estende: o valor cresce todo dia, e uma coluna com o acréscimo
+   * estaria errada a partir da meia-noite seguinte. O perdão, ao contrário, é
+   * um FATO datado — alguém decidiu, num dia, não cobrar.
+   *
+   * A decisão da dona (13/08/2026) foi **automático com gesto de perdoar**: o
+   * contrato diz *"deverá incidir"*, então o padrão é cumprir a cláusula, e
+   * quem quiser abrir mão diz por quê. O motivo fica AQUI, e não só na trilha,
+   * pela lição do E214: se ficasse só na trilha, a próxima leitura da cobrança
+   * veria uma parcela vencida sem acréscimo e sem explicação ao lado — e é por
+   * este campo que a tela desenha o selo.
+   *
+   * Perdoar é reversível (basta limpar as duas), e a trilha guarda as duas
+   * pontas: `MORA_PERDOADA` e `MORA_RESTABELECIDA`.
+   */
+  moraPerdoadaEm: timestamp("mora_perdoada_em", { withTimezone: true }),
+  moraPerdoadaMotivo: text("mora_perdoada_motivo"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   // gerar-plano checa "já tem parcela?" e insere, sem rede: dois POSTs

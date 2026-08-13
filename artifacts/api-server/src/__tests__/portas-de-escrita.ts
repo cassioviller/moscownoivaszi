@@ -126,7 +126,13 @@ export const COLUNAS_DE_ESTADO: Record<TabelaQuente, readonly string[]> = {
   reservasTable: ["status"],
   orcamentosTable: ["status", "aceitoEm", "aprovadoEm", "publicoAbertoEm"],
   bloqueioVestidosTable: ["canceladoEm"],
-  parcelasTable: ["status", "recebidoEm", "conciliadoEm", "enviadoContabilidadeEm"],
+  // E213 — `moraPerdoadaEm` É coluna de estado, pela MESMA razão que
+  // `contratos.atrasoParcelaId` entrou no E212: ela responde "esta multa já foi
+  // perdoada?", e o CAS sobre ela é a guarda do duplo clique nas duas direções
+  // (perdoar só o que não está perdoado, restabelecer só o que está). Duas
+  // colunas de estado nasceram em dois épicos seguidos e as duas nasceram
+  // invisíveis para esta varredura — é a S-C33 medindo a si mesma.
+  parcelasTable: ["status", "recebidoEm", "conciliadoEm", "enviadoContabilidadeEm", "moraPerdoadaEm"],
 };
 
 /**

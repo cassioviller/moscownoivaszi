@@ -162,6 +162,20 @@
       "when": 1786617554304,
       "tag": "0022_salty_whiplash",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1786619124984,
+      "tag": "0023_friendly_war_machine",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1786621934802,
+      "tag": "0024_next_sheva_callister",
+      "breakpoints": true
     }
   ]
 }

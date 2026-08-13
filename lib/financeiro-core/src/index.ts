@@ -26,6 +26,9 @@ export * from "./avaria";
 // E212 — o atraso na devolução e o extravio (cláusula 16ª e seus dois §§). O
 // sistema já enxergava o atraso (`ATRASO_DEVOLUCAO`); esta é a conta.
 export * from "./atraso";
+// E213 — a multa e os juros da parcela vencida (cláusula 9ª). O sistema já
+// sabia que a parcela estava atrasada desde o E49; esta é a conta.
+export * from "./mora";
 // S-O52/E186: os nomes das ações da trilha — o CSV da contadora e a coluna
 // "Ação" da tela deixam de ser duas listas que divergiam em três rótulos.
 export * from "./auditoria";

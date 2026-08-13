@@ -137,9 +137,21 @@ export function agingDeParcelas(
     const leadId = p.contrato?.leadId;
     if (!leadId) continue; // sem noiva não há quem cobrar
     const f = faixaDeAtraso(dias);
-    // O que FALTA, não o previsto: cobrar de novo o que já foi pago é o erro
-    // que a noiva percebe primeiro.
-    const valorC = centavos(saldoAberto(p));
+    /**
+     * O que FALTA, não o previsto: cobrar de novo o que já foi pago é o erro
+     * que a noiva percebe primeiro.
+     *
+     * **E213 — e o que falta inclui a multa e os juros da cláusula 9ª.** O
+     * total desta fila é o que a vendedora vai dizer à noiva no WhatsApp
+     * (`msgCobranca` o imprime), e o portal da noiva já mostra o valor com
+     * acréscimo desde este épico: cobrar o principal aqui e o total lá seriam
+     * duas verdades para a mesma dívida, com a noiva lendo a maior.
+     *
+     * A conta vem do SERVIDOR (`p.mora`), calculada pelo `financeiro-core` — a
+     * tela não a refaz. É a lição do E187, que achou cinco grafias da mesma
+     * conta de desconto, três acertando por cópia e duas errando.
+     */
+    const valorC = centavos(p.mora && !p.mora.perdoada ? p.mora.total : saldoAberto(p));
     faixaTotC[f] += valorC;
     faixaNoivas[f].add(leadId);
 

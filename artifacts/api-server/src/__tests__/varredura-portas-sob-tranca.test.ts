@@ -204,6 +204,23 @@ const SEM_DISCIPLINA: Record<string, number> = {
   // linha foi o que cobrou a baixa. Resta o nascimento de `POST /orcamentos`.
   "artifacts/api-server/src/routes/orcamentos.ts": 1,
   /**
+   * **E213 — 0 para 1.** A linha de MORA que o recebimento cristaliza é
+   * **nascimento** (cláusula 9ª): ela não existe antes do `INSERT`, não há
+   * estado anterior a reler, e a unicidade que importa é a do `unique(contratoId,
+   * numero)` — o mesmo critério das três de `reservas.ts` e da de
+   * `orcamentos.ts`. Ela nasce DENTRO da transação do recebimento, que já
+   * escreveu a parcela-mãe sob o CAS do B6/E94: quem perder a corrida derruba a
+   * transação inteira e leva a linha de mora junto.
+   *
+   * As duas portas do PERDÃO não entram aqui, e é o achado: elas nasceram
+   * abertas e foram fechadas por CAS de verdade — o `where` repete a condição
+   * lida (`mora_perdoada_em IS NULL` para perdoar, `IS NOT NULL` para
+   * desfazer). A varredura só passou a enxergá-las depois de `moraPerdoadaEm`
+   * entrar em `COLUNAS_DE_ESTADO`, que é a S-C33 acontecendo pela segunda vez
+   * em dois épicos seguidos.
+   */
+  "artifacts/api-server/src/routes/contratos.ts": 1,
+  /**
    * De 1 para 3 no E211 — as duas novas são o reajuste da troca de data
    * (cláusula 17ª §§2º e 3º), e estão **julgadas e absolvidas, não perdoadas**:
    *
@@ -244,7 +261,7 @@ const SEM_DISCIPLINA: Record<string, number> = {
   // virou tabela quente no E180. Mesma família das outras seis, mesmo veredito.
   "scripts/loja-de-demonstracao.ts": 7,
 };
-const TOTAL_SEM_DISCIPLINA = 12;
+const TOTAL_SEM_DISCIPLINA = 13;
 
 describe("varredura — a enumeração das portas de escrita", () => {
   /**
@@ -391,7 +408,7 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
     expect(hoje).toEqual(SEM_DISCIPLINA);
   });
 
-  it("o total da dívida é 12 — 5 de nascimento/serialização implícita e 7 do gerador da demo", () => {
+  it("o total da dívida é 13 — 6 de nascimento/serialização implícita e 7 do gerador da demo", () => {
     expect(abertas.length).toBe(TOTAL_SEM_DISCIPLINA);
     expect(Object.values(SEM_DISCIPLINA).reduce((s, n) => s + n, 0)).toBe(TOTAL_SEM_DISCIPLINA);
   });

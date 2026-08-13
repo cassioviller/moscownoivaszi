@@ -5,6 +5,7 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { MoraDaParcela } from './moraDaParcela';
 import type { PortalParcelaStatus } from './portalParcelaStatus';
 
 export interface PortalParcela {
@@ -16,4 +17,5 @@ export interface PortalParcela {
   valorRecebido: number | null;
   vencimento: Date;
   status: PortalParcelaStatus;
+  mora?: MoraDaParcela | null;
 }

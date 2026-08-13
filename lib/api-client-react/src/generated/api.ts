@@ -183,6 +183,7 @@ import type {
   PedirRemarcacaoPortal200,
   PedirRemarcacaoPortalParams,
   PendenciaComissao,
+  PerdoarMoraInput,
   Perfil,
   PerfilInput,
   PerfilOverrideInput,
@@ -12045,6 +12046,153 @@ export const useReceberParcela = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getReceberParcelaMutationOptions(options));
+    }
+
+export const getPerdoarMoraUrl = (lojaId: string,
+    parcelaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/parcelas/${parcelaId}/perdoar-mora`
+}
+
+/**
+ * A decisão da dona foi automático COM gesto de perdoar: o contrato diz "deverá incidir", então o padrão é cumprir a cláusula, e quem quiser abrir mão diz por quê. O motivo é gravado na parcela — e não só na trilha —, porque é por ele que a tela desenha o selo: só na trilha, a próxima leitura veria uma parcela vencida sem acréscimo e sem explicação ao lado.
+ * @summary Abre mão da multa e dos juros da cláusula 9ª (E213)
+ */
+export const perdoarMora = async (lojaId: string,
+    parcelaId: string,
+    perdoarMoraInput: PerdoarMoraInput, options?: RequestInit): Promise<Parcela> => {
+
+  return customFetch<Parcela>(getPerdoarMoraUrl(lojaId,parcelaId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(perdoarMoraInput)
+  }
+);}
+
+
+
+
+export const getPerdoarMoraMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof perdoarMora>>, TError,{lojaId: string;parcelaId: string;data: BodyType<PerdoarMoraInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof perdoarMora>>, TError,{lojaId: string;parcelaId: string;data: BodyType<PerdoarMoraInput>}, TContext> => {
+
+const mutationKey = ['perdoarMora'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof perdoarMora>>, {lojaId: string;parcelaId: string;data: BodyType<PerdoarMoraInput>}> = (props) => {
+          const {lojaId,parcelaId,data} = props ?? {};
+
+          return  perdoarMora(lojaId,parcelaId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PerdoarMoraMutationResult = NonNullable<Awaited<ReturnType<typeof perdoarMora>>>
+    export type PerdoarMoraMutationBody = BodyType<PerdoarMoraInput>
+    export type PerdoarMoraMutationError = ErrorType<void>
+
+    /**
+ * @summary Abre mão da multa e dos juros da cláusula 9ª (E213)
+ */
+export const usePerdoarMora = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof perdoarMora>>, TError,{lojaId: string;parcelaId: string;data: BodyType<PerdoarMoraInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof perdoarMora>>,
+        TError,
+        {lojaId: string;parcelaId: string;data: BodyType<PerdoarMoraInput>},
+        TContext
+      > => {
+      return useMutation(getPerdoarMoraMutationOptions(options));
+    }
+
+export const getRestabelecerMoraUrl = (lojaId: string,
+    parcelaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/parcelas/${parcelaId}/perdoar-mora`
+}
+
+/**
+ * Perdoar é reversível, e a trilha guarda as duas pontas (`MORA_PERDOADA` e `MORA_RESTABELECIDA`). Desfazer não recalcula nada — a conta é derivada, então ela volta sozinha ao valor de hoje.
+ * @summary Desfaz o perdão da multa e dos juros (E213)
+ */
+export const restabelecerMora = async (lojaId: string,
+    parcelaId: string, options?: RequestInit): Promise<Parcela> => {
+
+  return customFetch<Parcela>(getRestabelecerMoraUrl(lojaId,parcelaId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getRestabelecerMoraMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restabelecerMora>>, TError,{lojaId: string;parcelaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof restabelecerMora>>, TError,{lojaId: string;parcelaId: string}, TContext> => {
+
+const mutationKey = ['restabelecerMora'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restabelecerMora>>, {lojaId: string;parcelaId: string}> = (props) => {
+          const {lojaId,parcelaId} = props ?? {};
+
+          return  restabelecerMora(lojaId,parcelaId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestabelecerMoraMutationResult = NonNullable<Awaited<ReturnType<typeof restabelecerMora>>>
+
+    export type RestabelecerMoraMutationError = ErrorType<void>
+
+    /**
+ * @summary Desfaz o perdão da multa e dos juros (E213)
+ */
+export const useRestabelecerMora = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restabelecerMora>>, TError,{lojaId: string;parcelaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof restabelecerMora>>,
+        TError,
+        {lojaId: string;parcelaId: string},
+        TContext
+      > => {
+      return useMutation(getRestabelecerMoraMutationOptions(options));
     }
 
 export const getEstornarParcelaUrl = (lojaId: string,

@@ -5,6 +5,7 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { MoraDaParcela } from './moraDaParcela';
 import type { ParcelaContrato } from './parcelaContrato';
 import type { ParcelaFormaRecebimento } from './parcelaFormaRecebimento';
 import type { ParcelaOrigem } from './parcelaOrigem';
@@ -32,5 +33,10 @@ export interface Parcela {
   formaRecebimento?: ParcelaFormaRecebimento;
   /** @nullable */
   conciliadoEm?: Date | null;
+  mora?: MoraDaParcela | null;
+  /** @nullable */
+  moraPerdoadaEm?: Date | null;
+  /** @nullable */
+  moraPerdoadaMotivo?: string | null;
   contrato?: ParcelaContrato | null;
 }

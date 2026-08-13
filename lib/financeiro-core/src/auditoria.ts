@@ -147,6 +147,16 @@ export const ACOES_AUDITORIA = [
   // R$ 4.750,00?" não tem resposta depois do fato, nem para a dona nem para a
   // noiva que contestar.
   "ATRASO_COBRADO",
+  // E213: o PERDÃO da multa e dos juros da cláusula 9ª, e o desfazer dele. A
+  // cobrança é automática porque o contrato diz "deverá incidir" — então o
+  // notável não é cobrar, é abrir mão: quem decidiu não cobrar R$ 15,00 de uma
+  // noiva, quando, e por quê. As duas pontas ficam porque perdoar é reversível.
+  "MORA_PERDOADA",
+  "MORA_RESTABELECIDA",
+  // E213: o acréscimo que entrou de verdade e virou linha PAGA no carnê. É a
+  // contrapartida do perdão — as duas pontas da 9ª deixam rastro, a que cobrou
+  // e a que abriu mão.
+  "MORA_RECEBIDA",
   // S-M1: o sexto DELETE cru, que o E115 não alcançou. A cabine é o único cuja
   // cascata leva ATENDIMENTOS inteiros — a guarda nova recusa apagar cabine com
   // agenda, e o rastro cobre a que não tem: depois do DELETE não sobra linha de
@@ -235,6 +245,9 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   AVARIA_REMOVIDA: "Avaria removida",
   AVARIA_FORA_DA_FAIXA: "Taxa de avaria fora da faixa do contrato (com justificativa)",
   ATRASO_COBRADO: "Atraso na devolução cobrado (cláusula 16ª)",
+  MORA_PERDOADA: "Multa e juros da parcela vencida perdoados (cláusula 9ª)",
+  MORA_RESTABELECIDA: "Multa e juros da parcela vencida restabelecidos (cláusula 9ª)",
+  MORA_RECEBIDA: "Multa e juros recebidos (cláusula 9ª)",
   CABINE_REMOVIDA: "Cabine removida",
   ITEM_ESTOQUE_REMOVIDO: "Item de estoque removido",
   AJUSTE_REMOVIDO: "Trabalho de costura removido da fila",

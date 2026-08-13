@@ -14,7 +14,7 @@ import {
   usuariosTable,
   type InsertContratoItem,
 } from "@workspace/db";
-import { eq, and, isNull, inArray, sql, desc, count } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, inArray, sql, desc, count } from "drizzle-orm";
 import { verificarDisponibilidade, diaLocal } from "../lib/disponibilidade";
 import { registrarAuditoria } from "../lib/auditoria";
 import { avancarEtapaLead } from "../lib/estados";
@@ -43,7 +43,11 @@ import {
   ListParcelasResponse,
   ListRecibosResponse,
   ReceberParcelaBody,
-  ReceberParcelaResponse
+  ReceberParcelaResponse,
+  // E213 — o perdão da multa e dos juros da cláusula 9ª.
+  PerdoarMoraBody,
+  PerdoarMoraResponse,
+  RestabelecerMoraResponse
 } from "@workspace/api-zod";
 import {
   ancoraDeNegocio,
@@ -65,6 +69,8 @@ import { leadsQueCasam } from "../lib/busca-lead";
 import { conteudoEnviado, identidadeDasPecas } from "../lib/conteudo-orcamento";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
+// E213 — a multa e os juros da cláusula 9ª, derivados num lugar só.
+import { moraDe } from "../lib/mora-da-parcela";
 
 const router: IRouter = Router();
 
@@ -150,7 +156,9 @@ async function comOContratoDela<T extends { id: string }>(parcela: T) {
     where: eq(parcelasTable.id, parcela.id),
     with: { contrato: { with: { lead: true } } },
   });
-  return completa ?? parcela;
+  // E213 — a mora entra por aqui porque este é o ponto por onde TODA parcela
+  // seca desta rota sai. Anexá-la em cada resposta seria a segunda grafia.
+  return completa ? { ...completa, mora: moraDe(completa) } : parcela;
 }
 
 router.get("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
@@ -1640,7 +1648,32 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("contrat
    */
   const jaRecebidoC = centavos(existente.valorRecebido ?? 0);
   const entrandoC = centavos(parsed.data.valorRecebido);
-  const saldoC = centavos(existente.valorPrevisto) - jaRecebidoC;
+
+  /**
+   * **E213 — a parcela vencida deve MAIS que o previsto** (cláusula 9ª).
+   *
+   * A guarda comparava com `valorPrevisto − jaRecebido`, e essa era a dívida
+   * inteira enquanto multa e juros não existiam. Com a 9ª ligada, a noiva que
+   * atrasou 30 dias uma parcela de R$ 500,00 deve R$ 515,00 — e a porta
+   * recusava os R$ 515,00 com `VALOR_ACIMA_DO_SALDO`, dizendo à vendedora que
+   * ela estava cobrando demais **enquanto a fila de cobrança, a tela do
+   * contrato e o portal da noiva mostravam os R$ 515,00**. Quatro leituras do
+   * mesmo número, e a única que decide dizendo não.
+   *
+   * O teto passa a ser o mesmo total que as outras três imprimem, pelo MESMO
+   * helper — e a quitação segue o teto: quem paga R$ 500,00 numa parcela que
+   * deve R$ 515,00 fica PARCIAL, com R$ 15,00 ainda cobráveis, em vez de
+   * quitada devendo a multa.
+   *
+   * A mora é derivada do dia de HOJE, então o teto de hoje não é o de amanhã.
+   * É a mesma natureza do E212, e por isso o acréscimo entra na trilha do
+   * recebimento: sem ele, "por que entraram R$ 515,00 numa parcela de
+   * R$ 500,00?" não tem resposta depois do fato.
+   */
+  const mora = moraDe(existente);
+  const acrescimoC = mora?.acrescimoC ?? 0;
+  const saldoPrincipalC = centavos(existente.valorPrevisto) - jaRecebidoC;
+  const saldoC = saldoPrincipalC + acrescimoC;
 
   // Receber mais que o saldo é recusado, e não clampado: o caso comum é dígito
   // a mais, e aceitar inflaria o caixa REALIZADO com dinheiro que não entrou —
@@ -1649,12 +1682,32 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("contrat
   if (entrandoC > saldoC) {
     res.status(422).json({
       error: "VALOR_ACIMA_DO_SALDO",
-      detalhe: `Faltam R$ ${reais(saldoC).toFixed(2)} nesta parcela — o valor informado é maior.`,
+      detalhe:
+        `Faltam R$ ${reais(saldoC).toFixed(2)} nesta parcela — o valor informado é maior.` +
+        (acrescimoC > 0
+          ? ` (inclui R$ ${reais(acrescimoC).toFixed(2)} de multa e juros da cláusula 9ª)`
+          : ""),
     });
     return;
   }
 
-  const totalRecebidoC = jaRecebidoC + entrandoC;
+  /**
+   * **A imputação: o principal primeiro, e o que sobrar é MORA.**
+   *
+   * A decisão da dona (13/08/2026) foi *quitar no principal e cristalizar o que
+   * for efetivamente recebido a mais*. A razão é que conta DERIVADA não
+   * sobrevive ao pagamento do principal — medido: quem paga R$ 500,00 de uma
+   * dívida de R$ 515,00 zera o saldo aberto e, com ele, o acréscimo, e a
+   * parcela ficava PARCIAL devendo R$ 15,00 que o sistema dizia não existir.
+   *
+   * Então quem paga R$ 500,00 quita (o balcão deu quitação, e é o que ele faz);
+   * quem paga R$ 515,00 quita E os R$ 15,00 viram linha própria, PAGA, com a
+   * conta na descrição — o dinheiro da multa passa a ser rastreável no carnê, no
+   * caixa e na comissão como qualquer outro.
+   */
+  const aoPrincipalC = Math.min(entrandoC, Math.max(0, saldoPrincipalC));
+  const aMoraC = entrandoC - aoPrincipalC;
+  const totalRecebidoC = jaRecebidoC + aoPrincipalC;
   const quitada = totalRecebidoC >= centavos(existente.valorPrevisto);
 
   const parcela = await db.transaction(async (tx) => {
@@ -1696,6 +1749,55 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("contrat
     // Sair sem auditar é parte do conserto — trilha de um recebimento que não
     // aconteceu faz a conferência bater com dinheiro inexistente.
     if (!atualizada) return null;
+
+    /**
+     * **E213 — o que entrou ALÉM do principal vira linha própria** (cláusula 9ª).
+     *
+     * Nasce PAGA na MESMA transação do recebimento que a criou: uma linha de
+     * multa PREVISTA seria uma segunda cobrança de dinheiro que já está na
+     * gaveta. A descrição carrega a conta que a tela imprimiu — mesma frase, um
+     * lugar só (`explicacaoDaMora`).
+     *
+     * `numero` segue a régua do E97: `max + 1`, porque `0` é a ENTRADA do carnê
+     * e o `unique(contratoId, numero)` recusaria o segundo zero com um
+     * `REGISTRO_DUPLICADO` que se lê como "já cobrei isso".
+     */
+    if (aMoraC > 0) {
+      const [{ maior }] = await tx
+        .select({ maior: sql<number>`coalesce(max(${parcelasTable.numero}), 0)` })
+        .from(parcelasTable)
+        .where(eq(parcelasTable.contratoId, existente.contratoId));
+      const idDaMora = randomUUID();
+      await tx.insert(parcelasTable).values({
+        id: idDaMora,
+        lojaId: lojaId as string,
+        contratoId: existente.contratoId,
+        numero: Number(maior) + 1,
+        origem: "MORA",
+        descricao: `Multa e juros (cláusula 9ª) — ${mora?.explicacao ?? ""}`.slice(0, 200),
+        valorPrevisto: reais(aMoraC),
+        vencimento: existente.vencimento,
+        status: "PAGA",
+        valorRecebido: reais(aMoraC),
+        recebidoEm: parsed.data.recebidoEm,
+        formaRecebimento: parsed.data.formaRecebimento,
+      });
+      await registrarAuditoria(tx, {
+        lojaId: lojaId as string,
+        usuario: req.usuario!,
+        acao: "MORA_RECEBIDA",
+        entidade: "parcela",
+        entidadeId: idDaMora,
+        detalhe: {
+          contratoId: existente.contratoId,
+          parcelaDeOrigemId: existente.id,
+          valor: reais(aMoraC),
+          diasDeAtraso: mora?.dias ?? 0,
+          multa: mora?.multa ?? 0,
+          juros: mora?.juros ?? 0,
+        },
+      });
+    }
     await registrarAuditoria(tx, {
       lojaId: lojaId as string,
       usuario: req.usuario!,
@@ -1752,6 +1854,147 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("contrat
   }
   res.json(ReceberParcelaResponse.parse(await comOContratoDela(parcela)));
 });
+
+/**
+ * **E213 — abrir mão da multa e dos juros da cláusula 9ª, dizendo por quê.**
+ *
+ * A decisão da dona (13/08/2026) foi **automático com gesto de perdoar**: o
+ * contrato diz *"deverá incidir"*, então o padrão é cumprir a cláusula. O que
+ * vira gesto é o contrário — e é por isso que o notável na trilha não é cobrar,
+ * é perdoar: quem decidiu não cobrar R$ 15,00 de uma noiva, quando, e por quê.
+ *
+ * O motivo é gravado NA PARCELA, e não só na trilha, pela lição do E214: se
+ * ficasse só lá, a próxima leitura da cobrança veria uma parcela vencida sem
+ * acréscimo e sem explicação ao lado — e é por este campo que a tela desenha o
+ * selo.
+ */
+router.post(
+  "/lojas/:lojaId/parcelas/:parcelaId/perdoar-mora",
+  requireModulo("contratos", "editar"),
+  async (req, res): Promise<void> => {
+    const { lojaId, parcelaId } = req.params as { lojaId: string; parcelaId: string };
+    const parsed = PerdoarMoraBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json(erroDeValidacao(parsed.error));
+      return;
+    }
+    const [existente] = await db.select().from(parcelasTable)
+      .where(and(eq(parcelasTable.id, parcelaId), eq(parcelasTable.lojaId, lojaId)));
+    if (!existente) {
+      res.status(404).json({ error: "PARCELA_NAO_ENCONTRADA", detalhe: "Esta parcela não existe nesta loja." });
+      return;
+    }
+    /**
+     * Perdoar o que não é devido não é inofensivo: gravaria um selo permanente
+     * de "multa perdoada" numa parcela em dia, e a próxima leitura acreditaria
+     * que houve uma dívida que nunca existiu. A régua é a mesma que a conta usa
+     * — `moraDe` com o perdão IGNORADO, senão o segundo clique se
+     * autoconfirmaria.
+     */
+    if (moraDe({ ...existente, moraPerdoadaEm: null }) === null) {
+      res.status(422).json({
+        error: "SEM_MORA",
+        detalhe: "Esta parcela não está vencida com saldo em aberto — não há multa nem juros a perdoar.",
+      });
+      return;
+    }
+
+    const motivo = parsed.data.motivo.trim();
+    const perdoadaEm = new Date();
+    const atualizada = await db.transaction(async (tx) => {
+      // CAS: a escrita repete a condição LIDA (`mora_perdoada_em IS NULL`).
+      // Dois cliques no mesmo segundo — o que acontece quando a rede demora —
+      // gravariam dois perdões e duas linhas de trilha para uma decisão.
+      const [linha] = await tx.update(parcelasTable)
+        .set({ moraPerdoadaEm: perdoadaEm, moraPerdoadaMotivo: motivo })
+        .where(and(
+          eq(parcelasTable.id, parcelaId),
+          eq(parcelasTable.lojaId, lojaId),
+          isNull(parcelasTable.moraPerdoadaEm),
+        ))
+        .returning();
+      if (!linha) return null;
+      await registrarAuditoria(tx, {
+        lojaId,
+        usuario: req.usuario!,
+        acao: "MORA_PERDOADA",
+        entidade: "parcela",
+        entidadeId: parcelaId,
+        detalhe: {
+          contratoId: existente.contratoId,
+          motivo,
+          // O acréscimo do DIA do perdão: ele cresce, então o número que a
+          // decisão dispensou só existe aqui.
+          acrescimoDispensado: moraDe({ ...existente, moraPerdoadaEm: null })?.acrescimo ?? 0,
+        },
+      });
+      return linha;
+    });
+    if (!atualizada) {
+      // Perdeu a corrida do duplo clique: o perdão já está de pé, e devolver a
+      // parcela como está é a resposta certa — o estado final é o pedido.
+      const [linha] = await db.select().from(parcelasTable).where(eq(parcelasTable.id, parcelaId));
+      res.json(PerdoarMoraResponse.parse(await comOContratoDela(linha!)));
+      return;
+    }
+    res.json(PerdoarMoraResponse.parse(await comOContratoDela(atualizada)));
+  },
+);
+
+/**
+ * E213 — desfazer o perdão. Não recalcula nada: a conta é derivada, então ela
+ * volta sozinha ao valor de HOJE, que é maior que o do dia do perdão.
+ */
+router.delete(
+  "/lojas/:lojaId/parcelas/:parcelaId/perdoar-mora",
+  requireModulo("contratos", "editar"),
+  async (req, res): Promise<void> => {
+    const { lojaId, parcelaId } = req.params as { lojaId: string; parcelaId: string };
+    const [existente] = await db.select().from(parcelasTable)
+      .where(and(eq(parcelasTable.id, parcelaId), eq(parcelasTable.lojaId, lojaId)));
+    if (!existente) {
+      res.status(404).json({ error: "PARCELA_NAO_ENCONTRADA", detalhe: "Esta parcela não existe nesta loja." });
+      return;
+    }
+    const atualizada = await db.transaction(async (tx) => {
+      // O mesmo CAS na direção contrária: só desfaz o perdão que ainda está de
+      // pé, e assim a trilha do restabelecimento nunca conta um fato que não
+      // aconteceu.
+      const [linha] = await tx.update(parcelasTable)
+        .set({ moraPerdoadaEm: null, moraPerdoadaMotivo: null })
+        .where(and(
+          eq(parcelasTable.id, parcelaId),
+          eq(parcelasTable.lojaId, lojaId),
+          isNotNull(parcelasTable.moraPerdoadaEm),
+        ))
+        .returning();
+      if (!linha) return null;
+      // A trilha das duas pontas: sem esta, o histórico mostraria um perdão que
+      // "sumiu", e a parcela voltaria a cobrar sem que nada explicasse.
+      if (existente.moraPerdoadaEm) {
+        await registrarAuditoria(tx, {
+          lojaId,
+          usuario: req.usuario!,
+          acao: "MORA_RESTABELECIDA",
+          entidade: "parcela",
+          entidadeId: parcelaId,
+          detalhe: {
+            contratoId: existente.contratoId,
+            perdoadaEm: existente.moraPerdoadaEm,
+            motivoDoPerdao: existente.moraPerdoadaMotivo,
+          },
+        });
+      }
+      return linha;
+    });
+    if (!atualizada) {
+      const [linha] = await db.select().from(parcelasTable).where(eq(parcelasTable.id, parcelaId));
+      res.json(RestabelecerMoraResponse.parse(await comOContratoDela(linha!)));
+      return;
+    }
+    res.json(RestabelecerMoraResponse.parse(await comOContratoDela(atualizada)));
+  },
+);
 
 // Estorno avulso: PAGA volta a PREVISTA (volta a ser cobrável), zerando os
 // campos de recebimento. Distinto do estorno em massa do cancelamento com

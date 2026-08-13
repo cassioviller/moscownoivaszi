@@ -77,7 +77,7 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
    * acrescenta um objeto aninhado a um schema de resposta, e é aí que a régua
    * serve — obriga a perguntar quem vai preenchê-lo.
    */
-  it("205 operações · 146 com schema de resposta · 70 com relação · 255 pares na fronteira", () => {
+  it("207 operações · 148 com schema de resposta · 74 com relação · 273 pares na fronteira", () => {
     /**
      * E221: 200 → 203, e as três são do recibo da cláusula 7ª — `listRecibos`,
      * `getReciboPdf` e `getPortalReciboPdf`. **Só uma acrescenta par à
@@ -87,17 +87,21 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
      * trilha (`recibosDoContrato`), que preenche os dez campos do `Recibo` —
      * não um `with` que possa esquecer um filho. Por isso ele nasce entregue.
      */
-    expect(c.operacoes, "operação nova no spec: confira quem monta a resposta dela e atualize esta contagem").toBe(205);
+    expect(c.operacoes, "operação nova no spec: confira quem monta a resposta dela e atualize esta contagem").toBe(207);
     // E221: 143 → 144. Só o `listRecibos` entra — as outras duas devolvem PDF.
     // E212: 144 → 146. As duas novas são a prévia e a cobrança do atraso da
     // cláusula 16ª, e as duas devolvem o MESMO `CobrancaDeAtraso` — de
     // propósito: a conta que a tela mostrou antes do clique é a que a porta
     // cobrou, e um segundo schema seria a segunda grafia que diverge.
-    expect(c.comSchemaDeResposta).toBe(146);
+    // E213: 146 → 148. As duas novas são `perdoarMora` e `restabelecerMora`,
+    // e as duas devolvem `Parcela` — a mesma resposta do recebimento, de
+    // propósito: quem perdoa vê a parcela como a fila vai vê-la.
+    expect(c.comSchemaDeResposta).toBe(148);
     // E212: 70 → 72. `CobrancaDeAtraso` aninha `CobrancaDeAtrasoLinha` — a conta
     // é uma linha POR PEÇA, que é o §2º da cláusula 16ª ("aplicados
     // proporcionalmente a trajes e/ou acessórios avulsos") virando forma.
-    expect(c.comRelacao).toBe(72);
+    // E213: 72 → 74. As duas do perdão aninham `MoraDaParcela` pela `Parcela`.
+    expect(c.comRelacao).toBe(74);
     // E194: 250 → 252. A fronteira CRESCE quando um pai passa a ser entregue —
     // o `PATCH /contratos` deixou de responder a linha crua, então `lead`,
     // `vendedora`, `itens` e `parcelas` chegaram, e os filhos DELES entraram na
@@ -113,7 +117,7 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // ENTREGUES: quem monta `linhas` é `cobrancaDoAtraso`, função pura do
     // `financeiro-core` que devolve o array inteiro ou `null` — não há
     // caminho em que o pai chegue e o filho falte.
-    expect(c.pares.length, "a fronteira mudou — um objeto aninhado nasceu, ou um pai passou a ser entregue").toBe(257);
+    expect(c.pares.length, "a fronteira mudou — um objeto aninhado nasceu, ou um pai passou a ser entregue").toBe(273);
     /**
      * **E199/S-O114 — 147 → 165 entregues, e é o maior salto que esta conta já
      * deu.** Não entrou uma linha de porta: o motor deixou de parar na borda da
@@ -126,8 +130,18 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // E212: 166 → 168, e a coluna do NÃO não se mexeu — os dois pares novos
     // nascem entregues, que é o que se espera de resposta montada por função
     // pura em vez de por `with`.
-    expect(c.pares.filter((p) => p.entregue).length).toBe(168);
-    expect(c.pares.filter((p) => !p.entregue).length).toBe(89);
+    // E213: 168 → 174, e a coluna do NÃO não se mexeu. A `mora` é escrita
+    // literalmente nas três portas (`mora: moraDe(p)`) em vez de vir de um
+    // `comMora(p)` — foi esta régua que cobrou: com o helper, `Parcela.mora`
+    // aparecia como ARESTA ÓRFÃ, porque o motor segue a chamada dentro do
+    // arquivo e não atravessa import de outro módulo (ponto cego 2).
+    expect(c.pares.filter((p) => p.entregue).length).toBe(174);
+    // E213: 89 → 99, e desta vez a coluna do NÃO cresce com razão. `Parcela` é
+    // schema COMPARTILHADO: ela viaja em muitas respostas e só três montam a
+    // `mora` (a fila de cobrança, o recebimento/perdão e o portal). É o mesmo
+    // caso do `Lead.interesse`, que viaja em 27 respostas e 4 o carregam — o
+    // par não entregue aqui é o schema fazendo o papel dele, não porta muda.
+    expect(c.pares.filter((p) => !p.entregue).length).toBe(99);
   });
 
   /**
@@ -216,13 +230,18 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     "Orcamento.itens",
     "Orcamento.lead",
     "Parcela.contrato",
+    // E213 — `Parcela.mora` é montada pelas três portas que a calculam (a fila
+    // de cobrança, o recebimento/perdão e o portal) e não pelas outras que
+    // devolvem `Parcela`. Schema COMPARTILHADO fazendo o papel dele, como o
+    // `Lead.interesse` — não porta muda.
+    "Parcela.mora",
     "ParcelaContrato.lead",
     "Perfil.acessosModulos",
     "Vestido.atributos",
     "Vestido.fotos",
   ];
 
-  it("14 arestas são entregues por umas portas e não por outras, e o conjunto está travado", () => {
+  it("15 arestas são entregues por umas portas e não por outras, e o conjunto está travado", () => {
     const desiguais = [...c.arestas]
       .filter(([, v]) => v.entrega > 0 && v.promete > v.entrega)
       .map(([k]) => k)

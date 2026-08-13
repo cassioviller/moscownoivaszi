@@ -678,13 +678,29 @@ export default function NoivaPortal() {
                                   ROTULO_PARCELA[p.status] ?? p.status
                                 }`}
                           </p>
+                          {/* E213 — a multa e os juros da cláusula 9ª, na tela
+                              que a NOIVA abre. Ela é a devedora: descobrir o
+                              acréscimo só quando a vendedora manda a mensagem é
+                              a mesma classe de defeito que o E211 fechou do
+                              outro lado — o preço que aparece depois do gesto.
+                              A conta vem por extenso porque um número maior sem
+                              explicação ao lado é o que gera a ligação para a
+                              loja. */}
+                          {p.mora && (
+                            <p
+                              className={`text-xs ${p.mora.perdoada ? "text-muted-foreground" : "text-destructive"}`}
+                              data-testid={`mora-parcela-${p.numero}`}
+                            >
+                              {p.mora.explicacao}
+                            </p>
+                          )}
                         </div>
                         <span
                           className={`shrink-0 text-sm tabular-nums ${
                             paga ? "text-muted-foreground line-through" : ""
                           }`}
                         >
-                          {brl(p.valorPrevisto)}
+                          {p.mora && !p.mora.perdoada ? brl(p.mora.total) : brl(p.valorPrevisto)}
                         </span>
                       </li>
                     );

@@ -3688,6 +3688,61 @@ paths:
           description: >
             Valor acima do que falta (VALOR_ACIMA_DO_SALDO), parcela cancelada
             ou contrato não ativo
+  /lojas/{lojaId}/parcelas/{parcelaId}/perdoar-mora:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: parcelaId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: perdoarMora
+      tags: [financeiro]
+      summary: Abre mão da multa e dos juros da cláusula 9ª (E213)
+      description: >
+        A decisão da dona foi automático COM gesto de perdoar: o contrato diz
+        "deverá incidir", então o padrão é cumprir a cláusula, e quem quiser
+        abrir mão diz por quê. O motivo é gravado na parcela — e não só na
+        trilha —, porque é por ele que a tela desenha o selo: só na trilha, a
+        próxima leitura veria uma parcela vencida sem acréscimo e sem explicação
+        ao lado.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PerdoarMoraInput"
+      responses:
+        "200":
+          description: Perdoada — a parcela com `mora.perdoada = true`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Parcela"
+        "404":
+          description: Parcela não encontrada nesta loja
+        "422":
+          description: >
+            `SEM_MORA` — a parcela não está vencida ou não tem saldo aberto, e
+            não há o que perdoar.
+    delete:
+      operationId: restabelecerMora
+      tags: [financeiro]
+      summary: Desfaz o perdão da multa e dos juros (E213)
+      description: >
+        Perdoar é reversível, e a trilha guarda as duas pontas
+        (`MORA_PERDOADA` e `MORA_RESTABELECIDA`). Desfazer não recalcula nada —
+        a conta é derivada, então ela volta sozinha ao valor de hoje.
+      responses:
+        "200":
+          description: Restabelecida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Parcela"
+        "404":
+          description: Parcela não encontrada nesta loja
   /lojas/{lojaId}/parcelas/{parcelaId}/estornar:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -6764,6 +6819,18 @@ components:
         valorRecebido: { type: ["number", "null"] }
         vencimento: { type: string, format: date-time }
         status: { type: string, enum: [PREVISTA, PARCIAL, PAGA, CANCELADA] }
+        # E213 — a multa e os juros da cláusula 9ª, na tela que a NOIVA abre.
+        #
+        # A decisão da dona foi automático: a parcela vencida já mostra o valor
+        # atualizado aqui, e não só na fila da loja. Ela é a devedora — descobrir
+        # o acréscimo só quando a vendedora manda a mensagem é a mesma classe de
+        # defeito que o E211 fechou do outro lado (o preço que aparece depois do
+        # gesto). A `explicacao` vem junto porque um número maior sem conta ao
+        # lado é o que gera a ligação para a loja.
+        mora:
+          anyOf:
+            - $ref: "#/components/schemas/MoraDaParcela"
+            - type: "null"
     PortalRecibo:
       # E221 — o recibo como a NOIVA o vê: o bastante para escolher qual PDF
       # baixar. Quem LANÇOU o recebimento fica de fora, pela mesma fronteira do
@@ -6991,7 +7058,7 @@ components:
         # atraso, toda listagem de parcelas que o incluísse respondia 500 — a
         # fila de cobrança, o carnê e o extrato do portal de uma vez. A
         # `varredura-enums-do-banco-no-spec` passou a pregar as duas listas.
-        origem: { type: string, enum: [PLANO, AVULSA, AVARIA, REAJUSTE_DATA, ATRASO_DEVOLUCAO] }
+        origem: { type: string, enum: [PLANO, AVULSA, AVARIA, REAJUSTE_DATA, ATRASO_DEVOLUCAO, MORA] }
         # PARCIAL (E49): a noiva pagou parte. O dinheiro entrou no caixa e o
         # resto (valorPrevisto − valorRecebido) segue cobrável.
         status: { type: string, enum: [PREVISTA, PARCIAL, PAGA, CANCELADA] }
@@ -7003,6 +7070,22 @@ components:
         # todo mês indistinguíveis das novas. O ESTORNO limpa: movimento que
         # deixou de existir não pode continuar conferido.
         conciliadoEm: { type: ["string", "null"], format: date-time }
+        # E213 — a multa e os juros da cláusula 9ª, DERIVADOS a cada leitura.
+        #
+        # Nulo é a resposta da parcela em dia e da já quitada, que juntas são a
+        # esmagadora maioria. Não é coluna: o valor cresce todo dia, e gravá-lo
+        # estaria errado a partir da meia-noite seguinte — o que o banco guarda
+        # é o PERDÃO (`moraPerdoadaEm`), que é um fato datado.
+        mora:
+          anyOf:
+            - $ref: "#/components/schemas/MoraDaParcela"
+            - type: "null"
+        # E213 — quando alguém perdoou a multa e os juros, e por quê. O motivo
+        # vem junto porque é por ele que a tela desenha o selo: só na trilha, a
+        # próxima leitura veria uma parcela vencida sem acréscimo e sem
+        # explicação ao lado (lição do E214).
+        moraPerdoadaEm: { type: ["string", "null"], format: date-time }
+        moraPerdoadaMotivo: { type: ["string", "null"] }
         # Quem é a noiva desta parcela, sem rebuscar todos os contratos: a
         # cobrança junta por aqui. Presente no GET da lista; ausente nas
         # respostas de receber/estornar (que devolvem a parcela seca).
@@ -7010,6 +7093,42 @@ components:
           anyOf:
             - $ref: "#/components/schemas/ParcelaContrato"
             - type: "null"
+    # E213 — a conta da cláusula 9ª sobre uma parcela vencida.
+    #
+    # A base é a PARCELA (decisão da dona, 13/08/2026, sustentada pelo CDC art.
+    # 52 §1º: a multa de mora não passa de 2% do valor da PRESTAÇÃO), e não o
+    # contrato inteiro que a letra da cláusula diz — a diferença é de 10×, e a
+    # leitura literal cobraria os 2% do contrato de novo a cada parcela
+    # atrasada.
+    MoraDaParcela:
+      type: object
+      required: [dias, saldo, multa, juros, acrescimo, total, perdoada]
+      properties:
+        dias: { type: integer }
+        # O saldo VENCIDO sobre o qual a conta incide — o previsto menos o que
+        # já entrou, e não o previsto cheio.
+        saldo: { type: number }
+        # 2%, uma vez. Não cresce com o tempo: quem atrasa 1 dia e quem atrasa
+        # 60 pagam a mesma multa, e juros diferentes.
+        multa: { type: number }
+        # 1% ao mês, *pro rata die* sobre 30 dias.
+        juros: { type: number }
+        acrescimo: { type: number }
+        # Saldo + acréscimo: o que a noiva deve HOJE.
+        total: { type: number }
+        # Perdoada devolve objeto com acréscimo ZERO, e não nulo: a tela precisa
+        # dizer "multa e juros perdoados" em vez de não mostrar nada, senão o
+        # perdão vira invisível e a próxima leitura estranha o saldo.
+        perdoada: { type: boolean }
+        # A frase única — a tela imprime esta, e a trilha grava esta. Ela diz o
+        # que a conta TEM e o que ela NÃO tem: a correção monetária da cláusula
+        # não é calculada porque o contrato não nomeia índice (P4).
+        explicacao: { type: string }
+    PerdoarMoraInput:
+      type: object
+      required: [motivo]
+      properties:
+        motivo: { type: string, minLength: 1, maxLength: 300 }
     ParcelaContrato:
       type: object
       required: [leadId]

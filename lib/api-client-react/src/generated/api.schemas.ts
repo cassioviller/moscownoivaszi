@@ -1998,6 +1998,17 @@ export const PortalParcelaStatus = {
   CANCELADA: 'CANCELADA',
 } as const;
 
+export interface MoraDaParcela {
+  dias: number;
+  saldo: number;
+  multa: number;
+  juros: number;
+  acrescimo: number;
+  total: number;
+  perdoada: boolean;
+  explicacao?: string;
+}
+
 export interface PortalParcela {
   numero: number;
   /** @nullable */
@@ -2007,6 +2018,7 @@ export interface PortalParcela {
   valorRecebido: number | null;
   vencimento: string;
   status: PortalParcelaStatus;
+  mora?: MoraDaParcela | null;
 }
 
 /**
@@ -2135,6 +2147,7 @@ export const ParcelaOrigem = {
   AVARIA: 'AVARIA',
   REAJUSTE_DATA: 'REAJUSTE_DATA',
   ATRASO_DEVOLUCAO: 'ATRASO_DEVOLUCAO',
+  MORA: 'MORA',
 } as const;
 
 export type ParcelaStatus = typeof ParcelaStatus[keyof typeof ParcelaStatus];
@@ -2198,6 +2211,11 @@ export interface Parcela {
   formaRecebimento?: ParcelaFormaRecebimento;
   /** @nullable */
   conciliadoEm?: string | null;
+  mora?: MoraDaParcela | null;
+  /** @nullable */
+  moraPerdoadaEm?: string | null;
+  /** @nullable */
+  moraPerdoadaMotivo?: string | null;
   contrato?: ParcelaContrato | null;
 }
 
@@ -2360,6 +2378,14 @@ export interface GerarPlanoInput {
   numParcelas: number;
   primeiroVencimento: string;
   vencimentoEntrada?: string;
+}
+
+export interface PerdoarMoraInput {
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
+  motivo: string;
 }
 
 export type ReceberParcelaInputFormaRecebimento = typeof ReceberParcelaInputFormaRecebimento[keyof typeof ReceberParcelaInputFormaRecebimento];

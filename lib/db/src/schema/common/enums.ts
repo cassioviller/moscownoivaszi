@@ -209,7 +209,24 @@ export const parcelaStatusEnum = pgEnum("parcela_status", [
  * "de onde esta cobrança veio". Qual das duas faixas incidiu está na descrição
  * da parcela e na trilha, que é onde a régua mora.
  */
-export const parcelaOrigemEnum = pgEnum("parcela_origem", ["PLANO", "AVULSA", "AVARIA", "REAJUSTE_DATA", "ATRASO_DEVOLUCAO"]);
+/**
+ * `MORA` nasceu no E213: a multa de 2% e os juros de 1% ao mês da cláusula 9ª.
+ *
+ * **Ela é a única origem que não nasce de um gesto de cobrar — nasce de
+ * RECEBER.** A conta da mora é derivada (cresce todo dia, e gravá-la estaria
+ * errado na meia-noite seguinte), mas conta derivada não sobrevive ao pagamento
+ * do principal: quem paga R$ 500,00 de uma dívida de R$ 515,00 zera o saldo
+ * aberto, e com ele o acréscimo que era devido. Medido, e é o buraco que a
+ * decisão da dona fechou: a parcela ficava PARCIAL devendo R$ 15,00 que o
+ * sistema dizia não existir.
+ *
+ * A escolha (13/08/2026) foi **quitar no principal e cristalizar o que for
+ * efetivamente recebido a mais**: os R$ 15,00 viram esta linha, PAGA, com a
+ * conta na descrição. O dinheiro da multa passa a ser rastreável no carnê, no
+ * caixa e na comissão como qualquer outro — e quem recebeu só o principal deu
+ * quitação, que é o que o balcão faz.
+ */
+export const parcelaOrigemEnum = pgEnum("parcela_origem", ["PLANO", "AVULSA", "AVARIA", "REAJUSTE_DATA", "ATRASO_DEVOLUCAO", "MORA"]);
 
 export const contaPagarTipoEnum = pgEnum("conta_pagar_tipo", [
   "DESPESA",
