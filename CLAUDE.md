@@ -22,13 +22,21 @@ para o documento que manda.
    valor, mas por **de onde vem o dado**. **As Ondas A e B estão EXECUTADAS**,
    menos o E219: E211 (`0c8874a`), E212 (`a88d7ead`), E213 (`fa7d838`), E214
    (`0c15cda`), E216 (`eaa4e90`), E218 (`f8ab561`), E221 (`fcc24e9`) e E222
-   (`31422db`) — **8 de 12**. A tabela do `EXECUCAO.md` é a fila; **conte, não
-   deduza** — hoje são **39 sobras** (1 🟠, 9 🟡, 29 🔵) e **4 pendências que não
-   são software**. **O número CRESCEU, e é o que se espera:** dois lotes de
-   agentes (cinco e seis) fecharam 14 e abriram 40, olhando áreas que ninguém
-   tinha aberto. **O próximo lote não abre frente nova — fecha as 🟠 e 🟡 de
-   dinheiro**, e a mais grave é a **S-C70**: o estorno avulso devolve
-   R$ 515,00 e deixa R$ 15,00 no caixa. O que resta tem plano próprio:
+   (`31422db`) — **8 de 12**, mais o **E224** (`becb734`), que a medição fez
+   nascer. A tabela do `EXECUCAO.md` é a fila; **conte, não deduza** — hoje são
+   **43 sobras** (**ZERO 🟠**, 7 🟡, 36 🔵) e **4 pendências que não são
+   software**. **O número CRESCEU de novo, e a COMPOSIÇÃO é que é o resultado:**
+   o terceiro lote fez o que foi mandado fazer — **as 🟠 e 🟡 de dinheiro
+   fecharam** (S-C70, S-C71, S-C80, S-C85, S-C86, S-C90, S-C91, em `e0eb9136`,
+   `b1a21d00` e `68047846`), e a 🟠 acabou. Das 7 🟡 de hoje, **quatro nasceram
+   nesse mesmo lote** e três não se fecham escrevendo código: **S-C60** (produto)
+   e **S-C51** (modelagem) esperam decisão, e **S-C96** (os manuais não conhecem
+   o contrato: 0 "avaria", 0 "multa", 0 "juros" nos cinco) espera a onda C
+   acabar, pela regra do E196 — manual se reescreve **depois** da onda. A mais
+   grave em aberto é a **S-C101**, irmã da S-C70 pelo lado que ela não fechou:
+   estornar a própria linha de MORA a devolve a PREVISTA, e ela passa a render
+   **multa e juros de si mesma** — R$ 15,00 viram R$ 15,45 e crescem todo dia. O
+   que resta tem plano próprio:
    [`2026-08-13-fechar-o-contrato-plano.md`](docs/propostas/2026-08-13-fechar-o-contrato-plano.md).
 
    **O E219 está BLOQUEADO, e o motivo é o achado que ordena o resto:** a porta
@@ -366,9 +374,14 @@ para o documento que manda.
    ainda está em dia — esta linha envelhece a cada commit, e já envelheceu
    cinco vezes.
 
-   Hoje a régua é **API 1573 (217 arquivos) · frontend 862 (94 arquivos) ·
-   E2E 171 · typecheck verde em 5 projetos** (medida em 2026-08-13, depois de
-   integrar o SEGUNDO lote de agentes — seis —, e as três em série). Ela é MEDIDA a cada
+   Hoje a régua é **API 1599 (219 arquivos) · frontend 874 (95 arquivos) ·
+   E2E 171 · typecheck verde em 5 projetos** — as **quatro medidas em série** em
+   2026-08-13, depois de integrar o TERCEIRO lote (as 🟠 e 🟡 de dinheiro). **O
+   E2E era a régua obrigatória e a única que os três agentes não podiam rodar**:
+   os três relatórios abrem dizendo *"E2E obrigatório e NÃO rodado"*, porque
+   worktree isola arquivo e banco e **não isola PORTA** — rodá-lo é trabalho do
+   integrador, e ele leva **6,6 min**; a API leva **10,7 min**, e as duas juntas
+   deadlocam no banco compartilhado. Ela é MEDIDA a cada
    onda, e envelhece depressa: este parágrafo já disse *1389 · 704* enquanto seis
    épicos do contrato somavam 78 testes de API e 99 de frontend sem que ninguém
    refizesse a conta — e antes disso dizia *1349 · 683* com o `main` em
