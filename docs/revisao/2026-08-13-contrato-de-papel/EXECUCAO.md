@@ -38,6 +38,21 @@ A ordem não é por cláusula nem por valor: é por **de onde vem o dado**.
    os números que o código passou a usar — senão nasce a doença dos manuais: o
    papel dizendo uma coisa e a constante outra.
 
+## Os hashes desta tabela são os do `main`, e três não eram
+
+Os épicos E214, E216 e E221 rodaram em **paralelo, um agente por worktree**, e
+cada agente registrou aqui o hash que o `git commit` dele devolveu — `35cce35`,
+`3dde7a3`, `6051592`. **Nenhum dos três existe no `main`**: o que entrou foi o
+`cherry-pick` do integrador, com outro hash, e em dois casos com o conteúdo
+mudado de propósito (a migração `0019` foi descartada e renasceu como `0020` e
+`0021`, a terceira colisão da mesma sessão). Os três originais só vivem nos
+branches `worktree-agent-*`, que somem quando o worktree é podado — e aí a
+tabela apontaria para nada.
+
+**Hash de worktree não é hash.** Quem integra troca os três pelos do `main`
+antes de podar, e é o que está feito acima: só `eaa4e90` (E216) tem o mesmo
+`patch-id` do original; os outros dois são o patch menos a migração colidida.
+
 ---
 
 ## A fila
@@ -55,7 +70,7 @@ A ordem não é por cláusula nem por valor: é por **de onde vem o dado**.
 | Épico | Tese | Cláusula | Migração? | Estado |
 |---|---|---|---|---|
 | **E222** | **o ateliê tem DOIS expedientes e o sistema conhece um** — nasce o de retirada/devolução (ter–sex 10:30–19:00, sáb até 18:00), e `dataRetirada`/`dataDevolucao` passam a ser validadas. Hoje o sistema aceita retirada num domingo às 23h | 4ª e 5ª | sim | aberto |
-| ~~**E214**~~ | ~~a taxa de limpeza e a de dano ganham faixa~~ | 14ª e 15ª | rodada e conferida | ✅ `35cce35` · [relatório](execucao/E214.md) — as duas cláusulas viram réguas de **formas diferentes** (a da limpeza é absoluta, a do dano é 5× o aluguel DAQUELA peça), e é isso que obriga o `tipo`: sem ele, `custo_reparo` é um número sem régua. O teto sai de `contrato_itens.valor_unitario`, que o sistema tinha e não usava — **R$ 9.000,00 cabem no vestido de R$ 3.000,00 e não cabem no véu de R$ 400,00**. A régua não vira parede — o que VIOLA um número do papel entra com justificativa, gravada na avaria e na trilha. **Peça fora de contrato: a 15ª NÃO alcança o caso** — não barra, e diz que não conferiu (decisão que eu escrevi ao contrário primeiro; medir derrubou o argumento, e a conta está no relatório). **As duas portas conferem**, e a razão entra também na cobrança para não haver beco (apagar a avaria destruiria a foto-prova). Fora do escopo aparente: `listContratos` desce os `itens` no recorte por noiva, e a conta do `ENVELOPE_MAX_BYTES` foi **refeita para dois campos de texto**, não esticada |
+| ~~**E214**~~ | ~~a taxa de limpeza e a de dano ganham faixa~~ | 14ª e 15ª | rodada e conferida | ✅ `0c15cda` + `6d1e860` (a migração renumerada) + `1c439d5` (a régua da moeda, que este épico deixou vermelha no `main`) · [relatório](execucao/E214.md) — as duas cláusulas viram réguas de **formas diferentes** (a da limpeza é absoluta, a do dano é 5× o aluguel DAQUELA peça), e é isso que obriga o `tipo`: sem ele, `custo_reparo` é um número sem régua. O teto sai de `contrato_itens.valor_unitario`, que o sistema tinha e não usava — **R$ 9.000,00 cabem no vestido de R$ 3.000,00 e não cabem no véu de R$ 400,00**. A régua não vira parede — o que VIOLA um número do papel entra com justificativa, gravada na avaria e na trilha. **Peça fora de contrato: a 15ª NÃO alcança o caso** — não barra, e diz que não conferiu (decisão que eu escrevi ao contrário primeiro; medir derrubou o argumento, e a conta está no relatório). **As duas portas conferem**, e a razão entra também na cobrança para não haver beco (apagar a avaria destruiria a foto-prova). Fora do escopo aparente: `listContratos` desce os `itens` no recorte por noiva, e a conta do `ENVELOPE_MAX_BYTES` foi **refeita para dois campos de texto**, não esticada |
 | **E218** | **a entrada sugere 40% e o plano respeita os 20 dias** — nada compara `parcelas.vencimento` com `contratos.dataRetirada` | 8ª §1º e § único | não | aberto |
 | **E219** | **a troca de traje tem prazo** — sem troca após 7 dias, nem às sextas e sábados | 17ª e §1º | não | aberto |
 
@@ -64,7 +79,7 @@ A ordem não é por cláusula nem por valor: é por **de onde vem o dado**.
 | Épico | Tese | Cláusula | Migração? | Estado |
 |---|---|---|---|---|
 | **E215** | **a ficha guarda quem assina** — os **9 campos** que faltam (estado civil, profissão, RG, nascimento, e-mail e o endereço inteiro). É o achado de maior alcance da auditoria | identificação | sim, grande | aberto |
-| ~~**E216**~~ | ~~o vestido sabe que é exclusivo~~ | 12ª | rodada e conferida | ✅ `3dde7a3` · [relatório](execucao/E216.md) — a auditoria via **duas** ausências e elas não são do mesmo tipo: *exclusivo* é **marca** (coluna `vestidos.exclusiva`, e a decisão contra o atributo de catálogo é medida — os 9 atributos da loja são todos descritivos, e o catálogo **cascateia no DELETE**), *primeiro aluguel* é **estado** e **já era contável desde o E157** (`GET /vestidos/utilizacao`). Nasce uma coluna, não duas. A leitura da 12ª está declarada: a marca é permanente, o estado expira — a dona corrige em **uma linha**. O aviso nomeia a peça **dentro do diálogo do contrato**, no molde do E211 |
+| ~~**E216**~~ | ~~o vestido sabe que é exclusivo~~ | 12ª | rodada e conferida | ✅ `eaa4e90` · [relatório](execucao/E216.md) — a auditoria via **duas** ausências e elas não são do mesmo tipo: *exclusivo* é **marca** (coluna `vestidos.exclusiva`, e a decisão contra o atributo de catálogo é medida — os 9 atributos da loja são todos descritivos, e o catálogo **cascateia no DELETE**), *primeiro aluguel* é **estado** e **já era contável desde o E157** (`GET /vestidos/utilizacao`). Nasce uma coluna, não duas. A leitura da 12ª está declarada: a marca é permanente, o estado expira — a dona corrige em **uma linha**. O aviso nomeia a peça **dentro do diálogo do contrato**, no molde do E211 |
 | **E217** | **a rescisão calcula** — reserva nunca volta, 60% de dedução, multa integral na peça exclusiva, devolução em 30 dias, e a **coluna do prazo da 18ª** (campo por contrato, D3) | 8ª §2º, 11ª, 12ª, 13ª, 18ª | sim | aberto · **o E216 entregou o predicado**. Três coisas para não errar estão em [`execucao/E216.md`](execucao/E216.md): descontar o PRÓPRIO contrato da contagem de saídas (senão a 12ª não dispara nunca), e escolher e DECLARAR a base do *"valor integral do aluguel"* — item ou contrato |
 
 ### Onda D — o documento
@@ -72,7 +87,7 @@ A ordem não é por cláusula nem por valor: é por **de onde vem o dado**.
 | Épico | Tese | Cláusula | Migração? | Estado |
 |---|---|---|---|---|
 | **E220** | **o PDF vira o INSTRUMENTO** — as 21 cláusulas, com os números vindos de constantes; e **nasce a validação de CNPJ**, que hoje não existe em lugar nenhum | 6ª, 21ª | não | aberto · trava em **D4**, **D7** e **E215** |
-| ~~**E221**~~ | ~~recibo de pagamento~~ | 7ª | rodada e conferida (**índice**, não tabela) | ✅ `6051592` · [relatório](execucao/E221.md) — **o recibo é por RECEBIMENTO, não por parcela**: a cláusula diz "pagamentos EFETUADOS" e uma parcela deste sistema recebe em pedaços, então quem pagou R$ 300,00 em 01/03 tem o papel DE 01/03. **Não nasce tabela**: o ato individual só existe na linha `PARCELA_RECEBIDA` da trilha, escrita na MESMA transação do dinheiro — e o papel **CONCILIA** com a parcela antes de sair (soma maior que o recebido = nenhum recibo, falha fechada). O estorno anula por CORTE, pelos DOIS caminhos (avulso e cancelamento com `destinoPago: estornar`). Achou de passagem que **a trilha não guardava o DIA do pagamento** — só o instante do lançamento. O plano errou duas vezes: o épico **não dependia de D4/D7** (elas são do documento) e a migração não era tabela. Quatro réguas cobraram, e a quarta era defeito DELA: a `e115-migracao-snapshot-unit` lia o COMENTÁRIO do script como DDL — a frase que justifica o `CONCURRENTLY` virou o índice `comum` |
+| ~~**E221**~~ | ~~recibo de pagamento~~ | 7ª | rodada e conferida (**índice**, não tabela) | ✅ `fcc24e9` + `dbd3da2` (a migração renumerada) · [relatório](execucao/E221.md) — **o recibo é por RECEBIMENTO, não por parcela**: a cláusula diz "pagamentos EFETUADOS" e uma parcela deste sistema recebe em pedaços, então quem pagou R$ 300,00 em 01/03 tem o papel DE 01/03. **Não nasce tabela**: o ato individual só existe na linha `PARCELA_RECEBIDA` da trilha, escrita na MESMA transação do dinheiro — e o papel **CONCILIA** com a parcela antes de sair (soma maior que o recebido = nenhum recibo, falha fechada). O estorno anula por CORTE, pelos DOIS caminhos (avulso e cancelamento com `destinoPago: estornar`). Achou de passagem que **a trilha não guardava o DIA do pagamento** — só o instante do lançamento. O plano errou duas vezes: o épico **não dependia de D4/D7** (elas são do documento) e a migração não era tabela. Quatro réguas cobraram, e a quarta era defeito DELA: a `e115-migracao-snapshot-unit` lia o COMENTÁRIO do script como DDL — a frase que justifica o `CONCURRENTLY` virou o índice `comum` |
 
 ---
 
