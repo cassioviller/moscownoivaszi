@@ -13,6 +13,8 @@ export interface Recibo {
   contratoId: string;
   parcela: string;
   valor: number;
+  valorNaParcela: number;
+  mora: number;
   pagoEm: Date;
   /** @nullable */
   forma: ReciboForma;

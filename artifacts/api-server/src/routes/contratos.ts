@@ -1831,12 +1831,13 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("contrat
      * e o `unique(contratoId, numero)` recusaria o segundo zero com um
      * `REGISTRO_DUPLICADO` que se lê como "já cobrei isso".
      */
+    let idDaMora: string | null = null;
     if (aMoraC > 0) {
       const [{ maior }] = await tx
         .select({ maior: sql<number>`coalesce(max(${parcelasTable.numero}), 0)` })
         .from(parcelasTable)
         .where(eq(parcelasTable.contratoId, existente.contratoId));
-      const idDaMora = randomUUID();
+      idDaMora = randomUUID();
       await tx.insert(parcelasTable).values({
         id: idDaMora,
         lojaId: lojaId as string,
@@ -1907,6 +1908,29 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("contrat
          * que a linha foi escrita, que é outro dia.
          */
         recebidoEm: parsed.data.recebidoEm,
+        /**
+         * **S-C50 — para onde foi cada real DESTE pagamento.**
+         *
+         * `valorRecebido` acima é o que a NOIVA pagou; parte dele pode ter ido
+         * para outra linha do carnê (a de `MORA`, que o E213 cria aqui mesmo).
+         * Eram dois números com um nome só, e a conciliação do recibo (E221)
+         * comparava o do pagamento com o `valorRecebido` da PARCELA: os
+         * R$ 515,00 do ato contra os R$ 500,00 dela, `515 > 500`, falha
+         * fechada — **nenhum papel saía**, nem o do principal nem o da multa.
+         *
+         * A divisão é decidida nesta transação e em nenhum outro lugar, então
+         * é aqui que ela tem de ser dita. `aoPrincipal` é o que fecha com a
+         * parcela; `aMora` é o que a cláusula 9ª levou; `moraParcelaId` é a
+         * linha que nasceu, para quem for reconstituir o carnê pela trilha.
+         *
+         * Atos escritos ANTES desta linha não têm os três campos, e o recibo
+         * deles cai para `valorRecebido` — que é a verdade daqueles atos, em
+         * que a mora não existia. Medido no `heliumdb` em 2026-08-13: 1048
+         * linhas `PARCELA_RECEBIDA`, 0 parcelas de origem `MORA`.
+         */
+        aoPrincipal: reais(aoPrincipalC),
+        aMora: reais(aMoraC),
+        moraParcelaId: idDaMora,
         totalRecebido: reais(totalRecebidoC),
         saldoRestante: reais(centavos(existente.valorPrevisto) - totalRecebidoC),
         formaRecebimento: parsed.data.formaRecebimento ?? null,

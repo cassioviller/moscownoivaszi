@@ -731,6 +731,16 @@ export default function NoivaPortal() {
                               {r.parcela} · {instanteLongo(r.pagoEm)}
                               {r.forma ? ` · ${rotuloForma(r.forma)}` : ""}
                             </p>
+                            {/* S-C50 — a cláusula 9ª cobrada e NOMEADA. Um
+                                pagamento pode quitar a parcela e a multa: sem
+                                esta linha ela lê R$ 515,00 de uma parcela de
+                                R$ 500,00 e liga para a loja perguntar. */}
+                            {r.mora > 0 && (
+                              <p className="text-muted-foreground text-xs">
+                                {brl(r.valorNaParcela)} nesta parcela +{" "}
+                                {brl(r.mora)} de multa e juros (cláusula 9ª)
+                              </p>
+                            )}
                           </div>
                           <Button variant="outline" size="sm" asChild className="shrink-0">
                             <a

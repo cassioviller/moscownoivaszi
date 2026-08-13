@@ -6954,7 +6954,7 @@ components:
       # porque a parcela guarda o acumulado. É o que vai em
       # GET /portal/recibo-pdf?reciboId=.
       type: object
-      required: [id, parcela, valor, pagoEm, forma]
+      required: [id, parcela, valor, valorNaParcela, mora, pagoEm, forma]
       properties:
         id: { type: string }
         # "Entrada" ou "Parcela 3" — o rótulo do MOMENTO do pagamento. O
@@ -6963,6 +6963,12 @@ components:
         parcela: { type: string }
         # O que entrou NESTE pagamento, não o acumulado da parcela.
         valor: { type: number }
+        # S-C50 — um pagamento pode quitar DUAS linhas: a parcela e a multa da
+        # cláusula 9ª (E213). O papel é UM, e diz a divisão — senão a noiva lê
+        # R$ 515,00 ao lado de uma parcela de R$ 500,00 sem explicação, que é a
+        # mesma classe de defeito da S-C34.
+        valorNaParcela: { type: number }
+        mora: { type: number }
         # O dia do PAGAMENTO (`recebidoEm`), que pode ser anterior ao
         # lançamento: o dinheiro entrou no sábado, a loja lançou na segunda.
         pagoEm: { type: string, format: date-time }
@@ -6991,13 +6997,19 @@ components:
       # conciliação que impede o papel de sair quando as duas divergem, estão
       # em `lib/recibo-do-papel.ts`.
       type: object
-      required: [id, parcelaId, contratoId, parcela, valor, pagoEm, forma, lancadoPor, totalRecebido, saldoRestante]
+      required: [id, parcelaId, contratoId, parcela, valor, valorNaParcela, mora, pagoEm, forma, lancadoPor, totalRecebido, saldoRestante]
       properties:
         id: { type: string }
         parcelaId: { type: string }
         contratoId: { type: string }
         parcela: { type: string }
+        # O que a noiva pagou neste ato.
         valor: { type: number }
+        # S-C50 — para onde ele foi: `valorNaParcela` é o que quitou a parcela
+        # (e é o que a conciliação compara com o `valorRecebido` dela) e `mora`
+        # é o que a cláusula 9ª levou para a linha de origem MORA (E213).
+        valorNaParcela: { type: number }
+        mora: { type: number }
         pagoEm: { type: string, format: date-time }
         forma: { type: ["string", "null"], enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO, null] }
         lancadoPor: { type: string }

@@ -11,6 +11,8 @@ export interface PortalRecibo {
   id: string;
   parcela: string;
   valor: number;
+  valorNaParcela: number;
+  mora: number;
   pagoEm: Date;
   /** @nullable */
   forma: PortalReciboForma;

@@ -90,7 +90,13 @@ export function porRecebimento<T extends ParcelaDoCaixa>(
       id: r.id,
       // Decisão 3: o último ato é quem escreveu o `recebidoEm` da parcela.
       recebidoEm: i === ultimo ? (p.recebidoEm ?? r.pagoEm) : r.pagoEm,
-      valorRecebido: r.valor,
+      /**
+       * S-C50: o pedaço vale o que entrou NESTA parcela, não o que a noiva
+       * pagou. A diferença é a multa da cláusula 9ª, que vive numa linha de
+       * `MORA` própria — e essa linha entra no caixa sozinha. Somar o valor
+       * PAGO aqui contaria os R$ 15,00 duas vezes.
+       */
+      valorRecebido: r.valorNaParcela,
       formaRecebimento: r.forma,
     }));
   });

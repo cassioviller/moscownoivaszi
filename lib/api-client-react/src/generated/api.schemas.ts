@@ -2109,6 +2109,8 @@ export interface PortalRecibo {
   id: string;
   parcela: string;
   valor: number;
+  valorNaParcela: number;
+  mora: number;
   pagoEm: string;
   /** @nullable */
   forma: PortalReciboForma;
@@ -2163,6 +2165,8 @@ export interface Recibo {
   contratoId: string;
   parcela: string;
   valor: number;
+  valorNaParcela: number;
+  mora: number;
   pagoEm: string;
   /** @nullable */
   forma: ReciboForma;

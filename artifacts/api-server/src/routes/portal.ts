@@ -279,6 +279,11 @@ router.get("/portal", async (req, res): Promise<void> => {
         id: r.id,
         parcela: r.parcela,
         valor: r.valor,
+        // S-C50 — a divisão do pagamento. Ela desce porque a noiva é quem
+        // estranha o número: R$ 515,00 ao lado de uma parcela de R$ 500,00 sem
+        // a multa dita é o que gera a ligação para a loja.
+        valorNaParcela: r.valorNaParcela,
+        mora: r.mora,
         pagoEm: r.pagoEm,
         forma: r.forma,
       })),

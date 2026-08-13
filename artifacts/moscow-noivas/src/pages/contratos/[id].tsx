@@ -687,7 +687,12 @@ export default function ContratoDetail() {
                                 data-testid="recibo-da-parcela"
                                 className="text-xs underline underline-offset-2 tabular-nums"
                               >
+                                {/* S-C50: o pagamento pode ter quitado duas
+                                    linhas — a parcela e a multa da 9ª. Sem
+                                    dizer isso, o link de R$ 515,00 embaixo de
+                                    uma parcela de R$ 500,00 parece erro. */}
                                 {brl(r.valor)} · {diaMesAno(r.pagoEm)}
+                                {r.mora > 0 ? ` · inclui ${brl(r.mora)} de multa e juros` : ""}
                               </a>
                             ))}
                           </div>

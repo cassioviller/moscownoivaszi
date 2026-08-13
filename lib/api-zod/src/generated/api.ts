@@ -5706,6 +5706,8 @@ export const GetPortalResponse = zod.object({
   "id": zod.string(),
   "parcela": zod.string(),
   "valor": zod.number(),
+  "valorNaParcela": zod.number(),
+  "mora": zod.number(),
   "pagoEm": zod.coerce.date(),
   "forma": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullable()
 })),
@@ -6453,6 +6455,8 @@ export const ListRecibosResponse = zod.object({
   "contratoId": zod.string(),
   "parcela": zod.string(),
   "valor": zod.number(),
+  "valorNaParcela": zod.number(),
+  "mora": zod.number(),
   "pagoEm": zod.coerce.date(),
   "forma": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullable(),
   "lancadoPor": zod.string(),

@@ -61,6 +61,27 @@ import { brl, dataBR, dataBRInstante, rotuloForma, slug } from "./contrato-do-pa
  *   do legado e do seed, que gravam parcela paga direto no banco. Os recibos
  *   que existem saem; o resto **não é inventado**. O sistema não emite recibo
  *   de recebimento que ele não viu acontecer.
+ *
+ * ## S-C50 — o que a soma soma, e por que não é o valor pago
+ *
+ * Um pagamento pode quitar DUAS linhas do carnê. Quem deve R$ 500,00 vencidos
+ * há 30 dias paga **R$ 515,00** (multa de 2% = R$ 10,00 + juros de 1% ao mês
+ * *pro rata die* = R$ 5,00), e o E213 quita a parcela no principal e
+ * cristaliza os R$ 15,00 numa linha própria de origem `MORA`, nascida PAGA na
+ * mesma transação. A parcela fica com `valorRecebido = 500`; o ato da trilha
+ * diz `valorRecebido = 515`.
+ *
+ * A conciliação comparava os dois e via **515 > 500** — a falha fechada
+ * disparava e **nenhum papel saía**, nem o do principal nem o da multa. Não
+ * era dinheiro devolvido: era dinheiro que foi para outra linha, viva e
+ * contável. Por isso o que fecha com a parcela é `valorNaParcela`
+ * (`detalhe.aoPrincipal`), e o que o papel imprime é `valor` — o que a noiva
+ * pagou. **A guarda não afrouxou; ela passou a comparar o que é comparável.**
+ *
+ * E o recibo continua sendo **UM por pagamento**: a linha de `MORA` não emite
+ * papel próprio, porque o dinheiro dela já está no recibo do pagamento que a
+ * criou. Ela não tem ato `PARCELA_RECEBIDA` — o `MORA_RECEBIDA` do E213 narra
+ * o nascimento da linha, não um segundo recebimento.
  */
 
 /** A ação da trilha que É um recebimento. */
@@ -118,7 +139,25 @@ export type Recibo = {
   contratoId: string;
   /** O rótulo da parcela NO MOMENTO do ato: "Entrada" ou "Parcela 3". */
   parcela: string;
+  /** O que a noiva pagou NESTE ato — principal + multa e juros. */
   valor: number;
+  /**
+   * **S-C50 — quanto deste pagamento quitou a PARCELA**, e quanto foi a multa
+   * da cláusula 9ª.
+   *
+   * Um pagamento pode quitar duas linhas do carnê: quem deve R$ 500,00
+   * vencidos há 30 dias e paga R$ 515,00 quita a parcela **e** faz nascer a
+   * linha de `MORA` de R$ 15,00 (E213, PAGA na mesma transação). O papel é UM
+   * — a cláusula 7ª é do PAGAMENTO —, e ele diz a divisão em vez de mostrar um
+   * total que não bate com a parcela que a noiva está olhando.
+   *
+   * É `valorNaParcela` que a conciliação compara com o `valorRecebido` dela:
+   * comparar o valor PAGO acusaria divergência em todo recebimento com multa e
+   * calaria os dois papéis, que era o defeito.
+   */
+  valorNaParcela: number;
+  /** Multa e juros da cláusula 9ª pagos neste ato — `0` quando não houve. */
+  mora: number;
   /**
    * O dia do PAGAMENTO — `recebidoEm`, que a vendedora informa e pode ser
    * anterior ao lançamento (o dinheiro entrou sábado, ela lançou segunda).
@@ -169,6 +208,10 @@ export function recibosDaParcela(
   const recibos = atos.map((l): Recibo => {
     const d = (l.detalhe ?? {}) as Record<string, unknown>;
     const num = (v: unknown) => (typeof v === "number" ? v : Number(v ?? 0));
+    // S-C50: a divisão só passou a ser gravada depois do E213 ter começado a
+    // criar a linha de MORA. Sem ela o pagamento foi inteiro para a parcela —
+    // é o que era verdade de todo ato anterior, e a queda diz exatamente isso.
+    const valorNaParcela = d.aoPrincipal === undefined ? num(d.valorRecebido) : num(d.aoPrincipal);
     return {
       id: l.id,
       parcelaId: parcela.id,
@@ -178,6 +221,8 @@ export function recibosDaParcela(
       // momento do ato (o `gerar-plano` renumera depois — P2/E94).
       parcela: num(d.numero) === 0 ? "Entrada" : `Parcela ${num(d.numero)}`,
       valor: num(d.valorRecebido),
+      valorNaParcela,
+      mora: num(d.aMora),
       pagoEm: d.recebidoEm ? new Date(String(d.recebidoEm)) : l.criadoEm,
       forma: typeof d.formaRecebimento === "string" ? d.formaRecebimento : null,
       lancadoPor: l.usuarioNome,
@@ -186,7 +231,10 @@ export function recibosDaParcela(
     };
   });
 
-  const somaC = recibos.reduce((s, r) => s + centavos(r.valor), 0);
+  // S-C50: o que se compara com o `valorRecebido` da parcela é o que os atos
+  // puseram NELA. O valor pago é maior sempre que a cláusula 9ª incidiu, e a
+  // diferença está viva noutra linha do carnê — não é dinheiro que sumiu.
+  const somaC = recibos.reduce((s, r) => s + centavos(r.valorNaParcela), 0);
   const recebidoC = centavos(parcela.valorRecebido ?? 0);
   // Falha FECHADA: soma maior que o recebido significa dinheiro devolvido por
   // um caminho que `ehEstorno` não conhece. Nada sai.
@@ -247,6 +295,18 @@ function montarTokensDoRecibo(d: DadosDoRecibo): Token[] {
   add("REFERENTE A", 12);
   dado("Contrato", `${contrato.id.slice(0, 8).toUpperCase()} de ${dataBRInstante.format(contrato.fechadoEm)}`);
   dado("Parcela", recibo.parcela);
+  /**
+   * S-C50 — um pagamento pode quitar duas linhas, e o papel diz quais.
+   *
+   * Sem estas duas linhas o recibo diria R$ 515,00 ao lado de uma parcela de
+   * R$ 500,00 sem explicar a diferença — que é a mesma classe de defeito da
+   * S-C34, onde a mensagem de cobrança cita o total com multa e não a nomeia.
+   * Número maior sem conta ao lado é o que gera a ligação para a loja.
+   */
+  if (recibo.mora > 0) {
+    dado("Quitacao desta parcela", brl(recibo.valorNaParcela));
+    dado("Multa e juros (cláusula 9ª)", brl(recibo.mora));
+  }
   dado("Valor total do contrato", brl(contrato.valorTotal));
   // O acumulado e o saldo: é o que faz o recibo de um recebimento PARCIAL
   // dizer o que ele é, em vez de parecer a quitação da parcela.
