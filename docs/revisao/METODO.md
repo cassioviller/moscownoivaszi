@@ -395,6 +395,22 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
     podia pegar isso** — os quatro que o agente escreveu montam o hook com o
     booleano já decidido, e o defeito mora em QUANDO ele é decidido.)*
 
+    *(2026-08-13, e desta vez a regra foi QUEBRADA e ninguém notou: os três
+    commits do lote das 🟠 e 🟡 de dinheiro — `68047846`, `e0eb9136`,
+    `b1a21d00` — entraram no `main` com os três relatórios **abrindo** com a
+    frase "**E2E obrigatório e NÃO rodado**". Os agentes estavam certos ao não
+    rodá-lo: worktree isola arquivo e banco e **não isola PORTA**. Quem falhou
+    foi a integração, que commitou primeiro. Rodado depois do fato, o E2E passou
+    inteiro — **171 em 6,6 min** —, e é justamente por isso que o episódio vale
+    como evidência: **verde tardio parece idêntico a verde no prazo, e não é.**
+    Se tivesse caído, o vermelho estaria no `main`, publicado ou a um push de
+    distância. É a lição do E213 num terceiro formato — lá o épico chegou
+    escrito **sem uma medição registrada** e os vermelhos tiveram de ser
+    reproduzidos; aqui a medição existia para três faixas e faltava na quarta,
+    que é a única que enxerga o que a tela monta. **A pergunta que fecha o lote
+    não é "os agentes entregaram verde?", é "eu rodei a régua que eles não
+    podiam rodar?"** — e ela se responde ANTES do commit, não depois.)*
+
 26. **Quando o mesmo cuidado aparece escrito de cinco formas diferentes, ele
     não está sendo cumprido — está sendo lembrado.** Cinco grafias é a medida de
     que falta uma régua, e o sítio que esqueceu é o que quebra. *(2026-08-06: os

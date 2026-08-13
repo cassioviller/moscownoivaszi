@@ -15,10 +15,27 @@ Base: `3b26e8a4` · Trilha: [`2026-08-13-contrato-de-papel/`](../revisao/2026-08
 > - **O `main` foi publicado** (`11e5ba89..c34ac624`) e a **S-C63 foi rodada** em
 >   `moscow_base`, com as duas colunas conferidas no banco.
 >
+> **Atualizado de novo em 13/08/2026, depois do lote de seis e do lote das 🟠 e
+> 🟡 de dinheiro** (`4ada7c3c`, `4ba0671a`). É a **terceira** contagem deste
+> aviso no mesmo dia, e é essa cadência que ele documenta:
+>
+> - **As sobras são 43** — zero 🟠, **7 🟡**, 36 🔵. Não é o plano falhando: 21
+>   fecharam nesta trilha, e as que nasceram vieram de olhar áreas que ninguém
+>   tinha aberto.
+> - **A "leva A" e a "leva C" também foram executadas**, quase inteiras — o
+>   **E224** (`75fa2cbf`) fechou S-C35 e S-C36; S-C34, S-C32, S-C11 e S-C31
+>   fecharam. **De todas as levas do Bloco 5 restam três linhas**, e as três
+>   esperam gente, não código.
+> - **A ordem sugerida no fim deste arquivo tem os itens 1 a 3 cumpridos**,
+>   menos a publicação — o `main` está com **5 commits retidos** por
+>   credencial, não por decisão.
+>
 > **A lição é a do ponteiro, e vale mais que o plano:** documento que descreve
 > estado envelhece a cada commit, e quem abre a sessão seguinte lê o estado velho
 > como se fosse o de hoje — foi a S-A5 da arqueologia, e o `CLAUDE.md` já pagou
-> por isso. **Conte na tabela do `EXECUCAO.md`, nunca aqui.**
+> por isso. **Conte na tabela do `EXECUCAO.md`, nunca aqui.** Três reescritas
+> num dia são a prova de que este arquivo não deve ser fonte de contagem: ele é
+> fonte de **ordem** e de **cuidado**, que envelhecem devagar.
 
 Este plano cobre **tudo o que ainda está aberto** na trilha do contrato: os
 épicos que faltam, os dois que precisam nascer, as 13 sobras, as 4 pendências da
@@ -192,39 +209,42 @@ número que vai impresso em todo contrato entra sem conferência.
 
 ---
 
-## Bloco 5 — as 13 sobras, em três levas
+## Bloco 5 — as sobras. **As três levas estão EXECUTADAS, menos três linhas**
 
-**Conte a tabela, não este parágrafo.** Elas estão agrupadas por quando fecham,
-não por severidade.
+**Conte a tabela do `EXECUCAO.md`, não este parágrafo** — hoje são **43
+abertas**, contra as 13 que este bloco enumerava. O que continua valendo aqui é
+o **agrupamento por quando fecham**, não a lista.
 
-### Leva A — fecham junto com o épico que as gerou
+### Leva A — fecham junto com o épico que as gerou · ✅ menos uma
 
 | sobra | fecha em |
 |---|---|
-| **S-C35** 🟡 e **S-C36** 🔵 | **E224** — são o mesmo gesto ausente, visto na tela e no papel |
-| **S-C1** 🔵 (dano constatado na entrega) | **E217**, que já mexe na rescisão e na avaria |
+| ~~**S-C35** 🟡 e **S-C36** 🔵~~ | ✅ **E224** (`75fa2cbf`) — eram o mesmo gesto ausente, visto na tela e no papel |
+| **S-C1** 🔵 (dano constatado na entrega) | **E217**, que já mexe na rescisão e na avaria — **a única linha viva desta leva** |
 
-### Leva B — as que são régua medindo a si mesma
+### Leva B — as que são régua medindo a si mesma · ✅ EXECUTADA
 
-| sobra | o que fazer |
+| sobra | como fechou |
 |---|---|
-| **S-C33** 🔵 | **Trocar a lista curada por um derivado do schema.** Duas colunas em dois épicos seguidos nasceram invisíveis para a detecção de CAS (E212 e E213) — a lista não é sustentável, e a régua acusando código certo é a direção mais cara |
-| **S-C30** 🔵 | Uma linha: escapar o NBSP em `e165-pdf-fala-a-verdade.test.ts:19`. **Já cobrou dois testes ao E221 e um ao E218** — enquanto não fechar, todo teste novo que compare dinheiro paga o pedágio |
-| **S-C10** 🟡 | Remedir os *"61 das 63 avarias"* e decidir se o argumento sobrevive. São **8 sítios versionados**, e os comentários argumentam com o número — não é troca de texto |
+| ~~**S-C33** 🔵~~ | ✅ `241ee30f` — a lista virou derivado do schema, **com o critério declarado** e **uma exceção nomeada**. A contagem não se mexeu (55 portas · 31 TRANCA · 11 CAS · 13 ABERTA antes e depois), e é esse o resultado: o derivado enxerga seis colunas que a lista não tinha e **nenhuma move porta alguma** |
+| ~~**S-C30** 🔵~~ | ✅ `1aeec41` — **não virou uma linha, virou RÉGUA**: eram **9 sítios em 6 arquivos**, e 3 dos 7 literais moravam sob um comentário que AFIRMAVA o escape. Caractere invisível não é conferível por leitura |
+| ~~**S-C10** 🟡~~ | ✅ `d6cb2fc9` — e eram **19 ocorrências em 17 arquivos**, não 8 sítios. **O número nunca foi asserção**: onze argumentos de pé sobre estatística morta, e prosa não reprova quando envelhece |
 
-Estas três valem um épico só, de régua, e ele é barato. **A S-C30 primeiro**, que
-é uma linha e para de cobrar pedágio.
+**O que esta leva ensinou, e vale para a próxima:** as três foram estimadas em
+"um épico barato de régua" e **as três eram maiores que a estimativa** — sempre
+na mesma direção, a de que o defeito tinha mais sítios do que a sobra dizia.
+Enumere com `git ls-files` antes de estimar.
 
-### Leva C — as que esperam gesto ou decisão
+### Leva C — as que esperam gesto ou decisão · ✅ menos duas
 
 | sobra | o que falta |
 |---|---|
-| **S-C34** 🟡 | Uma linha na mensagem de cobrança: nomear a multa que ela já cobra |
-| **S-C32** 🟡 | A fila do atraso — hoje só se descobre abrindo a ficha da reserva, e o valor cresce sozinho |
-| **S-C11** 🟡 | O `PATCH /avarias/:id` que falta a quem digitou R$ 1.500,00 no lugar de R$ 150,00 |
-| **S-C31** 🔵 | Datar o recebimento parcial pelo dia de cada ato — o E221 já criou a trilha de onde tirar |
-| **S-C21** 🔵 e **S-C22** 🔵 | Esperam a dona: mostrar a exclusividade no lookbook é decisão de venda, e o filtro só dói quando houver peça marcada |
-| **S-C20** 🔵 | **Os manuais, depois da onda C** — pela lição do E196, manual se reescreve ao fim da onda, não quando alguém tropeça |
+| ~~**S-C34** 🟡~~ | ✅ `1aeec41` — a mensagem ganhou uma **segunda linha, só quando há acréscimo**, e não repete o principal de propósito (a lição do E187 sobre a segunda grafia da mesma conta) |
+| ~~**S-C32** 🟡~~ | ✅ `cec523c2` — a fila do atraso, e o sino avisa quem não perguntou |
+| ~~**S-C11** 🟡~~ | ✅ `9fa70a59` — o `PATCH /avarias/:id`, com **dinheiro que entrou congelando a linha** (409) e a régua do E214 reconferida na edição |
+| ~~**S-C31** 🔵~~ | ✅ `59aed54c` — e o conserto precisou do que não estava na sobra: **a janela do SQL**, senão o mês continuaria R$ 300,00 a menos por mais que o motor dividisse |
+| **S-C21** 🔵 e **S-C22** 🔵 | **Esperam a dona**: mostrar a exclusividade no lookbook é decisão de venda — argumento (*"esta peça é só sua"*) ou pressão antes de a noiva saber que a rescisão custa o aluguel inteiro? O filtro só dói quando houver peça marcada, e são **132 peças com ZERO marcadas** |
+| **S-C20** 🔵, e agora **S-C96** 🟡, **S-C45** 🔵, **S-C88** 🔵, **S-C113** 🔵 | **Os manuais, depois da onda C** — pela lição do E196, manual se reescreve ao fim da onda, não quando alguém tropeça. **A dívida cresceu de uma linha para cinco**, e a medida é dura: nos cinco documentos são **0 "avaria", 0 "multa", 0 "juros"**, e "cláusula" aparece 2 vezes, as duas da 7ª. **Oito épicos executados e nenhum chegou aos manuais** — inclusive a mora da 9ª, que a noiva lê no portal dela |
 
 ---
 
@@ -266,12 +286,22 @@ respondida.
 
 ## A ordem sugerida, e a razão dela
 
-1. **Publicar o `main`** e **registrar a regra do E2E**. Baratos, e o primeiro
-   fica mais caro a cada commit.
-2. **S-C30** — uma linha, e para de cobrar pedágio em todo teste de dinheiro.
-3. **E224** — o gesto da retirada. Baixo custo, fecha duas sobras, e dá
-   população para a régua que o E222 já construiu.
+1. ~~**Publicar o `main`** e **registrar a regra do E2E**. Baratos, e o primeiro
+   fica mais caro a cada commit.~~ A regra do E2E **está registrada** — não como
+   regra nova, e sim como **evidência na regra 25, que este lote QUEBROU**: os
+   três commits entraram com os relatórios abrindo em *"E2E obrigatório e NÃO
+   rodado"*, e o E2E rodou depois, verde (171 em 6,6 min). **Verde tardio parece
+   idêntico a verde no prazo, e não é.** A publicação **continua aberta e não é
+   decisão**: 5 commits retidos por credencial (`gh auth login`).
+2. ~~**S-C30** — uma linha, e para de cobrar pedágio em todo teste de dinheiro.~~
+   ✅ `1aeec41`, e não era uma linha: **9 sítios em 6 arquivos**, mais a régua.
+3. ~~**E224** — o gesto da retirada. Baixo custo, fecha duas sobras, e dá
+   população para a régua que o E222 já construiu.~~ ✅ `75fa2cbf` — e o
+   "baixo custo" escondia o achado: **a data óbvia estava errada**, porque 53%
+   das reservas (67 de 127) teriam uma ponta em domingo ou segunda, que a 4ª
+   fecha. A tela entregaria à vendedora um valor que a porta recusa com 422.
 4. **E215** — a sessão inteira dele. Destrava o E220 e é o de maior alcance.
+   **É o próximo.**
 5. **E217** — a rescisão. Pode subir para antes do E215 se a sessão for curta.
 6. **E223** → **E219** — a porta de troca e, sobre ela, a guarda da 17ª.
 7. **D4 e D7 respondidas** → **E220**, e com ele a régua que prega o papel contra

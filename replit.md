@@ -166,9 +166,14 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   escrita** (`insert`/`update`/`delete`) nas **cinco tabelas quentes** —
   `bloqueio_vestidos`, `reservas`, `contratos`, `orcamentos` e **`parcelas`
   (S-O34, a tabela onde o dinheiro mora)** — e classifica cada porta em
-  **TRANCA**, **CAS** ou **ABERTA**. Hoje, **medido em 2026-08-13 (S-C46): 304
-  arquivos · 56 portas · 32 TRANCA · 11 CAS · 13 na dívida declarada** (6 de
-  nascimento ou serialização implícita, 7 do gerador da loja de demonstração) —
+  **TRANCA**, **CAS** ou **ABERTA**. Hoje, **remedido em 2026-08-13 depois do
+  lote das 🟠 e 🟡 de dinheiro: 57 portas · 33 TRANCA · 11 CAS · 13 na dívida
+  declarada** (6 de nascimento ou serialização implícita, 7 do gerador da loja
+  de demonstração) — **a porta nova é a guarda do § único no `PATCH` (S-C90), e
+  ela nasceu TRANCA**. O parágrafo dizia *56 · 32* por meio dia, medido pela
+  S-C46; **e a diferença é que desta vez a régua cobrou** — o retrato trava por
+  igualdade desde ela, então a porta nova reprovou a varredura e obrigou a
+  recontagem no mesmo commit, que é exatamente o que a S-C46 existia para fazer —
   **desde o E191 nenhuma porta ABERTA é porta de ROTA**. Este parágrafo dizia
   *48 · 31 · 8 · 9* e envelheceu em silêncio porque os pisos do teste eram `>=`:
   as portas que E212, E213, E216 e E221 acrescentaram nunca cobraram a
