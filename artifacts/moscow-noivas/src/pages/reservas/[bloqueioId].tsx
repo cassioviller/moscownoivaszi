@@ -64,8 +64,16 @@ import { ROTULO_SITUACAO, dataHoraFmt } from "./helpers";
 import { podeNoModulo } from "@/lib/permissoes";
 import { mensagemApi } from "@/lib/erro-api";
 import { Erro } from "@/components/estado";
-import { AVARIA_DESCRICAO_MAX_CHARS, FOTO_ACIMA_DO_TETO, FOTO_MAX_BYTES } from "@/lib/limites";
+import {
+  AVARIA_DESCRICAO_MAX_CHARS,
+  AVARIA_JUSTIFICATIVA_MAX_CHARS,
+  FOTO_ACIMA_DO_TETO,
+  FOTO_MAX_BYTES,
+} from "@/lib/limites";
 import { donaDaFicha, temReservaMae } from "@/lib/dona-da-ficha-da-reserva";
+// E214: a faixa das cláusulas 14ª/15ª vem da MESMA conta do servidor.
+import { faixaNaTela } from "@/lib/faixa-da-avaria";
+import { explicacaoDaFaixa, type TipoDeAvaria } from "@workspace/financeiro-core";
 
 /**
  * Detalhe da reserva (porte da /reservas/[bloqueioId] do feat/orcamentos) — o
@@ -173,10 +181,31 @@ export default function ReservaDetalhe() {
 
   const [avariaDescricao, setAvariaDescricao] = useState("");
   const [avariaCusto, setAvariaCusto] = useState("");
+  // E214: de qual cláusula a taxa sai. DANO é o padrão, o mesmo da coluna.
+  const [avariaTipo, setAvariaTipo] = useState<TipoDeAvaria>("DANO");
+  const [avariaJustificativa, setAvariaJustificativa] = useState("");
   const [avariaFotoBase64, setAvariaFotoBase64] = useState<string | null>(null);
   const [avariaFotoNome, setAvariaFotoNome] = useState<string | null>(null);
   // F25: o passo "o vestido voltou como saiu?", disparado pela devolução.
   const [conferirDevolucao, setConferirDevolucao] = useState(false);
+
+  /**
+   * **E214 — a faixa aparece ANTES do clique** (cláusulas 14ª e 15ª).
+   *
+   * O contrato dá faixa à taxa de limpeza (R$ 350,00 a R$ 2.500,00) e teto ao
+   * dano (5× o aluguel daquela peça), e o campo era livre: a vendedora digitava
+   * R$ 50,00 ou R$ 9.000,00 e descobria a régua só no 422, depois de ter
+   * escrito a descrição e anexado a foto.
+   *
+   * A conta é a MESMA do servidor — `faixaNaTela` só escolhe qual aluguel
+   * perguntar. Duas grafias divergiriam no dia em que a dona mudasse o número.
+   */
+  const veredictoDaAvaria = faixaNaTela({
+    contratos: contratosDaNoiva.data?.itens,
+    vestidoId: reserva?.vestidoId,
+    tipo: avariaTipo,
+    valor: parseValor(avariaCusto),
+  });
 
   const aoEscolherFotoAvaria = async (arquivo: File | undefined) => {
     if (!arquivo) return;
@@ -221,7 +250,13 @@ export default function ReservaDetalhe() {
           bloqueioId: bloqueioId!,
           data: {
             descricao: avariaDescricao.trim(),
+            tipo: avariaTipo,
             ...(custo !== null ? { custoReparo: custo } : {}),
+            // E214: só vai quando explica alguma coisa — o servidor descarta a
+            // razão colada numa taxa que cabe na faixa, e a tela não a manda.
+            ...(veredictoDaAvaria.exigeJustificativa && avariaJustificativa.trim()
+              ? { justificativaDaTaxa: avariaJustificativa.trim() }
+              : {}),
             ...(avariaFotoBase64 ? { fotoBase64: avariaFotoBase64 } : {}),
           },
         });
@@ -230,6 +265,8 @@ export default function ReservaDetalhe() {
         });
         setAvariaDescricao("");
         setAvariaCusto("");
+        setAvariaTipo("DANO");
+        setAvariaJustificativa("");
         setAvariaFotoBase64(null);
         setAvariaFotoNome(null);
       },
@@ -860,7 +897,24 @@ export default function ReservaDetalhe() {
                   return (
                   <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
                     <div className="min-w-0 space-y-0.5">
-                      <p className="text-sm">{a.descricao}</p>
+                      <p className="text-sm">
+                        {a.descricao}
+                        {/* E214: a cláusula de onde a taxa saiu, ao lado dela.
+                            Sem isto, R$ 400,00 na lista continua sendo um
+                            número sem régua — que é o defeito que este épico
+                            fechou na escrita. */}
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {a.tipo === "LIMPEZA" ? "limpeza (14ª)" : "dano (15ª)"}
+                        </span>
+                      </p>
+                      {/* A razão de uma taxa fora da faixa fica VISÍVEL, não só
+                          na trilha: quem lê a ficha depois precisa ver o valor
+                          com a explicação ao lado. */}
+                      {a.justificativaDaTaxa && (
+                        <p className="text-xs text-destructive" data-testid={`taxa-fora-da-faixa-${a.id}`}>
+                          Fora da faixa do contrato — {a.justificativaDaTaxa}
+                        </p>
+                      )}
                       <p className="text-xs text-muted-foreground">
                         {a.custoReparo != null && <>reparo estimado {brl(a.custoReparo)} · </>}
                         {a.registradoPorNome && <>{a.registradoPorNome} · </>}
@@ -994,6 +1048,22 @@ export default function ReservaDetalhe() {
                   maxLength={AVARIA_DESCRICAO_MAX_CHARS}
                 />
                 <div className="flex flex-wrap items-center gap-2">
+                  {/* E214: de qual cláusula a taxa sai. São réguas diferentes —
+                      a limpeza (14ª) tem faixa absoluta, o dano (15ª) tem teto
+                      de 5× o aluguel da peça —, e sem o tipo o número não tem
+                      régua nenhuma. */}
+                  <Select
+                    value={avariaTipo}
+                    onValueChange={(v) => setAvariaTipo(v as TipoDeAvaria)}
+                  >
+                    <SelectTrigger className="w-44" aria-label="Tipo da avaria">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DANO">Dano (cláusula 15ª)</SelectItem>
+                      <SelectItem value="LIMPEZA">Limpeza (cláusula 14ª)</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Input
                     placeholder="Custo do reparo (R$, opcional)"
                     value={avariaCusto}
@@ -1012,13 +1082,43 @@ export default function ReservaDetalhe() {
                   </label>
                   <Button
                     size="sm"
-                    disabled={!avariaDescricao.trim() || createAvaria.isPending}
+                    disabled={
+                      !avariaDescricao.trim() ||
+                      createAvaria.isPending ||
+                      // Fora da faixa sem razão escrita, o servidor responde 422:
+                      // o botão diz isso antes, em vez de gastar a viagem.
+                      (veredictoDaAvaria.exigeJustificativa && !avariaJustificativa.trim())
+                    }
                     onClick={registrarAvaria}
                     data-testid="registrar-avaria"
                   >
                     Registrar avaria
                   </Button>
                 </div>
+
+                {/* A faixa do contrato, dita ANTES do clique. Ela aparece
+                    sempre que há tipo escolhido: quem digita R$ 50,00 de
+                    limpeza tem de ler os R$ 350,00 no momento em que digita,
+                    não depois de anexar a foto. */}
+                <p
+                  className={`text-xs ${veredictoDaAvaria.exigeJustificativa ? "text-destructive" : "text-muted-foreground"}`}
+                  data-testid="faixa-da-avaria"
+                >
+                  {explicacaoDaFaixa(veredictoDaAvaria)}
+                  {veredictoDaAvaria.exigeJustificativa &&
+                    " A régua não impede — escreva por que este valor sai dela."}
+                </p>
+
+                {veredictoDaAvaria.exigeJustificativa && (
+                  <Input
+                    placeholder="Por que esta taxa sai da faixa do contrato?"
+                    value={avariaJustificativa}
+                    onChange={(e) => setAvariaJustificativa(e.target.value)}
+                    aria-label="Justificativa da taxa"
+                    maxLength={AVARIA_JUSTIFICATIVA_MAX_CHARS}
+                    data-testid="justificativa-da-taxa"
+                  />
+                )}
               </div>
             )}
           </CardContent>

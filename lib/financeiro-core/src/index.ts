@@ -21,6 +21,8 @@ export * from "./reajuste";
 // E216 — a peça exclusiva de primeiro aluguel (cláusula 12ª). O predicado, não
 // a multa: a conta é do E217, e ele consome este predicado.
 export * from "./exclusividade";
+// E214 — a faixa da taxa de limpeza e o teto do dano (cláusulas 14ª e 15ª).
+export * from "./avaria";
 // S-O52/E186: os nomes das ações da trilha — o CSV da contadora e a coluna
 // "Ação" da tela deixam de ser duas listas que divergiam em três rótulos.
 export * from "./auditoria";

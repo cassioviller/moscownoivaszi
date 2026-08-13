@@ -6,14 +6,18 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AvariaParcelaStatus } from './avariaParcelaStatus';
+import type { AvariaTipo } from './avariaTipo';
 
 export interface Avaria {
   id: string;
   lojaId: string;
   bloqueioId: string;
   descricao: string;
+  tipo: AvariaTipo;
   /** @nullable */
   custoReparo?: number | null;
+  /** @nullable */
+  justificativaDaTaxa?: string | null;
   /** A foto vem por /avarias/{id}/foto */
   temFoto: boolean;
   /** @nullable */

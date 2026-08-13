@@ -54,9 +54,20 @@ export function base64Bytes(bytes: number): number {
  * O envelope JSON em volta das fotos — **medido, não estimado.**
  *
  * `{"base64":"","thumbBase64":""}` tem **30 bytes**; o da avaria,
- * `{"descricao":"","custoReparo":1234.56,"fotoBase64":""}`, tem **54**. Os 4 KiB
- * declarados aqui são para a `descricao` da avaria, que é texto livre sem
- * `maxLength` no spec — os nomes dos campos custam menos de 1% disto.
+ * `{"descricao":"","justificativaDaTaxa":"","custoReparo":1234.56,"fotoBase64":""}`,
+ * tem **79**. Os 4 KiB declarados aqui são para os campos de TEXTO LIVRE da
+ * avaria — os nomes dos campos custam menos de 2% disto.
+ *
+ * **E214: eram um campo e passaram a ser dois.** A `justificativaDaTaxa`
+ * (cláusulas 14ª/15ª) entrou no mesmo corpo, e a conta foi refeita em vez de o
+ * teto ser esticado: 1.000 × 3 da descrição + 300 × 3 da justificativa + 79 do
+ * envelope = **3.979** dos 4.096, com 117 de folga. Os 3 bytes por caractere
+ * são o pior caso de TEXTO em UTF-8 (o travessão "—"), e ele já cobre o escape
+ * de aspas e quebras de linha, que custam 2.
+ *
+ * A régua que prega esta conta — `moscow-noivas/src/lib/limites-de-upload.test.ts`
+ * — passou a somar os DOIS campos no mesmo commit. Somar um só a deixaria verde
+ * enquanto a promessa deixava de ser verdade.
  */
 export const ENVELOPE_MAX_BYTES = 4 * 1024;
 
@@ -104,7 +115,7 @@ export const MARGEM_DO_422_BYTES = base64Bytes(FOTO_MAX_BYTES / 8);
  * |---|---|
  * | a foto, em base64 | 2.796.204 |
  * | a MINIATURA, em base64 | 699.052 |
- * | o envelope JSON (a `descricao` livre da avaria) | 4.096 |
+ * | o envelope JSON (os textos livres da avaria: descrição e justificativa) | 4.096 |
  * | a margem que faz o excesso chegar ao 422 | 349.528 |
  * | **total** | **3.848.880 (3,67 MiB)** |
  *

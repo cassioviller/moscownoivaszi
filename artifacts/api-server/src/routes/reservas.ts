@@ -24,7 +24,7 @@ import {
   CobrarAvariaBody,
   CobrarAvariaResponse
 } from "@workspace/api-zod";
-import { avariasTable, parcelasTable, contratosTable } from "@workspace/db";
+import { avariasTable, parcelasTable, contratosTable, contratoItensTable } from "@workspace/db";
 import { identificarImagem } from "../lib/imagem";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
@@ -54,10 +54,13 @@ import { FOTO_MAX_BYTES as AVARIA_FOTO_MAX_BYTES } from "../lib/limites";
 import {
   addDias,
   ancoraDeNegocio,
+  avaliarTaxaDeAvaria,
   diaDeNegocio,
+  explicacaoDaFaixa,
   hojeLocal,
   reajusteDaTrocaDeData,
   reancorarDataDeNegocio,
+  type TipoDeAvaria,
 } from "@workspace/financeiro-core";
 
 const router: IRouter = Router();
@@ -1434,6 +1437,73 @@ async function statusDaCobranca(
   return parcela?.status ?? null;
 }
 
+/**
+ * **E214 — quanto vale o aluguel DESTA peça neste contrato** (cláusula 15ª).
+ *
+ * > *"…não excedendo cinco vezes o valor do aluguel de cada peça danificada."*
+ *
+ * O sistema tem esse valor desde sempre e não o usava: `contrato_itens` é o
+ * snapshot do que foi vendido, e `valor_unitario` é o que a noiva pagou para
+ * usar a peça. Sem ele, o teto da 15ª não é calculável por máquina nenhuma — e
+ * era essa a colisão que a auditoria registrou.
+ *
+ * `null` significa **a peça não está entre os itens deste contrato**: ou é o
+ * véu que entrou depois, ou a avaria é de um bloqueio que nenhum contrato
+ * comprou. Sem aluguel não há cinco aluguéis, e o que a régua faz nesse caso
+ * está declarado em `financeiro-core/avaria.ts` — exige a razão escrita.
+ *
+ * Duas linhas para a MESMA peça devolvem a maior: o snapshot nasce do orçamento,
+ * onde cada peça é uma linha (a identidade das peças é conferida no fechamento,
+ * `contratos.ts`), então o caso não é uma forma que o sistema produz. Escolher a
+ * maior é a leitura que não estreita um teto por um dado duplicado.
+ */
+async function aluguelDaPecaNoContrato(
+  params: { contratoId: string; vestidoId: string | null },
+  executor: DbExecutor = db,
+): Promise<number | null> {
+  if (!params.vestidoId) return null;
+  const [item] = await executor
+    .select({ valorUnitario: contratoItensTable.valorUnitario })
+    .from(contratoItensTable)
+    .where(and(
+      eq(contratoItensTable.contratoId, params.contratoId),
+      eq(contratoItensTable.vestidoId, params.vestidoId),
+    ))
+    .orderBy(desc(contratoItensTable.valorUnitario))
+    .limit(1);
+  return item?.valorUnitario ?? null;
+}
+
+/**
+ * O mesmo aluguel, para quem ainda não escolheu contrato — o REGISTRO da avaria.
+ *
+ * A avaria nasce presa ao bloqueio, não ao contrato: quem devolve o vestido
+ * rasgado registra ali, e só depois alguém decide em qual carnê cobrar. Então o
+ * contrato é DERIVADO — o ATIVO da dona do bloqueio, pela mesma régua que a
+ * cobrança usa para saber de quem é o reparo (`donoDoBloqueio`, V3/E163).
+ *
+ * `contratos_lead_ativo_unico` (E158) garante que há no máximo um ativo por
+ * noiva, então não há empate a desfazer.
+ */
+async function aluguelDaPecaDoBloqueio(
+  bloqueio: { vestidoId: string | null; leadId: string | null; reservaId: string | null },
+  lojaId: string,
+): Promise<number | null> {
+  if (!bloqueio.vestidoId) return null;
+  const dono = await donoDoBloqueio(bloqueio);
+  if (!dono) return null;
+  const [contrato] = await db
+    .select({ id: contratosTable.id })
+    .from(contratosTable)
+    .where(and(
+      eq(contratosTable.lojaId, lojaId),
+      eq(contratosTable.leadId, dono),
+      eq(contratosTable.status, "ATIVO"),
+    ));
+  if (!contrato) return null;
+  return aluguelDaPecaNoContrato({ contratoId: contrato.id, vestidoId: bloqueio.vestidoId });
+}
+
 async function contratoAtivoDaLoja(
   contratoId: string,
   lojaId: string,
@@ -1467,11 +1537,52 @@ router.post("/lojas/:lojaId/bloqueios/:bloqueioId/avarias", async (req, res): Pr
   }
 
   const [bloqueio] = await db
-    .select({ id: bloqueioVestidosTable.id })
+    .select({
+      id: bloqueioVestidosTable.id,
+      // E214: a peça e a dona, para achar o aluguel que dá o teto da 15ª.
+      vestidoId: bloqueioVestidosTable.vestidoId,
+      leadId: bloqueioVestidosTable.leadId,
+      reservaId: bloqueioVestidosTable.reservaId,
+    })
     .from(bloqueioVestidosTable)
     .where(and(eq(bloqueioVestidosTable.id, bloqueioId as string), eq(bloqueioVestidosTable.lojaId, lojaId as string)));
   if (!bloqueio) {
     res.status(404).json({ error: "RESERVA_NAO_ENCONTRADA", detalhe: "Esta reserva de vestido não existe nesta loja." });
+    return;
+  }
+
+  /**
+   * **E214 — a taxa ganha faixa** (contrato, cláusulas 14ª e 15ª).
+   *
+   * `custo_reparo` era campo LIVRE: R$ 50,00 e R$ 9.000,00 entravam iguais, e o
+   * número não dizia de qual cláusula tinha saído. Agora o `tipo` diz, e cada
+   * cláusula tem a sua régua — a da limpeza é absoluta (350 a 2.500), a do dano
+   * é 5× o aluguel DAQUELA peça, que `contrato_itens.valor_unitario` guarda
+   * desde sempre e ninguém lia.
+   *
+   * A conta mora no `financeiro-core` e a TELA usa a mesma: duas grafias da
+   * mesma faixa divergiriam no dia em que a dona mudasse o número, e a
+   * vendedora leria na tela um limite que esta porta não pratica.
+   *
+   * **A régua não vira parede.** O que VIOLA um número do papel entra — com a
+   * razão por escrito, que é gravada na avaria e vai para a trilha. Quem decide
+   * continua sendo a dona; o que mudou é que a decisão deixa rastro. E onde o
+   * papel é silente (dano em peça sem contrato, logo sem aluguel), a régua diz
+   * que não conferiu em vez de inventar um número — ver `avaliarTaxaDeAvaria`.
+   */
+  const tipoDaAvaria = (parsed.data.tipo ?? "DANO") as TipoDeAvaria;
+  const veredicto = avaliarTaxaDeAvaria({
+    tipo: tipoDaAvaria,
+    valor: parsed.data.custoReparo,
+    aluguelDaPeca: await aluguelDaPecaDoBloqueio(bloqueio, lojaId as string),
+  });
+  const justificativa = parsed.data.justificativaDaTaxa?.trim() || null;
+  if (veredicto.exigeJustificativa && !justificativa) {
+    res.status(422).json({
+      error: "TAXA_FORA_DA_FAIXA",
+      detalhe: `${explicacaoDaFaixa(veredicto)} Para cobrar fora dela, escreva a razão.`,
+      campos: [{ campo: "justificativaDaTaxa", motivo: "Diga por que a taxa sai da faixa do contrato" }],
+    });
     return;
   }
 
@@ -1493,21 +1604,55 @@ router.post("/lojas/:lojaId/bloqueios/:bloqueioId/avarias", async (req, res): Pr
     fotoMime = info.mime;
   }
 
-  const [avaria] = await db
-    .insert(avariasTable)
-    .values({
-      id: randomUUID(),
-      lojaId: lojaId as string,
-      bloqueioId: bloqueioId as string,
-      descricao: parsed.data.descricao,
-      custoReparo: parsed.data.custoReparo ?? null,
-      fotoBytes,
-      fotoMime,
-      // Autor da SESSÃO, desnormalizado como no audit_log: a linha sobrevive
-      // à saída de quem registrou.
-      registradoPorNome: req.usuario?.nome ?? null,
-    })
-    .returning();
+  /**
+   * A linha e a TRILHA na mesma transação (E10): a razão de uma taxa fora da
+   * faixa não pode sobreviver sem a avaria, nem a avaria sem a razão. Sem custo
+   * fora da faixa não há trilha — o registro comum continua sendo um `INSERT`.
+   */
+  const avaria = await db.transaction(async (tx) => {
+    const [linha] = await tx
+      .insert(avariasTable)
+      .values({
+        id: randomUUID(),
+        lojaId: lojaId as string,
+        bloqueioId: bloqueioId as string,
+        descricao: parsed.data.descricao,
+        tipo: tipoDaAvaria,
+        custoReparo: parsed.data.custoReparo ?? null,
+        // Só guarda a razão quando ela explica alguma coisa: justificativa
+        // colada numa taxa que cabe na faixa viraria selo permanente na tela.
+        justificativaDaTaxa: veredicto.exigeJustificativa ? justificativa : null,
+        fotoBytes,
+        fotoMime,
+        // Autor da SESSÃO, desnormalizado como no audit_log: a linha sobrevive
+        // à saída de quem registrou.
+        registradoPorNome: req.usuario?.nome ?? null,
+      })
+      .returning();
+    // A trilha cobre os DOIS casos notáveis: a violação com a razão escrita, e
+    // a conta que não pôde ser conferida. O segundo é o que impede a decisão
+    // "não barra" de virar silêncio.
+    if (veredicto.mereceTrilha) {
+      await registrarAuditoria(tx, {
+        lojaId: lojaId as string,
+        usuario: req.usuario!,
+        acao: "AVARIA_FORA_DA_FAIXA",
+        entidade: "avaria",
+        entidadeId: linha!.id,
+        detalhe: {
+          tipo: veredicto.tipo,
+          clausula: veredicto.clausula,
+          valor: veredicto.valor,
+          piso: veredicto.piso,
+          teto: veredicto.teto,
+          conferida: veredicto.conferida,
+          motivo: veredicto.motivo,
+          justificativa,
+        },
+      });
+    }
+    return linha!;
+  });
   res.status(201).json(CreateAvariaResponse.parse(avariaMeta(avaria)));
 });
 
@@ -1579,7 +1724,12 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
    * a rota segue como antes; com noiva, ela tem de ser a mesma.
    */
   const [bloqueioDaAvaria] = await db
-    .select({ leadId: bloqueioVestidosTable.leadId, reservaId: bloqueioVestidosTable.reservaId })
+    .select({
+      leadId: bloqueioVestidosTable.leadId,
+      reservaId: bloqueioVestidosTable.reservaId,
+      // E214: a peça, para o teto da 15ª sair do aluguel DESTE contrato.
+      vestidoId: bloqueioVestidosTable.vestidoId,
+    })
     .from(bloqueioVestidosTable)
     .where(eq(bloqueioVestidosTable.id, avaria.bloqueioId));
   /**
@@ -1607,6 +1757,44 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
       error: "AVARIA_DE_OUTRA_NOIVA",
       detalhe: "Este reparo é do vestido de outra noiva — cobre no contrato dela",
       campos: [{ campo: "contratoId", motivo: "O contrato é de outra noiva" }],
+    });
+    return;
+  }
+
+  /**
+   * **E214 — o teto da 15ª é conferido AQUI também, e é aqui que ele é certo.**
+   *
+   * A cláusula fala do *"valor do aluguel de cada peça danificada"*, e aluguel
+   * só existe dentro de um contrato. No registro, o contrato é DERIVADO (o ativo
+   * da dona) e pode não existir ainda; aqui ele é ESCOLHIDO, e o teto sai do
+   * item daquele contrato. É o momento em que nasce dinheiro — e a régua tem de
+   * estar no nascimento do dinheiro, não só no do registro.
+   *
+   * **A justificativa pode vir no corpo, e isso evita um beco.** A avaria que
+   * nasceu dentro de um teto e vai ser cobrada em OUTRO contrato, com peça mais
+   * barata, estouraria — e a única saída seria APAGAR a avaria, cuja foto é a
+   * prova que sustenta a cobrança (E97/F23). É o mesmo ciclo sem saída que o
+   * E167 fechou do outro lado; aqui ele não chega a existir.
+   *
+   * E quando a peça não é item DESTE contrato, a 15ª não alcança o caso: a
+   * cobrança segue, e a trilha diz que **nasceu dinheiro contra um teto que
+   * ninguém pôde conferir**. É a metade da decisão que a impede de ser silêncio.
+   */
+  const veredictoDaCobranca = avaliarTaxaDeAvaria({
+    tipo: avaria.tipo,
+    valor: avaria.custoReparo,
+    aluguelDaPeca: await aluguelDaPecaNoContrato({
+      contratoId: parsed.data.contratoId,
+      vestidoId: bloqueioDaAvaria?.vestidoId ?? null,
+    }),
+  });
+  const justificativaDaCobranca =
+    parsed.data.justificativaDaTaxa?.trim() || avaria.justificativaDaTaxa?.trim() || null;
+  if (veredictoDaCobranca.exigeJustificativa && !justificativaDaCobranca) {
+    res.status(422).json({
+      error: "TAXA_FORA_DA_FAIXA",
+      detalhe: `${explicacaoDaFaixa(veredictoDaCobranca)} Para cobrar fora dela, escreva a razão.`,
+      campos: [{ campo: "justificativaDaTaxa", motivo: "Diga por que a taxa sai da faixa do contrato" }],
     });
     return;
   }
@@ -1686,7 +1874,15 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
     // recobra, e o `parcela_id` passa a apontar para o carnê novo.
     const [marcada] = await tx
       .update(avariasTable)
-      .set({ parcelaId })
+      .set({
+        parcelaId,
+        // E214: a razão que a cobrança trouxe fica GRAVADA na avaria. Se ficasse
+        // só na trilha, a próxima leitura da ficha veria um valor fora do teto
+        // sem explicação ao lado — e a tela decide o selo por este campo.
+        ...(veredictoDaCobranca.exigeJustificativa
+          ? { justificativaDaTaxa: justificativaDaCobranca }
+          : {}),
+      })
       .where(and(
         eq(avariasTable.id, avaria.id),
         avaria.parcelaId
@@ -1695,6 +1891,26 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
       ))
       .returning();
     if (!marcada) throw new AvariaJaCobrada();
+    if (veredictoDaCobranca.mereceTrilha) {
+      await registrarAuditoria(tx, {
+        lojaId: lojaId as string,
+        usuario: req.usuario!,
+        acao: "AVARIA_FORA_DA_FAIXA",
+        entidade: "avaria",
+        entidadeId: avaria.id,
+        detalhe: {
+          momento: "COBRANCA",
+          contratoId: parsed.data.contratoId,
+          tipo: veredictoDaCobranca.tipo,
+          clausula: veredictoDaCobranca.clausula,
+          valor: veredictoDaCobranca.valor,
+          teto: veredictoDaCobranca.teto,
+          conferida: veredictoDaCobranca.conferida,
+          motivo: veredictoDaCobranca.motivo,
+          justificativa: justificativaDaCobranca,
+        },
+      });
+    }
     return { ok: true as const };
   }).catch((err) => {
     if (err instanceof AvariaJaCobrada) return { jaCobrada: true as const };

@@ -4454,7 +4454,9 @@ export const ListAvariasResponseItem = zod.object({
   "lojaId": zod.string(),
   "bloqueioId": zod.string(),
   "descricao": zod.string(),
+  "tipo": zod.enum(['LIMPEZA', 'DANO']),
   "custoReparo": zod.number().nullish(),
+  "justificativaDaTaxa": zod.string().nullish(),
   "temFoto": zod.boolean().describe('A foto vem por \/avarias\/{id}\/foto'),
   "parcelaId": zod.string().nullish(),
   "parcelaStatus": zod.union([zod.literal('PREVISTA'),zod.literal('PARCIAL'),zod.literal('PAGA'),zod.literal('CANCELADA'),zod.literal(null)]).nullish(),
@@ -4466,6 +4468,8 @@ export const ListAvariasResponse = zod.array(ListAvariasResponseItem)
 
 /**
  * E71: o atraso já era detectado; a avaria morria numa conversa. A foto é opcional, validada por magic bytes como as de vestido (E3), e quando há contrato o custo pode virar parcela avulsa cobrável.
+ *
+ * E214: a taxa passa a ter FAIXA — R$ 350,00 a R$ 2.500,00 na limpeza (cláusula 14ª) e 5× o aluguel da peça no dano (15ª). Valor fora dela entra com `justificativaDaTaxa`, que vai para a trilha.
  * @summary Registra uma avaria — descrição, custo estimado e foto-evidência
  */
 export const CreateAvariaParams = zod.object({
@@ -4477,11 +4481,15 @@ export const createAvariaBodyDescricaoMax = 1000;
 
 export const createAvariaBodyCustoReparoMin = 0;
 
+export const createAvariaBodyJustificativaDaTaxaMax = 300;
+
 
 
 export const CreateAvariaBody = zod.object({
   "descricao": zod.string().min(1).max(createAvariaBodyDescricaoMax),
+  "tipo": zod.enum(['LIMPEZA', 'DANO']).optional(),
   "custoReparo": zod.number().min(createAvariaBodyCustoReparoMin).optional(),
+  "justificativaDaTaxa": zod.string().min(1).max(createAvariaBodyJustificativaDaTaxaMax).optional(),
   "fotoBase64": zod.string().optional()
 })
 
@@ -4490,7 +4498,9 @@ export const CreateAvariaResponse = zod.object({
   "lojaId": zod.string(),
   "bloqueioId": zod.string(),
   "descricao": zod.string(),
+  "tipo": zod.enum(['LIMPEZA', 'DANO']),
   "custoReparo": zod.number().nullish(),
+  "justificativaDaTaxa": zod.string().nullish(),
   "temFoto": zod.boolean().describe('A foto vem por \/avarias\/{id}\/foto'),
   "parcelaId": zod.string().nullish(),
   "parcelaStatus": zod.union([zod.literal('PREVISTA'),zod.literal('PARCIAL'),zod.literal('PAGA'),zod.literal('CANCELADA'),zod.literal(null)]).nullish(),
@@ -4522,11 +4532,14 @@ export const CobrarAvariaParams = zod.object({
 export const cobrarAvariaBodyPrazoDiasMin = 0;
 export const cobrarAvariaBodyPrazoDiasMax = 365;
 
+export const cobrarAvariaBodyJustificativaDaTaxaMax = 300;
+
 
 
 export const CobrarAvariaBody = zod.object({
   "contratoId": zod.string(),
-  "prazoDias": zod.number().min(cobrarAvariaBodyPrazoDiasMin).max(cobrarAvariaBodyPrazoDiasMax).optional()
+  "prazoDias": zod.number().min(cobrarAvariaBodyPrazoDiasMin).max(cobrarAvariaBodyPrazoDiasMax).optional(),
+  "justificativaDaTaxa": zod.string().min(1).max(cobrarAvariaBodyJustificativaDaTaxaMax).optional()
 })
 
 export const CobrarAvariaResponse = zod.object({
@@ -4534,7 +4547,9 @@ export const CobrarAvariaResponse = zod.object({
   "lojaId": zod.string(),
   "bloqueioId": zod.string(),
   "descricao": zod.string(),
+  "tipo": zod.enum(['LIMPEZA', 'DANO']),
   "custoReparo": zod.number().nullish(),
+  "justificativaDaTaxa": zod.string().nullish(),
   "temFoto": zod.boolean().describe('A foto vem por \/avarias\/{id}\/foto'),
   "parcelaId": zod.string().nullish(),
   "parcelaStatus": zod.union([zod.literal('PREVISTA'),zod.literal('PARCIAL'),zod.literal('PAGA'),zod.literal('CANCELADA'),zod.literal(null)]).nullish(),

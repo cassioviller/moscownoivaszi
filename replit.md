@@ -566,6 +566,23 @@ rode o codegen.
   servidor sempre aceitou. O diálogo de conferência da devolução só oferece
   "Registrar avaria" a quem tem `vestidos.criar`; os demais leem qual permissão
   falta, em vez de um botão que não faz nada.
+- **A taxa de avaria tem FAIXA, e ela vem do contrato de papel (E214).** A
+  avaria passa a dizer de qual cláusula a taxa saiu: **LIMPEZA** é a 14ª (faixa
+  absoluta, **R$ 350,00 a R$ 2.500,00**) e **DANO** é a 15ª (teto de **5× o
+  aluguel daquela peça**, lido de `contrato_itens.valor_unitario`). O mesmo
+  número tem dois desfechos — R$ 9.000,00 cabem no vestido de R$ 3.000,00 e não
+  cabem no véu de R$ 400,00 —, e é por isso que o teto não é constante. **Peça
+  fora de contrato não tem teto calculável**, e nesse caso a régua pede a razão
+  escrita em vez de aceitar em silêncio. **A régua não impede a dona de decidir:
+  obriga a dizer por quê** — `justificativaDaTaxa` é gravada na avaria, aparece
+  em vermelho na ficha e vai para a trilha como `AVARIA_FORA_DA_FAIXA`, com
+  tipo, cláusula, valor, piso, teto e motivo. As **duas** portas conferem (o
+  registro, contra o contrato ATIVO da dona; a cobrança, contra o contrato
+  ESCOLHIDO), e a justificativa também entra no corpo da cobrança para não haver
+  beco — sem ela, a única saída de uma avaria que estoura o teto do contrato
+  novo seria apagá-la, destruindo a foto-prova. A conta mora em
+  `financeiro-core/avaria.ts`, **inclusive a frase**, e a tela chama a mesma:
+  quem digita R$ 50,00 de limpeza lê os R$ 350,00 no ato, não no 422.
 - **A reserva se lê sozinha, e o dono do bloqueio é dito em toda porta de
   `reservas.ts` (E179).** `GET /lojas/:lojaId/reservas/:reservaId` existe — até
   aqui a única leitura de reserva era a listagem da loja INTEIRA, e foi ela que

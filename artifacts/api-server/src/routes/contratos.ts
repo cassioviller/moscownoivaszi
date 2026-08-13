@@ -189,7 +189,14 @@ router.get("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
         // descem SÓ no recorte por noiva (1–2 contratos). A listagem geral
         // segue sem: 518 contratos × parcelas é a classe de payload morto
         // que a S-D5/S-D16 mediu.
-        ...(leadId ? { parcelas: true } : {}),
+        //
+        // E214: os ITENS descem pela mesma porta e pela mesma razão. O teto da
+        // taxa de dano é 5× o aluguel DAQUELA peça (cláusula 15ª), e o aluguel
+        // mora em `contrato_itens.valor_unitario` — sem ele a tela da reserva
+        // não sabe qual limite anunciar, e anunciaria um que a porta não
+        // pratica, ou nenhum. São os mesmos 1–2 contratos, com uma mão-cheia de
+        // linhas cada.
+        ...(leadId ? { parcelas: true, itens: true } : {}),
       },
       // id desempata fechadoEm igual — sem ordem estável, página 2 repete item.
       orderBy:

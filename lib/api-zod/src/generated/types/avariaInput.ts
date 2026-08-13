@@ -5,6 +5,7 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AvariaInputTipo } from './avariaInputTipo';
 
 export interface AvariaInput {
   /**
@@ -12,7 +13,13 @@ export interface AvariaInput {
      * @maxLength 1000
      */
   descricao: string;
+  tipo?: AvariaInputTipo;
   /** @minimum 0 */
   custoReparo?: number;
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
+  justificativaDaTaxa?: string;
   fotoBase64?: string;
 }

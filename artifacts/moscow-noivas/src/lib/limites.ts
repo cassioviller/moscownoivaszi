@@ -35,3 +35,14 @@ export const FOTO_ACIMA_DO_TETO = "Foto acima de 2MB";
  * A `limites-de-upload.test.ts` prega os dois lados contra o SPEC.
  */
 export const AVARIA_DESCRICAO_MAX_CHARS = 1000;
+
+/**
+ * E214 — **quantos caracteres cabem na razão de uma taxa fora da faixa.**
+ *
+ * Mesmo raciocínio e mesma conta do vizinho: os dois são texto livre no corpo
+ * que carrega a foto, e o `ENVELOPE_MAX_BYTES` de 4.096 tem de comportar os
+ * dois. 1.000 × 3 + 300 × 3 + 79 do envelope medido = 3.979, com 117 de folga.
+ * Quem manda o número é o `AvariaInput` do `openapi.yaml`; a
+ * `limites-de-upload.test.ts` prega os dois lados contra o spec.
+ */
+export const AVARIA_JUSTIFICATIVA_MAX_CHARS = 300;

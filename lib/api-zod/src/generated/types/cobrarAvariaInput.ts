@@ -13,4 +13,9 @@ export interface CobrarAvariaInput {
      * @maximum 365
      */
   prazoDias?: number;
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
+  justificativaDaTaxa?: string;
 }

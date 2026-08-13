@@ -39,6 +39,31 @@ export const bloqueioTipoEnum = pgEnum("bloqueio_tipo", [
 export const ajusteStatusEnum = pgEnum("ajuste_status", ["PENDENTE", "FEITO"]);
 
 /**
+ * E214 — **de qual cláusula a taxa saiu**, e por isso são dois valores.
+ *
+ * O contrato de locação trata a devolução suja e a devolução danificada em
+ * cláusulas SEPARADAS, com réguas de forma diferente:
+ *
+ * - **LIMPEZA** é a **14ª**: sujeira extraordinária que sai com lavagem (tinta,
+ *   esmalte, vômito, sangue, barra com terra). Faixa ABSOLUTA — R$ 350,00 a
+ *   R$ 2.500,00 —, que não depende de peça nem de contrato.
+ * - **DANO** é a **15ª**: rasgo, queimadura, e também a mancha que **não sai**
+ *   com lavagem, que a própria 15ª puxa para si. Teto RELATIVO: cinco vezes o
+ *   aluguel **daquela peça**.
+ *
+ * Sem a coluna, `custo_reparo` era um número sem cláusula, e conferir era
+ * impossível: não há como dizer se R$ 400,00 cabe sem saber qual das duas
+ * réguas o rege.
+ *
+ * **O default é DANO**, e a escolha é a das linhas que já existem: a tabela se
+ * chama `avarias` e a coluna, `custo_reparo` — uma linha gravada antes deste
+ * épico é registro de dano. Também é o valor que não acusa ninguém
+ * retroativamente: o DANO não tem piso, então nenhuma avaria antiga passa a
+ * estar "abaixo dos R$ 350,00" por causa da migração.
+ */
+export const avariaTipoEnum = pgEnum("avaria_tipo", ["LIMPEZA", "DANO"]);
+
+/**
  * E155 — o que a costureira tem na mão é de duas naturezas.
  *
  * **AJUSTE** é peça existente que se altera: bainha, cintura, alça. **CONFECÇÃO**

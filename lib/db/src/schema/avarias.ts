@@ -2,6 +2,7 @@ import { pgTable, text, timestamp, decimal, customType, index } from "drizzle-or
 import { lojasTable } from "./loja";
 import { bloqueioVestidosTable } from "./atendimentos";
 import { parcelasTable } from "./financeiro";
+import { avariaTipoEnum } from "./common/enums";
 
 const bytea = customType<{ data: Buffer }>({
   dataType() {
@@ -29,8 +30,26 @@ export const avariasTable = pgTable(
       .notNull()
       .references(() => bloqueioVestidosTable.id, { onDelete: "cascade" }),
     descricao: text("descricao").notNull(),
+    /**
+     * E214 — de qual cláusula esta taxa saiu: **14ª (limpeza)** ou **15ª
+     * (dano)**. Ver `common/enums.ts` para o porquê de serem duas, e
+     * `financeiro-core/avaria.ts` para as duas réguas.
+     */
+    tipo: avariaTipoEnum("tipo").notNull().default("DANO"),
     /** Custo estimado do reparo, em reais — null quando ainda não avaliado. */
     custoReparo: decimal("custo_reparo", { precision: 10, scale: 2, mode: "number" }),
+    /**
+     * E214 — **por que este valor saiu da faixa que a cláusula manda.**
+     *
+     * A régua não impede a dona de decidir: obriga a dizer por quê. Preenchida
+     * significa que a taxa está fora do que as cláusulas 14ª/15ª permitem — ou
+     * que o teto do dano não pôde ser calculado porque a peça não está em
+     * contrato — e que alguém escreveu a razão. A mesma frase vai para a trilha
+     * (`AVARIA_FORA_DA_FAIXA`), com os números do veredicto ao lado.
+     *
+     * Nula é o caso normal: valor dentro da faixa não precisa de explicação.
+     */
+    justificativaDaTaxa: text("justificativa_da_taxa"),
     /** Foto-evidência (opcional). Mime sai do binário, nunca da palavra do cliente. */
     fotoBytes: bytea("foto_bytes"),
     fotoMime: text("foto_mime"),

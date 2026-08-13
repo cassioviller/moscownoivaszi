@@ -1436,6 +1436,14 @@ export interface BloqueioVestidoInput {
   reservaId?: string;
 }
 
+export type AvariaTipo = typeof AvariaTipo[keyof typeof AvariaTipo];
+
+
+export const AvariaTipo = {
+  LIMPEZA: 'LIMPEZA',
+  DANO: 'DANO',
+} as const;
+
 /**
  * @nullable
  */
@@ -1454,8 +1462,11 @@ export interface Avaria {
   lojaId: string;
   bloqueioId: string;
   descricao: string;
+  tipo: AvariaTipo;
   /** @nullable */
   custoReparo?: number | null;
+  /** @nullable */
+  justificativaDaTaxa?: string | null;
   /** A foto vem por /avarias/{id}/foto */
   temFoto: boolean;
   /** @nullable */
@@ -1474,7 +1485,20 @@ export interface CobrarAvariaInput {
      * @maximum 365
      */
   prazoDias?: number;
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
+  justificativaDaTaxa?: string;
 }
+
+export type AvariaInputTipo = typeof AvariaInputTipo[keyof typeof AvariaInputTipo];
+
+
+export const AvariaInputTipo = {
+  LIMPEZA: 'LIMPEZA',
+  DANO: 'DANO',
+} as const;
 
 export interface AvariaInput {
   /**
@@ -1482,8 +1506,14 @@ export interface AvariaInput {
      * @maxLength 1000
      */
   descricao: string;
+  tipo?: AvariaInputTipo;
   /** @minimum 0 */
   custoReparo?: number;
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
+  justificativaDaTaxa?: string;
   fotoBase64?: string;
 }
 

@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { AVARIA_DESCRICAO_MAX_CHARS, FOTO_MAX_BYTES } from "./limites";
+import {
+  AVARIA_DESCRICAO_MAX_CHARS,
+  AVARIA_JUSTIFICATIVA_MAX_CHARS,
+  FOTO_MAX_BYTES,
+} from "./limites";
 
 /**
  * S-O19 — **o teto da foto era declarado três vezes, independentes.**
@@ -189,37 +193,70 @@ describe("varredura — o teto da foto é o mesmo dos dois lados (S-O19)", () =>
    * fonte da verdade, não o zod gerado nem a constante da tela.
    */
   const PIOR_BYTE_POR_CARACTERE = 3; // o travessão "—" em UTF-8; os de 4 bytes ocupam 2 chars
+  /**
+   * **E214 — o envelope passou a ter DOIS campos de texto livre, e a régua
+   * somava um só.**
+   *
+   * A `justificativaDaTaxa` entrou no `AvariaInput` no mesmo corpo que carrega a
+   * foto. Deixada de fora desta conta, a régua continuaria verde enquanto a
+   * promessa do `ENVELOPE_MAX_BYTES` deixava de ser verdade — a classe exata que
+   * o E186 e o E199 acharam em outras varreduras: **a régua que mede menos do
+   * que anuncia**.
+   *
+   * A conta declarada, e é ela que este teste prega:
+   * 1.000 × 3 + 300 × 3 + 79 = **3.979** dos 4.096, com 117 de folga.
+   */
+  const CAMPOS_DE_TEXTO_DA_AVARIA = ["descricao", "justificativaDaTaxa"] as const;
   const ENVELOPE_DA_AVARIA_BYTES = JSON.stringify({
     descricao: "",
+    justificativaDaTaxa: "",
     custoReparo: 1234.56,
     fotoBase64: "",
   }).length;
 
-  it("a descrição da avaria tem teto no spec, e ele cabe no envelope reservado (S-O81)", () => {
+  it("os textos da avaria têm teto no spec, e os DOIS cabem no envelope reservado (S-O81/E214)", () => {
     const spec = readFileSync(path.join(RAIZ, O_SPEC), "utf8");
     const bloco = /\n {4}AvariaInput:\n([\s\S]*?)\n {4}\w/.exec(spec);
     expect(bloco, "o `AvariaInput` mudou de nome ou de indentação no spec").toBeTruthy();
-    const m = /descricao:\s*\{[^}]*maxLength:\s*(\d+)/.exec(bloco![1]!);
-    expect(
-      m,
-      "a descrição da avaria voltou a ser texto sem teto — o único limite passa a ser o do parser, 3,8 MiB",
-    ).toBeTruthy();
-    const doSpec = Number(m![1]);
 
-    expect(ENVELOPE_DA_AVARIA_BYTES).toBe(54);
+    const tetos = CAMPOS_DE_TEXTO_DA_AVARIA.map((campo) => {
+      const m = new RegExp(`${campo}:\\s*\\{[^}]*maxLength:\\s*(\\d+)`).exec(bloco![1]!);
+      expect(
+        m,
+        `\`${campo}\` voltou a ser texto sem teto — o único limite passa a ser o do parser, 3,8 MiB`,
+      ).toBeTruthy();
+      return Number(m![1]);
+    });
+    const [descricaoDoSpec, justificativaDoSpec] = tetos as [number, number];
+
+    expect(ENVELOPE_DA_AVARIA_BYTES).toBe(79);
     const envelope = /export const ENVELOPE_MAX_BYTES = ([^;]+);/.exec(fonteDoServidor());
     // eslint-disable-next-line no-eval
     const reservado = eval(envelope![1]!) as number;
     expect(
-      doSpec * PIOR_BYTE_POR_CARACTERE + ENVELOPE_DA_AVARIA_BYTES,
-      "a descrição não cabe mais nos bytes que a conta do corpo reserva para ela",
+      tetos.reduce((s, t) => s + t * PIOR_BYTE_POR_CARACTERE, 0) + ENVELOPE_DA_AVARIA_BYTES,
+      "os textos da avaria não cabem mais nos bytes que a conta do corpo reserva para eles",
     ).toBeLessThanOrEqual(reservado);
 
-    // E a tela, que não importa o api-zod, repete o mesmo número — a forma do
+    // E a tela, que não importa o api-zod, repete os mesmos números — a forma do
     // espelho da S-O19: quando não dá para compartilhar, prega-se a igualdade.
     expect(
       AVARIA_DESCRICAO_MAX_CHARS,
       "o teto mudou de um lado só — o campo aceitaria o que o servidor recusa, ou o contrário",
-    ).toBe(doSpec);
+    ).toBe(descricaoDoSpec);
+    expect(
+      AVARIA_JUSTIFICATIVA_MAX_CHARS,
+      "o teto da justificativa mudou de um lado só",
+    ).toBe(justificativaDoSpec);
+
+    // E214: o `CobrarAvariaInput` carrega o MESMO campo, e o teto tem de ser o
+    // mesmo — dois números para uma decisão é a marca de que ela não foi tomada
+    // (a lição do E186 sobre os dois tetos de corpo da mesma foto).
+    const cobrar = /\n {4}CobrarAvariaInput:\n([\s\S]*?)\n {4}\w/.exec(spec);
+    const naCobranca = /justificativaDaTaxa:\s*\{[^}]*maxLength:\s*(\d+)/.exec(cobrar![1]!);
+    expect(
+      Number(naCobranca![1]),
+      "a justificativa tem dois tetos — o mesmo campo aceitaria tamanhos diferentes por porta",
+    ).toBe(justificativaDoSpec);
   });
 });

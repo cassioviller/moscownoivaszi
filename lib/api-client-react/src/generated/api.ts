@@ -8716,6 +8716,8 @@ export const getCreateAvariaUrl = (lojaId: string,
 
 /**
  * E71: o atraso já era detectado; a avaria morria numa conversa. A foto é opcional, validada por magic bytes como as de vestido (E3), e quando há contrato o custo pode virar parcela avulsa cobrável.
+ *
+ * E214: a taxa passa a ter FAIXA — R$ 350,00 a R$ 2.500,00 na limpeza (cláusula 14ª) e 5× o aluguel da peça no dano (15ª). Valor fora dela entra com `justificativaDaTaxa`, que vai para a trilha.
  * @summary Registra uma avaria — descrição, custo estimado e foto-evidência
  */
 export const createAvaria = async (lojaId: string,
@@ -8734,7 +8736,7 @@ export const createAvaria = async (lojaId: string,
 
 
 
-export const getCreateAvariaMutationOptions = <TError = ErrorType<unknown>,
+export const getCreateAvariaMutationOptions = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAvaria>>, TError,{lojaId: string;bloqueioId: string;data: BodyType<AvariaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createAvaria>>, TError,{lojaId: string;bloqueioId: string;data: BodyType<AvariaInput>}, TContext> => {
 
@@ -8763,12 +8765,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateAvariaMutationResult = NonNullable<Awaited<ReturnType<typeof createAvaria>>>
     export type CreateAvariaMutationBody = BodyType<AvariaInput>
-    export type CreateAvariaMutationError = ErrorType<unknown>
+    export type CreateAvariaMutationError = ErrorType<ErrorResponse>
 
     /**
  * @summary Registra uma avaria — descrição, custo estimado e foto-evidência
  */
-export const useCreateAvaria = <TError = ErrorType<unknown>,
+export const useCreateAvaria = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAvaria>>, TError,{lojaId: string;bloqueioId: string;data: BodyType<AvariaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createAvaria>>,
