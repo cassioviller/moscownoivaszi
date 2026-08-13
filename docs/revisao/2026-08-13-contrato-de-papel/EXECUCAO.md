@@ -15,7 +15,7 @@ Contado em 13/08/2026:
 
 | natureza | quantos | estado |
 |---|---|---|
-| Épicos de código (E211–E222) | **12** | **7 executados** (E211, E212, E213, E214, E216, E221, E222) · **1 bloqueado** (E219: a porta que ele guardaria não existe) |
+| Épicos de código (E211–E222) | **12** | **8 executados** (E211, E212, E213, E214, E216, E218, E221, E222) — **as Ondas A e B fechadas**, menos o E219 · **1 bloqueado** (E219: a porta que ele guardaria não existe) |
 | Sobras abertas | **13** | 1 da auditoria + 2 do E212 + 2 do E214 + 3 do E216 + 2 do E221 + 1 do E213 + 2 do E222 — **conte a tabela, não esta linha** |
 | Pendências que **não são software** | **4** | abertas (a P4 nasceu no E213) |
 | Decisões da dona ainda abertas | **2** (D4, D7) | travam só o E220 |
@@ -71,7 +71,7 @@ antes de podar, e é o que está feito acima: só `eaa4e90` (E216) tem o mesmo
 |---|---|---|---|---|
 | ~~**E222**~~ | ~~o ateliê tem DOIS expedientes e o sistema conhece um~~ | 4ª e 5ª | rodada e conferida (**4 colunas**) | ✅ `31422db` · [relatório](execucao/E222.md) — **a medição mudou o tamanho do épico antes de uma linha de código**: são **723 contratos, 1 com `dataRetirada` e ZERO com `dataDevolucao`**, e **nenhuma tela cita os dois campos** (`git ls-files`) — só se chega neles pela API, que é o formato do E197. Daí as datas continuarem OPCIONAIS e a migração não corrigir linha nenhuma. Não era contradição com o horário que existia — o de lá governa ATENDIMENTO (sete dias até as 20h, do caderno pela S-A8, e **certo para provas**); é ausência, e o modelo tinha um calendário onde o negócio tem dois. O vermelho: `expected 201 to be 422` — o contrato nascia com a peça saindo **num domingo às 23h**. **O PATCH entrou junto** (`expected 200 to be 422`), senão o caminho era fechar no sábado e corrigir para domingo depois. O sábado tem **coluna própria** porque um número só recusaria 18:30 numa quarta ou aceitaria no sábado; o fechamento é **inclusivo** aqui e exclusivo na agenda (prova tem duração, retirar é ato) |
 | ~~**E214**~~ | ~~a taxa de limpeza e a de dano ganham faixa~~ | 14ª e 15ª | rodada e conferida | ✅ `0c15cda` + `6d1e860` (a migração renumerada) + `1c439d5` (a régua da moeda, que este épico deixou vermelha no `main`) · [relatório](execucao/E214.md) — as duas cláusulas viram réguas de **formas diferentes** (a da limpeza é absoluta, a do dano é 5× o aluguel DAQUELA peça), e é isso que obriga o `tipo`: sem ele, `custo_reparo` é um número sem régua. O teto sai de `contrato_itens.valor_unitario`, que o sistema tinha e não usava — **R$ 9.000,00 cabem no vestido de R$ 3.000,00 e não cabem no véu de R$ 400,00**. A régua não vira parede — o que VIOLA um número do papel entra com justificativa, gravada na avaria e na trilha. **Peça fora de contrato: a 15ª NÃO alcança o caso** — não barra, e diz que não conferiu (decisão que eu escrevi ao contrário primeiro; medir derrubou o argumento, e a conta está no relatório). **As duas portas conferem**, e a razão entra também na cobrança para não haver beco (apagar a avaria destruiria a foto-prova). Fora do escopo aparente: `listContratos` desce os `itens` no recorte por noiva, e a conta do `ENVELOPE_MAX_BYTES` foi **refeita para dois campos de texto**, não esticada |
-| **E218** | **a entrada sugere 40% e o plano respeita os 20 dias** — nada compara `parcelas.vencimento` com `contratos.dataRetirada` | 8ª §1º e § único | não | aberto |
+| ~~**E218**~~ | ~~a entrada sugere 40% e o plano respeita os 20 dias~~ | 8ª §1º e § único | não | ✅ `f8ab561` · [relatório](execucao/E218.md) — **duas regras do mesmo contrato, tratamentos opostos, e a razão é MEDIDA**: dos 208 contratos ativos com entrada, **101 estão abaixo dos 40%** e a média é **67,6%** — recusar tornaria quase metade do que a loja já fez irreproduzível pela porta, e a entrada é onde a dona negocia. Então a 8ª §1º **avisa** (o placeholder mostra os 40%, a frase diz quanto falta e que dá para seguir) e o § único **recusa**, porque ele garante o dinheiro antes de a peça sair. **A cláusula não vale para toda parcela** — aplicá-la a qualquer vencimento recusaria a avaria (E214), o atraso (E212) e a mora (E213), que nascem depois da retirada; vale para o CARNÊ, e as **duas** portas que o montam conferem (`expected 201 to be 422` nas duas). **O teste achou um defeito meu antes do commit**: a régua misturava o INSTANTE da retirada (que o E222 criou três horas antes) com a data de negócio do vencimento, e as 23:59 de 15/08 em SP viravam 16/08 — a classe da S-O117, agora entre dois épicos da mesma sessão |
 | **E219** | **a troca de traje tem prazo** — sem troca após 7 dias, nem às sextas e sábados | 17ª e §1º | não | **BLOQUEADO — a porta que ele guardaria não existe.** O plano diz *"é guarda na porta que edita itens do contrato"*, e essa porta é suposição: enumerado por `git ls-files`, `contratoItensTable` e `contratoBloqueiosTable` recebem escrita em **UM sítio** — o `INSERT` dentro do `POST /contratos` (`contratos.ts:904` e `:916`). Os outros três arquivos que as citam (`portal.ts`, `reservas.ts`, `vestidos.ts`) só LEEM. Não há `PATCH`, `PUT` nem `DELETE` de item: **hoje trocar de traje é cancelar o contrato e fazer outro**. Fechá-lo pede antes um épico de PORTA (trocar peça, libertar a reserva antiga, prender a nova, refazer o snapshot de preço) — decidido em 13/08 que ele espera |
 
 ### Onda C — o que o sistema não sabe
@@ -185,9 +185,9 @@ três vezes: reajuste (E211), atraso (E212) e mora (E213).
    e `fa7d838`
 3. ~~**E222** — a única cláusula em que o sistema **deixa acontecer** o que o
    contrato proíbe.~~ ✅ `31422db`
-4. O resto da Onda B: **E218**. O **E214** fechou (`0c15cda`), e o **E219** está
-   **bloqueado** — a porta que ele guardaria não existe, e a linha dele na fila
-   traz a enumeração que prova.
+4. ~~O resto da Onda B: **E218**.~~ ✅ `f8ab561` — com ele **as Ondas A e B
+   estão fechadas**, menos o **E219**, que segue **bloqueado**: a porta que ele
+   guardaria não existe, e a linha dele na fila traz a enumeração que prova.
 
    **Três épicos seguidos ensinaram a mesma coisa, e ela vale para os que
    faltam: o plano deste contrato supõe portas que o sistema não tem.** No E213
