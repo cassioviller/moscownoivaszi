@@ -15,8 +15,8 @@ Contado em 13/08/2026:
 
 | natureza | quantos | estado |
 |---|---|---|
-| Épicos de código (E211–E222) | **12** | **3 executados** (E211, E216, E221) |
-| Sobras abertas | **6** | 1 da auditoria + 3 do E216 + 2 do E221 — **conte a tabela** |
+| Épicos de código (E211–E222) | **12** | **4 executados** (E211, E214, E216, E221) |
+| Sobras abertas | **8** | 1 da auditoria + 2 do E214 + 3 do E216 + 2 do E221 — **conte a tabela, não esta linha** |
 | Pendências que **não são software** | **3** | abertas |
 | Decisões da dona ainda abertas | **2** (D4, D7) | travam só o E220 |
 
@@ -55,7 +55,7 @@ A ordem não é por cláusula nem por valor: é por **de onde vem o dado**.
 | Épico | Tese | Cláusula | Migração? | Estado |
 |---|---|---|---|---|
 | **E222** | **o ateliê tem DOIS expedientes e o sistema conhece um** — nasce o de retirada/devolução (ter–sex 10:30–19:00, sáb até 18:00), e `dataRetirada`/`dataDevolucao` passam a ser validadas. Hoje o sistema aceita retirada num domingo às 23h | 4ª e 5ª | sim | aberto |
-| **E214** | **a taxa de limpeza e a de dano ganham faixa** — R$ 350 a R$ 2.500 na limpeza, teto de 5× o aluguel no dano; hoje `custoReparo` é campo livre | 14ª e 15ª | sim (separar limpeza de dano) | aberto |
+| ~~**E214**~~ | ~~a taxa de limpeza e a de dano ganham faixa~~ | 14ª e 15ª | rodada e conferida | ✅ `35cce35` · [relatório](execucao/E214.md) — as duas cláusulas viram réguas de **formas diferentes** (a da limpeza é absoluta, a do dano é 5× o aluguel DAQUELA peça), e é isso que obriga o `tipo`: sem ele, `custo_reparo` é um número sem régua. O teto sai de `contrato_itens.valor_unitario`, que o sistema tinha e não usava — **R$ 9.000,00 cabem no vestido de R$ 3.000,00 e não cabem no véu de R$ 400,00**. A régua não vira parede — o que VIOLA um número do papel entra com justificativa, gravada na avaria e na trilha. **Peça fora de contrato: a 15ª NÃO alcança o caso** — não barra, e diz que não conferiu (decisão que eu escrevi ao contrário primeiro; medir derrubou o argumento, e a conta está no relatório). **As duas portas conferem**, e a razão entra também na cobrança para não haver beco (apagar a avaria destruiria a foto-prova). Fora do escopo aparente: `listContratos` desce os `itens` no recorte por noiva, e a conta do `ENVELOPE_MAX_BYTES` foi **refeita para dois campos de texto**, não esticada |
 | **E218** | **a entrada sugere 40% e o plano respeita os 20 dias** — nada compara `parcelas.vencimento` com `contratos.dataRetirada` | 8ª §1º e § único | não | aberto |
 | **E219** | **a troca de traje tem prazo** — sem troca após 7 dias, nem às sextas e sábados | 17ª e §1º | não | aberto |
 
@@ -86,6 +86,8 @@ A ordem não é por cláusula nem por valor: é por **de onde vem o dado**.
 | **S-C22** | **A peça exclusiva não é filtrável no acervo** — custo declarado da decisão 1 do E216. Os filtros de `vestidos/index.tsx` saem do catálogo (tamanho, coleção, atributos), e `exclusiva` é coluna de propósito. Hoje a conta não dói: são **132 peças em `moscow_base` e ZERO marcadas**. Vale um `Select` a mais no dia em que a loja marcar as primeiras | 🔵 | E216 | aberta |
 | **S-C30** | **A régua do PDF carrega um caractere INVISÍVEL.** `e165-pdf-fala-a-verdade.test.ts:19` normaliza o espaço duro do `brl` com o NBSP **literal** dentro do `replace`. Um editor que normalize espaços desliga a normalização em silêncio e o golden test passa a comparar bytes de codificação em vez de texto. Custou dois testes ao E221, que já escreve ` ` escapado. Uma linha | 🔵 | E221 | aberta |
 | **S-C31** | **O recebimento PARCIAL é datado pelo último pedaço no caixa.** `parcelas.recebidoEm` guarda só o último recebimento, e o extrato/conciliação datam por ele: R$ 300,00 que entraram em 01/03 são contados no caixa realizado de 15/03, quando os R$ 700,00 quitaram. Não é defeito do recibo — o E221 fez a trilha passar a saber o dia de CADA ato, e agora há de onde tirar a data certa | 🔵 | E221 | aberta |
+| **S-C10** | **Os "61 das 63 avarias" envelheceram, e ainda sustentam decisões de desenho.** O número nasceu no E110 e é citado em **8 sítios versionados** — `e167-avaria-fecha-api.test.ts:27` e `:111`, `revisao-reserva-avaria-api.test.ts:21`, `so18-reserva-por-id-api.test.ts:59`, `routes/contratos.ts:538`, `routes/reservas.ts:1714`, `reservas/[bloqueioId].tsx:153` e `openapi.yaml:5934`. Medido em `moscow_base` no E214: **116 bloqueios, TODOS com `lead_id` próprio, nenhum sem dono, e ZERO avarias.** Os comentários argumentam com ele ("prova quando é provável"; o botão que a tela desenha), então não é troca de texto — é remedir e decidir se o argumento sobrevive | 🟡 | E214 | aberta |
+| **S-C11** | **A avaria não tem porta de EDIÇÃO.** `custo_reparo`, `tipo` e `justificativa_da_taxa` só entram no `POST` de nascimento; não há `PATCH /avarias/:id`. Quem digitou R$ 1.500,00 onde eram R$ 150,00 só tem o caminho de apagar e refazer — e o E115 recusa apagar quando a avaria sustenta cobrança viva, além de a foto-prova sair junto. Não fecha buraco de régua (o E214 confere no nascimento e na cobrança), mas é gesto que falta a quem usa | 🟡 | E214 | aberta |
 
 ## Pendências que não são software
 
