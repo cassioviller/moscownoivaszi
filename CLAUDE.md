@@ -13,7 +13,45 @@ para o documento que manda.
    ampliado. As **regras acumuladas** no fim do arquivo valem para o trabalho de
    hoje, e a seção de crítica diz por que cada uma existe, com a evidência que a
    motivou. Não é história: é o contrato.
-2. **A trilha em curso** — `docs/revisao/2026-08-11-otica-dos-papeis/`,
+2. **A trilha em curso** — `docs/revisao/2026-08-13-contrato-de-papel/`, aberta
+   em 2026-08-13: o **instrumento de locação em papel** (21 cláusulas) virou fila
+   de código. A transcrição (`A-transcricao.md`) e a auditoria (`B-auditoria.md`)
+   compararam cláusula por cláusula com o que o sistema faz, e o plano
+   (`docs/propostas/2026-08-13-o-contrato-vira-regra-plano.md`) fechou **12
+   épicos, E211–E222, em quatro ondas** — ordenadas não por cláusula nem por
+   valor, mas por **de onde vem o dado**. **A Onda A está EXECUTADA inteira**:
+   E211 (`0c8874a`), E212 (`a88d7ead`) e E213 (`fa7d838`). Com E214 (`0c15cda`),
+   E216 (`eaa4e90`) e E221 (`fcc24e9`), são **6 de 12**. A tabela do
+   `EXECUCAO.md` é a fila; **conte, não deduza** — hoje são **11 sobras** e
+   **4 pendências que não são software**.
+
+   Os três da Onda A estabeleceram o mecanismo que a Onda B reusa: **uma cobrança
+   nasce de um fato do contrato**, a conta é **DERIVADA** (cresce todo dia, e
+   gravá-la estaria errado a partir da meia-noite seguinte) e o que o banco guarda
+   é o **fato datado** — o degrau da troca, a peça que não voltou, o perdão da
+   multa. Ele foi escrito três vezes antes de virar hábito.
+
+   **A lição mais cara da trilha é de medição, e ela se repetiu:** o plano diz
+   *"falta a conta"*, e falta a conta **mais a porta ao lado dela**. No E213, com
+   a cláusula 9ª ligada, o `POST /receber` **RECUSAVA** os R$ 515,00 devidos por
+   uma parcela de R$ 500,00 vencida há 30 dias — quatro leituras do mesmo número,
+   e a única que decide dizia não. É o mesmo formato do E172 (tirar o contrato de
+   `leads` fazia a Recepção **aprovar o orçamento**) e do E185.
+
+   **E uma de operação, que o E213 pagou inteira: código sem medição parece
+   pronto.** O épico chegou escrito na árvore — 805 linhas, duas migrações, o
+   spec e o codegen — **sem uma única medição registrada**, porque a sessão que o
+   escreveu caiu antes do commit. A árvore estava verde porque ninguém tinha
+   rodado nada, e os vermelhos tiveram de ser **reproduzidos** depois do fato
+   (reverter a linha do conserto, rodar, desfazer). O `PROGRESSO.md` da trilha
+   anterior já dizia: **o arquivo é o registro, o resto é conveniência.**
+
+   O próximo da fila é o **E222** — o ateliê tem **dois expedientes** e o sistema
+   conhece um. É a única cláusula em que ele hoje **deixa acontecer** o que o
+   contrato proíbe: aceita retirada num domingo às 23h.
+
+3. **A trilha anterior, e a que ainda tem sobras abertas** —
+   `docs/revisao/2026-08-11-otica-dos-papeis/`,
    aberta em 2026-08-11 a pedido da dona: a revisão pela ótica de quem USA
    (dona, vendedora, costureira, noiva), mirando o **gate entre o aceite e o
    contrato**. Três lentes (8 ângulos, 3 alvos `high`, 4 fatias `max`)
@@ -301,12 +339,13 @@ para o documento que manda.
    ainda está em dia — esta linha envelhece a cada commit, e já envelheceu
    cinco vezes.
 
-   Hoje a régua é **API 1389 (199 arquivos) · frontend 704 · E2E 171 ·
-   typecheck verde em 5 projetos** (medida em 2026-08-13, no E197). Ela é MEDIDA
-   a cada onda, e envelhece depressa: quando a onda 2 abriu, este parágrafo dizia
-   *1349 · 683* e o `main` dava *1369 · 692* — a onda 1 somara 20 e 9 sem que
-   ninguém refizesse a conta. **Meça antes de citar.** E **o frontend não está
-   verde**: são 703 de 704, pela S-O119 — o helper `emDiasISO` fabrica a data
+   Hoje a régua é **API 1467 (207 arquivos) · frontend 803 (90 arquivos) ·
+   E2E 171 · typecheck verde em 5 projetos** (medida em 2026-08-13, no E213, e as
+   três em série). Ela é MEDIDA a cada onda, e envelhece depressa: este parágrafo
+   já disse *1389 · 704* enquanto seis épicos do contrato somavam 78 testes de
+   API e 99 de frontend sem que ninguém refizesse a conta — e antes disso dizia
+   *1349 · 683* com o `main` em *1369 · 692*. **Meça antes de citar.** E **o
+   frontend pode não estar verde**, pela S-O119 — o helper `emDiasISO` fabrica a data
    como instante e o código a lê como dia, então o arquivo `ajustes-prazo`
    reprova entre 00:00 e 03:00 UTC e passa nas outras 21 horas. **Régua que
    depende da hora em que roda não é régua**; quem medir de madrugada e vir
