@@ -246,11 +246,23 @@ E o campo livre **DESCRIÇÃO FORMA PAGAMENTO DO VALOR RESTANTE**.
 Estes não são divergências com o aplicativo: são problemas do documento em si, e
 nenhum deles se resolve escrevendo código.
 
-1. **DOIS CNPJs para a mesma empresa.** A identificação diz
-   **37.771.644/0001-93**; o bloco de assinatura diz **31.897.111/0001-76**. Um
-   instrumento assinado que se identifica com dois números é problema de
-   validade. **Só a dona sabe qual é o certo**, e a resposta decide o que o
-   sistema vai imprimir.
+1. **DOIS CNPJs para a mesma empresa — e os dois são números REAIS.** A
+   identificação (p. 1) diz **37.771.644/0001-93**; o bloco de assinatura (p. 6)
+   diz **31.897.111/0001-76**.
+
+   **Decidido pela dona em 13/08/2026: vale o final 93** —
+   **37.771.644/0001-93**. O da página 6 sai do contrato.
+
+   A conferência dos dígitos verificadores mudou a natureza do problema, e vale
+   registrar: **os dois passam na validação de CNPJ**. Não é erro de digitação
+   nem falha do scanner — o número da página 6 é o CNPJ bem-formado de **outra
+   inscrição**. Um instrumento que se identifica com duas empresas reais é
+   problema mais sério que um dígito trocado, e o conserto do papel é urgente:
+   contratos já assinados com a página 6 carregam o CNPJ errado.
+
+   (De quebra: o exemplo que o sistema semeia hoje, `12.345.678/0001-99`, é um
+   CNPJ **inválido** — e passa, porque o campo é `string` livre no spec
+   (`openapi.yaml:4796`) e **nada valida CNPJ em lugar nenhum**.)
 2. **Quem assina e quem recebe são pessoas diferentes, sem uma linha ligando as
    duas.** A LOCADORA é representada por *Renato Nascimento de Brito*; o PIX é o
    CPF de *Karina Shabalina*.

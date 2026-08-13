@@ -37,15 +37,28 @@ D2, D5 e D6 de uma vez — e já corrigiu um erro meu:
 - **D5 — resolvida.** A cláusula de pandemia (13ª §1º) fica como está.
 - **D6 — resolvida.** O aviso prévio de 365 dias (10ª) fica como está.
   Nenhuma das duas pede código.
+- **D1 — resolvida em 13/08/2026: o CNPJ é o final 93**, 37.771.644/0001-93 (o da
+  identificação, p. 1). O da assinatura sai do contrato.
 
-### As duas que a régua NÃO consegue responder
+  **A conferência dos dígitos mudou o tamanho do problema:** os DOIS números
+  passam na validação de CNPJ, então a página 6 não traz um erro de digitação —
+  traz o CNPJ bem-formado de **outra inscrição**. O papel precisa ser corrigido
+  antes da próxima assinatura, e vale olhar os contratos já assinados com aquela
+  página.
 
-Estas não sobrevivem a "o contrato está certo" porque **o contrato não diz**: ele
-se contradiz numa e fica em branco na outra.
+  **E nasce uma régua que ninguém tinha pedido:** o campo `cnpj` é `string`
+  livre no spec (`openapi.yaml:4796`) e **nada valida CNPJ no repositório
+  inteiro** — tanto que o exemplo semeado hoje, `12.345.678/0001-99`, é
+  **inválido**. O número que vai impresso em todo contrato entra sem conferência.
+  Entra no E220.
+
+### A que a régua ainda NÃO consegue responder
+
+Ela não sobrevive a "o contrato está certo" porque **o contrato não diz** — o
+molde ficou em branco. (A outra desta lista era o CNPJ, respondida acima.)
 
 | # | pergunta | por que a régua não resolve |
 |---|---|---|
-| **D1** | **Qual é o CNPJ?** O papel traz **37.771.644/0001-93** na identificação (p. 1) e **31.897.111/0001-76** na assinatura (p. 6) | O contrato afirma os DOIS, e são números diferentes. "Está certo" não escolhe entre eles — e é o número que todo contrato impresso vai carregar |
 | **D3** | **Cláusula 18ª: até quantos dias antes?** — *"se comunicar o cancelamento até _____ dias antes"* | O molde tem a **lacuna em branco**. Não há regra a seguir porque não há regra escrita |
 
 ### As que seguem abertas por escolha, não por impedimento
@@ -236,8 +249,8 @@ não existe recibo nenhum (medido: zero ocorrências no código). O recebimento 
 
 ## A ordem sugerida, se for para começar hoje
 
-1. **D1 e D3** — as duas perguntas que a régua não resolve, e que travam o E220
-   (o CNPJ que vai impresso) e o E217 (o prazo da 18ª).
+1. **D3** — a única pergunta que ainda trava um épico (o prazo da 18ª, no E217).
+   O D1 saiu da fila: o CNPJ é o final 93.
 2. **E211** (a data que muda tem preço) — não depende de decisão nenhuma, usa
    dado que já existe, e é dinheiro que o contrato manda cobrar e ninguém cobra.
 3. **E212** e **E213** — mesma natureza, mesma fonte de dado.
