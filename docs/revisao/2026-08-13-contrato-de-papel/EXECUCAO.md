@@ -15,8 +15,8 @@ Contado em 13/08/2026:
 
 | natureza | quantos | estado |
 |---|---|---|
-| Épicos de código (E211–E222) | **12** | 2 executados (E211, E216) |
-| Sobras que não viraram épico | **1** | aberta (mais 3 nascidas no E216 — **conte a tabela**) |
+| Épicos de código (E211–E222) | **12** | **3 executados** (E211, E216, E221) |
+| Sobras abertas | **6** | 1 da auditoria + 3 do E216 + 2 do E221 — **conte a tabela** |
 | Pendências que **não são software** | **3** | abertas |
 | Decisões da dona ainda abertas | **2** (D4, D7) | travam só o E220 |
 
@@ -72,7 +72,7 @@ A ordem não é por cláusula nem por valor: é por **de onde vem o dado**.
 | Épico | Tese | Cláusula | Migração? | Estado |
 |---|---|---|---|---|
 | **E220** | **o PDF vira o INSTRUMENTO** — as 21 cláusulas, com os números vindos de constantes; e **nasce a validação de CNPJ**, que hoje não existe em lugar nenhum | 6ª, 21ª | não | aberto · trava em **D4**, **D7** e **E215** |
-| **E221** | **recibo de pagamento** — a 7ª manda fornecer todos, e não existe recibo no repositório | 7ª | provável | aberto |
+| ~~**E221**~~ | ~~recibo de pagamento~~ | 7ª | rodada e conferida (**índice**, não tabela) | ✅ `6051592` · [relatório](execucao/E221.md) — **o recibo é por RECEBIMENTO, não por parcela**: a cláusula diz "pagamentos EFETUADOS" e uma parcela deste sistema recebe em pedaços, então quem pagou R$ 300,00 em 01/03 tem o papel DE 01/03. **Não nasce tabela**: o ato individual só existe na linha `PARCELA_RECEBIDA` da trilha, escrita na MESMA transação do dinheiro — e o papel **CONCILIA** com a parcela antes de sair (soma maior que o recebido = nenhum recibo, falha fechada). O estorno anula por CORTE, pelos DOIS caminhos (avulso e cancelamento com `destinoPago: estornar`). Achou de passagem que **a trilha não guardava o DIA do pagamento** — só o instante do lançamento. O plano errou duas vezes: o épico **não dependia de D4/D7** (elas são do documento) e a migração não era tabela. Quatro réguas cobraram, e a quarta era defeito DELA: a `e115-migracao-snapshot-unit` lia o COMENTÁRIO do script como DDL — a frase que justifica o `CONCURRENTLY` virou o índice `comum` |
 
 ---
 
@@ -84,6 +84,8 @@ A ordem não é por cláusula nem por valor: é por **de onde vem o dado**.
 | **S-C20** | **Nenhum manual conhece a peça exclusiva.** O E216 pôs o selo em quatro lugares (ficha, acervo, seletor do orçamento, diálogo do contrato) e os cinco manuais de `docs/manuais/` calam a cláusula 12ª inteira. É o achado do **E196** repetido: manual que CALA capacidade é invisível para quem lê — não há como estranhar o que não está escrito, e a `varredura-manuais` passa verde porque confere o MENU, não a prosa. **Não é conserto de passagem**: pela lição do próprio E196, manual se reescreve **depois da onda**, e a onda C ainda tem E215 e E217 | 🔵 | E216 | aberta |
 | **S-C21** | **O lookbook público não sabe da marca.** `LookbookPublicoVestido` não traz `exclusiva`, e mostrá-la à noiva no lookbook **é decisão de negócio, não código**: é argumento de venda ("esta peça é só sua") ou é pressão indevida antes de a noiva saber que a rescisão custa o aluguel inteiro? Fica contável até a dona dizer | 🔵 | E216 | aberta |
 | **S-C22** | **A peça exclusiva não é filtrável no acervo** — custo declarado da decisão 1 do E216. Os filtros de `vestidos/index.tsx` saem do catálogo (tamanho, coleção, atributos), e `exclusiva` é coluna de propósito. Hoje a conta não dói: são **132 peças em `moscow_base` e ZERO marcadas**. Vale um `Select` a mais no dia em que a loja marcar as primeiras | 🔵 | E216 | aberta |
+| **S-C30** | **A régua do PDF carrega um caractere INVISÍVEL.** `e165-pdf-fala-a-verdade.test.ts:19` normaliza o espaço duro do `brl` com o NBSP **literal** dentro do `replace`. Um editor que normalize espaços desliga a normalização em silêncio e o golden test passa a comparar bytes de codificação em vez de texto. Custou dois testes ao E221, que já escreve ` ` escapado. Uma linha | 🔵 | E221 | aberta |
+| **S-C31** | **O recebimento PARCIAL é datado pelo último pedaço no caixa.** `parcelas.recebidoEm` guarda só o último recebimento, e o extrato/conciliação datam por ele: R$ 300,00 que entraram em 01/03 são contados no caixa realizado de 15/03, quando os R$ 700,00 quitaram. Não é defeito do recibo — o E221 fez a trilha passar a saber o dia de CADA ato, e agora há de onde tirar a data certa | 🔵 | E221 | aberta |
 
 ## Pendências que não são software
 
@@ -105,8 +107,11 @@ igual"*, faltando "teor e forma").
 | **D4** | O PDF do sistema deve virar o instrumento com as 21 cláusulas? | **E220** |
 | **D7** | Representante legal (Renato) e chave PIX (CPF de Karina) entram no cadastro da loja? | **E220** |
 
-As duas são da Onda D. **Podem ser respondidas depois** — as ondas A, B e C não
-esperam por elas.
+As duas são da Onda D, e travam **só o E220**. **Podem ser respondidas depois** —
+as ondas A, B e C não esperam por elas, **e o E221 também não esperava**: a
+ordem sugerida ("D4 e D7 respondidas → E220 e E221") agrupava o recibo com o
+instrumento por os dois serem papel, e papel não é uma dependência. O recibo
+imprime nome, CNPJ, endereço e telefone, que já estão no cadastro há muito.
 
 ---
 
