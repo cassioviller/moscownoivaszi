@@ -18,6 +18,8 @@ export interface Avaria {
   custoReparo?: number | null;
   /** @nullable */
   justificativaDaTaxa?: string | null;
+  /** @nullable */
+  aluguelDaPeca: number | null;
   /** A foto vem por /avarias/{id}/foto */
   temFoto: boolean;
   /** @nullable */

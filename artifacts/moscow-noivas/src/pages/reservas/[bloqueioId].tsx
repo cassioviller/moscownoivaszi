@@ -88,7 +88,7 @@ import {
 } from "@/lib/limites";
 import { donaDaFicha, temReservaMae } from "@/lib/dona-da-ficha-da-reserva";
 // E214: a faixa das cláusulas 14ª/15ª vem da MESMA conta do servidor.
-import { faixaNaTela } from "@/lib/faixa-da-avaria";
+import { faixaDaAvariaRegistrada, faixaNaTela } from "@/lib/faixa-da-avaria";
 import { explicacaoDaFaixa, type TipoDeAvaria } from "@workspace/financeiro-core";
 
 /**
@@ -265,18 +265,19 @@ export default function ReservaDetalhe() {
   const [edicaoJustificativa, setEdicaoJustificativa] = useState("");
 
   /**
-   * A MESMA conta do cadastro, sobre os valores em edição — e a mesma do
-   * servidor, porque as duas chamam `avaliarTaxaDeAvaria`.
+   * A MESMA conta do cadastro, sobre os valores em edição — e o MESMO aluguel
+   * do servidor, porque agora ele vem no payload (S-C47).
    *
-   * Uma nota de honestidade: havendo cobrança viva, o servidor confere o teto
-   * contra o contrato que **cobra** o reparo, e aqui a tela pergunta ao contrato
-   * ATIVO da noiva. Na esmagadora maioria é o mesmo contrato; quando não for, a
-   * autoridade é o servidor e o 422 diz o teto certo. A tela existe para não
-   * OFERECER o que ele vai negar, não para decidir.
+   * A nota de honestidade que morava aqui virou conserto. Ela dizia: *"havendo
+   * cobrança viva o servidor confere contra o contrato que COBRA, e a tela
+   * pergunta ao ATIVO da noiva; na esmagadora maioria é o mesmo"*. Era verdade,
+   * e "na esmagadora maioria" é exatamente a forma de defeito que o E187 achou
+   * (cinco grafias da mesma conta, três acertando por cópia). A tela existe para
+   * não OFERECER o que a porta vai negar — e para isso ela tem de ler o número
+   * da porta, não um parecido.
    */
-  const veredictoDaEdicao = faixaNaTela({
-    contratos: contratosDaNoiva.data?.itens,
-    vestidoId: reserva?.vestidoId,
+  const veredictoDaEdicao = faixaDaAvariaRegistrada({
+    avaria: avariaEmEdicao,
     tipo: edicaoTipo,
     valor: parseValor(edicaoCusto),
   });

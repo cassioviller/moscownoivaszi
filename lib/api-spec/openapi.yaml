@@ -6314,7 +6314,7 @@ components:
         reservaId: { type: string }
     Avaria:
       type: object
-      required: [id, lojaId, bloqueioId, descricao, tipo, temFoto, criadaEm]
+      required: [id, lojaId, bloqueioId, descricao, tipo, temFoto, criadaEm, aluguelDaPeca]
       properties:
         id: { type: string }
         lojaId: { type: string }
@@ -6330,6 +6330,22 @@ components:
         # do que a cláusula manda e disse por quê; a mesma frase está na trilha
         # (`AVARIA_FORA_DA_FAIXA`). A tela mostra o selo a partir dela.
         justificativaDaTaxa: { type: ["string", "null"] }
+        # S-C47 — o aluguel que rege o teto da 15ª DESTA avaria, em reais, lido
+        # do MESMO contrato que a porta vai conferir: o que COBRA o reparo
+        # quando há cobrança viva, e o ATIVO da dona do bloqueio quando não há.
+        # `null` = a peça não está em contrato nenhum, e a 15ª não alcança o
+        # caso (o veredicto sai `conferida: false`).
+        #
+        # Ele existe para a tela LER o teto em vez de recalculá-lo por outro
+        # caminho: até aqui `faixa-da-avaria.ts` perguntava o aluguel ao
+        # contrato ATIVO da noiva e a porta ao contrato que cobra, e os dois só
+        # coincidem enquanto três invariantes se sustentam (um ATIVO por noiva,
+        # o cancelamento cancelando as parcelas em aberto, e a cobrança presa à
+        # dona do bloqueio). O terceiro tem furo medido — bloqueio SEM dona
+        # aceita ser cobrado em contrato de qualquer noiva —, e por ali a tela
+        # dizia "sem teto" onde a porta cobra R$ 2.000,00. É a lição do E187:
+        # cinco grafias da mesma conta, duas errando.
+        aluguelDaPeca: { type: ["number", "null"] }
         temFoto: { type: boolean, description: "A foto vem por /avarias/{id}/foto" }
         # E97: preenchido = já cobrada. A tela usa isto para trocar o botão por
         # "Cobrado — ver parcela" em vez de oferecer a cobrança de novo.

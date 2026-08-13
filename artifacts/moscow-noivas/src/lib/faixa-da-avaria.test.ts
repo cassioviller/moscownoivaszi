@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aluguelDaPeca, faixaNaTela } from "./faixa-da-avaria";
+import { aluguelDaPeca, faixaDaAvariaRegistrada, faixaNaTela } from "./faixa-da-avaria";
 
 /**
  * E214 — **o aviso da tela sai da MESMA conta do servidor.**
@@ -70,5 +70,60 @@ describe("faixa da avaria na tela — qual aluguel a tela pergunta", () => {
     // número não foi conferido contra teto nenhum, no momento em que o digita.
     expect(faixaNaTela({ contratos: [], vestidoId: VESTIDO, tipo: "DANO", valor: 4000 }))
       .toMatchObject({ tetoIndeterminado: true, conferida: false, exigeJustificativa: false });
+  });
+
+  /**
+   * **S-C47 — a avaria que já existe LÊ o teto; ela não o recalcula.**
+   *
+   * O servidor confere o teto contra o contrato que **COBRA** o reparo, e esta
+   * tela só conhece o contrato **ATIVO** da noiva. Enquanto os dois coincidiam
+   * ninguém via a diferença — e o furo medido é o bloqueio SEM dona, que o
+   * `POST /cobrar` aceita cobrar em contrato de qualquer noiva da loja: ali a
+   * tela não tem contrato nenhum para perguntar e anunciava "entra sem ser
+   * conferido" sobre um véu com teto de R$ 2.000,00.
+   */
+  describe("a avaria registrada lê o teto do payload", () => {
+    it("o véu do bloqueio sem dona tem teto no servidor, e agora a tela o mostra", () => {
+      // O véu vale R$ 400,00 no contrato que cobra o reparo → teto R$ 2.000,00.
+      const avaria = { aluguelDaPeca: 400 };
+      expect(faixaDaAvariaRegistrada({ avaria, tipo: "DANO", valor: 2500 })).toMatchObject({
+        teto: 2000,
+        conferida: true,
+        motivo: "ACIMA_DO_TETO",
+        exigeJustificativa: true,
+      });
+      // A conta antiga, pelo contrato ATIVO da noiva, não tinha o que perguntar
+      // (bloqueio sem dona ⇒ nenhum contrato na tela) e dizia o contrário: os
+      // R$ 2.500,00 entravam sem justificativa e o PATCH devolvia 422.
+      expect(faixaNaTela({ contratos: [], vestidoId: "veu-2", tipo: "DANO", valor: 2500 }))
+        .toMatchObject({ tetoIndeterminado: true, exigeJustificativa: false });
+    });
+
+    it("o payload manda mesmo quando a tela tem um contrato ATIVO que diz outra coisa", () => {
+      // O mesmo vestido: R$ 3.000,00 no contrato ATIVO da noiva (teto
+      // R$ 15.000,00) e R$ 400,00 no contrato que cobra (teto R$ 2.000,00).
+      // R$ 9.000,00 é o número da auditoria do E214, e ele cabe num e não no
+      // outro — quem decide é a porta.
+      expect(faixaDaAvariaRegistrada({ avaria: { aluguelDaPeca: 400 }, tipo: "DANO", valor: 9000 }))
+        .toMatchObject({ teto: 2000, motivo: "ACIMA_DO_TETO" });
+      expect(faixaNaTela({ contratos: [ATIVO], vestidoId: VESTIDO, tipo: "DANO", valor: 9000 }))
+        .toMatchObject({ teto: 15000, dentroDaFaixa: true });
+    });
+
+    it("trocar o tipo troca a régua sobre o MESMO aluguel — é por isso que viaja o aluguel, não o teto", () => {
+      const avaria = { aluguelDaPeca: 400 };
+      // 15ª: teto de 5 × R$ 400,00. 14ª: faixa absoluta, e o contrato não entra.
+      expect(faixaDaAvariaRegistrada({ avaria, tipo: "DANO", valor: 2400 }))
+        .toMatchObject({ clausula: "15ª", teto: 2000, motivo: "ACIMA_DO_TETO" });
+      expect(faixaDaAvariaRegistrada({ avaria, tipo: "LIMPEZA", valor: 2400 }))
+        .toMatchObject({ clausula: "14ª", piso: 350, teto: 2500, dentroDaFaixa: true });
+    });
+
+    it("sem aluguel no payload, o veredicto é o de peça fora de contrato — e o diálogo fechado também", () => {
+      expect(faixaDaAvariaRegistrada({ avaria: { aluguelDaPeca: null }, tipo: "DANO", valor: 4000 }))
+        .toMatchObject({ tetoIndeterminado: true, conferida: false, exigeJustificativa: false });
+      expect(faixaDaAvariaRegistrada({ avaria: null, tipo: "DANO", valor: 4000 }))
+        .toMatchObject({ tetoIndeterminado: true, conferida: false });
+    });
   });
 });

@@ -1390,13 +1390,22 @@ router.use("/lojas/:lojaId/avarias", requireModulo("vestidos"));
  * vira CANCELADA, o servidor volta a aceitar cobrar e remover, e a tela
  * mostrava "Cobrado — ver parcela" para sempre, com os dois botões escondidos.
  * Os R$ 800,00 não entram no carnê novo e a avaria fica impossível de limpar.
+ *
+ * **S-C47: o `aluguelDaPeca` entra pelo mesmo motivo, uma camada acima.** O
+ * `parcelaStatus` existe porque a tela decidia "cobrada" por uma régua e o
+ * servidor por outra; o `aluguelDaPeca` existe porque ela decidia o TETO da 15ª
+ * por uma régua (o contrato ATIVO da noiva) e o servidor por outra (o contrato
+ * que COBRA). Os dois parâmetros são obrigatórios de propósito — quem serializa
+ * uma avaria tem de dizer de qual contrato aquele teto saiu, e um default aqui
+ * transformaria "não perguntei" em "não tem teto".
  */
 function avariaMeta(
   a: typeof avariasTable.$inferSelect,
-  parcelaStatus: string | null = null,
+  parcelaStatus: string | null,
+  aluguelDaPeca: number | null,
 ) {
   const { fotoBytes, fotoMime, ...meta } = a;
-  return { ...meta, temFoto: fotoBytes !== null, parcelaStatus };
+  return { ...meta, temFoto: fotoBytes !== null, parcelaStatus, aluguelDaPeca };
 }
 
 /**
@@ -1524,6 +1533,53 @@ async function aluguelDaPecaDoBloqueio(
   return aluguelDaPecaNoContrato({ contratoId: contrato.id, vestidoId: bloqueio.vestidoId }, executor);
 }
 
+/**
+ * **S-C47 — de qual contrato sai o teto DESTA avaria. A pergunta é uma só.**
+ *
+ * As duas contas acima respondem à mesma pergunta por caminhos diferentes, e
+ * quem escolhe entre elas é o estado da cobrança:
+ *
+ * - **há cobrança viva** → o teto sai do contrato que COBRA o reparo. É ali que
+ *   o dinheiro está, e é a decisão que o E214 tomou no `POST /cobrar` e o S-C11
+ *   herdou para o `PATCH`;
+ * - **não há** → o contrato é DERIVADO, o ATIVO da dona do bloqueio, porque a
+ *   avaria nasce presa ao bloqueio e ninguém escolheu carnê ainda.
+ *
+ * A escolha morava escrita à mão dentro do `PATCH`, e a TELA a refazia por um
+ * terceiro caminho (`faixa-da-avaria.ts`: o contrato ATIVO da noiva, sempre).
+ * Hoje ela mora aqui, e o payload da avaria carrega o resultado — a tela LÊ o
+ * teto que a porta usou em vez de recalculá-lo. É a lição do E187 (cinco
+ * grafias da mesma conta, duas errando) aplicada antes de a segunda errar.
+ *
+ * **O que a segunda grafia escondia, medido:** os dois caminhos coincidem
+ * enquanto três invariantes se sustentam — `contratos_lead_ativo_unico` (E158,
+ * no máximo um ATIVO por noiva), o cancelamento cancelando as parcelas em
+ * ABERTO (E49/E94, então cobrança viva implica contrato ATIVO) e a guarda
+ * `AVARIA_DE_OUTRA_NOIVA` (E110/V3). O terceiro só vale **quando o bloqueio tem
+ * dona**, e bloqueio sem dona é 102 de 227 no `heliumdb`: por ali um reparo é
+ * cobrado no contrato de qualquer noiva da loja, e a tela — que sem dona não
+ * tem contrato para perguntar — anunciava "esta peça não está em contrato
+ * nenhum" sobre um véu com teto de R$ 2.000,00.
+ */
+async function aluguelQueRegeAAvaria(
+  params: {
+    bloqueio: { vestidoId: string | null; leadId: string | null; reservaId: string | null } | undefined;
+    /** O contrato da parcela VIVA do reparo, ou `null` quando não há cobrança de pé. */
+    contratoQueCobra: string | null;
+  },
+  lojaId: string,
+  executor: DbExecutor = db,
+): Promise<number | null> {
+  if (!params.bloqueio) return null;
+  if (params.contratoQueCobra) {
+    return aluguelDaPecaNoContrato(
+      { contratoId: params.contratoQueCobra, vestidoId: params.bloqueio.vestidoId },
+      executor,
+    );
+  }
+  return aluguelDaPecaDoBloqueio(params.bloqueio, lojaId, executor);
+}
+
 async function contratoAtivoDaLoja(
   contratoId: string,
   lojaId: string,
@@ -1539,13 +1595,50 @@ router.get("/lojas/:lojaId/bloqueios/:bloqueioId/avarias", async (req, res): Pro
   const { lojaId, bloqueioId } = req.params;
   // V2/E167: o status da parcela vem no MESMO SELECT — a tela decide "cobrado"
   // pela mesma régua do servidor, e não por `parcelaId` não-nulo.
+  // S-C47: o `contratoId` da parcela entra no MESMO SELECT — é ele que decide
+  // de qual contrato sai o teto da 15ª de cada avaria, e é por avaria, não por
+  // bloqueio: duas avarias do mesmo vestido podem ter ido para carnês
+  // diferentes (a primeira cobrada, a segunda ainda não).
   const avarias = await db
-    .select({ avaria: avariasTable, parcelaStatus: parcelasTable.status })
+    .select({
+      avaria: avariasTable,
+      parcelaStatus: parcelasTable.status,
+      parcelaContratoId: parcelasTable.contratoId,
+    })
     .from(avariasTable)
     .leftJoin(parcelasTable, eq(parcelasTable.id, avariasTable.parcelaId))
     .where(and(eq(avariasTable.lojaId, lojaId as string), eq(avariasTable.bloqueioId, bloqueioId as string)))
     .orderBy(avariasTable.criadaEm);
-  res.json(ListAvariasResponse.parse(avarias.map((l) => avariaMeta(l.avaria, l.parcelaStatus))));
+  const [bloqueioDaLista] = avarias.length
+    ? await db
+        .select({
+          vestidoId: bloqueioVestidosTable.vestidoId,
+          leadId: bloqueioVestidosTable.leadId,
+          reservaId: bloqueioVestidosTable.reservaId,
+        })
+        .from(bloqueioVestidosTable)
+        .where(eq(bloqueioVestidosTable.id, bloqueioId as string))
+    : [undefined];
+  const linhas = await Promise.all(
+    avarias.map(async (l) =>
+      avariaMeta(
+        l.avaria,
+        l.parcelaStatus,
+        await aluguelQueRegeAAvaria(
+          {
+            bloqueio: bloqueioDaLista,
+            // V2/E167 de novo: cobrança viva é status ≠ CANCELADA, nunca
+            // `parcelaId` preenchido. Cancelado o contrato, o teto volta a sair
+            // do ATIVO da dona — que é onde o reparo será recobrado.
+            contratoQueCobra:
+              l.parcelaStatus !== null && l.parcelaStatus !== "CANCELADA" ? l.parcelaContratoId : null,
+          },
+          lojaId as string,
+        ),
+      ),
+    ),
+  );
+  res.json(ListAvariasResponse.parse(linhas));
 });
 
 router.post("/lojas/:lojaId/bloqueios/:bloqueioId/avarias", async (req, res): Promise<void> => {
@@ -1591,10 +1684,16 @@ router.post("/lojas/:lojaId/bloqueios/:bloqueioId/avarias", async (req, res): Pr
    * que não conferiu em vez de inventar um número — ver `avaliarTaxaDeAvaria`.
    */
   const tipoDaAvaria = (parsed.data.tipo ?? "DANO") as TipoDeAvaria;
+  // S-C47: o mesmo número que decide aqui viaja no payload — a avaria nasce
+  // sem cobrança, então quem rege é o contrato ATIVO da dona do bloqueio.
+  const aluguelNoRegistro = await aluguelQueRegeAAvaria(
+    { bloqueio, contratoQueCobra: null },
+    lojaId as string,
+  );
   const veredicto = avaliarTaxaDeAvaria({
     tipo: tipoDaAvaria,
     valor: parsed.data.custoReparo,
-    aluguelDaPeca: await aluguelDaPecaDoBloqueio(bloqueio, lojaId as string),
+    aluguelDaPeca: aluguelNoRegistro,
   });
   const justificativa = parsed.data.justificativaDaTaxa?.trim() || null;
   if (veredicto.exigeJustificativa && !justificativa) {
@@ -1673,7 +1772,7 @@ router.post("/lojas/:lojaId/bloqueios/:bloqueioId/avarias", async (req, res): Pr
     }
     return linha!;
   });
-  res.status(201).json(CreateAvariaResponse.parse(avariaMeta(avaria)));
+  res.status(201).json(CreateAvariaResponse.parse(avariaMeta(avaria, null, aluguelNoRegistro)));
 });
 
 /**
@@ -1807,13 +1906,17 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
    * cobrança segue, e a trilha diz que **nasceu dinheiro contra um teto que
    * ninguém pôde conferir**. É a metade da decisão que a impede de ser silêncio.
    */
+  // S-C47: cobrada, a avaria passa a responder a ESTE contrato — e é este o
+  // número que o payload devolve, para a tela não voltar a perguntar o teto ao
+  // contrato ATIVO da noiva depois do clique.
+  const aluguelNaCobranca = await aluguelQueRegeAAvaria(
+    { bloqueio: bloqueioDaAvaria, contratoQueCobra: parsed.data.contratoId },
+    lojaId as string,
+  );
   const veredictoDaCobranca = avaliarTaxaDeAvaria({
     tipo: avaria.tipo,
     valor: avaria.custoReparo,
-    aluguelDaPeca: await aluguelDaPecaNoContrato({
-      contratoId: parsed.data.contratoId,
-      vestidoId: bloqueioDaAvaria?.vestidoId ?? null,
-    }),
+    aluguelDaPeca: aluguelNaCobranca,
   });
   const justificativaDaCobranca =
     parsed.data.justificativaDaTaxa?.trim() || avaria.justificativaDaTaxa?.trim() || null;
@@ -1958,7 +2061,7 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
   // mesma resposta que a listagem dará no próximo GET.
   res.status(201).json(
     CobrarAvariaResponse.parse(
-      avariaMeta(depois!, await statusDaCobranca(depois!.parcelaId)),
+      avariaMeta(depois!, await statusDaCobranca(depois!.parcelaId), aluguelNaCobranca),
     ),
   );
 });
@@ -2396,15 +2499,17 @@ router.patch(
         .from(bloqueioVestidosTable)
         .where(eq(bloqueioVestidosTable.id, avaria.bloqueioId));
 
-      const aluguel =
-        cobrancaViva && parcela
-          ? await aluguelDaPecaNoContrato(
-              { contratoId: parcela.contratoId, vestidoId: bloqueio?.vestidoId ?? null },
-              tx,
-            )
-          : bloqueio
-            ? await aluguelDaPecaDoBloqueio(bloqueio, lojaId as string, tx)
-            : null;
+      // S-C47: a escolha entre "o contrato que cobra" e "o ATIVO da dona" morava
+      // escrita aqui, e a tela a refazia por um terceiro caminho. Hoje é uma
+      // função só, e o número que decide este 422 é o mesmo que o payload leva.
+      const aluguel = await aluguelQueRegeAAvaria(
+        {
+          bloqueio,
+          contratoQueCobra: cobrancaViva && parcela ? parcela.contratoId : null,
+        },
+        lojaId as string,
+        tx,
+      );
 
       const veredicto = avaliarTaxaDeAvaria({ tipo, valor: custoReparo, aluguelDaPeca: aluguel });
       const justificativaPedida =
@@ -2493,7 +2598,7 @@ router.patch(
           },
         });
       }
-      return { linha: linha!, status: parcela?.status ?? null };
+      return { linha: linha!, status: parcela?.status ?? null, aluguel };
     });
 
     if ("naoEncontrada" in desfecho) {
@@ -2523,7 +2628,9 @@ router.patch(
       });
       return;
     }
-    res.status(200).json(UpdateAvariaResponse.parse(avariaMeta(desfecho.linha, desfecho.status)));
+    res
+      .status(200)
+      .json(UpdateAvariaResponse.parse(avariaMeta(desfecho.linha, desfecho.status, desfecho.aluguel)));
   },
 );
 
