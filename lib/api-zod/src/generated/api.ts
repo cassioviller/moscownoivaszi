@@ -5432,7 +5432,7 @@ export const ReservarPecaDoOrcamentoResponse = zod.object({
 
 
 /**
- * E162 (A02.4): as reservas vivas da noiva MAIS as sem dona (`leadId` nulo) das peças vendidas pelos itens — o caso que o servidor de contratos chama de "legítimo e comum" (61 de 63 no dev) e que o filtro por lead da tela nunca oferecia. A adoção acontece no fechamento do contrato, que dá dono à reserva sem dona.
+ * E162 (A02.4): as reservas vivas da noiva MAIS as sem dona (`leadId` nulo) das peças vendidas pelos itens — o caso legítimo que o filtro por lead da tela nunca oferecia. A adoção acontece no fechamento do contrato, que dá dono à reserva sem dona. S-C10 (13/08/2026): o E162 chamava esse caso de "comum" (61 de 63 no dev) e ele é RARO — 0 de 116 bloqueios sem dona em `moscow_base`, 2 de 127 no dev. A segunda metade da lista fica porque a porta de criação ainda aceita o nulo, não porque seja frequente.
  * @summary As reservas que o contrato deste orçamento PODE prender
  */
 export const ListReservasCandidatasParams = zod.object({

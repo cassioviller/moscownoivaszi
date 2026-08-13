@@ -169,9 +169,17 @@ export default function ReservaDetalhe() {
    * bloqueio pendurado numa reserva-mãe tem dona sem ter noiva própria. O
    * servidor já cobrava por esse dono desde o V3/E163 e a tela desistia no
    * nulo — com `enabled: !!reserva?.leadId`, a consulta do contrato nem saía.
-   * Medido na letra da própria rota: **61 das 63 avarias do banco vivem em
-   * bloqueio sem noiva**, então em 97% delas a rota cobraria e a única tela
-   * que expõe a cobrança não desenhava o botão. O reparo nunca virava parcela.
+   * Medido na letra da própria rota em 2026-07: **61 das 63 avarias do banco
+   * viviam em bloqueio sem noiva**, então em 97% delas a rota cobraria e a
+   * única tela que expõe a cobrança não desenhava o botão. O reparo nunca
+   * virava parcela.
+   *
+   * **S-C10 (13/08/2026) — o 97% é história, e o defeito não era estatístico.**
+   * Remedido: **ZERO avarias** nos dois bancos, e bloqueio sem `lead_id` é 0 de
+   * 116 em `moscow_base` e 2 de 127 no dev. O botão continua tendo de ser
+   * desenhado pelo DONO derivado, porque a rota cobra por ele: com uma única
+   * avaria em bloqueio sem noiva, a tela voltaria a esconder a saída de um
+   * reparo que o servidor aceita. Frequência zero não é impossibilidade.
    *
    * S-O54/E185 — a derivação virou `donaDaFicha`, que responde a MESMA
    * pergunta e ainda traz o nome pela reserva-mãe. O fallback de payload antigo

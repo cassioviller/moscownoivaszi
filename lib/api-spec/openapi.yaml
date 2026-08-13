@@ -2881,10 +2881,13 @@ paths:
       summary: As reservas que o contrato deste orçamento PODE prender
       description: >
         E162 (A02.4): as reservas vivas da noiva MAIS as sem dona (`leadId`
-        nulo) das peças vendidas pelos itens — o caso que o servidor de
-        contratos chama de "legítimo e comum" (61 de 63 no dev) e que o filtro
-        por lead da tela nunca oferecia. A adoção acontece no fechamento do
-        contrato, que dá dono à reserva sem dona.
+        nulo) das peças vendidas pelos itens — o caso legítimo que o filtro por
+        lead da tela nunca oferecia. A adoção acontece no fechamento do
+        contrato, que dá dono à reserva sem dona. S-C10 (13/08/2026): o E162
+        chamava esse caso de "comum" (61 de 63 no dev) e ele é RARO — 0 de 116
+        bloqueios sem dona em `moscow_base`, 2 de 127 no dev. A segunda metade
+        da lista fica porque a porta de criação ainda aceita o nulo, não porque
+        seja frequente.
       responses:
         "200":
           description: Candidatas — da noiva primeiro, depois as sem dona
@@ -6212,10 +6215,17 @@ components:
         ocupacaoFim: { type: ["string", "null"], format: date-time }
         # V14/E167 — de QUEM é este bloqueio, pela MESMA régua que a cobrança
         # de avaria já usa (V3/E163): o `leadId` próprio, ou o da reserva-mãe
-        # quando ele é nulo. Medido: 61 das 63 avarias do banco vivem em
-        # bloqueio sem `lead_id`, e a ficha só buscava o contrato pelo campo
-        # nulável — em 97% das avarias o botão "Cobrar reparo" não era
+        # quando ele é nulo. Medido em 2026-07: 61 das 63 avarias do banco
+        # viviam em bloqueio sem `lead_id`, e a ficha só buscava o contrato pelo
+        # campo nulável — em 97% das avarias o botão "Cobrar reparo" não era
         # desenhado.
+        #
+        # S-C10 (13/08/2026) — o número foi remedido e o campo continua devido.
+        # Hoje são ZERO avarias nos dois bancos e o bloqueio sem `lead_id` é
+        # 0 de 116 em `moscow_base` e 2 de 127 no dev: o caso é RARO, não comum.
+        # O contrato não promete o campo por frequência — promete porque
+        # `lead_id` é NULLABLE e uma única avaria assim voltaria a esconder o
+        # botão. A conta está em `api-server/src/lib/dono-do-bloqueio.ts`.
         #
         # S-O17/E179 — TODA porta o preenche agora. Até aqui só o GET e o PATCH
         # do bloqueio o traziam, "porque a listagem não paga o join": a

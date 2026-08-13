@@ -213,7 +213,7 @@ describe("E163 — as guardas que se desligavam no nulo", () => {
       vestidoId: vestido.id,
       tipo: "RESERVA_CASAMENTO",
       casamentoData: dataFutura(120),
-      leadId: null, // o caso comum: 61 de 63 no dev
+      leadId: null, // S-C10: o caso POSSÍVEL — 0 de 116 em `moscow_base`, 2 de 127 no dev
       reservaId: reserva.id,
     });
     const avaria = await agent

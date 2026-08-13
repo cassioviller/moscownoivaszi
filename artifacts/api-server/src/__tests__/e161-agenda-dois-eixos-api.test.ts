@@ -118,8 +118,11 @@ describe("E161 — a agenda nos dois eixos", () => {
     expect(errada.status).toBe(422);
     expect(errada.body.error).toBe("RESERVA_DE_OUTRA_NOIVA");
 
-    // A reserva SEM dona passa — é o caso comum (61 de 63 no dev), e este
-    // contrato de comportamento não pode regredir para uma parede diária.
+    // A reserva SEM dona passa — sem dona não há o que comparar. S-C10
+    // (13/08/2026): este comentário dizia "o caso comum (61 de 63 no dev)" e o
+    // caso é RARO (0 de 116 em `moscow_base`, 2 de 127 no dev). O contrato de
+    // comportamento fica igual: o que ele prega é o nulo ser ALCANÇÁVEL pela
+    // porta de criação, e frequência zero não fecha porta.
     const semDona = await reservaDaNoiva(null);
     const ok = await agent.post(`/api/lojas/${f.lojaId}/atendimentos`).send({
       leadId: ana.id,

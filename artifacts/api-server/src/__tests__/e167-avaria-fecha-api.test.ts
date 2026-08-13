@@ -24,9 +24,18 @@ import {
  *   413. O 422 `FOTO_MUITO_GRANDE` que declara o teto de 2 MiB era código
  *   morto — a suíte era verde porque o único teste mandava um PNG de 70 bytes.
  * - **V14** o `GET /bloqueios/:id` não dizia de QUEM é o bloqueio quando o
- *   `lead_id` dele é nulo, e 61 das 63 avarias do banco vivem nesse caso.
+ *   `lead_id` dele é nulo — e em 2026-07, 61 das 63 avarias do banco viviam
+ *   nesse caso.
  * - **V2** o payload da avaria não carregava o status da parcela, então a tela
  *   não conseguia distinguir cobrança VIVA de cobrança CANCELADA.
+ *
+ * **S-C10 (13/08/2026) — o "61 das 63" foi remedido, e nenhuma asserção deste
+ * arquivo dependia dele.** Hoje são **ZERO avarias** em `heliumdb` e em
+ * `moscow_base`, e o bloqueio sem `lead_id` é 0 de 116 na loja e 2 de 127 no
+ * dev: o caso é raro, não comum. Nada aqui precisou mudar de valor esperado —
+ * cada `it` MONTA a sua fixture e prega o mecanismo, não a população. O número
+ * era prosa, e prosa envelhecida ainda decide desenho: a conta remedida mora em
+ * `src/lib/dono-do-bloqueio.ts`.
  */
 
 /** PNG sintético inflado até `bytes` — assinatura + IHDR válidos, como o dos vestidos. */
@@ -108,7 +117,8 @@ describe("E167 — a avaria fecha", () => {
       expect(res.body.leadId).toBeNull();
       // O servidor já cobra a avaria pelo dono derivado (V3/E163). A tela
       // precisa do MESMO dono para achar o contrato — sem isto ela não desenha
-      // o botão em 61 das 63 avarias do banco.
+      // o botão em NENHUMA avaria montada assim. (S-C10: em 2026-07 eram 61 das
+      // 63 do banco; hoje o banco tem zero avarias, e o mecanismo é o mesmo.)
       expect(res.body.donoLeadId).toBe(lead.id);
     });
 

@@ -156,10 +156,13 @@ export async function ajusteDaNoiva(
  * no bloqueio da Beatriz — a janela dela colapsa para um dia em que ela não
  * provou nada, e a peça é liberada antes da hora.
  *
- * **SEM DONA passa, e é decisão, não descuido:** é o caso comum (61 das
- * 63 avarias do dev vivem em bloqueio sem noiva — a loja segurou a peça antes
- * de saber de quem seria) e recusá-lo trocaria um defeito raro por uma parede
- * diária. Sem dona não há o que comparar; com dona, tem de ser a mesma.
+ * **SEM DONA passa, e é decisão, não descuido:** sem dona não há o que
+ * comparar; com dona, tem de ser a mesma. **S-C10 (13/08/2026) — a razão mudou
+ * de metade.** Até aqui a frase se apoiava na frequência ("o caso comum: 61 das
+ * 63 avarias do dev"), e a frequência morreu: **0 de 116 bloqueios sem dona em
+ * `moscow_base`, 2 de 127 no dev, ZERO avarias nos dois**. O que segura o
+ * `true` é a POSSIBILIDADE — `lead_id` é NULLABLE e a porta de criação aceita o
+ * nulo (`reservas.ts:929`). A conta está em `dono-do-bloqueio.ts`.
  *
  * **S-O56/E185 — "sem dona" é `donoDoBloqueio`, não `lead_id`.** O véu
  * pendurado na reserva-mãe da noiva B tem dona sem ter `lead_id` próprio: a

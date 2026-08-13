@@ -303,9 +303,11 @@ export default function OrcamentoDetail() {
    * sabe a resposta.
    *
    * A tela filtrava por `leadId=` e a reserva SEM DONA — que o servidor de
-   * contratos aceita com adoção no fechamento e chama de "legítimo e comum"
-   * (61 de 63 no dev) — ficava invisível: o diálogo nem desenhava a caixa. O
-   * endpoint devolve as vivas da noiva MAIS as sem dona das peças dos itens.
+   * contratos aceita com adoção no fechamento — ficava invisível: o diálogo nem
+   * desenhava a caixa. O endpoint devolve as vivas da noiva MAIS as sem dona das
+   * peças dos itens. **S-C10 (13/08/2026): o "comum" que justificava a segunda
+   * metade caiu** — o sem dona é 0 de 116 em `moscow_base` e 2 de 127 no dev.
+   * O que ela cobre hoje é o possível, não o frequente.
    */
   const candidatasQ = useListReservasCandidatas(activeLojaId!, id!, {
     query: {

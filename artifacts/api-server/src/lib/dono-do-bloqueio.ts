@@ -26,6 +26,43 @@ import type { DbExecutor } from "./disponibilidade";
  * pelo `lead_id` PRÓPRIO, que é outra pergunta. Esta responde *de quem é o
  * reparo desta peça* — e, desde o S-O74, *de quem o contrato está prestes a
  * tomá-la*.
+ *
+ * ## S-C10 — o "61 das 63 avarias" morreu como frequência e vive como possibilidade
+ *
+ * Onze sítios do repositório justificavam o desenho acima com um número do
+ * E110: *"61 das 63 avarias do banco de desenvolvimento vivem em bloqueio sem
+ * noiva"* — 97%, o "caso comum", e recusá-lo "trocaria um defeito raro por uma
+ * parede diária". **Remedido em 13/08/2026, nos dois bancos da instância:**
+ *
+ * | | `moscow_base` (o ateliê) | `heliumdb` (dev) |
+ * |---|---|---|
+ * | bloqueios `RESERVA_CASAMENTO` | 116 | 127 |
+ * | com `lead_id` próprio | **116** | 125 |
+ * | sem dono nenhuma (`lead_id` e `reservaId` nulos) | **0** | **2** |
+ * | pendurados numa reserva-mãe | 115 | **0** |
+ * | **avarias** | **0** | **0** |
+ *
+ * O denominador não existe mais e o numerador inverteu: **o bloqueio sem dona é
+ * 0 de 116 na loja e 2 de 127 no dev** — e os 2 são resíduo de fixture de
+ * 12/08/2026, sem reserva-mãe. As 63 avarias eram vazamento do spec 48, varrido
+ * na faxina de `3b71a43` (S27/S-D22): **131 órfãs, 129 vestidos `AVA-`, 127
+ * avarias** saíram de uma vez, e o `POST /contratos` passou a escrever
+ * `bloqueio.lead_id` no E111. O que restou é o oposto do que o comentário
+ * dizia.
+ *
+ * **A metade lógica do argumento sobrevive, e é ela que segura o desenho.**
+ * `bloqueio_vestidos.lead_id` continua NULLABLE e `POST /lojas/:lojaId/bloqueios`
+ * ainda aceita `RESERVA_CASAMENTO` sem `leadId` **e** sem `reservaId`
+ * (`routes/reservas.ts:929`) — os 2 do dev são a prova de que o caminho está
+ * aberto. Sem dona não há o que comparar, então toda guarda de pareamento
+ * noiva↔peça tem de passar no nulo. **A metade estatística caiu**: "parede
+ * diária" era medida em 97%, e hoje a parede teria largura ZERO na loja de
+ * verdade. Quem for exigir dona na porta paga um custo que o número de 2026-07
+ * proibia e o de 2026-08 não proíbe mais — é a **S-C60**, e não é conserto de
+ * passagem.
+ *
+ * Todo sítio que citava o número aponta para cá. **Não repita o número em
+ * comentário novo**: repita a régua, que é *o nulo é alcançável*.
  */
 
 /** O `with` que traz a mãe por UMA coluna do mesmo SELECT relacional. */

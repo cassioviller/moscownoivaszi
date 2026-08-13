@@ -21,9 +21,12 @@ const estado = lerEstado();
  * botão, parcela. Ele era verde sobre os três casos que a loja tem de verdade
  * e que nenhum teste cruzava:
  *
- * - **V14** — o bloqueio pendurado numa reserva-mãe, sem `lead_id` próprio.
- *   `61 das 63 avarias do banco` vivem assim, e a ficha não desenhava o botão
- *   em nenhuma delas: `useListContratos` rodava com `enabled: !!reserva.leadId`.
+ * - **V14** — o bloqueio pendurado numa reserva-mãe, sem `lead_id` próprio. Em
+ *   2026-07, `61 das 63 avarias do banco` viviam assim, e a ficha não desenhava
+ *   o botão em nenhuma delas: `useListContratos` rodava com
+ *   `enabled: !!reserva.leadId`. **S-C10 (13/08/2026): remedido — ZERO avarias
+ *   nos dois bancos e ZERO véus em `moscow_base`.** Este spec é o único lugar
+ *   onde a montagem existe hoje, e é por isso que ele fica.
  * - **V2** — o contrato cancelado. A parcela do reparo vira CANCELADA junto, o
  *   servidor volta a aceitar cobrar e remover, e a tela dizia "Cobrado — ver
  *   parcela" para sempre, com os dois botões escondidos: os R$ 800,00 do
@@ -65,7 +68,8 @@ test.describe.serial("E167 — a avaria fecha na ficha sem noiva própria", () =
     vestidoId = (await vestido.json()).id;
 
     // A reserva-mãe TEM noiva (`reservas.lead_id` é NOT NULL); o bloqueio,
-    // não. É a montagem de 61 das 63 avarias do banco.
+    // não. Era a montagem de 61 das 63 avarias do banco em 2026-07 — hoje é a
+    // montagem de nenhuma (S-C10), e o spec passa a ser quem a mantém viva.
     const reserva = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/reservas`, {
       data: { leadId, casamentoData: "2027-11-20T12:00:00-03:00" },
     });

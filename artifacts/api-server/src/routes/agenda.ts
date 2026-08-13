@@ -478,8 +478,11 @@ router.post("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
    * `bloqueioDaNoiva` é irmã do `ajusteDaNoiva` que o E155 escreveu para
    * exatamente esta pergunta, e nasce aqui em vez de no E164 porque este épico
    * chega primeiro — o E164 a reusa para o R5/V4 em vez de escrever outra.
-   * Bloqueio SEM DONA passa: é o caso comum (61 de 63 no dev), e recusá-lo
-   * seria trocar um defeito raro por uma parede diária. **S-O56/E185: "sem
+   * Bloqueio SEM DONA passa, porque sem dona não há o que comparar.
+   * **S-C10 (13/08/2026):** este comentário dizia "é o caso comum (61 de 63 no
+   * dev)"; remedido, o sem dona é **0 de 116 em `moscow_base` e 2 de 127 no
+   * dev**. O que sustenta o `passa` é o nulo ser alcançável, não frequente —
+   * `lib/dono-do-bloqueio.ts`. **S-O56/E185: "sem
    * dona" passou a ser `donoDoBloqueio`** — o véu pendurado na reserva-mãe de
    * outra noiva não tem `lead_id` próprio e TEM dona, e era por essa fresta
    * que o caso do parágrafo acima entrava mesmo com a guarda em pé.

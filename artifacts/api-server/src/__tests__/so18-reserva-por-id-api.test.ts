@@ -56,8 +56,11 @@ describe("A reserva lida sozinha, e o dono do bloqueio dito em toda porta (E179)
         casamentoData: casamento,
       })
     ).id;
-    // O véu: pendurado na MESMA reserva, sem `lead_id` — 61 das 63 avarias do
-    // banco vivem num bloqueio assim (V14/E167).
+    // O véu: pendurado na MESMA reserva, sem `lead_id` (V14/E167). S-C10
+    // (13/08/2026): o comentário dizia "61 das 63 avarias do banco vivem assim"
+    // e a montagem é RARA no banco — em `moscow_base` são 115 de 116 bloqueios
+    // pendurados numa reserva-mãe e TODOS com `lead_id` próprio, logo ZERO véus.
+    // O teste prega a derivação, que é a mesma com um véu ou com mil.
     bloqueioSemDona = (
       await criarBloqueio(f, {
         tipo: "RESERVA_CASAMENTO",

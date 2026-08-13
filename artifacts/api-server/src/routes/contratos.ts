@@ -596,9 +596,16 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
     /**
      * E107 fechou a metade fácil e deixou a outra aberta: a guarda acima só
      * morde quando o bloqueio JÁ tem dona, e **nenhuma rota escrevia
-     * `bloqueio.lead_id`** — o campo nascia nulo e continuava nulo. O caso
-     * comum era justamente o descoberto: 61 das 63 avarias do banco de
-     * desenvolvimento vivem em bloqueio sem noiva.
+     * `bloqueio.lead_id`** — o campo nascia nulo e continuava nulo, e em 2026-07
+     * o descoberto era o caso comum: 61 das 63 avarias do dev viviam assim.
+     *
+     * **S-C10 (13/08/2026) — o número foi remedido e não sustenta mais o
+     * "comum".** As 63 avarias eram vazamento do spec 48, varrido em `3b71a43`;
+     * hoje são **ZERO avarias** nos dois bancos, e o bloqueio sem dona é **0 de
+     * 116 em `moscow_base`, 2 de 127 no dev**. O 409 abaixo NÃO perde a razão de
+     * ser: ele prova o VÍNCULO, não a dona, e o vínculo é o que impede a mesma
+     * peça de ir para dois contratos — isso independe de quantos nascem nulos.
+     * A conta está em `lib/dono-do-bloqueio.ts`.
      *
      * O que passava: contrato da noiva A prende o bloqueio B (leadId nulo,
      * `ignorarBloqueioId` faz B não conflitar consigo mesmo); dias depois, o

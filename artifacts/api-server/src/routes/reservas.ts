@@ -1724,12 +1724,19 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
    * outras rotas que aceitam id de corpo já faziam essa prova (`leadNaLoja`,
    * `usuarioNaLoja`).
    *
-   * **A guarda prova quando é provável, e o limite está medido:** o `lead_id` do
-   * bloqueio é NULLABLE, e no banco de desenvolvimento **61 das 63 avarias**
-   * vivem em bloqueio sem noiva (61 deles `RESERVA_CASAMENTO`, o que é
-   * suspeito por si — virou sobra). Recusar todos esses seria trocar um defeito
-   * raro por uma parede diária. Sem noiva no bloqueio não há o que comparar, e
-   * a rota segue como antes; com noiva, ela tem de ser a mesma.
+   * **A guarda prova quando é possível, e o limite está medido.** O `lead_id`
+   * do bloqueio é NULLABLE: sem dona não há o que comparar, e a rota segue como
+   * antes; com dona, ela tem de ser a mesma.
+   *
+   * **S-C10 (13/08/2026) — a régua era "quando é PROVÁVEL", e o provável virou
+   * o contrário.** Este comentário afirmava que 61 das 63 avarias do dev viviam
+   * em bloqueio sem noiva (97%). Remedido: **ZERO avarias** em `heliumdb` e em
+   * `moscow_base`, e o bloqueio sem dona é **0 de 116 na loja, 2 de 127 no
+   * dev** (os 2 sem reserva-mãe, resíduo de fixture de 12/08). A guarda continua
+   * de pé pela POSSIBILIDADE — `POST /lojas/:lojaId/bloqueios` ainda aceita
+   * `RESERVA_CASAMENTO` sem `leadId` e sem `reservaId`, logo abaixo nesta mesma
+   * rota. Exigir dona na porta virou barato e é a **S-C60**. A conta inteira
+   * está em `lib/dono-do-bloqueio.ts`.
    */
   const [bloqueioDaAvaria] = await db
     .select({

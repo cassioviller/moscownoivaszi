@@ -18,8 +18,11 @@ import {
  *
  * **A reserva presa duas vezes.** A guarda S2/E107 só recusava o bloqueio que
  * JÁ tinha dona, e nenhuma rota escrevia `bloqueio.lead_id` — o campo nascia
- * nulo e continuava nulo (61 das 63 avarias do banco de desenvolvimento vivem
- * em bloqueio sem noiva). Então o contrato da noiva A prendia o bloqueio B, e
+ * nulo e continuava nulo (em 2026-07, 61 das 63 avarias do banco de
+ * desenvolvimento viviam em bloqueio sem noiva; **S-C10, 13/08/2026: hoje são
+ * ZERO avarias e 0 de 116 bloqueios sem dona em `moscow_base`** — o que este
+ * arquivo prega é o VÍNCULO, que não depende de quantos nascem nulos). Então o
+ * contrato da noiva A prendia o bloqueio B, e
  * o contrato da noiva C — com `dataCasamento` nulo, que pula a conferência de
  * data — prendia o MESMO B: a PK de `contrato_bloqueios` é
  * (contratoId, bloqueioId) e não impede o segundo par. O vestido ficava

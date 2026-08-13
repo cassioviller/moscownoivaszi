@@ -433,9 +433,12 @@ describe("E162 — o gate por dentro: aceite → fila → reserva inline → con
 
     /**
      * VERMELHO ANTES: a tela filtrava por `leadId=` e a sem dona — o caso que
-     * `contratos.ts` chama de "legítimo e comum" (61 de 63 no dev) — ficava
-     * invisível: o diálogo nem desenhava a caixa, e a vendedora tomava o 422
-     * sem ter como apontar a reserva que existia e o servidor aceitaria.
+     * `contratos.ts` aceita com adoção — ficava invisível: o diálogo nem
+     * desenhava a caixa, e a vendedora tomava o 422 sem ter como apontar a
+     * reserva que existia e o servidor aceitaria. **S-C10 (13/08/2026):** o
+     * E162 dizia "legítimo e comum (61 de 63 no dev)"; remedido, é legítimo e
+     * RARO — 0 de 116 em `moscow_base`, 2 de 127 no dev. O que este teste prega
+     * é a fixture que ele MONTA, não a população do banco.
      */
     const r = await agent.get(`/api/lojas/${f.lojaId}/orcamentos/${orcamento.id}/reservas-candidatas`);
     expect(r.status).toBe(200);

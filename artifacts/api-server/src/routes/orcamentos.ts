@@ -673,10 +673,16 @@ router.post(
  * E162 (A02.4/K6) — as reservas que o contrato deste orçamento PODE prender.
  *
  * A tela filtrava por `leadId=` e a reserva SEM DONA — que o servidor de
- * contratos chama de "legítimo e comum" (61 de 63 no dev) e aceita com adoção
- * no fechamento — ficava invisível: o diálogo nem desenhava a caixa. Uma
- * consulta só, do lado que sabe a resposta: as vivas da noiva MAIS as sem dona
- * das peças vendidas pelos itens.
+ * contratos aceita com adoção no fechamento — ficava invisível: o diálogo nem
+ * desenhava a caixa. Uma consulta só, do lado que sabe a resposta: as vivas da
+ * noiva MAIS as sem dona das peças vendidas pelos itens.
+ *
+ * **S-C10 (13/08/2026) — o "legítimo e comum" perdeu o "comum".** O E162 media
+ * 61 de 63 no dev; hoje o sem dona é **0 de 116 em `moscow_base` e 2 de 127 no
+ * dev**, então a segunda metade desta consulta devolve lista vazia na loja de
+ * verdade. Legítimo ela continua sendo — o nulo é criável pela porta de
+ * bloqueio (`reservas.ts:929`) —, e é por isso que a consulta fica. Se a S-C60
+ * fechar a porta, esta metade vira código morto e sai junto.
  */
 router.get("/lojas/:lojaId/orcamentos/:orcamentoId/reservas-candidatas", async (req, res): Promise<void> => {
   const { lojaId, orcamentoId } = req.params as { lojaId: string; orcamentoId: string };
