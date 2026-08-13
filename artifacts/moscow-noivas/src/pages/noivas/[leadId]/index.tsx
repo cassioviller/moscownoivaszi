@@ -49,13 +49,14 @@ import {
 } from "@/components/ui/select";
 import { AlertCircle, Plus, Pencil, CalendarPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { brl, diaMesAno, etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS, ROTULO_ORIGEM, instanteDia, instanteDiaHora } from "@/lib/formatos";
+import { brl, diaMesAno, etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS, ROTULO_ORIGEM, instanteCurto, instanteDia, instanteDiaHora } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { SeloProvaOrfa } from "@/components/selo-prova-orfa";
 import { SeloProvaForaDaJanela } from "@/components/selo-prova-fora-da-janela";
 import { ehNaoEncontrado, mensagemApi } from "@/lib/erro-api";
 import { proximoPasso } from "@/lib/proximo-passo";
 import { contratoAtivoDaNoiva } from "@/lib/contrato-ativo-da-noiva";
+import { locacaoDaNoiva } from "@/lib/locacao-da-noiva";
 import { proximaVisita } from "@/lib/proxima-visita";
 import { estadoDasConsultas } from "@/lib/estado-consulta";
 import { abertoEmCentavos } from "@/lib/financeiro/forma";
@@ -80,10 +81,18 @@ const STATUS_ORCAMENTO: Record<string, string> = {
 const STATUS_CONTRATO: Record<string, string> = { ATIVO: "Ativo", CANCELADO: "Cancelado" };
 
 /** Linha de dado discreta (rótulo pequeno + valor). Não renderiza se vazio. */
-function Dado({ rotulo, valor }: { rotulo: string; valor: string | null | undefined }) {
+function Dado({
+  rotulo,
+  valor,
+  testid,
+}: {
+  rotulo: string;
+  valor: string | null | undefined;
+  testid?: string;
+}) {
   if (!valor) return null;
   return (
-    <div>
+    <div {...(testid ? { "data-testid": testid } : {})}>
       <span className="block text-xs uppercase tracking-wider text-muted-foreground">{rotulo}</span>
       <span className="text-sm">{valor}</span>
     </div>
@@ -386,6 +395,17 @@ export default function NoivaDetalhe() {
   // aqui a lista inteira é necessária (o card lista todos), então o recorte
   // fica na régua e não na consulta.
   const contratoAtivo = contratoAtivoDaNoiva(contratosDaNoiva);
+  /**
+   * **S-C91 — a ficha mostrava a RESERVA e não mostrava a LOCAÇÃO.**
+   *
+   * O E224 pôs o gesto na tela e as duas datas ficaram na ficha do CONTRATO.
+   * Quem atende o telefone abre esta: *"que dia eu busco o vestido?"* custava
+   * abrir o contrato para responder. A régua é pura (`lib/locacao-da-noiva.ts`)
+   * e devolve `null` quando não há contrato ativo ou quando ele não tem
+   * nenhuma das duas datas — que é o caso de 310 das 311 fichas de hoje, e por
+   * isso a ausência tem de ser SILÊNCIO e não uma linha vazia.
+   */
+  const locacao = locacaoDaNoiva(contratosDaNoiva);
   // E125/D3: a visita marcada cala a sugestão de agendar. Enquanto a agenda
   // conta, o banner espera (E121: sugerir "Agendar" e trocar de ideia um
   // segundo depois é afirmar o que não se sabe); se ela falhou, o banner cai
@@ -672,6 +692,37 @@ export default function NoivaDetalhe() {
                     <SeloProvaForaDaJanela atendimento={visita} />
                   </div>
                 </div>
+              )}
+              {/* S-C91 — as duas datas das cláusulas 4ª e 5ª, aqui e não só na
+                  ficha do contrato. Elas entram neste card porque é o card do
+                  QUANDO: a noiva pergunta pela prova, pela retirada e pela
+                  devolução na mesma ligação, e as três passam a caber num
+                  olhar.
+
+                  `instanteCurto` e não `diaMesAno`: a locação é um INSTANTE no
+                  relógio da loja (a 5ª crava 10:30 e 18:00), enquanto o aviso
+                  de reserva logo acima é dia de NEGÓCIO em UTC. As duas réguas
+                  convivem neste card de propósito, e trocar uma pela outra
+                  move a hora — ou o dia — em silêncio.
+
+                  A metade que falta é DITA quando a outra existe: contrato com
+                  retirada e sem devolução é registro pela metade, e é a
+                  devolução que a multa da 10ª cobra. Sem nenhuma das duas a
+                  régua devolve `null` e não há linha — a mesma escolha do
+                  `<Dado>` para todo campo ausente desta ficha. */}
+              {locacao && (
+                <>
+                  <Dado
+                    rotulo="Retirada"
+                    valor={locacao.retirada ? instanteCurto(locacao.retirada) : "A informar"}
+                    testid="dado-retirada-da-noiva"
+                  />
+                  <Dado
+                    rotulo="Devolução"
+                    valor={locacao.devolucao ? instanteCurto(locacao.devolucao) : "A informar"}
+                    testid="dado-devolucao-da-noiva"
+                  />
+                </>
               )}
             </div>
           </CardContent>

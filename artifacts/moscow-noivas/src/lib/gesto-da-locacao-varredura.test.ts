@@ -85,3 +85,51 @@ describe("S-C35 — a retirada e a devolução têm onde ser preenchidas", () =>
     expect(codigo).toContain("foraDoPrazoDaRetirada");
   });
 });
+
+/**
+ * **S-C91 — a TERCEIRA ponta, e ela só LÊ.**
+ *
+ * As duas de cima são onde a locação se escreve. Esta é onde ela se lê no
+ * telefone: a ficha da noiva é a tela que quem atende abre quando ela liga
+ * perguntando *"que dia eu busco o vestido?"*, e até aqui a resposta exigia
+ * abrir o contrato. A ficha mostrava a RESERVA (o aviso de data do E189) e não
+ * a LOCAÇÃO.
+ *
+ * A varredura prega as três decisões, porque as três são fáceis de desfazer sem
+ * perceber ao mexer numa tela de 850 linhas: a régua da escolha do contrato é
+ * UMA (`locacaoDaNoiva`, que não refaz o `find` por ATIVO), o formato é o
+ * INSTANTE no relógio da loja (`instanteCurto`) e nunca o dia de negócio em UTC
+ * (`diaMesAno`), e o que a ficha lê são os dois campos do contrato.
+ */
+const FICHA_DA_NOIVA = "pages/noivas/[leadId]/index.tsx";
+const REGUA_DA_LOCACAO = "lib/locacao-da-noiva.ts";
+
+describe("S-C91 — a ficha da noiva mostra a locação, não só a reserva", () => {
+  it("a ficha e a régua existem no versionamento", () => {
+    const versionados = new Set(arquivosVersionados(RAIZ, ["pages", "lib"]));
+    expect(versionados).toContain(FICHA_DA_NOIVA);
+    expect(versionados).toContain(REGUA_DA_LOCACAO);
+  });
+
+  it("a régua lê os dois campos do contrato", () => {
+    const codigo = fonte(REGUA_DA_LOCACAO);
+    expect(codigo).toContain("dataRetirada");
+    expect(codigo).toContain("dataDevolucao");
+  });
+
+  it("a ficha da noiva mostra a retirada e a devolução", () => {
+    const codigo = fonte(FICHA_DA_NOIVA);
+    expect(codigo).toContain("locacaoDaNoiva");
+    expect(codigo).toContain("Retirada");
+    expect(codigo).toContain("Devolução");
+  });
+
+  it("a ficha lê a HORA no relógio da loja — a cláusula 4ª é sobre horas", () => {
+    const codigo = fonte(FICHA_DA_NOIVA);
+    // `diaMesAno` é dia de NEGÓCIO em UTC (`formatos.ts:230-238`) e continua
+    // certo para o aviso da reserva, logo acima no mesmo card. O que ele não
+    // pode fazer é formatar a locação: "12/05/2027" não diz a que horas a noiva
+    // vem buscar, que é a informação que as cláusulas 4ª e 5ª existem para fixar.
+    expect(codigo).toContain("instanteCurto");
+  });
+});
