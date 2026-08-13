@@ -27,9 +27,13 @@ import {
  * **Medido em 2026-08-12, depois do conserto da S-O75:**
  *
  * > 200 operações · 143 com schema de resposta · 70 com relação declarada ·
- * > 250 pares (operação, caminho) na fronteira · 144 entregues · 106 não.
+ * > 254 pares (operação, caminho) na fronteira · 165 entregues · 89 não.
  *
- * Os 106 não são 106 defeitos, e é isso que as duas tabelas abaixo separam:
+ * (Medida de novo no E199, quando o motor passou a seguir a chamada para fora
+ * do handler: 252 → 254 pares e 147 → 165 entregues, sem uma linha de porta
+ * mudar. Um sexto do "não entrega" era o motor não olhando.)
+ *
+ * Os 89 não são 89 defeitos, e é isso que as duas tabelas abaixo separam:
  * schema é COMPARTILHADO, e a mesma `Lead` viaja em 27 respostas prometendo um
  * `interesse` que só as portas de noiva carregam. O que a varredura torna
  * contável é a diferença entre **"esta porta entrega menos que a irmã"** e
@@ -70,7 +74,7 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
    * acrescenta um objeto aninhado a um schema de resposta, e é aí que a régua
    * serve — obriga a perguntar quem vai preenchê-lo.
    */
-  it("200 operações · 143 com schema de resposta · 70 com relação · 252 pares na fronteira", () => {
+  it("200 operações · 143 com schema de resposta · 70 com relação · 254 pares na fronteira", () => {
     expect(c.operacoes, "operação nova no spec: confira quem monta a resposta dela e atualize esta contagem").toBe(200);
     expect(c.comSchemaDeResposta).toBe(143);
     expect(c.comRelacao).toBe(70);
@@ -78,73 +82,80 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // o `PATCH /contratos` deixou de responder a linha crua, então `lead`,
     // `vendedora`, `itens` e `parcelas` chegaram, e os filhos DELES entraram na
     // conta. Régua que só desce estaria medindo outra coisa.
-    expect(c.pares.length, "a fronteira mudou — um objeto aninhado nasceu, ou um pai passou a ser entregue").toBe(252);
-    // 144 → 147 entregues e 106 → 105 não: os 2 pares novos nascem JÁ entregues
-    // (os filhos do contrato que o PATCH passou a devolver), e 1 dos 106 saiu da
-    // coluna do não. A `Ajuste.pecaDoAcervo` anda na direção contrária dentro da
-    // conta — ela some da vista do motor —, e é por isso que a soma não é a que
-    // se deduz de fora: **conte, não deduza** valeu aqui contra mim, que escrevi
-    // 151 antes de rodar.
-    expect(c.pares.filter((p) => p.entregue).length).toBe(147);
-    expect(c.pares.filter((p) => !p.entregue).length).toBe(105);
+    // E199/S-O114: 252 → 254. O motor passou a SEGUIR a chamada para fora do
+    // handler, então dois pais que eram montados por helper passaram a chegar e
+    // os filhos deles entraram na fronteira.
+    expect(c.pares.length, "a fronteira mudou — um objeto aninhado nasceu, ou um pai passou a ser entregue").toBe(254);
+    /**
+     * **E199/S-O114 — 147 → 165 entregues, e é o maior salto que esta conta já
+     * deu.** Não entrou uma linha de porta: o motor deixou de parar na borda da
+     * função. Dezoito pares que o repositório JÁ entregava passaram a ser
+     * medidos como entregues, e a coluna do não caiu de 105 para 89.
+     *
+     * A medida do ponto cego é essa: **um sexto do "não entrega" era o motor
+     * não olhando**, não a porta não entregando.
+     */
+    expect(c.pares.filter((p) => p.entregue).length).toBe(165);
+    expect(c.pares.filter((p) => !p.entregue).length).toBe(89);
   });
 
   /**
-   * **As 31 operações que não montam a resposta por consulta relacional.** O
-   * motor não as enxerga por dentro (ponto cego 3), e a contagem delas está
-   * travada para a lista não crescer calada.
+   * **As operações que não montam a resposta por consulta relacional.** Elas
+   * montam à mão, e a contagem está travada para a lista não crescer calada.
    */
-  it("30 operações montam a resposta fora do `with`, e a conta está travada", () => {
+  it("28 operações montam a resposta fora do `with`, e a conta está travada", () => {
     // E194: 31 → 30. O `PATCH /contratos` saiu desta lista no dia em que passou
     // a reler pelo mesmo `with` do `GET` (S-O113) — a régua enxerga uma porta a
     // mais por dentro, e essa é a direção certa desta conta.
-    expect(c.montadasAMao.length, "operação nova sem consulta relacional? A varredura não a enxerga — conte-a aqui").toBe(30);
+    //
+    // E199/S-O114: 30 → 28. Saíram `POST /parcelas/:id/receber` e
+    // `POST /parcelas/:id/estornar` — as duas TÊM consulta relacional, dentro do
+    // helper que o motor não seguia. **As duas estão nomeadas na S-O112 como
+    // portas mudas**, e a medição diz que não são: a sobra listava 6 mudas e são
+    // 5, porque a régua cega inflava a conta. Quem for fechar a S-O112 (E203)
+    // parte de 5.
+    expect(c.montadasAMao.length, "operação nova sem consulta relacional? A varredura não a enxerga — conte-a aqui").toBe(28);
   });
 
   /**
-   * **A promessa que NINGUÉM cumpre.** Aresta que porta nenhuma entrega: ou
-   * existe um serializador escrito à mão fora do handler — e o endereço dele
-   * está aqui —, ou é campo declarado e morto, e aí o conserto é tirar do spec.
+   * **A promessa que ninguém cumpria — e a lista ESVAZIOU quando o motor
+   * passou a enxergar (S-O114/E199).**
    *
-   * Cada linha desta tabela é um julgamento escrito. Aresta nova aqui reprova a
-   * varredura até alguém dizer quem a serializa.
+   * Esta tabela nasceu no E192 com 7 linhas e chegou a 8 no E194. Cada linha
+   * era um julgamento ESCRITO À MÃO: *"esta aresta não aparece na consulta
+   * relacional, mas há um serializador em tal arquivo, confie"*. A sobra
+   * S-O114 dizia exatamente isso — **julgamento escrito, não medição** — e
+   * cobrava conferência manual toda vez que um serializador mudasse de arquivo.
+   *
+   * O E199 fez o motor seguir a chamada para fora do handler, e as OITO
+   * viraram medição:
+   *
+   * | aresta | quem serializa |
+   * |---|---|
+   * | `BackupStatus.ultimo` · `.recentes` · `.ultimoDrill` | `lib/backup.ts` — `statusDosBackups` |
+   * | `LookbookPublicoVestido.fotos` | `lib/visao-noiva.ts` — `montarVestidosLookbook` |
+   * | `OrcamentoPublico.itens` | `lib/visao-noiva.ts` — `montarOrcamentoPublico` |
+   * | `ComissaoRegra.faixas` | `routes/comissao.ts` — `regrasDaLoja` |
+   * | `ComissaoPreviewLinha.projecao` | `routes/comissao.ts` — `projecaoDaLinha` |
+   * | `Ajuste.pecaDoAcervo` | `routes/agenda.ts` — `enriquecerAjustes` (E194/S-O111) |
+   *
+   * A última é a que fecha o círculo: o E194 a pôs aqui **por causa do próprio
+   * conserto** — extrair a conta para um helper fez a aresta ir de 1 para 3
+   * portas entregues E aparecer como órfã. Agora o motor lê as três.
+   *
+   * A régua fica, e agora ela é forte: **lista vazia**. Aresta que apareça aqui
+   * é promessa que ninguém cumpre de verdade — ou o campo sai do spec, ou
+   * alguém escreve quem o serializa. Não há mais "confie na tabela".
    */
-  const MONTADO_FORA_DO_HANDLER: Record<string, string> = {
-    "BackupStatus.ultimo": "lib/backup.ts:202 — `statusDosBackups` monta o objeto inteiro e o handler só o repassa",
-    "BackupStatus.recentes": "lib/backup.ts:202 — idem",
-    "BackupStatus.ultimoDrill": "lib/backup.ts:202 — idem",
-    "LookbookPublicoVestido.fotos": "lib/visao-noiva.ts:135 — a foto do lookbook é meta montada de um `leftJoin` (ordem + atualizadaEm), não linha de tabela",
-    "OrcamentoPublico.itens": "lib/visao-noiva.ts:93 — `montarOrcamentoPublico`, a régua única do portal e da página pública",
-    "ComissaoRegra.faixas": "routes/comissao.ts:131 — `regrasDaLoja` agrupa as faixas por regra e ordena pela escada",
-    "ComissaoPreviewLinha.projecao": "routes/comissao.ts:763 — `projecaoDaLinha`, cálculo puro do `financeiro-core`",
-    /**
-     * **A oitava não é uma promessa vazia — é o PONTO CEGO do motor, e o E194 a
-     * pôs aqui de propósito.**
-     *
-     * `pecaDoAcervo` e `proximaProva` nascem de duas consultas próprias, e o
-     * E194 (S-O111) as tirou de dentro do `GET /ajustes` para um helper, porque
-     * as TRÊS portas de ajuste as prometem e só a fila as entregava. O efeito
-     * colateral está medido: o motor lê o corpo do handler e não segue a
-     * chamada, então uma aresta que passou de 1 para 3 portas entregues aparece
-     * aqui como "ninguém entrega".
-     *
-     * Isto é a **S-O114** deixando de ser hipótese. Enquanto o motor não seguir
-     * o executor para dentro da função chamada — o conserto que o E186 já fez na
-     * varredura das trancas —, esta linha é a única coisa que diz a verdade
-     * sobre estes dois campos.
-     */
-    "Ajuste.pecaDoAcervo": "routes/agenda.ts:`enriquecerAjustes` — as três portas de ajuste a entregam pelo helper (E194/S-O111); o motor não segue a chamada para fora do handler (S-O114)",
-  };
-
-  it("as 8 arestas que a consulta relacional não entrega têm serializador escrito, e o endereço está aqui", () => {
+  it("nenhuma aresta fica órfã: tudo que o spec promete, alguma porta entrega", () => {
     const vazias = [...c.arestas]
       .filter(([, v]) => v.entrega === 0)
       .map(([k]) => k)
       .sort();
     expect(
       vazias,
-      "aresta nova que ninguém entrega: diga QUEM a serializa (e o arquivo:linha), ou tire o campo do spec",
-    ).toEqual(Object.keys(MONTADO_FORA_DO_HANDLER).sort());
+      "aresta que NINGUÉM entrega: ou o campo sai do spec, ou diga quem a serializa — e note que o motor já segue a chamada, então isto é promessa vazia de verdade",
+    ).toEqual([]);
   });
 
   /**

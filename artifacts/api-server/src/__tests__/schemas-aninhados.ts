@@ -234,7 +234,112 @@ function caminhosDoWith(literal: string, constantes: Map<string, string>, pref: 
 
 export type Handler = { arquivo: string; metodo: string; rota: string; corpo: string; linha: number };
 
-export function lerRotas(): { handlers: Handler[]; constantes: Map<string, string> } {
+/**
+ * ## S-O114/E199 — o motor SEGUE a chamada para fora do handler
+ *
+ * O ponto cego 3 dizia que *"serializador que mora em outra função não é
+ * seguido"*, e o E194 mediu o preço numa aresta só: ao tirar a conta do prazo
+ * do `GET /ajustes` para o helper `enriquecerAjustes` — **justamente para as
+ * TRÊS portas a entregarem** —, a varredura passou a dizer que
+ * `Ajuste.pecaDoAcervo` **não é entregue por ninguém**. A aresta foi de 1 para
+ * 3 portas e o retrato piorou: o conserto certo apareceu como regressão.
+ *
+ * O que fecha o buraco é a mesma ideia do E186 na varredura das trancas —
+ * seguir a chamada —, aqui em nível de TEXTO, porque é assim que este motor lê:
+ * o corpo do handler passa a incluir o corpo das funções que ele chama, como se
+ * estivessem escritas no ponto da chamada.
+ *
+ * **A resolução é de PROJETO, não de módulo**, e é aí que ela vai além do
+ * E186: as funções são indexadas por nome sobre todos os arquivos versionados
+ * de `artifacts/api-server/src`, porque `enriquecerAjustes` mora em
+ * `routes/agenda.ts` e é chamada de lá e de outros pontos. O preço é que nome
+ * repetido em dois arquivos resolve para o primeiro — declarado aqui, e o
+ * teste ao lado trava a contagem para essa colisão não passar calada.
+ *
+ * **A profundidade é 2.** Um nível pega o serializador; dois pegam o
+ * serializador que delega. Mais que isso arrasta o módulo inteiro para dentro
+ * de cada handler e a conta deixa de medir a porta.
+ */
+const PROFUNDIDADE_DA_CHAMADA = 2;
+
+/**
+ * A `{` que abre o CORPO, a partir do `(` dos parâmetros.
+ *
+ * Não serve `indexOf("{")`: entre os parâmetros e o corpo mora o tipo de
+ * retorno, e ele tem chaves. `enriquecerAjustes` — a função que é a razão desta
+ * sobra — declara
+ * `): Promise<(T & { proximaProva: Date | null; pecaDoAcervo: {…} | null })[]> {`,
+ * e a primeira `{` depois dos parâmetros é a do TIPO. Ler dali recortava a
+ * assinatura em vez do corpo, e a aresta continuava aparecendo como órfã —
+ * **o motor "seguia a chamada" para dentro de uma declaração de tipo**.
+ *
+ * A régua é a profundidade: a chave do corpo é a primeira em que nem `<>` nem
+ * `()` estão abertos.
+ */
+function chaveDoCorpo(txt: string, aberturaDosParams: number): number {
+  let parens = 0;
+  let angulos = 0;
+  for (let i = aberturaDosParams; i < txt.length; i++) {
+    const c = txt[i]!;
+    if (c === "(") parens++;
+    else if (c === ")") parens--;
+    else if (c === "<") angulos++;
+    else if (c === ">") { if (txt[i - 1] !== "=") angulos--; }
+    else if (c === "{" && parens === 0 && angulos === 0) return i;
+    else if (c === ";" && parens === 0 && angulos === 0) return -1; // assinatura sem corpo
+  }
+  return -1;
+}
+
+/** As funções do projeto, por nome — o corpo de cada uma, como texto. */
+function funcoesDoProjeto(fontes: Map<string, string>): Map<string, string> {
+  const mapa = new Map<string, string>();
+  for (const [, txt] of fontes) {
+    // `function nome<G>(…): Ret {`, com ou sem `export`/`async`.
+    const decl = /(?:export\s+)?(?:async\s+)?function\s+([A-Za-z][A-Za-z0-9_]*)\s*[<(]/g;
+    let m: RegExpExecArray | null;
+    while ((m = decl.exec(txt))) {
+      const abre = chaveDoCorpo(txt, decl.lastIndex - 1);
+      if (abre >= 0 && !mapa.has(m[1]!)) mapa.set(m[1]!, recorte(txt, abre));
+    }
+    // `const nome = async (…): Ret => {`
+    const seta = /(?:export\s+)?const\s+([A-Za-z][A-Za-z0-9_]*)\s*(?::[^=;]*)?=\s*(?:async\s+)?[<(]/g;
+    while ((m = seta.exec(txt))) {
+      const flecha = txt.indexOf("=>", seta.lastIndex);
+      if (flecha < 0) continue;
+      const abre = txt.indexOf("{", flecha);
+      // Só conta se a `{` vem logo depois da flecha — corpo, não um objeto
+      // qualquer mais adiante no arquivo.
+      if (abre >= 0 && abre - flecha < 4 && !mapa.has(m[1]!)) mapa.set(m[1]!, recorte(txt, abre));
+    }
+  }
+  return mapa;
+}
+
+/**
+ * O corpo do handler MAIS o das funções que ele chama, até a profundidade
+ * declarada. É o que faz a conta enxergar o serializador extraído.
+ */
+export function corpoSeguindoChamadas(corpo: string, funcoes: Map<string, string>): string {
+  const vistas = new Set<string>();
+  let texto = corpo;
+  for (let nivel = 0; nivel < PROFUNDIDADE_DA_CHAMADA; nivel++) {
+    const novo: string[] = [];
+    for (const m of texto.matchAll(/\b([A-Za-z][A-Za-z0-9_]*)\s*\(/g)) {
+      const nome = m[1]!;
+      if (vistas.has(nome)) continue;
+      const c = funcoes.get(nome);
+      if (!c) continue;
+      vistas.add(nome);
+      novo.push(c);
+    }
+    if (!novo.length) break;
+    texto += "\n" + novo.join("\n");
+  }
+  return texto;
+}
+
+export function lerRotas(): { handlers: Handler[]; constantes: Map<string, string>; funcoes: Map<string, string> } {
   const arquivos = execFileSync("git", ["ls-files", "artifacts/api-server/src"], { cwd: RAIZ, encoding: "utf8" })
     .trim()
     .split("\n")
@@ -267,7 +372,7 @@ export function lerRotas(): { handlers: Handler[]; constantes: Map<string, strin
       });
     }
   }
-  return { handlers, constantes };
+  return { handlers, constantes, funcoes: funcoesDoProjeto(fontes) };
 }
 
 /** O que ESTE handler entrega: o `with` da consulta mais o que ele monta à mão. */
@@ -285,7 +390,17 @@ export function entreguesPor(h: Handler, constantes: Map<string, string>): { cam
     iw = h.corpo.indexOf("with:", iw + 5);
   }
   const aMao = new Set<string>();
-  const re = /(?:\.parse\(|res\.json\(|return\s|=>\s*\(?\s*)\{/g;
+  /**
+   * S-O114/E199 — **`?? {` entrou porque o serializador extraído monta assim.**
+   *
+   * `montarVestidosLookbook` (`visao-noiva.ts:130`) acumula num `Map` e nasce o
+   * objeto com `porVestido.get(id) ?? { …, fotos: [], … }`. Sem esta forma na
+   * peneira, seguir a chamada dava um retrato ASSIMÉTRICO e falso: o portal
+   * ganhava `fotos` (o helper dele fecha com `return {…}`) e o
+   * `GET /lookbooks/publico` não — as duas portas chamam a MESMA função.
+   * A varredura teria acusado uma porta de não entregar o que ela entrega.
+   */
+  const re = /(?:\.parse\(|res\.json\(|return\s|\?\?\s*|=>\s*\(?\s*)\{/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(h.corpo))) {
     const abre = h.corpo.indexOf("{", m.index + m[0].length - 1);
@@ -327,7 +442,7 @@ export type Cruzamento = {
 
 export function cruzar(): Cruzamento {
   const { schemas, operacoes } = lerSpec(versionado(SPEC));
-  const { handlers, constantes } = lerRotas();
+  const { handlers, constantes, funcoes } = lerRotas();
   const rotaDoSpec = (r: string) => r.replace(/\{([A-Za-z0-9_]+)\}/g, ":$1");
 
   const semHandler: string[] = [];
@@ -342,7 +457,12 @@ export function cruzar(): Cruzamento {
     const nome = `${o.metodo.toUpperCase()} ${o.rota}`;
     const h = handlers.find((x) => x.rota === rotaDoSpec(o.rota) && x.metodo === o.metodo);
     if (!h) { semHandler.push(nome); continue; }
-    const { caminhos, aMao, temWith } = entreguesPor(h, constantes);
+    // S-O114: o handler passa a valer o que ele escreve MAIS o que as funções
+    // que ele chama escrevem — é o que faz o serializador extraído contar.
+    const { caminhos, aMao, temWith } = entreguesPor(
+      { ...h, corpo: corpoSeguindoChamadas(h.corpo, funcoes) },
+      constantes,
+    );
     if (!temWith) montadasAMao.push(nome);
 
     // A fronteira: só se pergunta pelo filho de um pai que chegou.
