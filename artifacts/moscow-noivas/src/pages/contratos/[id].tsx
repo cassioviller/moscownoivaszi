@@ -77,6 +77,9 @@ import {
   totalDoCarneCentavos,
   faltanteDoCarneCentavos,
 } from "@/lib/financeiro/plano";
+// E218 — a reserva de 40% da cláusula 8ª §1º: a tela sugere e avisa, e quem
+// decide continua sendo a loja.
+import { avisoDeEntradaAbaixoDaReserva, entradaDaReserva } from "@/lib/financeiro/reserva";
 import { PreviaDoCarne } from "@/components/previa-do-carne";
 import { invalidarCaixa } from "@/pages/financeiro/helpers";
 import { podeNoModulo } from "@/lib/permissoes";
@@ -260,6 +263,21 @@ export default function ContratoDetail() {
   );
   const planoDivergente =
     contratoTemCarne && contrato != null && totalCarneCentavos !== centavos(contrato.valorTotal);
+
+  /**
+   * **E218 — a reserva de 40% da cláusula 8ª §1º**, avisada e não imposta.
+   *
+   * A conta vem do `financeiro-core`, a mesma que o teste prega — a tela não a
+   * refaz (lição do E187, cinco grafias da mesma conta de desconto). Só aparece
+   * quando há entrada DIGITADA: sugerir os 40% no placeholder de um campo em
+   * branco já é o recado, e um aviso permanente sobre campo vazio vira ruído
+   * que a vendedora aprende a ignorar.
+   */
+  const avisoDaEntrada = useMemo(() => {
+    const valor = parseValor(entrada);
+    if (completandoCarne || contrato == null || valor === null || Number.isNaN(valor)) return null;
+    return avisoDeEntradaAbaixoDaReserva(valor, Number(contrato.valorTotal));
+  }, [entrada, contrato, completandoCarne]);
 
   /**
    * Receber, estornar, remover parcela e cancelar contrato são MOVIMENTO DE
@@ -752,13 +770,29 @@ export default function ContratoDetail() {
                   {!completandoCarne && (
                     <div className="space-y-1.5">
                       <Label htmlFor="plano-entrada">Entrada (opcional)</Label>
+                      {/* E218 — o placeholder é a sugestão da cláusula 8ª §1º:
+                          40% do total. Ele NÃO preenche o campo, porque a
+                          entrada continua opcional e quem negocia é a loja —
+                          mas quem não sabe do percentual passa a ver o número
+                          que o contrato pede, no lugar onde ele é digitado. */}
                       <Input
                         id="plano-entrada"
                         inputMode="decimal"
-                        placeholder="0,00"
+                        placeholder={brl(entradaDaReserva(Number(contrato?.valorTotal ?? 0)))}
                         value={entrada}
                         onChange={(e) => setEntrada(e.target.value)}
                       />
+                      {/* E218 — e o aviso, quando a entrada digitada fica
+                          abaixo. Medido antes de escrever: 101 dos 208
+                          contratos com entrada estão abaixo dos 40%, e a média
+                          é 67,6% — recusar tornaria quase metade do que a loja
+                          já fez irreproduzível pela porta. Então avisa e deixa
+                          passar: a frase diz isso na última linha. */}
+                      {avisoDaEntrada && (
+                        <p className="text-xs text-amber-600" data-testid="aviso-entrada-reserva">
+                          {avisoDaEntrada.aviso}
+                        </p>
+                      )}
                     </div>
                   )}
                   <div className="space-y-1.5">

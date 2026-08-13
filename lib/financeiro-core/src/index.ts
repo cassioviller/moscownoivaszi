@@ -29,6 +29,10 @@ export * from "./atraso";
 // E213 — a multa e os juros da parcela vencida (cláusula 9ª). O sistema já
 // sabia que a parcela estava atrasada desde o E49; esta é a conta.
 export * from "./mora";
+// E218 — a reserva de 40% (8ª §1º) e o prazo dos 20 dias antes da retirada
+// (§ único do objeto). Uma AVISA e a outra RECUSA, e a diferença está medida
+// no próprio módulo: 101 dos 208 contratos com entrada estão abaixo dos 40%.
+export * from "./reserva";
 // S-O52/E186: os nomes das ações da trilha — o CSV da contadora e a coluna
 // "Ação" da tela deixam de ser duas listas que divergiam em três rótulos.
 export * from "./auditoria";

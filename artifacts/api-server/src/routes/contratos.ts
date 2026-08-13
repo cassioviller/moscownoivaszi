@@ -56,6 +56,9 @@ import {
   diaDeNegocio,
   estaAberta,
   faltanteDoCarneCentavos,
+  // E218 — o § único do objeto: o restante do valor entra até 20 dias antes da
+  // retirada. Vale para o CARNÊ; avaria, atraso e mora nascem depois dela.
+  foraDoPrazoDaRetirada,
   liquidoEmCentavos,
   montarPlanoParcelas,
   reais,
@@ -442,6 +445,34 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
         campos: [{ campo: "entrada", motivo: `As parcelas somam ${reais(somaC)}` }],
       });
       return;
+    }
+    /**
+     * **E218 — o mesmo prazo do § único, na porta em que o carnê NASCE.**
+     *
+     * O `gerar-plano` é a outra; fechar só uma seria o meio conserto do E172, e
+     * esta é a que a tela de fecho usa. A comparação é contra a `dataRetirada`
+     * que ESTE pedido traz — o contrato ainda não existe, então não há linha no
+     * banco de onde lê-la.
+     *
+     * Aqui a guarda olha TODAS as parcelas e não só a última: o carnê do
+     * `gerar-plano` é gerado em ordem, e este chega digitado — nada obriga
+     * quem chama a API a mandá-lo crescente.
+     */
+    for (const p of parcelasInput) {
+      const fora = foraDoPrazoDaRetirada(p.vencimento, contratoData.dataRetirada);
+      if (fora) {
+        res.status(422).json({
+          error: "CARNE_DEPOIS_DO_PRAZO",
+          detalhe: fora.detalhe,
+          campos: [
+            {
+              campo: "parcelas",
+              motivo: `O carnê tem de vencer até ${fora.limite.split("-").reverse().join("/")}`,
+            },
+          ],
+        });
+        return;
+      }
     }
   }
 
@@ -2440,6 +2471,38 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (
       return;
     }
     throw err;
+  }
+
+  /**
+   * **E218 — o restante entra até 20 dias antes da retirada** (§ único do
+   * objeto). A guarda é sobre o plano MONTADO, e não sobre o que a vendedora
+   * digitou: o que sai daqui são as datas que o carnê vai ter, e é sobre elas
+   * que a cláusula fala.
+   *
+   * **Só a última importa**, e é o que a frase da recusa diz: as parcelas do
+   * carnê são crescentes, então a que estoura o prazo mais tarde é a que decide
+   * se o dinheiro entra antes de a peça sair pela porta.
+   *
+   * Sem `dataRetirada` não há prazo, e é a maioria — 722 dos 723 contratos não
+   * a declaram (S-C35). A régua nasce quase sem população, de propósito: ela
+   * cresce quando o gesto de preencher a retirada existir.
+   */
+  const ultima = plano[plano.length - 1];
+  const foraDoPrazo = ultima
+    ? foraDoPrazoDaRetirada(ancoraDeNegocio(ultima.vencimento), contrato.dataRetirada)
+    : null;
+  if (foraDoPrazo) {
+    res.status(422).json({
+      error: "CARNE_DEPOIS_DO_PRAZO",
+      detalhe: foraDoPrazo.detalhe,
+      campos: [
+        {
+          campo: "primeiroVencimento",
+          motivo: `O carnê inteiro tem de vencer até ${foraDoPrazo.limite.split("-").reverse().join("/")}`,
+        },
+      ],
+    });
+    return;
   }
 
   const linhas: (typeof parcelasTable.$inferInsert)[] = plano.map((p) => ({
