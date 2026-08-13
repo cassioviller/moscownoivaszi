@@ -15,6 +15,7 @@ export interface VestidoUtilizacao {
   precoBase: number;
   /** @nullable */
   precoRealuguel?: number | null;
+  exclusiva: boolean;
   provas: number;
   reservas: number;
   contratos: number;

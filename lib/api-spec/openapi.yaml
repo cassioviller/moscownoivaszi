@@ -5153,7 +5153,7 @@ components:
     # ── Vestidos ──
     Vestido:
       type: object
-      required: [id, lojaId, codigo, nome, precoBase, status, createdAt]
+      required: [id, lojaId, codigo, nome, precoBase, exclusiva, status, createdAt]
       properties:
         id: { type: string }
         lojaId: { type: string }
@@ -5163,6 +5163,12 @@ components:
         # E157: nulo = a peça não tem preço de segunda saída, e o orçamento
         # segue com o precoBase (o comportamento de sempre).
         precoRealuguel: { type: ["number", "null"] }
+        # E216 (cláusula 12ª): a peça foi comprada/confeccionada para sair
+        # EXCLUSIVA. É obrigatória na resposta porque quem lê decide dinheiro —
+        # a rescisão de peça exclusiva em PRIMEIRO ALUGUEL cobra o aluguel
+        # integral. "Primeiro aluguel" não vem aqui: é a contagem de saídas
+        # (`GET /vestidos/utilizacao`), que é derivada dos contratos.
+        exclusiva: { type: boolean }
         # E156: de onde a peça veio, quando não veio do fornecedor — o trabalho
         # de CONFECÇÃO da fila da costureira que virou item do acervo. Nulo é o
         # caso de toda peça comprada.
@@ -5214,7 +5220,7 @@ components:
           description: "Miniatura gerada no cliente para os cards. Ausente = sem thumb (a cheia serve de fallback)."
     VestidoUtilizacao:
       type: object
-      required: [vestidoId, codigo, nome, status, precoBase, provas, reservas, contratos, receita]
+      required: [vestidoId, codigo, nome, status, precoBase, exclusiva, provas, reservas, contratos, receita]
       properties:
         vestidoId: { type: string }
         codigo: { type: string }
@@ -5222,6 +5228,11 @@ components:
         status: { type: string, enum: [ativo, inativo] }
         precoBase: { type: number }
         precoRealuguel: { type: ["number", "null"] }
+        # E216: a marca desce JUNTO com a contagem, pelo mesmo motivo do
+        # precoRealuguel (E157) — o predicado da cláusula 12ª é
+        # `exclusiva && contratos === 0`, e as duas metades vindo em respostas
+        # diferentes obrigariam quem decide a costurar duas consultas.
+        exclusiva: { type: boolean }
         # Provas agendadas no período (inclui FALTOU — a demanda existiu).
         provas: { type: integer }
         # Reservas de casamento ATIVAS com data no período.
@@ -5237,6 +5248,9 @@ components:
         nome: { type: string, minLength: 1 }
         precoBase: { type: number, minimum: 0 }
         precoRealuguel: { type: number, minimum: 0 }
+        # E216 (cláusula 12ª): ausente = false, e é o caso da esmagadora
+        # maioria. O sistema não inventa exclusividade que ninguém acordou.
+        exclusiva: { type: boolean }
         # E156: a proveniência se declara no NASCIMENTO da peça, e só aqui — o
         # gesto é "esta confecção virou peça do acervo", não uma edição de ficha.
         # O servidor exige que o trabalho seja desta loja, do tipo CONFECCAO e já
@@ -5261,6 +5275,10 @@ components:
         # null EXPLÍCITO desfaz o preço de realuguel — a peça volta a ser
         # cobrada pelo precoBase em toda saída.
         precoRealuguel: { type: ["number", "null"], minimum: 0 }
+        # E216 (cláusula 12ª): a marca entra e SAI pela ficha. A loja se corrige
+        # — foi ela quem declarou —, e o que o sistema não deixa desfazer é a
+        # contagem de saídas, que não mora aqui.
+        exclusiva: { type: boolean }
         tamanho: { type: string }
         cor: { type: string }
         categoria: { type: string }

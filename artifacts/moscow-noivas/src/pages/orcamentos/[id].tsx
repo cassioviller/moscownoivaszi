@@ -79,6 +79,7 @@ import { podeNoModulo } from "@/lib/permissoes";
 import { avisosDeEstoque, nomeDoItemEstoque } from "@/lib/estoque-aviso";
 import { confeccoesDaNoiva as confeccoesDoOrcamento } from "@/lib/confeccoes-da-noiva";
 import { precoDaSaida } from "@/lib/preco-da-saida";
+import { avisoDaClausula12, pecasSobAClausula12 } from "@/lib/peca-exclusiva";
 import {
   brutoEmCentavos,
   centavos,
@@ -450,6 +451,26 @@ export default function OrcamentoDetail() {
     if (!ves) return null;
     return precoDaSaida(ves, locacoesPorVestido.get(ves.id) ?? 0);
   }, [vestidoEscolhidoId, vestidoPorId, locacoesPorVestido]);
+
+  /**
+   * E216 — as peças deste orçamento que estão sob a **cláusula 12ª**: exclusivas
+   * e ainda em primeiro aluguel. Se a noiva rescindir, a multa é o aluguel
+   * INTEIRO, e não os 60% da 11ª.
+   *
+   * O aviso mora aqui, e não depois do contrato, pela mesma razão do E211: o
+   * contrato fecha num clique, e a 12ª só aparece no papel que a noiva assina.
+   * A vendedora precisa poder dizer isso enquanto a conversa ainda está aberta.
+   */
+  const pecasExclusivas = useMemo(
+    () =>
+      pecasSobAClausula12({
+        itens: orcamento?.itens ?? [],
+        vestidoPorId,
+        locacoesPorVestido,
+      }),
+    [orcamento?.itens, vestidoPorId, locacoesPorVestido],
+  );
+  const avisoExclusiva = useMemo(() => avisoDaClausula12(pecasExclusivas), [pecasExclusivas]);
 
   const editarItemForm = useForm<EditarItemValues>({
     resolver: zodResolver(editarItemSchema),
@@ -1431,6 +1452,10 @@ export default function OrcamentoDetail() {
                             .map((v) => (
                               <SelectItem key={v.id} value={v.id}>
                                 {v.codigo} · {v.nome}
+                                {/* E216: a marca acompanha a peça na hora de
+                                    escolher — a lista é longa, e ninguém abre a
+                                    ficha de cada uma antes de decidir. */}
+                                {v.exclusiva ? " · exclusiva" : ""}
                               </SelectItem>
                             ))}
                         </SelectContent>
@@ -1675,6 +1700,18 @@ export default function OrcamentoDetail() {
                       </Button>
                     </div>
                   ))}
+                </div>
+              )}
+              {/* E216 (cláusula 12ª): o que a rescisão vai custar, DITO antes
+                  do clique que fecha o contrato — o molde do aviso do E211. A
+                  peça é nomeada, porque "há uma peça exclusiva" não dá próximo
+                  passo a ninguém. Não bloqueia: quem decide vender é a loja. */}
+              {avisoExclusiva && (
+                <div
+                  className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm"
+                  data-testid="aviso-peca-exclusiva"
+                >
+                  {avisoExclusiva}
                 </div>
               )}
               {/* A02.3/E162: o recado do gate mora DENTRO do diálogo — com a

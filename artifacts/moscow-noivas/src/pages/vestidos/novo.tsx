@@ -66,6 +66,9 @@ export default function NovoVestido() {
           precoBase: values.precoBase,
           // E157: só vai quando existe — o POST não tem o que apagar.
           ...(values.precoRealuguel != null ? { precoRealuguel: values.precoRealuguel } : {}),
+          // E216 (cláusula 12ª): a marca é da loja e vai sempre — `false` é o
+          // default do banco e o caso da esmagadora maioria.
+          exclusiva: values.exclusiva,
           tamanho: values.tamanho || undefined,
           categoria: values.categoria || undefined,
           observacoes: values.observacoes || undefined,

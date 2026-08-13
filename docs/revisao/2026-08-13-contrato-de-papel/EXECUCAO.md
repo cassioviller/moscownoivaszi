@@ -15,8 +15,8 @@ Contado em 13/08/2026:
 
 | natureza | quantos | estado |
 |---|---|---|
-| Épicos de código (E211–E222) | **12** | 0 executados |
-| Sobras que não viraram épico | **1** | aberta |
+| Épicos de código (E211–E222) | **12** | 2 executados (E211, E216) |
+| Sobras que não viraram épico | **1** | aberta (mais 3 nascidas no E216 — **conte a tabela**) |
 | Pendências que **não são software** | **3** | abertas |
 | Decisões da dona ainda abertas | **2** (D4, D7) | travam só o E220 |
 
@@ -64,8 +64,8 @@ A ordem não é por cláusula nem por valor: é por **de onde vem o dado**.
 | Épico | Tese | Cláusula | Migração? | Estado |
 |---|---|---|---|---|
 | **E215** | **a ficha guarda quem assina** — os **9 campos** que faltam (estado civil, profissão, RG, nascimento, e-mail e o endereço inteiro). É o achado de maior alcance da auditoria | identificação | sim, grande | aberto |
-| **E216** | **o vestido sabe que é exclusivo** — sem o atributo, a 12ª não é aplicável por máquina nenhuma | 12ª | sim | aberto |
-| **E217** | **a rescisão calcula** — reserva nunca volta, 60% de dedução, multa integral na peça exclusiva, devolução em 30 dias, e a **coluna do prazo da 18ª** (campo por contrato, D3) | 8ª §2º, 11ª, 12ª, 13ª, 18ª | sim | aberto · depende do **E216** |
+| **E216** | **o vestido sabe que é exclusivo** | 12ª | rodada e conferida | executado, hash no commit seguinte · [relatório](execucao/E216.md) — a auditoria via **duas** ausências e elas não são do mesmo tipo: *exclusivo* é **marca** (coluna `vestidos.exclusiva`, e a decisão contra o atributo de catálogo é medida — os 9 atributos da loja são todos descritivos, e o catálogo **cascateia no DELETE**), *primeiro aluguel* é **estado** e **já era contável desde o E157** (`GET /vestidos/utilizacao`). Nasce uma coluna, não duas. A leitura da 12ª está declarada: a marca é permanente, o estado expira — a dona corrige em **uma linha**. O aviso nomeia a peça **dentro do diálogo do contrato**, no molde do E211 |
+| **E217** | **a rescisão calcula** — reserva nunca volta, 60% de dedução, multa integral na peça exclusiva, devolução em 30 dias, e a **coluna do prazo da 18ª** (campo por contrato, D3) | 8ª §2º, 11ª, 12ª, 13ª, 18ª | sim | aberto · **o E216 entregou o predicado**. Três coisas para não errar estão em [`execucao/E216.md`](execucao/E216.md): descontar o PRÓPRIO contrato da contagem de saídas (senão a 12ª não dispara nunca), e escolher e DECLARAR a base do *"valor integral do aluguel"* — item ou contrato |
 
 ### Onda D — o documento
 
@@ -81,6 +81,9 @@ A ordem não é por cláusula nem por valor: é por **de onde vem o dado**.
 | # | O que é | Sev. | Nasceu em | Estado |
 |---|---|---|---|---|
 | **S-C1** | **O dano constatado na ENTREGA não tem registro.** A 5ª §3º manda a locadora substituir a peça quando o dano é visto **no ato da locação**; o sistema só conhece avaria na **devolução** (`avarias.bloqueioId`). Não virou épico porque é caso raro e a dona não pediu — fica contável | 🔵 | auditoria do contrato | aberta |
+| **S-C20** | **Nenhum manual conhece a peça exclusiva.** O E216 pôs o selo em quatro lugares (ficha, acervo, seletor do orçamento, diálogo do contrato) e os cinco manuais de `docs/manuais/` calam a cláusula 12ª inteira. É o achado do **E196** repetido: manual que CALA capacidade é invisível para quem lê — não há como estranhar o que não está escrito, e a `varredura-manuais` passa verde porque confere o MENU, não a prosa. **Não é conserto de passagem**: pela lição do próprio E196, manual se reescreve **depois da onda**, e a onda C ainda tem E215 e E217 | 🔵 | E216 | aberta |
+| **S-C21** | **O lookbook público não sabe da marca.** `LookbookPublicoVestido` não traz `exclusiva`, e mostrá-la à noiva no lookbook **é decisão de negócio, não código**: é argumento de venda ("esta peça é só sua") ou é pressão indevida antes de a noiva saber que a rescisão custa o aluguel inteiro? Fica contável até a dona dizer | 🔵 | E216 | aberta |
+| **S-C22** | **A peça exclusiva não é filtrável no acervo** — custo declarado da decisão 1 do E216. Os filtros de `vestidos/index.tsx` saem do catálogo (tamanho, coleção, atributos), e `exclusiva` é coluna de propósito. Hoje a conta não dói: são **132 peças em `moscow_base` e ZERO marcadas**. Vale um `Select` a mais no dia em que a loja marcar as primeiras | 🔵 | E216 | aberta |
 
 ## Pendências que não são software
 

@@ -75,6 +75,48 @@ export const vestidosTable = pgTable("vestidos", {
    * Nulo é o caso de toda peça comprada, que é a esmagadora maioria.
    */
   origemAjusteId: text("origem_ajuste_id").references((): AnyPgColumn => ajustesTable.id, { onDelete: "set null" }),
+  /**
+   * E216 — **a peça é exclusiva**, cláusula 12ª do instrumento de locação.
+   *
+   * > Se tratar de rescisão de **vestido exclusivo para primeiro aluguel**,
+   * > será cobrado na qualidade de multa de rescisão contratual **o valor
+   * > integral do aluguel**.
+   *
+   * ## Por que COLUNA, e não atributo do catálogo
+   *
+   * O catálogo (`vestido_atributos`) existe e seria o lugar óbvio. Medido no
+   * banco de dev: os 9 atributos são **Brilho, Cauda, Cor, Decote, Manga,
+   * Silhueta, Tecido, Tipo de peça e Volume da saia** — todos descritivos, todos
+   * do que a noiva procura, e nenhum deles decide dinheiro. Três razões fecham a
+   * escolha:
+   *
+   * 1. **O catálogo é apagável pela loja, e apagar cascateia.** A palavra some em
+   *    Configurações → Catálogo e a classificação vai junto (`onDelete: cascade`,
+   *    documentado logo abaixo). Uma cláusula que cobra o **aluguel inteiro** não
+   *    pode depender de uma linha que alguém apaga arrumando vocabulário.
+   * 2. **Casar por texto livre é frágil.** O código teria de procurar a opção
+   *    "Exclusiva" pelo `valor`, e "exclusivo"/"EXCLUSIVA" seriam outras.
+   * 3. **Já há o molde certo ao lado**: `precoRealuguel` (E157) é o mesmo tipo de
+   *    fato — comercial, lido pelo CÓDIGO, não procurado pela noiva.
+   *
+   * ## "Primeiro aluguel" NÃO mora aqui — é estado, não marca
+   *
+   * A marca é da peça e é da loja: alguém comprou/confeccionou esta peça para
+   * sair exclusiva. O **estado** "está no primeiro aluguel" é a contagem de
+   * saídas, derivada dos contratos em `GET /vestidos/utilizacao` desde o E157 —
+   * a mesma regra do `precoRealuguel` logo acima, e a mesma deste repositório
+   * inteiro: **contagem não se grava**. Um segundo campo "já alugou" seria uma
+   * segunda verdade sobre o mesmo número, e ela divergiria no primeiro
+   * cancelamento de contrato.
+   *
+   * **A marca sobrevive à primeira saída** (não se apaga sozinha): ela é história
+   * da peça, e apagá-la por efeito colateral de um contrato deixaria a ficha
+   * errada no dia em que o contrato fosse cancelado. O que expira é o ESTADO.
+   * O predicado da 12ª é `exclusiva && locacoesAnteriores === 0`, e ele mora em
+   * `@workspace/financeiro-core` (`exclusividade.ts`) — é lá que a dona corrige
+   * em uma linha se a intenção do contrato era outra.
+   */
+  exclusiva: boolean("exclusiva").notNull().default(false),
   tamanho: text("tamanho"),
   cor: text("cor"),
   categoria: text("categoria"),

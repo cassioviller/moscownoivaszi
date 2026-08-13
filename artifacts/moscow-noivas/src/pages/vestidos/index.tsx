@@ -722,6 +722,21 @@ export default function Vestidos() {
                   <div className="absolute top-2 right-2">
                     {renderBadgeDoCard(vestido)}
                   </div>
+                  {/* E216 (cláusula 12ª): a peça exclusiva se anuncia no
+                      acervo, do lado oposto ao selo de disponibilidade — quem
+                      escolhe a peça com a noiva precisa saber antes que a
+                      rescisão dela custa o aluguel inteiro. */}
+                  {vestido.exclusiva && (
+                    <div className="absolute top-2 left-2">
+                      <Badge
+                        variant="secondary"
+                        className="bg-background/80 backdrop-blur-sm shadow-sm"
+                        data-testid={`selo-exclusiva-${vestido.id}`}
+                      >
+                        Exclusiva
+                      </Badge>
+                    </div>
+                  )}
                 </div>
                 <CardContent className="p-4">
                   <div className="font-mono text-xs text-muted-foreground mb-1">{vestido.codigo}</div>

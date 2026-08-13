@@ -17,6 +17,7 @@ export interface Vestido {
   precoBase: number;
   /** @nullable */
   precoRealuguel?: number | null;
+  exclusiva: boolean;
   /** @nullable */
   origemAjusteId?: string | null;
   /** @nullable */

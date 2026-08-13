@@ -333,6 +333,9 @@ router.get("/lojas/:lojaId/vestidos/utilizacao", async (req, res): Promise<void>
         // E157: desce junto com a contagem — quem lê a utilização é quem
         // decide se a peça já se pagou e quanto cobrar da próxima saída.
         precoRealuguel: vestidosTable.precoRealuguel,
+        // E216 (cláusula 12ª): pelo mesmo motivo. O predicado da 12ª é
+        // `exclusiva && contratos === 0`, e as duas metades estão nesta linha.
+        exclusiva: vestidosTable.exclusiva,
       })
       .from(vestidosTable)
       .where(eq(vestidosTable.lojaId, lojaId))

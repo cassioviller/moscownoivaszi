@@ -282,6 +282,14 @@ export default function VestidoDetail() {
             <Badge variant={varianteAtivo(vestido.status === "ativo")} className="text-sm px-3 py-1">
               {vestido.status === "ativo" ? "Ativo" : "Inativo"}
             </Badge>
+            {/* E216 (cláusula 12ª): a marca fica na ficha mesmo depois da
+                primeira saída — ela é história da peça. O que expira é o
+                ESTADO, e quem conta isso é a utilização, não este selo. */}
+            {vestido.exclusiva && (
+              <Badge variant="secondary" className="text-sm px-3 py-1" data-testid="selo-exclusiva">
+                Exclusiva
+              </Badge>
+            )}
           </span>
         }
         acaoPrimaria={

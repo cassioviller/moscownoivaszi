@@ -1,0 +1,1 @@
+ALTER TABLE "vestidos" ADD COLUMN "exclusiva" boolean DEFAULT false NOT NULL;

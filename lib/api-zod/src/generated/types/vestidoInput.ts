@@ -16,6 +16,7 @@ export interface VestidoInput {
   precoBase: number;
   /** @minimum 0 */
   precoRealuguel?: number;
+  exclusiva?: boolean;
   origemAjusteId?: string;
   tamanho?: string;
   cor?: string;

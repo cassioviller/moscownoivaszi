@@ -7,6 +7,7 @@ import type { Atributo, VestidoAtributo } from "@workspace/api-client-react";
 import { CatalogoCampos, type SelecoesCatalogo } from "@/components/catalogo/catalogo-campos";
 import { parseValor } from "@/lib/financeiro/dinheiro";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -44,6 +45,12 @@ export const vestidoFormSchema = z.object({
     if (v === null || Number.isNaN(v)) ctx.addIssue({ code: "custom", message: "Informe um preço válido (ex.: 3.500,00)" });
     else if (v < 0) ctx.addIssue({ code: "custom", message: "Preço deve ser positivo" });
   }),
+  /**
+   * E216 — a peça é EXCLUSIVA (cláusula 12ª). Marca da loja, não estado: quem
+   * decide se ela ainda está no primeiro aluguel é a contagem de saídas, e
+   * essa não se digita.
+   */
+  exclusiva: z.boolean().optional(),
   tamanho: z.string().optional(),
   categoria: z.string().optional(),
   observacoes: z.string().optional(),
@@ -52,10 +59,12 @@ export const vestidoFormSchema = z.object({
 type VestidoFormCampos = z.infer<typeof vestidoFormSchema>;
 
 /** O que as páginas recebem no submit — o preço JÁ convertido para número. */
-export type VestidoFormValues = Omit<VestidoFormCampos, "precoBase" | "precoRealuguel"> & {
+export type VestidoFormValues = Omit<VestidoFormCampos, "precoBase" | "precoRealuguel" | "exclusiva"> & {
   precoBase: number;
   /** null = a peça não tem preço de segunda saída (E157). */
   precoRealuguel: number | null;
+  /** E216 — a peça é exclusiva (cláusula 12ª). Sempre booleano, nunca ausente. */
+  exclusiva: boolean;
 };
 
 /**
@@ -88,6 +97,7 @@ export function VestidoForm({
       precoBase: defaults?.precoBase != null ? String(defaults.precoBase).replace(".", ",") : "",
       precoRealuguel:
         defaults?.precoRealuguel != null ? String(defaults.precoRealuguel).replace(".", ",") : "",
+      exclusiva: defaults?.exclusiva ?? false,
       tamanho: defaults?.tamanho ?? "",
       categoria: defaults?.categoria ?? "",
       observacoes: defaults?.observacoes ?? "",
@@ -115,6 +125,9 @@ export function VestidoForm({
         ...values,
         precoBase: parseValor(values.precoBase) as number,
         precoRealuguel: realuguel as number | null,
+        // E216: o checkbox desmarcado é `false` explícito, e não "não mexi" —
+        // é assim que a loja se corrige de uma marca posta por engano.
+        exclusiva: values.exclusiva === true,
       },
       atributos,
     );
@@ -168,6 +181,38 @@ export function VestidoForm({
                   {...field}
                 />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {/* E216 — a cláusula 12ª do contrato de locação cobra o aluguel
+            INTEIRO na rescisão de peça exclusiva de primeiro aluguel (contra os
+            60% da 11ª). A marca é da loja; "primeiro aluguel" o sistema conta
+            sozinho, pelas saídas da peça. */}
+        <FormField
+          control={form.control}
+          name="exclusiva"
+          render={({ field }) => (
+            <FormItem>
+              <div className="flex items-start gap-2">
+                <FormControl>
+                  <Checkbox
+                    id="vestido-exclusiva"
+                    checked={field.value === true}
+                    onCheckedChange={(v) => field.onChange(v === true)}
+                    data-testid="checkbox-exclusiva"
+                  />
+                </FormControl>
+                <div className="space-y-0.5">
+                  <label htmlFor="vestido-exclusiva" className="text-sm font-medium leading-none">
+                    Peça exclusiva
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    Comprada ou confeccionada para sair exclusiva. Enquanto ela não sair
+                    nenhuma vez, a rescisão cobra o aluguel integral (cláusula 12ª).
+                  </p>
+                </div>
+              </div>
               <FormMessage />
             </FormItem>
           )}

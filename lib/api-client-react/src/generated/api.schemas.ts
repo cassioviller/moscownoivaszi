@@ -453,6 +453,7 @@ export interface Vestido {
   precoBase: number;
   /** @nullable */
   precoRealuguel?: number | null;
+  exclusiva: boolean;
   /** @nullable */
   origemAjusteId?: string | null;
   /** @nullable */
@@ -495,6 +496,7 @@ export interface VestidoUtilizacao {
   precoBase: number;
   /** @nullable */
   precoRealuguel?: number | null;
+  exclusiva: boolean;
   provas: number;
   reservas: number;
   contratos: number;
@@ -510,6 +512,7 @@ export interface VestidoInput {
   precoBase: number;
   /** @minimum 0 */
   precoRealuguel?: number;
+  exclusiva?: boolean;
   origemAjusteId?: string;
   tamanho?: string;
   cor?: string;
@@ -538,6 +541,7 @@ export interface VestidoUpdate {
      * @nullable
      */
   precoRealuguel?: number | null;
+  exclusiva?: boolean;
   tamanho?: string;
   cor?: string;
   categoria?: string;
