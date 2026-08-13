@@ -6983,7 +6983,15 @@ components:
         # resposta STRIPAVA a coluna e a tela voltava a perguntar
         # `parcelas.length > 0`: um reparo de avaria cobrado antes do carnê
         # sumia com o "Gerar plano" para sempre.
-        origem: { type: string, enum: [PLANO, AVULSA, AVARIA, REAJUSTE_DATA] }
+        # E213 achou o buraco que o E212 abriu: `ATRASO_DEVOLUCAO` entrou no
+        # enum do BANCO e não entrou aqui, e o Zod de resposta não estripa
+        # valor fora do enum — ele EXPLODE. Medido:
+        # `Invalid enum value. Expected 'PLANO' | 'AVULSA' | 'AVARIA' |
+        # 'REAJUSTE_DATA', received 'ATRASO_DEVOLUCAO'`. Cobrado o primeiro
+        # atraso, toda listagem de parcelas que o incluísse respondia 500 — a
+        # fila de cobrança, o carnê e o extrato do portal de uma vez. A
+        # `varredura-enums-do-banco-no-spec` passou a pregar as duas listas.
+        origem: { type: string, enum: [PLANO, AVULSA, AVARIA, REAJUSTE_DATA, ATRASO_DEVOLUCAO] }
         # PARCIAL (E49): a noiva pagou parte. O dinheiro entrou no caixa e o
         # resto (valorPrevisto − valorRecebido) segue cobrável.
         status: { type: string, enum: [PREVISTA, PARCIAL, PAGA, CANCELADA] }
