@@ -1553,6 +1553,29 @@ export interface CobrancaDeAtraso {
   parcelaId?: string | null;
 }
 
+export interface AtrasoNaFila {
+  contratoId: string;
+  leadId: string;
+  /** @nullable */
+  noivaNome?: string | null;
+  bloqueioId: string;
+  linhas: CobrancaDeAtrasoLinha[];
+  multa: number;
+  valor: number;
+  temExtravio: boolean;
+  maiorAtraso: number;
+  /** @nullable */
+  explicacao?: string | null;
+  semAluguel: string[];
+  jaCobrada: boolean;
+}
+
+export interface FilaDeAtrasos {
+  itens: AtrasoNaFila[];
+  pecas: number;
+  valor: number;
+}
+
 export interface CobrarAtrasoInput {
   /**
      * @minimum 0

@@ -10,6 +10,9 @@ import {
   getGetLeadsParadosQueryKey,
   useListAtendimentos,
   getListAtendimentosQueryKey,
+  // S-C32 — a peça que não voltou: o aviso que nasce da AUSÊNCIA de um gesto.
+  useListContratosComAtraso,
+  getListContratosComAtrasoQueryKey,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -17,6 +20,7 @@ import { Bell, X } from "lucide-react";
 import { podeNoModulo } from "@/lib/permissoes";
 import { hojeLocal, addDias } from "@/lib/financeiro/datas";
 import { instanteDiaMes } from "@/lib/formatos";
+import { avisoDoAtraso } from "@/lib/financeiro/fila-de-atrasos";
 
 
 /**
@@ -67,6 +71,9 @@ export function SinoNotificacoes() {
   const veAgenda = podeNoModulo(acessosModulos, "agenda", "ver");
   const veFinanceiro = podeNoModulo(acessosModulos, "financeiro", "ver");
   const veComissao = podeNoModulo(acessosModulos, "comissao", "ver");
+  // S-C32: é `contratos`, e não `financeiro` — a Vendedora do seed tem
+  // `financeiro: NADA` e `contratos: TUDO`, e é ela quem cobra o atraso da 16ª.
+  const veContratos = podeNoModulo(acessosModulos, "contratos", "ver");
 
   const alertaCaixa = useGetAlertaCaixa(activeLojaId!, {
     query: {
@@ -105,6 +112,26 @@ export function SinoNotificacoes() {
     },
   });
 
+  /**
+   * **S-C32 — a peça que não voltou, e é o aviso mais "E68" de todos.**
+   *
+   * Os quatro avisos deste sino existiam antes dele, cada um numa tela: o lead
+   * esfriando no funil, o caixa furando na projeção, a competência esquecida na
+   * comissão, a prova de amanhã na agenda. O atraso da 16ª não existia em tela
+   * NENHUMA além da ficha daquela reserva — e o fato que o dispara é a AUSÊNCIA
+   * de um gesto: ninguém devolveu a peça, então nada acontece e nada avisa.
+   *
+   * Enquanto isso a diária soma: R$ 500,00 por dia num vestido de R$ 3.000,00.
+   */
+  const atrasos = useListContratosComAtraso(activeLojaId!, {
+    query: {
+      queryKey: getListContratosComAtrasoQueryKey(activeLojaId!),
+      enabled: !!activeLojaId && veContratos,
+      refetchInterval: POLL_MS,
+      retry: false,
+    },
+  });
+
   const base = `/loja/${activeLojaId}`;
 
   const todas = useMemo<Notificacao[]>(() => {
@@ -124,6 +151,22 @@ export function SinoNotificacoes() {
         detalhe: "Pela projeção com o que há para receber e pagar.",
         href: `${base}/financeiro/projecao`,
         urgente: true,
+      });
+    }
+
+    // S-C32: a peça fora da arara, logo depois do caixa. Ela é dinheiro que
+    // CRESCE sozinho — a única cobrança do sistema de que isso é verdade — e
+    // uma peça que outra noiva não pode reservar enquanto não volta.
+    const atraso = avisoDoAtraso(atrasos.data);
+    if (atraso) {
+      lista.push({
+        // A assinatura leva peças, dias e valor: dispensar hoje não cala amanhã,
+        // quando o número já é outro.
+        id: `ATRASO:${atraso.assinatura}`,
+        titulo: atraso.titulo,
+        detalhe: atraso.detalhe,
+        href: `${base}/contratos`,
+        urgente: atraso.urgente,
       });
     }
 
@@ -171,7 +214,7 @@ export function SinoNotificacoes() {
     }
 
     return lista;
-  }, [alertaCaixa.data, pendencias.data, parados.data, atendimentos.data, base]);
+  }, [alertaCaixa.data, atrasos.data, pendencias.data, parados.data, atendimentos.data, base]);
 
   const chave = user && activeLojaId ? chaveDispensadas(user.id, activeLojaId) : null;
   const visiveis = useMemo(() => {

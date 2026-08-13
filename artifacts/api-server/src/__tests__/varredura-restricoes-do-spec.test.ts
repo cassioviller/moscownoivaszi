@@ -138,7 +138,13 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
       // salvaria invertido e `foraDoExpedienteDeRetirada` recusaria as 24 horas
       // do dia — a mesma parede que o expediente de ATENDIMENTO já tinha, agora
       // no segundo.
-    ).toBe(128);
+      //
+      // S-C32: 128 → 130, e os dois são de RESPOSTA. `AtrasoNaFila.maiorAtraso`
+      // é a mesma contagem de dias que `CobrancaDeAtraso` já declarava, agora
+      // por linha da fila; `FilaDeAtrasos.pecas` é quantas peças estão fora do
+      // prazo na loja inteira. Os dois o servidor calcula e ninguém manda pela
+      // borda — a fila é só leitura, e não há rota para guardá-los.
+    ).toBe(130);
 
     // A outra ponta: se um dia o gerador aprender `.int()`, este número deixa
     // de ser zero e a régua acima vira ruído — é o sinal de trocar a varredura

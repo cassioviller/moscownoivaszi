@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, reservasTable, bloqueioVestidosTable, vestidosTable, atendimentosTable, contratoBloqueiosTable } from "@workspace/db";
-import { eq, and, isNull, gte, lt, asc, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, gte, lt, asc, desc, sql, inArray } from "drizzle-orm";
 import { registrarAuditoria } from "../lib/auditoria";
 import { leadNaLoja, reservaNaLoja, reservaDaNoiva } from "../lib/escopo-loja";
 import {
@@ -29,9 +29,11 @@ import {
   // E212 — a conta do atraso na devolução (cláusula 16ª).
   CobrarAtrasoDaDevolucaoBody,
   CobrarAtrasoDaDevolucaoResponse,
-  PreviaDaCobrancaDeAtrasoResponse
+  PreviaDaCobrancaDeAtrasoResponse,
+  // S-C32 — a fila do atraso: a mesma conta, varrida sobre a loja.
+  ListContratosComAtrasoResponse
 } from "@workspace/api-zod";
-import { avariasTable, parcelasTable, contratosTable, contratoItensTable } from "@workspace/db";
+import { avariasTable, parcelasTable, contratosTable, contratoItensTable, leadsTable } from "@workspace/db";
 import { identificarImagem } from "../lib/imagem";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
@@ -2211,6 +2213,148 @@ router.get(
         }),
       ),
     );
+  },
+);
+
+/**
+ * **S-C32 — a fila do atraso, porque ausência não abre tela nenhuma.**
+ *
+ * O E212 deu à conta da 16ª uma porta só: a ficha daquela reserva. E o fato que
+ * a dispara **não é um gesto** — é a falta dele. O reajuste do E211 nasce
+ * quando alguém move a data; a avaria nasce quando alguém confere a peça. Aqui
+ * ninguém faz nada: a peça simplesmente não volta, e a diária do §1º soma
+ * sozinha todo dia. Sem esta varredura, R$ 500,00 por dia crescem até alguém
+ * abrir por acaso a ficha certa.
+ *
+ * **A régua é UMA.** Este helper não recalcula atraso nenhum: ele descobre
+ * QUAIS contratos olhar e chama `pecasAtrasadasDoContrato` neles — a mesma
+ * função que a prévia e a cobrança chamam. Se a fila dissesse R$ 4.750,00 e a
+ * ficha cobrasse outro número, a fila seria pior que a ausência dela.
+ *
+ * **A peneira de candidatos repete as guardas do detalhe, e nem uma a mais.**
+ * Toda guarda extra aqui esconderia da fila algo que a ficha COBRA — inclusive
+ * a que parece óbvia: `pecasAtrasadasDoContrato` não filtra `canceladoEm`, e
+ * filtrar aqui deixaria de fora um contrato que a porta do E212 aceita cobrar
+ * (S-C85).
+ */
+async function filaDeAtrasosDaLoja(lojaId: string) {
+  const regra = await buscarRegra(lojaId);
+  const hoje = hojeLocal();
+
+  // A varredura larga é UMA consulta. O detalhe — que custa duas por contrato —
+  // só roda nos que sobraram dela, e o normal é sobrar zero.
+  const candidatos = await db
+    .select({
+      contratoId: contratosTable.id,
+      leadId: contratosTable.leadId,
+      atrasoParcelaId: contratosTable.atrasoParcelaId,
+      noivaNome: leadsTable.noivaNome,
+      bloqueioId: bloqueioVestidosTable.id,
+      casamentoData: bloqueioVestidosTable.casamentoData,
+      devolucaoDataReal: bloqueioVestidosTable.devolucaoDataReal,
+    })
+    .from(contratosTable)
+    .innerJoin(contratoBloqueiosTable, eq(contratoBloqueiosTable.contratoId, contratosTable.id))
+    .innerJoin(bloqueioVestidosTable, eq(bloqueioVestidosTable.id, contratoBloqueiosTable.bloqueioId))
+    .leftJoin(leadsTable, eq(leadsTable.id, contratosTable.leadId))
+    .where(and(
+      eq(contratosTable.lojaId, lojaId),
+      // Só contrato ATIVO: é o único que o `POST` aceita cobrar, e oferecer na
+      // fila o que a porta recusa é o defeito do S36 uma camada acima.
+      eq(contratosTable.status, "ATIVO"),
+      eq(bloqueioVestidosTable.lojaId, lojaId),
+      isNotNull(bloqueioVestidosTable.retiradaDataReal),
+      isNotNull(bloqueioVestidosTable.casamentoData),
+    ));
+
+  type Candidato = {
+    leadId: string;
+    noivaNome: string | null;
+    bloqueioId: string;
+    atrasoParcelaId: string | null;
+    maiorAtraso: number;
+  };
+  const porContrato = new Map<string, Candidato>();
+  for (const c of candidatos) {
+    if (!c.casamentoData) continue;
+    const fimUsoPrevisto = addDias(diaDeNegocio(c.casamentoData), regra.usoDiasDepois);
+    const diaDaVolta = c.devolucaoDataReal ? diaLocal(c.devolucaoDataReal) : hoje;
+    const dias = diasDeAtraso(fimUsoPrevisto, diaDaVolta);
+    if (dias <= 0) continue;
+    const atual = porContrato.get(c.contratoId);
+    // O `bloqueioId` que fica é o da peça fora há mais tempo: é a ficha por onde
+    // a fila leva a pessoa a cobrar, e a cobrança é do contrato inteiro (§2º).
+    if (!atual || dias > atual.maiorAtraso) {
+      porContrato.set(c.contratoId, {
+        leadId: c.leadId,
+        noivaNome: c.noivaNome,
+        bloqueioId: c.bloqueioId,
+        atrasoParcelaId: c.atrasoParcelaId,
+        maiorAtraso: dias,
+      });
+    }
+  }
+
+  const itens = [];
+  for (const [contratoId, cand] of porContrato) {
+    const { pecas, semAluguel } = await pecasAtrasadasDoContrato(contratoId, lojaId);
+    const cobranca = cobrancaDoAtraso(pecas);
+    // A peça atrasada FORA do rol de itens não tem conta, e é a que mais precisa
+    // ser vista: ela está fora e ninguém consegue cobrá-la (422
+    // `ATRASO_SEM_ALUGUEL`). Calá-la aqui esconderia um defeito de cadastro
+    // atrás de uma fila vazia — a mesma escolha que o E212 fez na porta.
+    if (!cobranca && semAluguel.length === 0) continue;
+    // V2/E167, a mesma leitura da prévia: `atraso_parcela_id` preenchido NÃO é
+    // cobrança viva. Cancelado o contrato, a parcela morre junto — e a fila
+    // diria "já cobrado" para sempre sobre um carnê que não cobra mais nada.
+    const viva = cand.atrasoParcelaId ? await cobrancaViva(cand.atrasoParcelaId) : false;
+    itens.push({
+      contratoId,
+      leadId: cand.leadId,
+      noivaNome: cand.noivaNome,
+      bloqueioId: cand.bloqueioId,
+      linhas: cobranca?.linhas ?? [],
+      multa: cobranca?.multa ?? 0,
+      valor: cobranca?.valor ?? 0,
+      temExtravio: cobranca?.temExtravio ?? false,
+      maiorAtraso: cobranca?.maiorAtraso ?? cand.maiorAtraso,
+      explicacao: cobranca ? explicacaoDoAtraso(cobranca) : null,
+      semAluguel,
+      jaCobrada: viva,
+    });
+  }
+
+  // Do maior atraso ao menor: a fila existe para dizer o que espera há mais
+  // tempo, e é o número que mais cresce sozinho.
+  itens.sort((a, b) => b.maiorAtraso - a.maiorAtraso);
+  return {
+    itens,
+    // Peças, não contratos: uma noiva que atrasa vestido, véu e tiara são três
+    // peças fora da arara e uma linha na fila.
+    pecas: itens.reduce((s, i) => s + i.linhas.length + i.semAluguel.length, 0),
+    // Soma o que a régua devolveu — a fila nunca refaz a conta (E187).
+    valor: itens.reduce((s, i) => s + i.valor, 0),
+  };
+}
+
+/**
+ * **A fila, e o módulo dela é `contratos` — medido nos perfis semeados.**
+ *
+ * A tela irmã em forma é a cobrança (`/financeiro/cobranca`), que é a única
+ * fila do sistema feita para o que envelhece e pede um telefonema. Ela é
+ * gateada por `financeiro`, e a **Vendedora tem `financeiro: NADA` e
+ * `contratos: TUDO`** (`configuracao-inicial.ts:147`): pendurar a fila lá
+ * esconderia o atraso justamente de quem pode cobrá-lo, e a mostraria a quem
+ * não pode. É a classe de defeito da `s36-gate-da-tela-unit` uma camada acima.
+ *
+ * Por isso a fila mora em `contratos`, que é onde o E212 já pôs a decisão.
+ */
+router.get(
+  "/lojas/:lojaId/contratos-com-atraso",
+  requireModulo("contratos"),
+  async (req, res): Promise<void> => {
+    const { lojaId } = req.params as { lojaId: string };
+    res.json(ListContratosComAtrasoResponse.parse(await filaDeAtrasosDaLoja(lojaId)));
   },
 );
 

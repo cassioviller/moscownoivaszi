@@ -93,7 +93,16 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
      * `$ref` filho que alguém possa esquecer de preencher. A resposta sai do
      * `returning()` da própria escrita, o mesmo caminho do `POST` irmão.
      */
-    expect(c.operacoes, "operação nova no spec: confira quem monta a resposta dela e atualize esta contagem").toBe(208);
+    /**
+     * S-C32: 208 → 209. A fila do atraso (`GET /contratos-com-atraso`), e ela
+     * **acrescenta par à fronteira**: `FilaDeAtrasos` aninha `AtrasoNaFila`, que
+     * por sua vez aninha `CobrancaDeAtrasoLinha` — a mesma linha por peça do §2º
+     * que a prévia do E212 já entregava, agora dentro de uma fila. A pergunta
+     * que esta régua obriga a fazer tem a mesma resposta de lá: quem monta as
+     * linhas é `cobrancaDoAtraso`, função pura do `financeiro-core`, e não um
+     * `with` que possa esquecer um filho.
+     */
+    expect(c.operacoes, "operação nova no spec: confira quem monta a resposta dela e atualize esta contagem").toBe(209);
     // E221: 143 → 144. Só o `listRecibos` entra — as outras duas devolvem PDF.
     // E212: 144 → 146. As duas novas são a prévia e a cobrança do atraso da
     // cláusula 16ª, e as duas devolvem o MESMO `CobrancaDeAtraso` — de
@@ -105,12 +114,17 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // S-C11: 148 → 149. O `PATCH /avarias/:id` devolve o MESMO `Avaria` do
     // `POST`, de propósito: a ficha relê a linha corrigida pelo mesmo formato
     // com que a leu, e um segundo schema seria a segunda grafia que diverge.
-    expect(c.comSchemaDeResposta).toBe(149);
+    // S-C32: 149 → 150. A fila devolve `FilaDeAtrasos`, schema próprio: ela não
+    // é a prévia repetida N vezes — carrega quem é a noiva e por qual ficha se
+    // cobra, que é o que a fila precisa dizer e a prévia não.
+    expect(c.comSchemaDeResposta).toBe(150);
     // E212: 70 → 72. `CobrancaDeAtraso` aninha `CobrancaDeAtrasoLinha` — a conta
     // é uma linha POR PEÇA, que é o §2º da cláusula 16ª ("aplicados
     // proporcionalmente a trajes e/ou acessórios avulsos") virando forma.
     // E213: 72 → 74. As duas do perdão aninham `MoraDaParcela` pela `Parcela`.
-    expect(c.comRelacao).toBe(74);
+    // S-C32: 74 → 75. A fila aninha `AtrasoNaFila`, que aninha
+    // `CobrancaDeAtrasoLinha` — dois degraus, e o de baixo é o mesmo do E212.
+    expect(c.comRelacao).toBe(75);
     // E194: 250 → 252. A fronteira CRESCE quando um pai passa a ser entregue —
     // o `PATCH /contratos` deixou de responder a linha crua, então `lead`,
     // `vendedora`, `itens` e `parcelas` chegaram, e os filhos DELES entraram na
@@ -126,7 +140,11 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // ENTREGUES: quem monta `linhas` é `cobrancaDoAtraso`, função pura do
     // `financeiro-core` que devolve o array inteiro ou `null` — não há
     // caminho em que o pai chegue e o filho falte.
-    expect(c.pares.length, "a fronteira mudou — um objeto aninhado nasceu, ou um pai passou a ser entregue").toBe(273);
+    // S-C32: 273 → 275. Os dois pares novos são `listContratosComAtraso →
+    // itens` e o degrau de baixo, `AtrasoNaFila → linhas`, e os dois nascem
+    // ENTREGUES pela mesma razão do E212: quem monta `linhas` é
+    // `cobrancaDoAtraso`, função pura que devolve o array inteiro ou `null`.
+    expect(c.pares.length, "a fronteira mudou — um objeto aninhado nasceu, ou um pai passou a ser entregue").toBe(275);
     /**
      * **E199/S-O114 — 147 → 165 entregues, e é o maior salto que esta conta já
      * deu.** Não entrou uma linha de porta: o motor deixou de parar na borda da
@@ -144,7 +162,10 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // `comMora(p)` — foi esta régua que cobrou: com o helper, `Parcela.mora`
     // aparecia como ARESTA ÓRFÃ, porque o motor segue a chamada dentro do
     // arquivo e não atravessa import de outro módulo (ponto cego 2).
-    expect(c.pares.filter((p) => p.entregue).length).toBe(174);
+    // S-C32: 174 → 176, e a coluna do NÃO não se mexeu — os DOIS pares novos da
+    // fila nascem entregues, que é o que se espera de resposta montada por
+    // função pura em vez de por `with`. Medido, não suposto.
+    expect(c.pares.filter((p) => p.entregue).length).toBe(176);
     // E213: 89 → 99, e desta vez a coluna do NÃO cresce com razão. `Parcela` é
     // schema COMPARTILHADO: ela viaja em muitas respostas e só três montam a
     // `mora` (a fila de cobrança, o recebimento/perdão e o portal). É o mesmo
@@ -172,7 +193,11 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // `CobrancaDeAtraso` não é linha de tabela nenhuma — é uma CONTA, derivada
     // dos bloqueios e do rol de itens por uma função pura do `financeiro-core`.
     // Não há `with` que a monte, e não há filho que um `with` possa esquecer.
-    expect(c.montadasAMao.length, "operação nova sem consulta relacional? A varredura não a enxerga — conte-a aqui").toBe(30);
+    // S-C32: 30 → 31. A fila do atraso monta à mão pela MESMA razão, e um
+    // degrau acima: ela varre os contratos com uma consulta plana e chama a
+    // conta pura por contrato. Um `with` aqui não existiria — o que a fila
+    // devolve não é linha de tabela nenhuma.
+    expect(c.montadasAMao.length, "operação nova sem consulta relacional? A varredura não a enxerga — conte-a aqui").toBe(31);
   });
 
   /**

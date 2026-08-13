@@ -104,6 +104,7 @@ import type {
   ExportarParcelasParams,
   ExpurgarLeadsPerdidos200,
   ExpurgarLeadsPerdidosBody,
+  FilaDeAtrasos,
   FolhaGerada,
   FolhaInput,
   GerarComissaoFechamentoInput,
@@ -9164,6 +9165,88 @@ export const useCobrarAtrasoDaDevolucao = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getCobrarAtrasoDaDevolucaoMutationOptions(options));
     }
+
+export const getListContratosComAtrasoUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/contratos-com-atraso`
+}
+
+/**
+ * A prévia do E212 responde por UM contrato, e quem não abrisse a ficha daquela reserva não sabia que a peça estava fora — enquanto a diária da 16ª §1º soma sozinha, todo dia, sem gesto nenhum que a anuncie. Esta porta é a mesma conta, varrida sobre os contratos ATIVOS da loja.
+ *
+ * A régua é a de `previaDaCobrancaDeAtraso`, chamada peça por peça: a fila e a ficha não podem divergir, porque o número que a fila mostra é o que a ficha vai cobrar.
+ *
+ * Entra também o contrato cujas peças atrasadas estão TODAS fora do rol de itens (`semAluguel`): não há conta a fazer, e é justamente por isso que alguém precisa ver — a peça está fora e ninguém consegue cobrá-la.
+ * @summary A fila das peças que não voltaram no prazo (S-C32, cláusula 16ª)
+ */
+export const listContratosComAtraso = async (lojaId: string, options?: RequestInit): Promise<FilaDeAtrasos> => {
+
+  return customFetch<FilaDeAtrasos>(getListContratosComAtrasoUrl(lojaId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListContratosComAtrasoQueryKey = (lojaId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/contratos-com-atraso`
+    ] as const;
+    }
+
+
+export const getListContratosComAtrasoQueryOptions = <TData = Awaited<ReturnType<typeof listContratosComAtraso>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listContratosComAtraso>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListContratosComAtrasoQueryKey(lojaId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listContratosComAtraso>>> = ({ signal }) => listContratosComAtraso(lojaId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listContratosComAtraso>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListContratosComAtrasoQueryResult = NonNullable<Awaited<ReturnType<typeof listContratosComAtraso>>>
+export type ListContratosComAtrasoQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary A fila das peças que não voltaram no prazo (S-C32, cláusula 16ª)
+ */
+
+export function useListContratosComAtraso<TData = Awaited<ReturnType<typeof listContratosComAtraso>>, TError = ErrorType<unknown>>(
+ lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listContratosComAtraso>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListContratosComAtrasoQueryOptions(lojaId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetAvariaFotoUrl = (lojaId: string,
     avariaId: string,) => {

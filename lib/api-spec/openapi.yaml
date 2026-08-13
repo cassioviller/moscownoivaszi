@@ -2606,6 +2606,36 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /lojas/{lojaId}/contratos-com-atraso:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listContratosComAtraso
+      tags: [reservas]
+      summary: A fila das peças que não voltaram no prazo (S-C32, cláusula 16ª)
+      description: >
+        A prévia do E212 responde por UM contrato, e quem não abrisse a ficha
+        daquela reserva não sabia que a peça estava fora — enquanto a diária da
+        16ª §1º soma sozinha, todo dia, sem gesto nenhum que a anuncie. Esta
+        porta é a mesma conta, varrida sobre os contratos ATIVOS da loja.
+
+
+        A régua é a de `previaDaCobrancaDeAtraso`, chamada peça por peça: a fila
+        e a ficha não podem divergir, porque o número que a fila mostra é o que
+        a ficha vai cobrar.
+
+
+        Entra também o contrato cujas peças atrasadas estão TODAS fora do rol de
+        itens (`semAluguel`): não há conta a fazer, e é justamente por isso que
+        alguém precisa ver — a peça está fora e ninguém consegue cobrá-la.
+      responses:
+        "200":
+          description: A fila, do maior atraso ao menor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FilaDeAtrasos"
+
   /lojas/{lojaId}/avarias/{avariaId}/foto:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -6413,6 +6443,51 @@ components:
           items: { type: string }
         jaCobrada: { type: boolean }
         parcelaId: { type: ["string", "null"] }
+
+    # ───────── S-C32 — a fila do atraso ─────────
+    #
+    # O E212 fez a conta e deu a ela UMA porta: a ficha da reserva. O fato que a
+    # dispara, porém, é a AUSÊNCIA de um gesto — a peça que não voltou —, e
+    # ausência não abre tela nenhuma. Sem fila, a diária do §1º soma em silêncio
+    # até alguém abrir a ficha certa por acaso.
+    AtrasoNaFila:
+      type: object
+      required:
+        [contratoId, leadId, bloqueioId, linhas, multa, valor, temExtravio, maiorAtraso, semAluguel, jaCobrada]
+      properties:
+        contratoId: { type: string }
+        leadId: { type: string }
+        noivaNome: { type: ["string", "null"] }
+        # A ficha por onde se cobra. A cobrança do E212 é do CONTRATO inteiro
+        # (uma parcela para todas as peças, §2º), então qualquer bloqueio
+        # atrasado dele serve — este é o da peça que está fora há mais tempo.
+        bloqueioId: { type: string }
+        linhas:
+          type: array
+          items: { $ref: "#/components/schemas/CobrancaDeAtrasoLinha" }
+        multa: { type: number }
+        valor: { type: number }
+        temExtravio: { type: boolean }
+        maiorAtraso: { type: integer }
+        explicacao: { type: ["string", "null"] }
+        semAluguel:
+          type: array
+          items: { type: string }
+        jaCobrada: { type: boolean }
+
+    FilaDeAtrasos:
+      type: object
+      required: [itens, pecas, valor]
+      properties:
+        itens:
+          type: array
+          items: { $ref: "#/components/schemas/AtrasoNaFila" }
+        # Quantas PEÇAS estão fora do prazo, somando os contratos — o número que
+        # o aviso do sino diz. Um contrato pode ter três.
+        pecas: { type: integer }
+        # O que a 16ª já cobra hoje, somando os contratos. Soma o que a régua
+        # devolveu; a fila nunca recalcula a conta (lição do E187).
+        valor: { type: number }
 
     CobrarAtrasoInput:
       type: object

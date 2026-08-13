@@ -5,6 +5,9 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   useListContratos,
   getListContratosQueryKey,
+  // S-C32 — a fila das peças que não voltaram no prazo (cláusula 16ª).
+  useListContratosComAtraso,
+  getListContratosComAtrasoQueryKey,
   type ContratoStatus,
   type ListContratosParams,
 } from "@workspace/api-client-react";
@@ -15,9 +18,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, ScrollText, Search } from "lucide-react";
+import { PackageX, Plus, ScrollText, Search } from "lucide-react";
 import { brl, statusContratoLabel, instanteDia, diaMesAno } from "@/lib/formatos";
 import { Vazio, Erro } from "@/components/estado";
+import { podeNoModulo } from "@/lib/permissoes";
+import { avisoDoAtraso, faixaDaLinha } from "@/lib/financeiro/fila-de-atrasos";
 
 const FILTROS: { chave: string; rotulo: string; status?: ContratoStatus }[] = [
   { chave: "todos", rotulo: "Todos" },
@@ -34,7 +39,7 @@ const POR_PAGINA = 24;
  * era o último de ~29.000px de rolagem, sem campo de busca.
  */
 export default function Contratos() {
-  const { activeLojaId } = useAuth();
+  const { activeLojaId, acessosModulos } = useAuth();
   const { lojaId: lojaIdParam } = useParams();
   const lojaId = lojaIdParam ?? activeLojaId;
   const navigate = useNavigate();
@@ -72,6 +77,44 @@ export default function Contratos() {
     },
   });
 
+  /**
+   * **S-C32 — a fila das peças que não voltaram, e por que ela mora AQUI.**
+   *
+   * O E212 fez o sistema cobrar a 16ª e deu à conta uma porta só: a ficha
+   * daquela reserva. Só que o fato **não é um gesto** — é a falta de um. A peça
+   * não volta, ninguém clica em nada, e a diária soma sozinha todo dia: um
+   * vestido de R$ 3.000,00 tem diária de R$ 500,00 (o aluguel ÷ os 6 dias da
+   * janela de uso), e nove dias custam R$ 4.750,00 sem que uma tela do sistema
+   * diga isso a alguém.
+   *
+   * A fila irmã em FORMA é a cobrança (`/financeiro/cobranca`) — a única tela
+   * feita para o que envelhece e pede um telefonema. Ela é gateada por
+   * `financeiro`, e a **Vendedora do seed tem `financeiro: NADA` e
+   * `contratos: TUDO`**: pendurar a fila lá esconderia o atraso justamente de
+   * quem pode cobrá-lo, e a mostraria a quem não pode. É a classe de defeito da
+   * `s36-gate-da-tela-unit` uma camada acima da que ela mede.
+   *
+   * Então ela mora em Contratos, que é onde o E212 já pôs a decisão — e no
+   * TOPO: um contrato com peça fora do prazo não é mais um item do catálogo, é
+   * o que a loja precisa resolver antes de procurar qualquer outro.
+   *
+   * A conta não é refeita aqui: o servidor devolve linha, diária, multa e
+   * total pela mesma função que a ficha usa para cobrar (lição do E187).
+   */
+  const podeVerAtraso = podeNoModulo(acessosModulos, "contratos", "ver");
+  const atrasos = useListContratosComAtraso(activeLojaId!, {
+    query: {
+      queryKey: getListContratosComAtrasoQueryKey(activeLojaId!),
+      enabled: !!activeLojaId && podeVerAtraso,
+    },
+  });
+  const fila = atrasos.data?.itens ?? [];
+  // S-O16/S-O65: a ausência entra na PERGUNTA, não numa asserção `!` lá embaixo
+  // — a asserção sobrevive a quem mexer na guarda de cima. Mesmo vermelho que o
+  // E212 levou nesta régua, no dia em que a conta do atraso nasceu.
+  const valorDaFila = atrasos.data?.valor ?? 0;
+  const aviso = avisoDoAtraso(atrasos.data);
+
   const lista = data?.itens ?? [];
   const total = data?.total ?? 0;
   const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA));
@@ -92,6 +135,86 @@ export default function Contratos() {
           Novo contrato (via orçamento)
         </Button>
       </div>
+
+      {/* S-C32 — o que está fora da arara vem antes do catálogo. A seção só
+          existe quando há peça fora do prazo: fila vazia é o normal, e um card
+          permanente dizendo "nada" vira ruído que ninguém lê mais. */}
+      {aviso && fila.length > 0 && (
+        <Card
+          className={aviso.urgente ? "border-destructive" : "border-aviso/70"}
+          data-testid="fila-de-atrasos"
+        >
+          <CardContent className="p-4 space-y-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex items-start gap-2">
+                <PackageX
+                  className={`mt-0.5 h-4 w-4 shrink-0 ${aviso.urgente ? "text-destructive" : "text-aviso"}`}
+                />
+                <div className="space-y-0.5">
+                  <h2 className="text-sm font-medium" data-testid="fila-de-atrasos-titulo">
+                    {aviso.titulo}
+                  </h2>
+                  <p className="text-xs text-muted-foreground">{aviso.detalhe}</p>
+                </div>
+              </div>
+              {valorDaFila > 0 && (
+                <span
+                  className="font-semibold tabular-nums whitespace-nowrap"
+                  data-testid="fila-de-atrasos-total"
+                >
+                  {brl(valorDaFila)}
+                </span>
+              )}
+            </div>
+            <ul className="divide-y border-t">
+              {fila.map((i) => {
+                // As peças fora, incluindo as que a 16ª não sabe cobrar: quem
+                // lê a fila quer saber o que está fora da arara, não só o que
+                // tem preço.
+                const pecas = [...i.linhas.map((l) => l.descricao), ...i.semAluguel];
+                return (
+                  <li
+                    key={i.contratoId}
+                    className="flex flex-wrap items-center justify-between gap-3 py-2.5"
+                    data-testid={`atraso-${i.contratoId}`}
+                  >
+                    <div className="min-w-0 space-y-0.5">
+                      <p className="text-sm font-medium truncate">{i.noivaNome ?? "Noiva"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {pecas.join(", ")} · {faixaDaLinha(i)}
+                      </p>
+                      {i.semAluguel.length > 0 && (
+                        <p className="text-xs text-destructive" data-testid={`atraso-sem-aluguel-${i.contratoId}`}>
+                          {i.semAluguel.join(", ")} — fora do rol de itens do contrato: a 16ª cobra
+                          sobre o aluguel de cada peça, e não há de onde tirá-lo.
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      {i.valor > 0 && (
+                        <span className="font-semibold tabular-nums whitespace-nowrap">
+                          {brl(i.valor)}
+                        </span>
+                      )}
+                      {/* Cobrado NÃO tira a linha: a peça segue fora da arara,
+                          e sumir daqui diria que ela voltou. */}
+                      {i.jaCobrada && <Badge variant="secondary">Cobrado</Badge>}
+                      {/* A ficha da reserva é onde o E212 pôs o gesto de
+                          cobrar — a fila avisa e leva até ele. */}
+                      <Button asChild variant="outline" size="sm">
+                        <Link to={`/loja/${lojaId}/reservas/${i.bloqueioId}`}>Abrir a reserva</Link>
+                      </Button>
+                      <Button asChild variant="ghost" size="sm">
+                        <Link to={`/loja/${lojaId}/contratos/${i.contratoId}`}>Contrato</Link>
+                      </Button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative">
