@@ -9,12 +9,14 @@ import {
   excecoesDe,
   portasNoTexto,
   sqlCruEscrevendoEmTabelaQuente,
+  sqlCruNoTexto,
   trancasEmLacoNaoOrdenado,
   trancasForaDeOrdem,
   trancasNoTexto,
   trancasPorTransacao,
   trancasSemDegrauDeclarado,
   COLUNAS_DE_ESTADO,
+  NOMES_NO_BANCO,
   TABELAS_QUENTES,
   type Porta,
   type TabelaQuente,
@@ -55,11 +57,13 @@ import {
  * quatro tabelas e deixou de fora justamente aquela onde o dinheiro mora: o
  * E158 já tivera de trancá-la (`contratos.ts:1229`) e a varredura que conta as
  * portas não a contava. Ela custou uma linha em `TABELAS_QUENTES`, uma em
- * `PAIS`, uma em `COLUNAS_DE_ESTADO` (a S-C33 aposentou ESTA: as colunas saem do
- * schema desde 2026-08-13) e uma em `NOMES_NO_BANCO` — e trouxe **15
- * portas de uma vez**, das quais **14 já tinham disciplina** (11 sob tranca, 3
- * por CAS). A décima quinta é o gerador da demonstração, que já estava perdoado
- * pelo mesmo motivo que as outras seis dele.
+ * `PAIS`, uma em `COLUNAS_DE_ESTADO` e uma em `NOMES_NO_BANCO` — **e as duas
+ * últimas foram aposentadas em 2026-08-13**: as colunas saem do schema desde a
+ * S-C33 e os nomes desde a S-C55, então tabela quente nova custa hoje duas
+ * linhas, não quatro. Ela trouxe **15 portas de uma vez**, das quais **14 já
+ * tinham disciplina** (11 sob tranca, 3 por CAS). A décima quinta é o gerador da
+ * demonstração, que já estava perdoado pelo mesmo motivo que as outras seis
+ * dele.
  *
  * | | Portas |
  * |---|---|
@@ -75,6 +79,14 @@ import {
  * abaixo. Remedido: **283 arquivos, 48 portas, 31 TRANCA · 8 CAS · 9 ABERTA**,
  * com as 28 transações e as 38 trancas inalteradas — o E191 não criou tranca
  * nenhuma, ele fez as que já existiam decidirem alguma coisa.
+ *
+ * **HOJE (2026-08-13, base `c34ac62`): 304 arquivos · 56 portas · 32 TRANCA ·
+ * 11 CAS · 13 ABERTA · 29 transações · 40 trancas.** As três tabelas acima são
+ * história e ficam por isso; o número corrente mora nos dois retratos travados
+ * (`RETRATO`, `RETRATO_DA_ORDEM`), e ele é travado por IGUALDADE desde a
+ * S-C46 — **enquanto foi piso, esta prosa envelheceu 8 portas, 1 transação e 2
+ * trancas sem que nada reprovasse.** O critério de quando travar e quando pôr
+ * piso está declarado ao lado das constantes.
  *
  * ## O que esta varredura NÃO vê
  *
@@ -107,7 +119,10 @@ import {
  * 5. **Ela é da camada do drizzle.** Um `pool.query("UPDATE contratos …")` fora
  *    do drizzle não é porta para ela. O caso vizinho — template `sql` com verbo
  *    de escrita — TEM peneira (regex sobre o texto do template, porque template
- *    string não tem AST por dentro) e hoje dá zero.
+ *    string não tem AST por dentro) e hoje dá zero. **Zero é também o que ela
+ *    daria estando cega**, e era o que a S-C55 tinha aberto: o nome de cada
+ *    tabela vinha de um mapa escrito à mão. Hoje ele sai de `getTableConfig` e
+ *    o autoteste prega que a peneira ACHA o template sintético.
  * 6. **Ela não olha o frontend de verdade.** `moscow-noivas/src` entra na
  *    população para que um `contratosTable` que apareça lá seja visto, mas
  *    escrita de tela passa por HTTP, não por tabela.
@@ -115,6 +130,67 @@ import {
 
 const portas = enumerarPortas();
 const sitio = (p: Porta): string => `${p.arquivo}:${p.linha} ${p.verbo}(${p.tabela})`;
+
+/**
+ * S-C46 — O CRITÉRIO DAS CONTAGENS: o que é RETRATO trava, o que é MÍNIMO tem
+ * piso, e só isso.
+ *
+ * Esta régua nasceu com `>=` em toda parte, e o preço apareceu duas vezes num
+ * dia só:
+ *
+ * - **A S-C11 remediu e achou 8 portas de atraso**: a prosa anunciava *48
+ *   portas · 31 TRANCA · 8 CAS · 9 ABERTA* e o medido era *56 · 32 · 11 · 13*.
+ *   Sete das oito tinham entrado nos épicos da trilha do contrato sem que nada
+ *   reprovasse.
+ * - **E o commit que denunciou isso envelheceu a prosa do lado de baixo, no
+ *   mesmo diff**: o `PATCH /avarias/:id` da S-C11 abriu **1 transação e 2
+ *   trancas**, e o § da ordem continuou dizendo *"28 transações trancam, e são
+ *   38 trancas"* enquanto os pisos `>= 20` e `>= 25` passavam verdes sobre
+ *   **29 e 40**. O piso não cobra a remedida: ele só protege a régua de
+ *   ENCOLHER, e a régua não estava encolhendo — estava crescendo sem ninguém
+ *   olhando.
+ *
+ * Daí o critério, e ele é por PERGUNTA, não por gosto:
+ *
+ * 1. **RETRATO — igualdade.** O número é o que esta varredura existe para
+ *    medir, e mudá-lo é uma decisão sobre disciplina de escrita. Toda porta,
+ *    toda transação que tranca, toda tranca. Igualdade transforma "a população
+ *    cresceu" em vermelho, e vermelho é o único lugar onde alguém escreve POR
+ *    QUE cresceu — que é o parágrafo que faltou nas oito.
+ * 2. **PISO — desigualdade.** Só onde o número é genuinamente um MÍNIMO: ele não
+ *    descreve nada, ele impede a sonda de cegar. Sobrou **um** no arquivo, o da
+ *    população de arquivos-fonte, e ele está declarado no lugar.
+ *
+ * **A objeção é séria e a resposta é medida: igualdade em tudo vira parede.**
+ * Ela é aceitável aqui porque o custo é o mesmo que `SEM_DISCIPLINA` já cobra
+ * desde o E171 — porta nova custa UM número e o parágrafo que o explica —, e
+ * porque o vermelho é legível: as contas são comparadas como OBJETO
+ * (`{TRANCA, CAS, ABERTA}`), então o diff diz qual das três se mexeu em vez de
+ * um `expected 33 to be 32` que não diz de onde veio.
+ *
+ * O que já estava na forma certa e fica como está: `SEM_DISCIPLINA` (contagem
+ * por arquivo, igualdade — S30), as 7 trancas via helper, as 2 sem degrau e os
+ * 6 laços, todos `toHaveLength`.
+ *
+ * **Medido em 2026-08-13 (S-C46), base `c34ac62`: 304 arquivos-fonte
+ * versionados.**
+ */
+const RETRATO = { TRANCA: 32, CAS: 11, ABERTA: 13 } as const;
+
+/**
+ * O retrato da ORDEM, travado pelo mesmo critério — e é ele que estava 1 e 2
+ * atrás. As duas contas descrevem a mesma coisa por ângulos diferentes:
+ * `transacoes` é quantos blocos `db.transaction` tomam ao menos uma linha, e
+ * `trancas` é quantos `FOR UPDATE` eles tomam ao todo (contando os que chegam
+ * seguindo o executor para dentro de um helper do módulo, desde o E186).
+ *
+ * **28 → 29 e 38 → 40, e o movimento é UM commit**: o `PATCH /avarias/:id` da
+ * S-C11 (`9fa70a5`) abriu uma transação que tranca a avaria (degrau 3) e depois
+ * a parcela (degrau 6) — `git show 9fa70a59` sobre as quatro pastas varridas dá
+ * exatamente `+1 db.transaction` e `+2 .for("update")`. Nenhuma outra
+ * transação nasceu ou morreu no intervalo.
+ */
+const RETRATO_DA_ORDEM = { transacoes: 29, trancas: 40 } as const;
 
 /**
  * A dívida reconhecida: as portas que hoje não são TRANCA nem CAS.
@@ -275,31 +351,43 @@ const SEM_DISCIPLINA: Record<string, number> = {
   // virou tabela quente no E180. Mesma família das outras seis, mesmo veredito.
   "scripts/loja-de-demonstracao.ts": 7,
 };
-const TOTAL_SEM_DISCIPLINA = 13;
+const TOTAL_SEM_DISCIPLINA = RETRATO.ABERTA;
 
 describe("varredura — a enumeração das portas de escrita", () => {
   /**
-   * O piso. Conjunto vazio aprova tudo em silêncio, que é a falha mais cara
-   * possível numa sonda: verde por não ter olhado.
+   * **O ÚNICO PISO do arquivo, e ele é piso de propósito (S-C46).**
    *
-   * Medido em 2026-08-11: **266 arquivos-fonte versionados** nas quatro pastas e
-   * **26 portas**. Os pisos ficam abaixo com folga para o repositório respirar —
-   * o que eles impedem é um refactor cegar a varredura e ela seguir verde.
+   * Arquivo-fonte nasce neste repositório toda semana, por motivo que não tem
+   * nada a ver com disciplina de escrita: travar 304 seria cobrar uma remedida
+   * de quem criou um `helpers/formatar-cpf.ts`. Ele não descreve nada — o que
+   * ele impede é a sonda cegar e seguir verde.
+   *
+   * E a folga que sobra (304 contra 200) não custa nada, porque o RETRATO das
+   * portas cobre a mesma direção com igualdade: um recorte que apagasse
+   * `routes/` da população derruba `portas.length` de 56 muito antes de a
+   * população chegar perto de 200. O piso é o segundo cinto, não o primeiro.
+   *
+   * Medido em 2026-08-13 (S-C46): **304 arquivos-fonte versionados** nas quatro
+   * pastas. Era 303 na S-C33 (`2dc9eec0`), e o único que entrou é
+   * `artifacts/api-server/src/lib/recebimentos-do-caixa.ts`.
    */
   it("olha para os arquivos versionados, e não para um conjunto vazio", () => {
     expect(arquivosVarridos().length).toBeGreaterThan(200);
   });
 
   /**
-   * **Medido em 2026-08-13 (S-C11): 56 portas — 32 TRANCA · 11 CAS · 13 na
-   * dívida.** O título anterior dizia 48, e a diferença NÃO é deste épico: a
-   * S-C11 acrescentou UMA (a parcela que segue o valor corrigido da avaria), e
-   * as outras sete entraram nos épicos da trilha do contrato sem que ninguém
-   * refizesse a conta. Os pisos são `>=`, então a prosa envelheceu em silêncio
-   * enquanto a régua continuava verde — *meça antes de citar*.
+   * O total é a soma do RETRATO, e não um número solto: ele não pode divergir
+   * das três disciplinas contadas mais abaixo, porque toda porta tem
+   * exatamente uma.
+   *
+   * **56 medidas em 2026-08-13.** O título anterior dizia 48 até a S-C11
+   * remedir e achar oito de atraso — uma dela mesma (a parcela que segue o
+   * valor corrigido da avaria) e sete acumuladas nos épicos da trilha do
+   * contrato. O piso era `>= 22` e nada reprovava; hoje o número é igualdade,
+   * que é o que obriga a próxima a ser explicada.
    */
-  it("acha as portas — o piso é 22, e hoje são 56", () => {
-    expect(portas.length).toBeGreaterThanOrEqual(22);
+  it("acha as portas — são 56, e o total é o retrato somado", () => {
+    expect(portas.length).toBe(RETRATO.TRANCA + RETRATO.CAS + RETRATO.ABERTA);
   });
 
   it("as cinco tabelas quentes têm porta — nenhuma some da conta", () => {
@@ -323,6 +411,108 @@ describe("varredura — a enumeração das portas de escrita", () => {
 
   it("nenhum SQL cru escreve nas quatro tabelas quentes", () => {
     expect(sqlCruEscrevendoEmTabelaQuente()).toEqual([]);
+  });
+});
+
+/**
+ * S-C55 — o nome no banco sai do DRIZZLE, e a peneira prova que enxerga.
+ *
+ * `NOMES_NO_BANCO` era um mapa escrito à mão, e é dele que sai a `RegExp` da
+ * peneira de SQL cru. **Nome errado ali é a peneira devolvendo `[]` por não ter
+ * olhado** — o mesmo `[]` que ela devolve hoje por não haver o que achar, e
+ * indistinguível dele. Os cinco batiam; nada obrigava.
+ *
+ * O conserto tem duas metades, e a segunda é a que faltava na S-C33:
+ *
+ * 1. **Derivar** — `getTableConfig(t).name` é o nome que o `CREATE TABLE` usou.
+ *    Tabela renomeada no schema renomeia a peneira no mesmo commit, e erro de
+ *    digitação deixa de ser possível.
+ * 2. **Pregar que a sonda ACHA** — derivação tira o erro de digitação e não
+ *    prova enxergo nenhum. O autoteste abaixo dá o template sintético que a
+ *    peneira TEM de achar, ao lado dos três que ela tem de deixar passar.
+ */
+describe("varredura — a peneira de SQL cru enxerga, e o nome sai do schema", () => {
+  /**
+   * O que a mão sabia no dia em que foi aposentada — mesma forma da
+   * `CURADA_ATE_2026_08_13` das colunas: prova que a troca não perdeu nada.
+   * Não é piso e não é retrato: é a foto do que se substituiu, e ela só sai
+   * daqui quando uma tabela quente for renomeada de verdade.
+   */
+  const CURADO_ATE_2026_08_13: Record<TabelaQuente, string> = {
+    bloqueioVestidosTable: "bloqueio_vestidos",
+    reservasTable: "reservas",
+    contratosTable: "contratos",
+    orcamentosTable: "orcamentos",
+    parcelasTable: "parcelas",
+  };
+
+  it("o derivado diz o mesmo que a mão dizia — a troca não renomeou nada", () => {
+    expect(NOMES_NO_BANCO).toEqual(CURADO_ATE_2026_08_13);
+  });
+
+  /**
+   * O piso da S-D31 aplicado aos nomes: `undefined` ou string vazia monta
+   * `\b\b`, que casa com qualquer coisa ou com nada — e nos dois casos a
+   * peneira para de dizer a verdade sem ficar vermelha.
+   */
+  it("nenhuma tabela quente fica sem nome no banco", () => {
+    for (const t of TABELAS_QUENTES) expect(NOMES_NO_BANCO[t]).toMatch(/^[a-z][a-z0-9_]*$/);
+  });
+
+  /**
+   * **A PONTE é a última coisa escrita à mão, e nada a pregava.** Trocar
+   * `contratosTable: schema.orcamentosTable` em `TABELAS_DO_SCHEMA`
+   * **TYPECHECKA** — as duas são `PgTable` —, e a partir dali as colunas de
+   * estado E o nome no banco de `contratos` passam a ser os de `orcamentos`:
+   * uma sonda medindo a tabela errada e verde. Enquanto o nome era escrito à
+   * mão não havia contra o que conferir; com ele derivado a conferência sai de
+   * graça, porque a CHAVE do mapa já diz o nome — sem o sufixo `Table` e em
+   * snake_case, `bloqueioVestidosTable` é `bloqueio_vestidos`.
+   *
+   * A convenção vale para as cinco. A primeira tabela quente cujo nome no banco
+   * não sair da chave fica vermelha aqui e vira exceção nomeada, do mesmo jeito
+   * que `atrasoParcelaId` é exceção do critério das colunas.
+   */
+  it("e a ponte aponta para a tabela certa — a chave do mapa diz o nome do banco", () => {
+    const pelaChave = (t: TabelaQuente) =>
+      t.replace(/Table$/, "").replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+    expect(NOMES_NO_BANCO).toEqual(
+      Object.fromEntries(TABELAS_QUENTES.map((t) => [t, pelaChave(t)])),
+    );
+  });
+
+  it("acha o UPDATE cru numa tabela quente — é este achado que ela nunca tinha feito", () => {
+    const fonte = "await db.execute(sql`UPDATE contratos SET status = 'CANCELADO' WHERE id = ${id}`);";
+    expect(sqlCruNoTexto("sintetico.ts", fonte)).toEqual([
+      "sintetico.ts:1 `UPDATE contratos SET status = 'CANCELADO' WHERE id = ${id}`",
+    ]);
+  });
+
+  /**
+   * O SQL sintético é escrito com o nome LITERAL, não com `NOMES_NO_BANCO[t]` —
+   * a diferença é a régua. Montar o texto com a mesma constante que configura a
+   * peneira faria o caso passar com qualquer nome, inclusive um errado: a sonda
+   * acharia o que ela mesma escreveu. Com o literal, um nome torto em qualquer
+   * das cinco apaga a peneira daquela tabela E fica vermelho aqui.
+   */
+  it("acha as cinco quentes, uma a uma — nenhuma some da peneira", () => {
+    for (const t of TABELAS_QUENTES) {
+      const fonte = `await db.execute(sql\`DELETE FROM ${CURADO_ATE_2026_08_13[t]} WHERE id = 1\`);`;
+      expect({ [t]: sqlCruNoTexto("sintetico.ts", fonte).length }).toEqual({ [t]: 1 });
+    }
+  });
+
+  it("e deixa passar o que não é escrita, o que não é tabela quente e o que não é `sql`", () => {
+    // Leitura não é porta.
+    expect(sqlCruNoTexto("s.ts", "await db.execute(sql`SELECT * FROM contratos`);")).toEqual([]);
+    // Tabela fria escrita em SQL cru não é assunto desta varredura.
+    expect(sqlCruNoTexto("s.ts", "await db.execute(sql`UPDATE usuarios SET nome = 'a'`);")).toEqual([]);
+    // Sem a tag `sql` é texto: mensagem de erro e comentário não disparam. É o
+    // recorte que a AST dá, e sem ele a peneira acusaria a própria documentação.
+    expect(sqlCruNoTexto("s.ts", "const m = `UPDATE contratos SET status = 'X'`;")).toEqual([]);
+    // E o nome quente EMBUTIDO noutro identificador não casa — o `\b` da regex
+    // é o que separa `contratos` de `contratos_itens`.
+    expect(sqlCruNoTexto("s.ts", "await db.execute(sql`UPDATE contratos_itens SET x = 1`);")).toEqual([]);
   });
 });
 
@@ -581,28 +771,31 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
 
   /**
    * O outro lado da conta: as portas COM disciplina também são contadas. Sem
-   * isto, um refactor que apagasse metade das trancas deixaria a dívida em 12 e
+   * isto, um refactor que apagasse metade das trancas deixaria a dívida em 13 e
    * a suíte verde — a varredura estaria contando o que sobrou, não o que há.
+   *
+   * **A conta é comparada como OBJETO, e é a S-C46 acontecendo** (§ RETRATO).
+   * Eram dois `>=` separados, e `expected 33 to be greater than or equal to 32`
+   * passava verde sobre a porta 33ª: o piso protege a régua de encolher e não
+   * cobra remedida nenhuma quando ela cresce. Com o objeto inteiro travado, o
+   * diff diz qual das três disciplinas se mexeu — e a porta nova custa um
+   * número e o parágrafo que o explica, que é o mesmo preço que
+   * `SEM_DISCIPLINA` cobra desde o E171.
+   *
+   * O histórico das três, para quem for mexer no número:
+   *
+   * - TRANCA era 28 até o E191, que fechou as três de `comissao.ts` (S-O79);
+   * - **S-C11 — 31 → 32 sob tranca**, o `UPDATE parcelas SET valor_previsto` do
+   *   `PATCH /avarias/:id`, que faz a cobrança viva seguir o valor corrigido:
+   *   `TRANCA trancou=[avariasTable,parcelasTable] releitura=tranca lê
+   *   parcelasTable.status cas=[recebidoEm]`;
+   * - **8 → 11 por CAS** é drift ANTERIOR, medido pela S-C11 e não causado por
+   *   ela: os pisos eram `>=` e ninguém os subiu depois do E212 e do E213.
    */
-  it("e as portas com disciplina são 43 — 32 sob tranca e 11 por CAS", () => {
+  it("e o censo das disciplinas é o retrato — 32 TRANCA · 11 CAS · 13 ABERTA", () => {
     const conta = { TRANCA: 0, CAS: 0, ABERTA: 0 };
     for (const p of portas) conta[p.disciplina] += 1;
-    // Eram 28 até o E191, que fechou as três de `comissao.ts` (S-O79).
-    //
-    // **S-C11 — 31 → 32 sob tranca, e 8 → 11 por CAS.** Só a primeira é deste
-    // épico: o `UPDATE parcelas SET valor_previsto` do `PATCH /avarias/:id`,
-    // que faz a cobrança viva seguir o valor corrigido. Ele tranca a avaria
-    // (degrau 3) e depois a parcela (degrau 6), relê `parcelas.status` sob a
-    // tranca e ainda repete `recebido_em IS NULL` no `where` da escrita —
-    // medido: `TRANCA trancou=[avariasTable,parcelasTable] releitura=tranca lê
-    // parcelasTable.status cas=[recebidoEm]`.
-    //
-    // As três de CAS são drift ANTERIOR, medido aqui pela primeira vez: os
-    // pisos são `>=` e ninguém os subiu depois do E212 e do E213. Piso três
-    // abaixo do real deixa três portas sumirem caladas — que é exatamente o que
-    // esta conta existe para impedir.
-    expect(conta.TRANCA).toBeGreaterThanOrEqual(32);
-    expect(conta.CAS).toBeGreaterThanOrEqual(11);
+    expect(conta).toEqual(RETRATO);
   });
 });
 
@@ -628,16 +821,26 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
  */
 describe("varredura — as trancas sobem a cadeia, e nunca descem", () => {
   /**
-   * S-O59/E186 — os números subiram porque a conta passou a seguir o executor
-   * para dentro dos helpers do módulo: **28 transações e 38 trancas**, contra as
-   * 25 e 31 do E180. As sete que apareceram são as mesmas duas funções vistas de
-   * cada chamador — `trancarContratos` (3×) e `trancarEixos` (2× cabine + 2×
-   * vendedora).
+   * S-O59/E186 — os números subiram para **28 transações e 38 trancas**, contra
+   * as 25 e 31 do E180, porque a conta passou a seguir o executor para dentro
+   * dos helpers do módulo. As sete que apareceram são as mesmas duas funções
+   * vistas de cada chamador — `trancarContratos` (3×) e `trancarEixos`
+   * (2× cabine + 2× vendedora).
+   *
+   * **E hoje são 29 e 40, o que esta linha dizia errado desde a S-C11
+   * (`9fa70a5`).** Os pisos eram `>= 20` e `>= 25`, quinze e treze abaixo do
+   * real: eles nunca teriam sentido a transação que nasceu no mesmo dia, e não
+   * sentiram. O `PATCH /avarias/:id` tranca a avaria (degrau 3) e depois a
+   * parcela (degrau 6) — **+1 transação, +2 trancas**, medido no diff daquele
+   * commit sobre as quatro pastas varridas. É o caso vivo da S-C46: *piso não
+   * obriga a remedir, e a prosa envelhece calada.*
    */
-  it("olha para as transações de verdade — 28 transações trancam, e são 38 trancas", () => {
+  it("olha para as transações de verdade — 29 transações trancam, e são 40 trancas", () => {
     const porTransacao = trancasPorTransacao();
-    expect(porTransacao.size).toBeGreaterThanOrEqual(20);
-    expect([...porTransacao.values()].reduce((s, t) => s + t.length, 0)).toBeGreaterThanOrEqual(25);
+    expect({
+      transacoes: porTransacao.size,
+      trancas: [...porTransacao.values()].reduce((s, t) => s + t.length, 0),
+    }).toEqual(RETRATO_DA_ORDEM);
   });
 
   /**

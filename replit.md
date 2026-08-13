@@ -166,13 +166,18 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   escrita** (`insert`/`update`/`delete`) nas **cinco tabelas quentes** —
   `bloqueio_vestidos`, `reservas`, `contratos`, `orcamentos` e **`parcelas`
   (S-O34, a tabela onde o dinheiro mora)** — e classifica cada porta em
-  **TRANCA**, **CAS** ou **ABERTA**. Hoje, **medido em 2026-08-13 (S-C11): 56
-  portas · 32 TRANCA · 11 CAS · 13 na dívida declarada** (6 de nascimento ou
-  serialização implícita, 7 do gerador da loja de demonstração) — **desde o E191
-  nenhuma porta ABERTA é porta de ROTA**. Este parágrafo dizia *48 · 31 · 8 · 9*
-  e envelheceu em silêncio: os pisos do teste são `>=`, então as portas que
-  E212, E213, E216 e E221 acrescentaram nunca cobraram a recontagem (S-C46).
-  **Meça antes de citar.** Desde o
+  **TRANCA**, **CAS** ou **ABERTA**. Hoje, **medido em 2026-08-13 (S-C46): 304
+  arquivos · 56 portas · 32 TRANCA · 11 CAS · 13 na dívida declarada** (6 de
+  nascimento ou serialização implícita, 7 do gerador da loja de demonstração) —
+  **desde o E191 nenhuma porta ABERTA é porta de ROTA**. Este parágrafo dizia
+  *48 · 31 · 8 · 9* e envelheceu em silêncio porque os pisos do teste eram `>=`:
+  as portas que E212, E213, E216 e E221 acrescentaram nunca cobraram a
+  recontagem. **A S-C46 fechou isso, e o critério é o que passou a valer: o que
+  é RETRATO trava por igualdade — as três disciplinas, o total, as 29 transações
+  e as 40 trancas —, e piso `>=` só onde o número é genuinamente um mínimo,
+  que neste arquivo é UM caso, a população de arquivos-fonte.** Porta nova passa
+  a custar um número remedido e o parágrafo que o explica; o vermelho compara os
+  objetos inteiros, então ele diz QUAL conta se mexeu. Desde o
   E180 ela também confere a **ORDEM**
   das trancas (S-O33): a sequência de `FOR UPDATE` de cada transação sobe os
   degraus de `DEGRAUS_DA_ORDEM` sem descer nenhum, e toda tranca dentro de laço
@@ -193,12 +198,24 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   de `trancarContratos`, e o reabrir troca a lista lida no pool pelo
   `returning()` do próprio DELETE. **O E191 não criou tranca nenhuma**: as 28
   transações, as 38 trancas, as 7 via helper e os 6 laços não se mexeram; o que
-  mudou é que as trancas passaram a decidir alguma coisa. **Quando ela fica
+  mudou é que as trancas passaram a decidir alguma coisa. **Os dois números
+  acima são história: hoje são 29 transações e 40 trancas** — a S-C11
+  (`9fa70a5`) abriu a transação do `PATCH /avarias/:id`, que tranca a avaria e
+  depois a parcela, e os pisos `>= 20`/`>= 25` deixaram a prosa 1 e 2 atrás até
+  a S-C46 travá-los. As 7 via helper e os 6 laços continuam onde estavam.
+  **Quando ela fica
   vermelha**, ou nasceu porta sem
   disciplina, ou uma porta fechada reabriu, ou uma porta da dívida foi FECHADA —
   e neste caso o conserto é baixar o número na tabela `SEM_DISCIPLINA` do teste.
   A dívida trava a CONTAGEM por arquivo, não a lista de nomes. Os pontos cegos
   conhecidos estão listados no topo do arquivo e em `portas-de-escrita.ts`.
+  **Nada dentro dela é mais lista curada** (S-C55): as colunas de estado saem de
+  `getTableColumns` (S-C33) e os nomes de tabela no Postgres, de
+  `getTableConfig` — o mapa à mão que a peneira de SQL cru usava podia estar
+  errado e a peneira devolveria `[]` sem uma linha vermelha, que é o mesmo `[]`
+  que ela devolve por não haver o que achar. **A peneira agora PROVA que
+  enxerga**: um `sql\`UPDATE contratos …\`` sintético tem de ser achado, e a
+  ponte `nome quente ↔ tabela do drizzle` é conferida contra a chave do mapa.
 - **A varredura de QUEM SERIALIZA o schema aninhado** (E192, S-O76):
   `cd artifacts/api-server && npx vitest run src/__tests__/varredura-schemas-aninhados.test.ts`
   (**~1,5 s a parte de papel; o último caso toca o banco**). Ela é a **primeira

@@ -1,7 +1,8 @@
 import ts from "typescript";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { getTableColumns, type Table } from "drizzle-orm";
+import { getTableColumns } from "drizzle-orm";
+import { getTableConfig, type PgTable } from "drizzle-orm/pg-core";
 import * as schema from "@workspace/db/schema";
 import { arquivosVersionados } from "./arquivos-versionados";
 
@@ -73,14 +74,58 @@ export const TABELAS_QUENTES = [
 ] as const;
 export type TabelaQuente = (typeof TABELAS_QUENTES)[number];
 
-/** Os nomes de tabela, como o Postgres os conhece — para a peneira de SQL cru. */
-export const NOMES_NO_BANCO: Record<TabelaQuente, string> = {
-  bloqueioVestidosTable: "bloqueio_vestidos",
-  reservasTable: "reservas",
-  contratosTable: "contratos",
-  orcamentosTable: "orcamentos",
-  parcelasTable: "parcelas",
+/**
+ * O nome quente ↔ a tabela do drizzle, escrito uma vez.
+ *
+ * É a ponte que faz as duas derivações deste arquivo existirem — a das colunas
+ * de estado (S-C33) e a dos nomes no banco (S-C55) —, e ela é EXPLÍCITA de
+ * propósito: um `schema[nome]` indexado por string passaria por cima do
+ * compilador e um erro de digitação viraria "tabela sem coluna de estado", que
+ * é a régua aprovando em silêncio. Tabela quente nova custa uma linha aqui e
+ * uma em `PAIS` — e nenhuma em `COLUNAS_DE_ESTADO` nem em `NOMES_NO_BANCO`, que
+ * é o que as duas sobras compraram.
+ *
+ * **E a ponte é PREGADA desde a S-C55**, porque ela é o que sobrou da mão:
+ * escrever `contratosTable: schema.orcamentosTable` aqui TYPECHECKA — as duas
+ * são `PgTable` — e faria as colunas de estado e o nome no banco de `contratos`
+ * serem os de `orcamentos`, com a sonda verde medindo a tabela errada. A
+ * conferência é a chave do mapa contra o nome derivado
+ * (`varredura-portas-sob-tranca.test.ts`, § "a ponte aponta para a tabela
+ * certa").
+ */
+const TABELAS_DO_SCHEMA: Record<TabelaQuente, PgTable> = {
+  bloqueioVestidosTable: schema.bloqueioVestidosTable,
+  reservasTable: schema.reservasTable,
+  contratosTable: schema.contratosTable,
+  orcamentosTable: schema.orcamentosTable,
+  parcelasTable: schema.parcelasTable,
 };
+
+/**
+ * Os nomes de tabela, como o Postgres os conhece — para a peneira de SQL cru.
+ *
+ * ## S-C55 — o nome sai do DRIZZLE, e não da mão de quem leu
+ *
+ * Até 2026-08-13 esta constante era um mapa escrito à mão, e é ele que a
+ * peneira de `sqlCruEscrevendoEmTabelaQuente` monta em `RegExp`. **Um nome
+ * errado ali faz a regex nunca casar e a peneira devolver `[]`** — verde por
+ * não ter olhado, que é o pior resultado possível numa sonda e é exatamente o
+ * que a abertura deste arquivo diz não querer ser. Os cinco batiam, e nada
+ * obrigava: `bloqueio_vestidos` escrito `bloqueios_vestidos` apagaria a sonda
+ * inteira daquela tabela sem uma linha vermelha em lugar nenhum.
+ *
+ * É a mesma classe da S-C33 — lista curada que o schema já sabe —, e o drizzle
+ * responde direto: `getTableConfig(t).name` é o nome que o `CREATE TABLE`
+ * usou. Tabela renomeada no schema renomeia a peneira no mesmo commit.
+ *
+ * A derivação tira o erro de digitação e **não prova que a peneira enxerga** —
+ * hoje ela dá zero sobre o repositório, e zero é o que ela daria estando cega.
+ * Quem prova é o autoteste com template sintético
+ * (`varredura-portas-sob-tranca.test.ts`, § "a peneira de SQL cru enxerga").
+ */
+export const NOMES_NO_BANCO: Record<TabelaQuente, string> = Object.fromEntries(
+  TABELAS_QUENTES.map((t) => [t, getTableConfig(TABELAS_DO_SCHEMA[t]).name]),
+) as Record<TabelaQuente, string>;
 
 /**
  * A cadeia de trancas, escrita uma vez.
@@ -200,24 +245,6 @@ export function ehColunaDeEstado(chave: string, coluna: ColunaDoSchema): boolean
 export function excecoesDe(tabela: TabelaQuente): readonly string[] {
   return ESTADO_QUE_A_GRAFIA_NAO_PEGA[tabela] ?? [];
 }
-
-/**
- * O nome quente ↔ a tabela do drizzle, escrito uma vez.
- *
- * É a ponte que faz a derivação existir, e ela é EXPLÍCITA de propósito: um
- * `schema[nome]` indexado por string passaria por cima do compilador e um erro
- * de digitação viraria "tabela sem coluna de estado", que é a régua aprovando
- * em silêncio. Tabela quente nova custa uma linha aqui, ao lado da de `PAIS` e
- * da de `NOMES_NO_BANCO` — e nenhuma em `COLUNAS_DE_ESTADO`, que é o que a
- * S-C33 comprou.
- */
-const TABELAS_DO_SCHEMA: Record<TabelaQuente, Table> = {
-  bloqueioVestidosTable: schema.bloqueioVestidosTable,
-  reservasTable: schema.reservasTable,
-  contratosTable: schema.contratosTable,
-  orcamentosTable: schema.orcamentosTable,
-  parcelasTable: schema.parcelasTable,
-};
 
 /**
  * As colunas de estado de UMA tabela, pelo critério acima. Exportada porque é
@@ -949,27 +976,45 @@ export function trancasEmLacoNaoOrdenado(): string[] {
  * O que ela NÃO vê: SQL montado por concatenação (`sql.raw(alvo + " SET …")`) e
  * o nome da tabela vindo de variável. Hoje o repositório tem **zero** template
  * `sql` com verbo de escrita em qualquer tabela, quente ou fria.
+ *
+ * **E zero é o número que ela daria estando CEGA** — foi a S-C55: o nome de cada
+ * tabela vinha de um mapa escrito à mão, e um erro de digitação nele fazia a
+ * `RegExp` nunca casar sem uma linha vermelha em lugar nenhum. Hoje o nome sai
+ * de `getTableConfig` (§ `NOMES_NO_BANCO`) e o autoteste com template sintético
+ * (`sqlCruNoTexto`) prega que a peneira ENXERGA, que é a metade que a derivação
+ * sozinha não compra.
  */
 export function sqlCruEscrevendoEmTabelaQuente(): string[] {
+  return fontesVarridas().flatMap(sqlCruNaFonte);
+}
+
+/**
+ * A peneira de SQL cru sobre UM texto-fonte. Exportada pelo mesmo motivo de
+ * `portasNoTexto` e `trancasNoTexto`: a peneira de verdade dá zero, e sonda que
+ * nunca se viu achando alguma coisa não se distingue de sonda cega.
+ */
+export function sqlCruNoTexto(caminho: string, texto: string): string[] {
+  return sqlCruNaFonte(ts.createSourceFile(caminho, texto, ts.ScriptTarget.Latest, true));
+}
+
+function sqlCruNaFonte(sf: ts.SourceFile): string[] {
   const achados: string[] = [];
   const verbo = /\b(insert\s+into|update|delete\s+from)\b/i;
-  for (const sf of fontesVarridas()) {
-    const rel = sf.fileName;
-    const v = (no: ts.Node): void => {
-      if (ts.isTaggedTemplateExpression(no) && raizDoReceptor(no.tag) === "sql") {
-        const txt = no.template.getText(sf);
-        if (verbo.test(txt)) {
-          for (const q of TABELAS_QUENTES) {
-            if (new RegExp(`\\b${NOMES_NO_BANCO[q]}\\b`, "i").test(txt)) {
-              const linha = sf.getLineAndCharacterOfPosition(no.getStart(sf)).line + 1;
-              achados.push(`${rel}:${linha} ${txt.replace(/\s+/g, " ").slice(0, 80)}`);
-            }
+  const rel = sf.fileName;
+  const v = (no: ts.Node): void => {
+    if (ts.isTaggedTemplateExpression(no) && raizDoReceptor(no.tag) === "sql") {
+      const txt = no.template.getText(sf);
+      if (verbo.test(txt)) {
+        for (const q of TABELAS_QUENTES) {
+          if (new RegExp(`\\b${NOMES_NO_BANCO[q]}\\b`, "i").test(txt)) {
+            const linha = sf.getLineAndCharacterOfPosition(no.getStart(sf)).line + 1;
+            achados.push(`${rel}:${linha} ${txt.replace(/\s+/g, " ").slice(0, 80)}`);
           }
         }
       }
-      no.forEachChild(v);
-    };
-    v(sf);
-  }
+    }
+    no.forEachChild(v);
+  };
+  v(sf);
   return achados;
 }
