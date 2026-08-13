@@ -22,10 +22,22 @@ para o documento que manda.
    valor, mas por **de onde vem o dado**. **As Ondas A e B estão EXECUTADAS**,
    menos o E219: E211 (`0c8874a`), E212 (`a88d7ead`), E213 (`fa7d838`), E214
    (`0c15cda`), E216 (`eaa4e90`), E218 (`f8ab561`), E221 (`fcc24e9`) e E222
-   (`31422db`) — **8 de 12**, mais o **E224** (`becb734`), que a medição fez
-   nascer. A tabela do `EXECUCAO.md` é a fila; **conte, não deduza** — hoje são
-   **43 sobras** (**ZERO 🟠**, 7 🟡, 36 🔵) e **4 pendências que não são
-   software**. **O número CRESCEU de novo, e a COMPOSIÇÃO é que é o resultado:**
+   (`31422db`) — **8 de 12**, mais o **E224** (`75fa2cbf`), que a medição fez
+   nascer, e o **E215** (`c3adcf93`), que **abre a Onda C** — a ficha passou a
+   guardar quem assina, e o contrato não fecha sem saber quem é. **10 de 12.**
+   A tabela do `EXECUCAO.md` é a fila; **conte, não deduza** — hoje são
+   **47 sobras** (**ZERO 🟠**, 8 🟡, 39 🔵) e **4 pendências que não são
+   software**.
+
+   **O E215 é o primeiro épico da trilha em que a medição mudou o tamanho nos
+   DOIS sentidos**, e as duas metades valem para os que faltam. Encareceu: o
+   achado não era campo faltando, era **campo que existia e dava para pular** —
+   `contratos.cpf` estava no schema, a tela o oferecia, era `optional()`, e
+   estava em **0 de 735**. Barateou: dos que criam contrato, **58 arquivos usam
+   um helper que faz `db.insert` direto e não passam pela porta**, então a
+   primeira contagem (84+20) media a coisa errada; os que a guarda atinge eram
+   43, e o conserto coube em **um lugar**. **Antes de estimar o custo de apertar
+   uma porta, conte quem passa POR ELA, não quem escreve na tabela.** **O número CRESCEU de novo, e a COMPOSIÇÃO é que é o resultado:**
    o terceiro lote fez o que foi mandado fazer — **as 🟠 e 🟡 de dinheiro
    fecharam** (S-C70, S-C71, S-C80, S-C85, S-C86, S-C90, S-C91, em `e0eb9136`,
    `b1a21d00` e `68047846`), e a 🟠 acabou. Das 7 🟡 de hoje, **quatro nasceram
@@ -374,9 +386,15 @@ para o documento que manda.
    ainda está em dia — esta linha envelhece a cada commit, e já envelheceu
    cinco vezes.
 
-   Hoje a régua é **API 1599 (219 arquivos) · frontend 874 (95 arquivos) ·
+   Hoje a régua é **API 1616 (221 arquivos) · frontend 879 (96 arquivos) ·
    E2E 171 · typecheck verde em 5 projetos** — as **quatro medidas em série** em
-   2026-08-13, depois de integrar o TERCEIRO lote (as 🟠 e 🟡 de dinheiro). **O
+   2026-08-13, depois do **E215**. **E o E2E foi a régua que pagou o épico
+   inteiro:** as outras três ficaram verdes e ele derrubou **11 specs de uma
+   vez**, todas com a mesma recusa nomeando doze campos — noiva montada com
+   `{ noivaNome, origem }` num spec que fecha contrato. Nenhuma das outras
+   régua enxergava isso, porque as fixtures de API não passam pela porta.
+   Antes dele a régua dizia *1599 · 874*, depois de integrar o TERCEIRO lote
+   (as 🟠 e 🟡 de dinheiro). **O
    E2E era a régua obrigatória e a única que os três agentes não podiam rodar**:
    os três relatórios abrem dizendo *"E2E obrigatório e NÃO rodado"*, porque
    worktree isola arquivo e banco e **não isola PORTA** — rodá-lo é trabalho do
