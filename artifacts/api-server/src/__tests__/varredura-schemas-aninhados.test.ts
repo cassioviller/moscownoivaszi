@@ -144,7 +144,13 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // itens` e o degrau de baixo, `AtrasoNaFila → linhas`, e os dois nascem
     // ENTREGUES pela mesma razão do E212: quem monta `linhas` é
     // `cobrancaDoAtraso`, função pura que devolve o array inteiro ou `null`.
-    expect(c.pares.length, "a fronteira mudou — um objeto aninhado nasceu, ou um pai passou a ser entregue").toBe(275);
+    // S-C86: 275 → 276. O par novo é `listContratosComAtraso → semContrato`, a
+    // peça fora do prazo que nenhum contrato ATIVO cobre. Ele nasce ENTREGUE
+    // pela mesma razão dos dois do E212 e dos dois da S-C32: quem monta a lista
+    // é `pecasForaSemContrato`, uma consulta plana seguida de uma conta pura —
+    // não há `with` que possa esquecer um filho, e não há caminho em que o pai
+    // chegue e a lista falte (vazia é `[]`, e `[]` é resposta).
+    expect(c.pares.length, "a fronteira mudou — um objeto aninhado nasceu, ou um pai passou a ser entregue").toBe(276);
     /**
      * **E199/S-O114 — 147 → 165 entregues, e é o maior salto que esta conta já
      * deu.** Não entrou uma linha de porta: o motor deixou de parar na borda da
@@ -165,7 +171,12 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // S-C32: 174 → 176, e a coluna do NÃO não se mexeu — os DOIS pares novos da
     // fila nascem entregues, que é o que se espera de resposta montada por
     // função pura em vez de por `with`. Medido, não suposto.
-    expect(c.pares.filter((p) => p.entregue).length).toBe(176);
+    // S-C86: 176 → 177, e a coluna do NÃO não se mexeu — o par novo nasce
+    // entregue, MEDIDO: o motor segue `filaDeAtrasosDaLoja` →
+    // `pecasForaSemContrato` porque as duas moram no mesmo arquivo, que é o que
+    // o E199 ensinou a régua a fazer. Fosse o helper noutro módulo, ele
+    // apareceria como aresta órfã — foi o vermelho que o E213 tomou.
+    expect(c.pares.filter((p) => p.entregue).length).toBe(177);
     // E213: 89 → 99, e desta vez a coluna do NÃO cresce com razão. `Parcela` é
     // schema COMPARTILHADO: ela viaja em muitas respostas e só três montam a
     // `mora` (a fila de cobrança, o recebimento/perdão e o portal). É o mesmo

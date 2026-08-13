@@ -1570,8 +1570,19 @@ export interface AtrasoNaFila {
   jaCobrada: boolean;
 }
 
+export interface PecaForaSemContrato {
+  bloqueioId: string;
+  vestidoNome: string;
+  /** @nullable */
+  leadId?: string | null;
+  /** @nullable */
+  noivaNome?: string | null;
+  dias: number;
+}
+
 export interface FilaDeAtrasos {
   itens: AtrasoNaFila[];
+  semContrato: PecaForaSemContrato[];
   pecas: number;
   valor: number;
 }

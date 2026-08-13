@@ -144,7 +144,13 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
       // por linha da fila; `FilaDeAtrasos.pecas` é quantas peças estão fora do
       // prazo na loja inteira. Os dois o servidor calcula e ninguém manda pela
       // borda — a fila é só leitura, e não há rota para guardá-los.
-    ).toBe(130);
+      //
+      // S-C86: 130 → 131. O novo é `PecaForaSemContrato.dias` — há quantos dias
+      // a peça sem contrato ATIVO está fora da arara. É a MESMA contagem de
+      // `AtrasoNaFila.maiorAtraso` do lado que não tem preço, e é de RESPOSTA
+      // pela mesma razão: `diasDeAtraso` a calcula do fim do uso previsto até
+      // hoje, e nenhuma borda a manda.
+    ).toBe(131);
 
     // A outra ponta: se um dia o gerador aprender `.int()`, este número deixa
     // de ser zero e a régua acima vira ruído — é o sinal de trocar a varredura

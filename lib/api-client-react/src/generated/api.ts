@@ -9020,6 +9020,8 @@ export const getPreviaDaCobrancaDeAtrasoUrl = (lojaId: string,
  * A MESMA conta que o POST cobra, calculada e devolvida sem escrever nada. Existe para a tela mostrar o número antes do clique — mesma razão do aviso do reajuste (E211): a vendedora descobriria a cobrança depois de já ter recebido a peça de volta.
  *
  * `devida: false` é a resposta da devolução no prazo, que é a maioria delas, e não é erro.
+ *
+ * **S-C85** — a prévia e o POST respondem a MESMA pergunta, então a prévia recusa o contrato não-ATIVO pelo mesmo 422. Ela anunciava R$ 3.750,00 sobre um carnê que o POST não cobra. A peça continua visível: ela cai em `semContrato` na fila (S-C86).
  * @summary A conta do atraso na devolução, sem cobrar (E212, cláusula 16ª)
  */
 export const previaDaCobrancaDeAtraso = async (lojaId: string,
@@ -9180,6 +9182,8 @@ export const getListContratosComAtrasoUrl = (lojaId: string,) => {
  * A régua é a de `previaDaCobrancaDeAtraso`, chamada peça por peça: a fila e a ficha não podem divergir, porque o número que a fila mostra é o que a ficha vai cobrar.
  *
  * Entra também o contrato cujas peças atrasadas estão TODAS fora do rol de itens (`semAluguel`): não há conta a fazer, e é justamente por isso que alguém precisa ver — a peça está fora e ninguém consegue cobrá-la.
+ *
+ * **S-C86 — `semContrato`.** A varredura acima é sobre contratos ATIVOS, e `disponibilidade.ts` pinta `ATRASO_DEVOLUCAO` sem perguntar por contrato nenhum: a peça retirada num bloqueio que nunca virou contrato — ou que ficou solta quando o contrato caiu — aparecia vermelha no acervo e invisível para a 16ª. Ela entra por esta lista, nomeada, na contagem de peças e **nunca** no dinheiro: sem contrato não há aluguel de onde tirar a conta.
  * @summary A fila das peças que não voltaram no prazo (S-C32, cláusula 16ª)
  */
 export const listContratosComAtraso = async (lojaId: string, options?: RequestInit): Promise<FilaDeAtrasos> => {

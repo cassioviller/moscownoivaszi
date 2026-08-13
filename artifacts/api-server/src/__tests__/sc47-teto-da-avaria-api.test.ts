@@ -170,12 +170,26 @@ describe("S-C47 — o teto da avaria sai de um contrato só, e o payload diz qua
 
   // ───────── a divergência que existia, medida ─────────
 
-  it("o véu do bloqueio SEM dona: a tela dizia 'sem teto' e a porta cobra R$ 2.000,00", async () => {
+  /**
+   * **S-C80 fechou a porta que este caso descrevia, e o teste conta a história
+   * inteira.**
+   *
+   * Quando este arquivo nasceu, o véu sem dona era cobrável em QUALQUER carnê
+   * ATIVO da loja (201), e a divergência era que a partir do clique a porta
+   * passava a ter teto (R$ 2.000,00 = 5 × R$ 400,00) enquanto a tela continuava
+   * sem contrato para perguntar. A S-C47 fechou a metade do payload; a **S-C80**
+   * fechou a outra, e pelo outro lado: **não há cobrança sem dona**, então o
+   * `aluguelDaPeca` nulo do registro é a última palavra, e é verdade.
+   *
+   * O que a tela dizia — *"esta peça não está em contrato nenhum, o valor entra
+   * SEM ser conferido"* — deixou de ser mentira sem que ela mudasse uma linha.
+   */
+  it("o véu do bloqueio SEM dona não chega a ter teto: a cobrança é recusada antes", async () => {
     const casamento = dataFutura(40);
     const veu = await criarVestido(f);
     // Bloqueio sem `lead_id` e sem reserva-mãe — `donoDoBloqueio` devolve null.
-    // São 102 de 227 no `heliumdb`, e a porta de cobrança só compara a noiva do
-    // contrato com a dona do bloqueio QUANDO ela existe (E110/V3).
+    // São 102 de 227 no `heliumdb`, e a porta de cobrança só comparava a noiva
+    // do contrato com a dona do bloqueio QUANDO ela existe (E110/V3).
     const bloqueio = await criarBloqueio(f, {
       tipo: "RESERVA_CASAMENTO",
       vestidoId: veu.id,
@@ -200,24 +214,22 @@ describe("S-C47 — o teto da avaria sai de um contrato só, e o payload diz qua
     expect(criada.status).toBe(201);
     expect(criada.body.aluguelDaPeca).toBeNull();
 
-    const cobrada = await cobrar(criada.body.id, contratoDela.id);
-    expect(cobrada.status).toBe(201);
-    // **Aqui estava a divergência**: a partir deste ponto a porta tem teto
-    // (R$ 2.000,00) e a tela continuava sem ter o que perguntar.
-    expect(
-      cobrada.body.aluguelDaPeca,
-      "a tela não tem contrato para perguntar, e passava a oferecer o que o 422 recusa",
-    ).toBe(400);
+    const recusada = await cobrar(criada.body.id, contratoDela.id);
+    expect(recusada.status, "S-C80: o reparo órfão não escolhe carnê").toBe(422);
+    expect(recusada.body.error).toBe("AVARIA_SEM_DONA");
 
+    // E o payload segue dizendo o que é verdade: sem cobrança e sem dona, não
+    // há aluguel nenhum de onde tirar o teto da 15ª.
     const lista = await listar(bloqueio.id);
-    expect(lista.body[0].aluguelDaPeca).toBe(400);
+    expect(lista.body[0].aluguelDaPeca ?? null).toBeNull();
+    expect(lista.body[0].parcelaId ?? null).toBeNull();
 
-    // E o 422 confirma que o número do payload é o que decide: os R$ 2.500,00
-    // que a tela deixaria salvar levam a faixa na cara.
-    const recusada = await editar(criada.body.id, { custoReparo: 2500 });
-    expect(recusada.status).toBe(422);
-    expect(recusada.body.error).toBe("TAXA_FORA_DA_FAIXA");
-    expect(recusada.body.detalhe).toContain("2.000,00");
+    // E a edição entra sem faixa, que é o que "teto indeterminado" quer dizer:
+    // os R$ 2.500,00 não batem em teto nenhum porque não há contrato que os
+    // reja. É a S-C81 vista da outra ponta, e continua aberta.
+    const editada = await editar(criada.body.id, { custoReparo: 2500 });
+    expect(editada.status).toBe(200);
+    expect(editada.body.aluguelDaPeca ?? null).toBeNull();
   });
 
   // ───────── a correção ao diagnóstico da sobra ─────────

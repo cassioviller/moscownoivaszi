@@ -109,6 +109,14 @@ export default function Contratos() {
     },
   });
   const fila = atrasos.data?.itens ?? [];
+  /**
+   * **S-C86 — a peça fora que nenhum contrato ATIVO cobre.** O acervo já a
+   * pintava `ATRASO_DEVOLUCAO`; esta tela não a via, porque a fila varre
+   * contratos. Ela vem separada de propósito: não há noiva a quem cobrar nem
+   * carnê onde lançar, e misturá-la às cobráveis faria a lista prometer um
+   * botão que não existe.
+   */
+  const orfas = atrasos.data?.semContrato ?? [];
   // S-O16/S-O65: a ausência entra na PERGUNTA, não numa asserção `!` lá embaixo
   // — a asserção sobrevive a quem mexer na guarda de cima. Mesmo vermelho que o
   // E212 levou nesta régua, no dia em que a conta do atraso nasceu.
@@ -139,7 +147,7 @@ export default function Contratos() {
       {/* S-C32 — o que está fora da arara vem antes do catálogo. A seção só
           existe quando há peça fora do prazo: fila vazia é o normal, e um card
           permanente dizendo "nada" vira ruído que ninguém lê mais. */}
-      {aviso && fila.length > 0 && (
+      {aviso && (fila.length > 0 || orfas.length > 0) && (
         <Card
           className={aviso.urgente ? "border-destructive" : "border-aviso/70"}
           data-testid="fila-de-atrasos"
@@ -166,6 +174,9 @@ export default function Contratos() {
                 </span>
               )}
             </div>
+            {/* Sem contrato atrasado a lista some inteira: um `<ul>` vazio com
+                borda desenha um risco solto acima das órfãs. */}
+            {fila.length > 0 && (
             <ul className="divide-y border-t">
               {fila.map((i) => {
                 // As peças fora, incluindo as que a 16ª não sabe cobrar: quem
@@ -212,6 +223,40 @@ export default function Contratos() {
                 );
               })}
             </ul>
+            )}
+
+            {/* S-C86 — as órfãs, depois das cobráveis e visivelmente à parte:
+                a peça está fora da arara e a 16ª não a alcança. O caminho é a
+                ficha da reserva, que é onde se registra a devolução — o único
+                gesto que faz o contador parar. */}
+            {orfas.length > 0 && (
+              <div className="space-y-2 border-t pt-3" data-testid="atrasos-sem-contrato">
+                <p className="text-xs text-muted-foreground">
+                  Fora do prazo e <span className="font-medium">sem contrato ativo</span>: a
+                  cláusula 16ª cobra sobre o aluguel de cada peça, e não há de onde tirá-lo.
+                </p>
+                <ul className="divide-y">
+                  {orfas.map((o) => (
+                    <li
+                      key={o.bloqueioId}
+                      className="flex flex-wrap items-center justify-between gap-3 py-2"
+                      data-testid={`atraso-sem-contrato-${o.bloqueioId}`}
+                    >
+                      <div className="min-w-0 space-y-0.5">
+                        <p className="text-sm font-medium truncate">{o.vestidoNome}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {o.noivaNome ?? "sem noiva"} · fora do prazo há {o.dias}{" "}
+                          {o.dias === 1 ? "dia" : "dias"}
+                        </p>
+                      </div>
+                      <Button asChild variant="outline" size="sm">
+                        <Link to={`/loja/${lojaId}/reservas/${o.bloqueioId}`}>Abrir a reserva</Link>
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

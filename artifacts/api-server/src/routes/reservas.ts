@@ -1,6 +1,10 @@
 import { Router, type IRouter } from "express";
 import { db, reservasTable, bloqueioVestidosTable, vestidosTable, atendimentosTable, contratoBloqueiosTable } from "@workspace/db";
-import { eq, and, isNull, isNotNull, gte, lt, asc, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, gte, lt, asc, desc, sql, inArray, notExists } from "drizzle-orm";
+// S-C86: a peça fora que nenhum contrato ATIVO cobre precisa do nome da noiva
+// pelas DUAS pontas do dono (a própria e a da reserva-mãe), e são a mesma
+// tabela duas vezes no mesmo SELECT.
+import { alias } from "drizzle-orm/pg-core";
 import { registrarAuditoria } from "../lib/auditoria";
 import { leadNaLoja, reservaNaLoja, reservaDaNoiva } from "../lib/escopo-loja";
 import {
@@ -56,6 +60,7 @@ import { erroDeValidacao } from "../lib/erros";
 import {
   MAE_DO_BLOQUEIO,
   bloqueioComDono,
+  comDono,
   donoDoBloqueio,
   reservaComDonos,
 } from "../lib/dono-do-bloqueio";
@@ -1838,8 +1843,8 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
    * `usuarioNaLoja`).
    *
    * **A guarda prova quando é possível, e o limite está medido.** O `lead_id`
-   * do bloqueio é NULLABLE: sem dona não há o que comparar, e a rota segue como
-   * antes; com dona, ela tem de ser a mesma.
+   * do bloqueio é NULLABLE, então a comparação só existe quando há dona; com
+   * dona, ela tem de ser a mesma.
    *
    * **S-C10 (13/08/2026) — a régua era "quando é PROVÁVEL", e o provável virou
    * o contrário.** Este comentário afirmava que 61 das 63 avarias do dev viviam
@@ -1848,8 +1853,13 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
    * dev** (os 2 sem reserva-mãe, resíduo de fixture de 12/08). A guarda continua
    * de pé pela POSSIBILIDADE — `POST /lojas/:lojaId/bloqueios` ainda aceita
    * `RESERVA_CASAMENTO` sem `leadId` e sem `reservaId`, logo abaixo nesta mesma
-   * rota. Exigir dona na porta virou barato e é a **S-C60**. A conta inteira
+   * rota. Exigir dona na CRIAÇÃO continua sendo a **S-C60**. A conta inteira
    * está em `lib/dono-do-bloqueio.ts`.
+   *
+   * **S-C80 (13/08/2026) — e a frase "sem dona a rota segue como antes" era o
+   * defeito.** Ela estava escrita aqui, e o "segue" queria dizer *cobra em
+   * qualquer carnê ATIVO da loja*. Hoje o nulo é recusado logo abaixo: quem
+   * cobra tem de saber de quem é.
    */
   const [bloqueioDaAvaria] = await db
     .select({
@@ -1880,7 +1890,51 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
   const donoDaAvaria = bloqueioDaAvaria
     ? await donoDoBloqueio(bloqueioDaAvaria)
     : null;
-  if (donoDaAvaria && donoDaAvaria !== contrato.leadId) {
+  /**
+   * **S-C80 — sem dona, a guarda de cima não compara NADA, e o reparo escolhia
+   * o carnê sozinho.**
+   *
+   * Medido no S-C47 com **201**: um véu bloqueado sem `lead_id` e sem
+   * reserva-mãe teve a avaria de **R$ 1.500,00** cobrada no contrato ATIVO de
+   * uma noiva que não tem relação nenhuma com ele — e a cobrança aparece no
+   * extrato do portal dela. `donoDoBloqueio` devolve `null`, a comparação de
+   * baixo é `donoDaAvaria && …`, e o `null` a atravessa inteira.
+   *
+   * **A decisão: quem cobra tem de saber de quem é.** A porta recusa em vez de
+   * escolher. As três saídas estavam na mesa e as outras duas são piores:
+   *
+   * - *exigir que o corpo diga a noiva* — seria pedir à vendedora que declare
+   *   um vínculo que o sistema não tem como conferir, e é exatamente o vínculo
+   *   que está faltando;
+   * - *fechar a porta de criação* (S-C60) — é decisão de produto (a loja segura
+   *   a peça antes de saber de quem será?) e não desfaz os **102 de 227**
+   *   bloqueios sem dona que já existem no `heliumdb`.
+   *
+   * **O argumento que protegia a porta aberta morreu, e está medido** (S-C10):
+   * ele era *"recusar trocaria um defeito raro por uma parede diária"*, com a
+   * parede em 97%. Hoje a parede tem largura **zero** — 0 de 116 bloqueios sem
+   * dona em `moscow_base`, 0 avarias nos dois bancos. E tem largura zero também
+   * na TELA: a ficha (`reservas/[bloqueioId].tsx`) só pergunta o contrato ATIVO
+   * quando há dono derivado (`enabled: !!donoDaReserva`), então ela **nunca
+   * desenhou** este botão. O 201 só existia pela API.
+   *
+   * **O registro da avaria continua entrando**, e a assimetria é o julgamento
+   * deste conserto: a peça rasgada é um FATO, e a foto que a prova (E97/F23)
+   * não pode depender de alguém já saber a quem cobrar. O que se recusa é o
+   * nascimento do DINHEIRO. Quem quiser cobrar prende a reserva à noiva
+   * (`PATCH /bloqueios`, `leadId`) e volta.
+   */
+  if (!donoDaAvaria) {
+    res.status(422).json({
+      error: "AVARIA_SEM_DONA",
+      detalhe:
+        "Esta peça não está presa a nenhuma noiva — sem dona, o reparo entraria no carnê de " +
+        "qualquer contrato. Ligue a reserva à noiva antes de cobrar.",
+      campos: [{ campo: "bloqueioId", motivo: "A reserva desta peça não tem noiva" }],
+    });
+    return;
+  }
+  if (donoDaAvaria !== contrato.leadId) {
     res.status(422).json({
       error: "AVARIA_DE_OUTRA_NOIVA",
       detalhe: "Este reparo é do vestido de outra noiva — cobre no contrato dela",
@@ -2084,6 +2138,21 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
  * locação daquela peça, e a 16ª fala de *"não devolução"* — o que nunca foi
  * retirado não tem o que devolver.
  *
+ * **S-C85 — `canceladoEm` NÃO entra nesta conta, e agora é decisão, não
+ * omissão.** Quem discrimina é `retiradaDataReal`: cancelar a reserva de uma
+ * peça que já saiu é um gesto administrativo que **não traz o vestido de
+ * volta**, e filtrar por `canceladoEm` faria do cancelamento a porta dos fundos
+ * da 16ª — os R$ 12.000,00 do extravio (4 × um aluguel de R$ 3.000,00) sumiriam
+ * com um clique. Cancelar ANTES da retirada já não cobra nada, pela guarda de
+ * cima, e é o caso em que locação nenhuma começou.
+ *
+ * O que o cancelamento muda é **por qual porta a peça é vista**: as duas
+ * escritas de `canceladoEm` num bloqueio de contrato (`PATCH /reservas` recusa
+ * com 409 quando há contrato ATIVO; `POST /contratos/:id/cancelar` derruba os
+ * dois juntos) implicam contrato não-ATIVO, e nem a fila nem o `POST` cobram
+ * fora do ATIVO. A peça passa então a aparecer em `semContrato` (S-C86), que é
+ * onde ela fica visível sem virar dinheiro que ninguém pode lançar.
+ *
  * `semAluguel` são as peças atrasadas que não estão no rol de itens do
  * contrato. A 16ª cobra sobre *"o valor do aluguel de cada peça"*: sem aluguel
  * não há diária nem múltiplo, e a régua diz que não conferiu em vez de inventar
@@ -2192,11 +2261,38 @@ router.get(
   async (req, res): Promise<void> => {
     const { lojaId, contratoId } = req.params as { lojaId: string; contratoId: string };
     const [contrato] = await db
-      .select({ id: contratosTable.id, atrasoParcelaId: contratosTable.atrasoParcelaId })
+      .select({
+        id: contratosTable.id,
+        status: contratosTable.status,
+        atrasoParcelaId: contratosTable.atrasoParcelaId,
+      })
       .from(contratosTable)
       .where(and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)));
     if (!contrato) {
       res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
+      return;
+    }
+    /**
+     * **S-C85 — a prévia e o `POST` respondem a MESMA pergunta, e davam
+     * respostas diferentes.**
+     *
+     * O `POST` logo abaixo recusa o contrato não-ATIVO com 422
+     * `CONTRATO_NAO_ATIVO`; esta prévia não olhava o status e anunciava
+     * **R$ 3.750,00** (7 dias × R$ 500,00 + a multa de R$ 250,00) sobre um
+     * carnê que ninguém pode cobrar. É o formato do E213 invertido — quatro
+     * leituras do mesmo número, e a única que decide dizia não.
+     *
+     * A fila (`filaDeAtrasosDaLoja`) já só varre contratos ATIVOS pela mesma
+     * razão, escrita lá: *oferecer na fila o que a porta recusa é o defeito do
+     * S36 uma camada acima*. Esta era a terceira leitura, e a única fora do
+     * combinado.
+     *
+     * **A peça não desaparece por isso** — ela cai em `semContrato` na fila
+     * (S-C86, logo abaixo): o carnê morreu, o vestido continua na casa da
+     * noiva, e são dois fatos diferentes.
+     */
+    if (contrato.status !== "ATIVO") {
+      res.status(422).json({ error: "CONTRATO_NAO_ATIVO", detalhe: "Contrato não está ativo" });
       return;
     }
     const { pecas, semAluguel } = await pecasAtrasadasDoContrato(contratoId, lojaId);
@@ -2324,17 +2420,115 @@ async function filaDeAtrasosDaLoja(lojaId: string) {
     });
   }
 
+  const semContrato = await pecasForaSemContrato(lojaId, regra, hoje);
+
   // Do maior atraso ao menor: a fila existe para dizer o que espera há mais
   // tempo, e é o número que mais cresce sozinho.
   itens.sort((a, b) => b.maiorAtraso - a.maiorAtraso);
+  semContrato.sort((a, b) => b.dias - a.dias);
   return {
     itens,
+    semContrato,
     // Peças, não contratos: uma noiva que atrasa vestido, véu e tiara são três
-    // peças fora da arara e uma linha na fila.
-    pecas: itens.reduce((s, i) => s + i.linhas.length + i.semAluguel.length, 0),
+    // peças fora da arara e uma linha na fila. As órfãs entram na CONTAGEM pelo
+    // mesmo motivo — são araras vazias — e nunca no dinheiro.
+    pecas:
+      itens.reduce((s, i) => s + i.linhas.length + i.semAluguel.length, 0) + semContrato.length,
     // Soma o que a régua devolveu — a fila nunca refaz a conta (E187).
     valor: itens.reduce((s, i) => s + i.valor, 0),
   };
+}
+
+/**
+ * **S-C86 — a peça atrasada que nenhum contrato ATIVO cobre.**
+ *
+ * A fila acima e a prévia do E212 varrem `contratos → contrato_bloqueios`, e a
+ * 16ª só sabe cobrar quem está no rol de itens. `janelasDoBloqueio` não pergunta
+ * nada disso: ela pinta `ATRASO_DEVOLUCAO` para **qualquer** bloqueio com
+ * retirada sem devolução depois do fim do uso previsto. O resultado era o
+ * acervo mostrando a peça vermelha enquanto a régua do dinheiro não a enxergava
+ * — nem na fila, nem na ficha, que pergunta pelo contrato ATIVO da noiva.
+ *
+ * **A decisão: ver não é cobrar.** A cobrança fica onde está, presa ao contrato,
+ * porque a cláusula fala de *"o valor do aluguel de cada peça"* e aluguel só
+ * existe em `contrato_itens` — sem contrato não há de onde tirar o número, e
+ * inventá-lo seria pior que calar. Mas calar também é uma resposta
+ * tranquilizadora, e é a que o E212 recusou na porta (`ATRASO_SEM_ALUGUEL`) e a
+ * S-C32 recusou na fila: **a peça entra, nomeada, do lado que não tem preço.**
+ *
+ * Duas populações caem aqui, e a segunda é a S-C85 vista pelo outro lado:
+ *
+ * 1. o bloqueio que **nunca virou contrato** — a peça saiu por um gesto de
+ *    balcão e a venda não fechou;
+ * 2. o bloqueio cujo contrato **caiu** — cancelar o contrato solta os bloqueios
+ *    (`contratos.ts` grava `canceladoEm` em todos os vinculados) e a peça
+ *    continua na casa da noiva. O carnê morreu; o vestido, não.
+ *
+ * Por isso `canceladoEm` **não** filtra aqui: é a mesma decisão da conta lá em
+ * cima — cancelar não devolve o vestido.
+ */
+async function pecasForaSemContrato(
+  lojaId: string,
+  regra: Awaited<ReturnType<typeof buscarRegra>>,
+  hoje: string,
+) {
+  const leadDaMae = alias(leadsTable, "lead_da_reserva_mae");
+  const orfas = await db
+    .select({
+      bloqueioId: bloqueioVestidosTable.id,
+      vestidoNome: vestidosTable.nome,
+      leadId: bloqueioVestidosTable.leadId,
+      noivaNome: leadsTable.noivaNome,
+      maeLeadId: reservasTable.leadId,
+      maeNoivaNome: leadDaMae.noivaNome,
+      casamentoData: bloqueioVestidosTable.casamentoData,
+      devolucaoDataReal: bloqueioVestidosTable.devolucaoDataReal,
+    })
+    .from(bloqueioVestidosTable)
+    .innerJoin(vestidosTable, eq(vestidosTable.id, bloqueioVestidosTable.vestidoId))
+    .leftJoin(leadsTable, eq(leadsTable.id, bloqueioVestidosTable.leadId))
+    .leftJoin(reservasTable, eq(reservasTable.id, bloqueioVestidosTable.reservaId))
+    .leftJoin(leadDaMae, eq(leadDaMae.id, reservasTable.leadId))
+    .where(and(
+      eq(bloqueioVestidosTable.lojaId, lojaId),
+      // As mesmas duas guardas da conta: o que nunca saiu não atrasa, e sem
+      // data de casamento não há janela de uso de onde tirar o prazo.
+      isNotNull(bloqueioVestidosTable.retiradaDataReal),
+      isNotNull(bloqueioVestidosTable.casamentoData),
+      // A peneira: nenhum contrato ATIVO responde por esta peça. O contrato
+      // CANCELADO não conta — foi ele que soltou o bloqueio.
+      notExists(
+        db
+          .select({ um: sql`1` })
+          .from(contratoBloqueiosTable)
+          .innerJoin(contratosTable, eq(contratosTable.id, contratoBloqueiosTable.contratoId))
+          .where(and(
+            eq(contratoBloqueiosTable.bloqueioId, bloqueioVestidosTable.id),
+            eq(contratosTable.status, "ATIVO"),
+          )),
+      ),
+    ));
+
+  const linhas = [];
+  for (const o of orfas) {
+    if (!o.casamentoData) continue;
+    const fimUsoPrevisto = addDias(diaDeNegocio(o.casamentoData), regra.usoDiasDepois);
+    const diaDaVolta = o.devolucaoDataReal ? diaLocal(o.devolucaoDataReal) : hoje;
+    const dias = diasDeAtraso(fimUsoPrevisto, diaDaVolta);
+    if (dias <= 0) continue;
+    // A régua do dono é a de `lib/dono-do-bloqueio.ts`, e não uma segunda
+    // grafia: o `lead_id` próprio, senão o da reserva-mãe. O NOME segue o mesmo
+    // desempate, pela mesma ponta.
+    const { donoLeadId } = comDono({ leadId: o.leadId }, o.maeLeadId ?? null);
+    linhas.push({
+      bloqueioId: o.bloqueioId,
+      vestidoNome: o.vestidoNome,
+      leadId: donoLeadId,
+      noivaNome: o.noivaNome ?? o.maeNoivaNome ?? null,
+      dias,
+    });
+  }
+  return linhas;
 }
 
 /**

@@ -2526,6 +2526,13 @@ paths:
             Sem custo avaliado, contrato não ativo, ou — E214 —
             `TAXA_FORA_DA_FAIXA`: o valor não cabe no teto da peça DESTE
             contrato e não há justificativa escrita nem na avaria nem no corpo.
+
+
+            **S-C80 — `AVARIA_SEM_DONA`**: a peça não está presa a noiva
+            nenhuma (`lead_id` nulo e sem reserva-mãe), então a guarda
+            `AVARIA_DE_OUTRA_NOIVA` não tem o que comparar e o reparo entraria
+            no carnê de qualquer contrato ATIVO da loja. O REGISTRO da avaria
+            continua aceito — o que se recusa é o nascimento do dinheiro.
           content:
             application/json:
               schema:
@@ -2552,6 +2559,12 @@ paths:
 
         `devida: false` é a resposta da devolução no prazo, que é a maioria
         delas, e não é erro.
+
+
+        **S-C85** — a prévia e o POST respondem a MESMA pergunta, então a
+        prévia recusa o contrato não-ATIVO pelo mesmo 422. Ela anunciava
+        R$ 3.750,00 sobre um carnê que o POST não cobra. A peça continua
+        visível: ela cai em `semContrato` na fila (S-C86).
       responses:
         "200":
           description: A conta (ou a ausência dela)
@@ -2561,6 +2574,14 @@ paths:
                 $ref: "#/components/schemas/CobrancaDeAtraso"
         "404":
           description: Contrato não encontrado nesta loja
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: >
+            `CONTRATO_NAO_ATIVO` — o mesmo veredicto do POST, pela mesma razão
+            (S-C85).
           content:
             application/json:
               schema:
@@ -2628,6 +2649,15 @@ paths:
         Entra também o contrato cujas peças atrasadas estão TODAS fora do rol de
         itens (`semAluguel`): não há conta a fazer, e é justamente por isso que
         alguém precisa ver — a peça está fora e ninguém consegue cobrá-la.
+
+
+        **S-C86 — `semContrato`.** A varredura acima é sobre contratos ATIVOS, e
+        `disponibilidade.ts` pinta `ATRASO_DEVOLUCAO` sem perguntar por contrato
+        nenhum: a peça retirada num bloqueio que nunca virou contrato — ou que
+        ficou solta quando o contrato caiu — aparecia vermelha no acervo e
+        invisível para a 16ª. Ela entra por esta lista, nomeada, na contagem de
+        peças e **nunca** no dinheiro: sem contrato não há aluguel de onde tirar
+        a conta.
       responses:
         "200":
           description: A fila, do maior atraso ao menor
@@ -6475,18 +6505,50 @@ components:
           items: { type: string }
         jaCobrada: { type: boolean }
 
+    # ───────── S-C86 — a peça fora que nenhum contrato ATIVO cobre ─────────
+    #
+    # `janelasDoBloqueio` pinta `ATRASO_DEVOLUCAO` para qualquer bloqueio com
+    # retirada sem devolução: o acervo mostra a peça vermelha e a régua do
+    # dinheiro não a enxergava, porque a fila e a prévia varrem
+    # `contratos → contrato_bloqueios`.
+    #
+    # A decisão é **ver não é cobrar**: a 16ª cobra sobre *"o valor do aluguel
+    # de cada peça"*, e sem contrato não há de onde tirá-lo. Então a peça entra
+    # na CONTAGEM, nomeada, e nunca no dinheiro — a mesma escolha do
+    # `semAluguel` do E212.
+    PecaForaSemContrato:
+      type: object
+      required: [bloqueioId, vestidoNome, dias]
+      properties:
+        # A ficha da reserva, que é por onde se registra a devolução — o único
+        # gesto que faz o contador parar.
+        bloqueioId: { type: string }
+        vestidoNome: { type: string }
+        # O dono pela régua de `lib/dono-do-bloqueio.ts`: o `lead_id` próprio,
+        # senão o da reserva-mãe. Nulo é a peça que saiu sem noiva nenhuma.
+        leadId: { type: ["string", "null"] }
+        noivaNome: { type: ["string", "null"] }
+        dias: { type: integer }
+
     FilaDeAtrasos:
       type: object
-      required: [itens, pecas, valor]
+      required: [itens, semContrato, pecas, valor]
       properties:
         itens:
           type: array
           items: { $ref: "#/components/schemas/AtrasoNaFila" }
+        # As peças fora do prazo que nenhum contrato ATIVO cobre (S-C86): as que
+        # nunca viraram contrato e as que ficaram soltas quando o contrato caiu.
+        semContrato:
+          type: array
+          items: { $ref: "#/components/schemas/PecaForaSemContrato" }
         # Quantas PEÇAS estão fora do prazo, somando os contratos — o número que
-        # o aviso do sino diz. Um contrato pode ter três.
+        # o aviso do sino diz. Um contrato pode ter três, e as órfãs entram aqui
+        # pelo mesmo motivo: são araras vazias.
         pecas: { type: integer }
         # O que a 16ª já cobra hoje, somando os contratos. Soma o que a régua
-        # devolveu; a fila nunca recalcula a conta (lição do E187).
+        # devolveu; a fila nunca recalcula a conta (lição do E187). As órfãs não
+        # somam um centavo: elas não têm aluguel de onde tirar a conta.
         valor: { type: number }
 
     CobrarAtrasoInput:

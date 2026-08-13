@@ -63,6 +63,19 @@ import type { DbExecutor } from "./disponibilidade";
  *
  * Todo sítio que citava o número aponta para cá. **Não repita o número em
  * comentário novo**: repita a régua, que é *o nulo é alcançável*.
+ *
+ * ## S-C80 — o nulo é alcançável, e onde ele cria DINHEIRO passou a ser recusado
+ *
+ * A régua acima continua valendo em toda leitura: `donoDoBloqueio` devolve
+ * `null` e quem serializa um bloqueio entrega o nulo. O que mudou é uma porta
+ * só, e é a que faz nascer parcela: `POST /avarias/:id/cobrar` recusa com 422
+ * `AVARIA_SEM_DONA` em vez de deixar o reparo cair no carnê de qualquer noiva
+ * ATIVA da loja (medido em 201 no S-C47, com R$ 1.500,00 num véu órfão).
+ *
+ * **Toda guarda de pareamento noiva↔peça continua tendo de passar no nulo** —
+ * a de disponibilidade, a de escopo, a da agenda. A diferença é a assimetria
+ * entre LER e COBRAR: ler o nulo é descrever o mundo, cobrar sobre o nulo é
+ * escolher uma vítima.
  */
 
 /** O `with` que traz a mãe por UMA coluna do mesmo SELECT relacional. */

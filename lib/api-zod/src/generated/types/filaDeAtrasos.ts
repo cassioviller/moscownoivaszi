@@ -6,9 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AtrasoNaFila } from './atrasoNaFila';
+import type { PecaForaSemContrato } from './pecaForaSemContrato';
 
 export interface FilaDeAtrasos {
   itens: AtrasoNaFila[];
+  semContrato: PecaForaSemContrato[];
   pecas: number;
   valor: number;
 }

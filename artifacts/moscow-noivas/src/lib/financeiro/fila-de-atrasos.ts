@@ -24,21 +24,44 @@ export type LinhaDaFilaDeAtraso = {
 };
 
 /**
+ * **S-C86 — a peça fora que nenhum contrato ATIVO cobre.** Ela não tem valor
+ * porque não tem aluguel de onde tirá-lo; o que ela tem é o número de dias, e é
+ * ele que a põe no mesmo aviso.
+ */
+export type OrfaDaFilaDeAtraso = { dias: number };
+
+/**
  * O aviso do sino, em uma frase.
  *
  * Ele existe porque **ausência não notifica ninguém**: a peça que não voltou
  * não dispara gesto nenhum, e o E212 só a mostrava a quem abrisse a ficha
  * daquela reserva. O sino é o lugar do sistema que avisa quem não perguntou
  * (E68), e é onde este fato passa a existir para quem não foi procurar.
+ *
+ * **S-C86: a órfã acende o aviso sozinha.** Antes ele saía do `itens`, que é a
+ * varredura dos contratos ATIVOS — então a peça fora há 14 dias que nenhum
+ * contrato cobre não acendia nada, e é justamente a mais grave: ninguém
+ * consegue cobrá-la. Calá-la seria a mesma resposta tranquilizadora que o E212
+ * recusou na porta.
  */
 export function avisoDoAtraso(
-  fila: { itens: LinhaDaFilaDeAtraso[]; pecas: number; valor: number } | undefined,
+  fila:
+    | {
+        itens: LinhaDaFilaDeAtraso[];
+        semContrato?: OrfaDaFilaDeAtraso[];
+        pecas: number;
+        valor: number;
+      }
+    | undefined,
 ): { titulo: string; detalhe: string; urgente: boolean; assinatura: string } | null {
   const itens = fila?.itens ?? [];
-  if (itens.length === 0) return null;
+  const orfas = fila?.semContrato ?? [];
+  if (itens.length === 0 && orfas.length === 0) return null;
 
   const pecas = fila!.pecas;
-  const maiorAtraso = Math.max(...itens.map((i) => i.maiorAtraso));
+  // A arara mais antiga é a mais antiga — dos dois lados. Uma órfã fora há 30
+  // dias não pode ficar atrás de uma cobrável de 3.
+  const maiorAtraso = Math.max(...itens.map((i) => i.maiorAtraso), ...orfas.map((o) => o.dias));
   const temExtravio = itens.some((i) => i.temExtravio);
   const semAluguel = itens.some((i) => i.semAluguel.length > 0);
 
@@ -59,9 +82,17 @@ export function avisoDoAtraso(
         ? " Nenhuma delas está no rol de itens do contrato: não há aluguel de onde tirar a conta."
         : "";
 
+  // A órfã é um fato à parte do dinheiro, e vem depois dele: há peça fora que a
+  // 16ª NÃO alcança, e quem lê precisa saber que o número acima não a inclui.
+  const orfa =
+    orfas.length > 0
+      ? ` ${orfas.length} delas não está${orfas.length === 1 ? "" : "ão"} em contrato nenhum: ` +
+        "sem aluguel no rol, a 16ª não tem de onde tirar a conta."
+      : "";
+
   return {
     titulo,
-    detalhe: `${quanto}${dinheiro}`,
+    detalhe: `${quanto}${dinheiro}${orfa}`,
     // Extravio é o pior caso que o instrumento prevê: 4× o aluguel de cada peça.
     urgente: temExtravio,
     // O sino guarda "dispensadas" por ID, e o ID carrega a assinatura do estado

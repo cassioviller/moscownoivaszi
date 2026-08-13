@@ -122,6 +122,38 @@ describe("S-C32 — o aviso do atraso", () => {
     expect(aviso.detalhe).toContain("21 dias sem devolução");
     expect(aviso.urgente).toBe(true);
   });
+
+  /**
+   * **S-C86 — a peça fora que nenhum contrato ATIVO cobre.** O acervo a pinta
+   * `ATRASO_DEVOLUCAO` e a régua do dinheiro não a enxergava: a fila varria
+   * `contratos → contrato_bloqueios`. Sem ela aqui, a arara vazia mais grave —
+   * a que ninguém consegue cobrar — não acende aviso nenhum.
+   */
+  it("a peça sem contrato acende o aviso sozinha, mesmo com a fila de contratos vazia", () => {
+    const aviso = avisoDoAtraso({
+      itens: [],
+      semContrato: [{ dias: 14 }],
+      pecas: 1,
+      valor: 0,
+    })!;
+    expect(aviso.titulo).toBe("1 peça fora do prazo de devolução");
+    expect(aviso.detalhe).toBe(
+      "A mais antiga está fora há 14 dias. 1 delas não está em contrato nenhum: sem aluguel no rol, a 16ª não tem de onde tirar a conta.",
+    );
+  });
+
+  it("a órfã entra no maior atraso: ela é a arara vazia há mais tempo", () => {
+    const aviso = avisoDoAtraso({
+      itens: [linha({ maiorAtraso: 3 })],
+      semContrato: [{ dias: 30 }],
+      pecas: 2,
+      valor: 1750,
+    })!;
+    expect(aviso.detalhe).toContain("está fora há 30 dias");
+    expect(aviso.detalhe).toContain("1 delas não está em contrato nenhum");
+    // E o dinheiro continua sendo só o dos contratos: a órfã não tem conta.
+    expect(aviso.detalhe).toContain("já cobra R$\u00a01.750,00");
+  });
 });
 
 describe("S-C32 — o rótulo da linha na fila", () => {
