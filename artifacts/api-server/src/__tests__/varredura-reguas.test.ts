@@ -211,6 +211,11 @@ describe("varredura — formatador novo fora da régua exige decisão", () => {
     "artifacts/moscow-noivas/src/lib/formatos.ts",
     "artifacts/moscow-noivas/src/lib/financeiro/datas.ts",
     "lib/financeiro-core/src/datas.ts",
+    // E214: a moeda desceu para o módulo que POSSUI o conceito de dinheiro. O
+    // `brl` das telas é a mesma conta, e o `financeiro-core` não pode
+    // importá-lo — a dependência aponta ao contrário. Consolidar em vez de
+    // declarar dívida é a doutrina que a S30 aplicou a cinco formatadores.
+    "lib/financeiro-core/src/dinheiro.ts",
     "lib/agenda-core/src/slots.ts",
     "artifacts/api-server/src/lib/contrato-do-papel.ts",
     "artifacts/api-server/src/lib/auditoria.ts",

@@ -782,6 +782,16 @@ rode o codegen.
   confirma com "Changes applied", sem prompt. Esse DDL fica versionado em
   `docs/migracoes/`: um banco NOVO nasce certo do schema, mas um banco que já
   existe só chega lá por esse script — e `push` não sabe fazê-lo sozinho.
+- **Migração aplicada à mão vai no banco de `DATABASE_URL`, não no que você
+  decorou** (E211/E214, 2026-08-13). São dois bancos na mesma instância, e a
+  suíte lê só o primeiro: um `psql -d moscow_base` que aplica o DDL deixa
+  `heliumdb` para trás, e o preço aparece épicos depois — `column "exclusiva" of
+  relation "vestidos" does not exist` em **vinte arquivos** de teste ao mesmo
+  tempo. O conserto foi um `pnpm run push`. Vale também para CONFERIR: antes de
+  concluir que o `push` engoliu um `ALTER TYPE`, veja em qual banco você está
+  olhando — `psql "$DATABASE_URL"`, nunca `psql -d <nome>`. O E211 acusou a
+  ferramenta de mentir por causa disso, e a acusação viajou para o briefing do
+  E214 como se fosse fato.
 - **O que os scripts de `docs/migracoes/` criam tem de existir no schema
   drizzle, com o MESMO NOME** (S-A20). O drizzle nunca lê aqueles scripts: são
   duas descrições do mesmo banco, e quando divergem, um banco novo e um banco

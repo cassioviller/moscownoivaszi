@@ -9,6 +9,34 @@
  */
 
 /** Reais → centavos inteiros. */
+/**
+ * **A moeda em português, e ela mora aqui porque o conceito é deste módulo.**
+ *
+ * Nasceu no E214, dentro de `avaria.ts`, e a `varredura-reguas` reprovou —
+ * com razão. A doutrina dela é explícita: formatador que é CÓPIA de função que
+ * já existe se **consolida**, não se declara como dívida (foi o que a S30 fez
+ * com cinco deles em 2026-08-07).
+ *
+ * O `brl` das telas (`moscow-noivas/src/lib/formatos.ts`) é a mesma conta, e
+ * o `financeiro-core` não pode importá-lo — a dependência aponta ao contrário.
+ * Então o formatador desce para o módulo que **possui** o conceito de dinheiro,
+ * e quem precisar de moeda em regra de negócio pede aqui.
+ *
+ * As duas casas são EXPLÍCITAS: sem elas, um teto de 5 × R$ 1.750,50 sairia
+ * "R$ 8.752,5".
+ */
+const moedaFmt = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+/** Reais → "R$ 1.234,56". */
+export function brl(valor: number): string {
+  return moedaFmt.format(valor);
+}
+
 export function centavos(reais: number): number {
   return Math.round(reais * 100);
 }

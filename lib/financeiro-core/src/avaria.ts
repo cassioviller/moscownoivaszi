@@ -1,4 +1,4 @@
-import { centavos } from "./dinheiro";
+import { brl, centavos } from "./dinheiro";
 
 /**
  * **A taxa de limpeza e a de dano** — cláusulas 14ª e 15ª do instrumento de
@@ -217,17 +217,6 @@ export function avaliarTaxaDeAvaria(params: {
     mereceTrilha: motivo !== null,
   };
 }
-
-// Mesma escolha do `brl` das telas (`moscow-noivas/src/lib/formatos.ts`): as
-// duas casas são EXPLÍCITAS, senão um teto de 5 × R$ 1.750,50 sairia
-// "R$ 8.752,5".
-const brlFmt = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-const brl = (v: number) => brlFmt.format(v);
 
 /**
  * A frase que a tela mostra e que o 422 devolve — **a mesma**.
