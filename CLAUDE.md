@@ -23,8 +23,12 @@ para o documento que manda.
    menos o E219: E211 (`0c8874a`), E212 (`a88d7ead`), E213 (`fa7d838`), E214
    (`0c15cda`), E216 (`eaa4e90`), E218 (`f8ab561`), E221 (`fcc24e9`) e E222
    (`31422db`) — **8 de 12**. A tabela do `EXECUCAO.md` é a fila; **conte, não
-   deduza** — hoje são **21 sobras** (1 🟠, 5 🟡, 15 🔵) e **4 pendências que não
-   são software**. O que resta tem plano próprio:
+   deduza** — hoje são **39 sobras** (1 🟠, 9 🟡, 29 🔵) e **4 pendências que não
+   são software**. **O número CRESCEU, e é o que se espera:** dois lotes de
+   agentes (cinco e seis) fecharam 14 e abriram 40, olhando áreas que ninguém
+   tinha aberto. **O próximo lote não abre frente nova — fecha as 🟠 e 🟡 de
+   dinheiro**, e a mais grave é a **S-C70**: o estorno avulso devolve
+   R$ 515,00 e deixa R$ 15,00 no caixa. O que resta tem plano próprio:
    [`2026-08-13-fechar-o-contrato-plano.md`](docs/propostas/2026-08-13-fechar-o-contrato-plano.md).
 
    **O E219 está BLOQUEADO, e o motivo é o achado que ordena o resto:** a porta
@@ -362,9 +366,9 @@ para o documento que manda.
    ainda está em dia — esta linha envelhece a cada commit, e já envelheceu
    cinco vezes.
 
-   Hoje a régua é **API 1537 (213 arquivos) · frontend 823 (91 arquivos) ·
+   Hoje a régua é **API 1573 (217 arquivos) · frontend 862 (94 arquivos) ·
    E2E 171 · typecheck verde em 5 projetos** (medida em 2026-08-13, depois de
-   integrar o lote de cinco agentes, e as três em série). Ela é MEDIDA a cada
+   integrar o SEGUNDO lote de agentes — seis —, e as três em série). Ela é MEDIDA a cada
    onda, e envelhece depressa: este parágrafo já disse *1389 · 704* enquanto seis
    épicos do contrato somavam 78 testes de API e 99 de frontend sem que ninguém
    refizesse a conta — e antes disso dizia *1349 · 683* com o `main` em
