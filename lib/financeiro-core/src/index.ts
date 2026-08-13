@@ -23,6 +23,9 @@ export * from "./reajuste";
 export * from "./exclusividade";
 // E214 — a faixa da taxa de limpeza e o teto do dano (cláusulas 14ª e 15ª).
 export * from "./avaria";
+// E212 — o atraso na devolução e o extravio (cláusula 16ª e seus dois §§). O
+// sistema já enxergava o atraso (`ATRASO_DEVOLUCAO`); esta é a conta.
+export * from "./atraso";
 // S-O52/E186: os nomes das ações da trilha — o CSV da contadora e a coluna
 // "Ação" da tela deixam de ser duas listas que divergiam em três rótulos.
 export * from "./auditoria";

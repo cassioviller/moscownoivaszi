@@ -4469,7 +4469,7 @@ export const ListAvariasResponse = zod.array(ListAvariasResponseItem)
 /**
  * E71: o atraso já era detectado; a avaria morria numa conversa. A foto é opcional, validada por magic bytes como as de vestido (E3), e quando há contrato o custo pode virar parcela avulsa cobrável.
  *
- * E214: a taxa passa a ter FAIXA — R$ 350,00 a R$ 2.500,00 na limpeza (cláusula 14ª) e 5× o aluguel da peça no dano (15ª). Valor fora dela entra com `justificativaDaTaxa`, que vai para a trilha.
+ * E214: a taxa passa a ter FAIXA — R$ 350,00 a R$ 2.500,00 na limpeza (cláusula 14ª) e 5× o aluguel da peça no dano (15ª). Valor que VIOLA um número do papel entra com `justificativaDaTaxa`, que vai para a trilha. Dano em peça fora de contrato não tem teto calculável: a 15ª não alcança o caso, então a porta aceita e a trilha registra que não conferiu.
  * @summary Registra uma avaria — descrição, custo estimado e foto-evidência
  */
 export const CreateAvariaParams = zod.object({
@@ -4555,6 +4555,77 @@ export const CobrarAvariaResponse = zod.object({
   "parcelaStatus": zod.union([zod.literal('PREVISTA'),zod.literal('PARCIAL'),zod.literal('PAGA'),zod.literal('CANCELADA'),zod.literal(null)]).nullish(),
   "registradoPorNome": zod.string().nullish(),
   "criadaEm": zod.coerce.date()
+})
+
+
+/**
+ * A MESMA conta que o POST cobra, calculada e devolvida sem escrever nada. Existe para a tela mostrar o número antes do clique — mesma razão do aviso do reajuste (E211): a vendedora descobriria a cobrança depois de já ter recebido a peça de volta.
+ *
+ * `devida: false` é a resposta da devolução no prazo, que é a maioria delas, e não é erro.
+ * @summary A conta do atraso na devolução, sem cobrar (E212, cláusula 16ª)
+ */
+export const PreviaDaCobrancaDeAtrasoParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "contratoId": zod.coerce.string()
+})
+
+export const PreviaDaCobrancaDeAtrasoResponse = zod.object({
+  "devida": zod.boolean(),
+  "linhas": zod.array(zod.object({
+  "descricao": zod.string(),
+  "tipo": zod.enum(['ATRASO', 'EXTRAVIO']),
+  "clausula": zod.string(),
+  "dias": zod.number(),
+  "diaria": zod.number(),
+  "valor": zod.number()
+})),
+  "multa": zod.number(),
+  "valor": zod.number(),
+  "temExtravio": zod.boolean(),
+  "maiorAtraso": zod.number(),
+  "explicacao": zod.string().nullish(),
+  "semAluguel": zod.array(zod.string()),
+  "jaCobrada": zod.boolean(),
+  "parcelaId": zod.string().nullish()
+})
+
+
+/**
+ * Cria UMA parcela com a conta do atraso e grava o vínculo em `contratos.atraso_parcela_id` na MESMA transação — mesmo desenho do E97/F22 para a avaria, e pela mesma razão: sem vínculo, dois cliques cobram o mesmo atraso duas vezes e nada no sistema sabe que são a mesma coisa. A segunda chamada responde 409 `ATRASO_JA_COBRADO`.
+ * @summary Transforma o atraso numa parcela do contrato (E212, cláusula 16ª)
+ */
+export const CobrarAtrasoDaDevolucaoParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "contratoId": zod.coerce.string()
+})
+
+export const cobrarAtrasoDaDevolucaoBodyPrazoDiasMin = 0;
+export const cobrarAtrasoDaDevolucaoBodyPrazoDiasMax = 365;
+
+
+
+export const CobrarAtrasoDaDevolucaoBody = zod.object({
+  "prazoDias": zod.number().min(cobrarAtrasoDaDevolucaoBodyPrazoDiasMin).max(cobrarAtrasoDaDevolucaoBodyPrazoDiasMax).optional()
+})
+
+export const CobrarAtrasoDaDevolucaoResponse = zod.object({
+  "devida": zod.boolean(),
+  "linhas": zod.array(zod.object({
+  "descricao": zod.string(),
+  "tipo": zod.enum(['ATRASO', 'EXTRAVIO']),
+  "clausula": zod.string(),
+  "dias": zod.number(),
+  "diaria": zod.number(),
+  "valor": zod.number()
+})),
+  "multa": zod.number(),
+  "valor": zod.number(),
+  "temExtravio": zod.boolean(),
+  "maiorAtraso": zod.number(),
+  "explicacao": zod.string().nullish(),
+  "semAluguel": zod.array(zod.string()),
+  "jaCobrada": zod.boolean(),
+  "parcelaId": zod.string().nullish()
 })
 
 

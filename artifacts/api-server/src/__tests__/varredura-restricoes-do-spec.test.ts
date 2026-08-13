@@ -101,7 +101,7 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
    * perguntar se aquele campo precisa mesmo ser inteiro na borda. Se precisar,
    * a rota guarda (como P5) e o número aqui sobe junto, com a decisão escrita.
    */
-  it("116 `type: integer` no spec, e o zod gerado não traduz nenhum", () => {
+  it("119 `type: integer` no spec, e o zod gerado não traduz nenhum", () => {
     const inteiros = inteirosDoSpec();
     expect(
       inteiros.length,
@@ -110,7 +110,15 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
       // esta régua obriga a tomar está tomada: ele é campo de RESPOSTA, não de
       // entrada — ninguém o manda pela borda, então não há rota para guardá-lo.
       // A tela o lê para saber qual degrau da escada do §3º vem agora.
-    ).toBe(116);
+      //
+      // E212: 116 → 119, e os três são da cláusula 16ª. Dois são de RESPOSTA —
+      // `CobrancaDeAtrasoLinha.dias` e `CobrancaDeAtraso.maiorAtraso`, contagens
+      // que o servidor calcula e ninguém manda pela borda. O terceiro,
+      // `CobrarAtrasoInput.prazoDias`, É de entrada, e a rota o guarda: o spec
+      // prega `minimum: 0, maximum: 365` e o handler cai no default de 7 quando
+      // ele não vem — a mesma decisão que o `prazoDias` do `CobrarAvariaInput`
+      // já tinha tomado.
+    ).toBe(119);
 
     // A outra ponta: se um dia o gerador aprender `.int()`, este número deixa
     // de ser zero e a régua acima vira ruído — é o sinal de trocar a varredura

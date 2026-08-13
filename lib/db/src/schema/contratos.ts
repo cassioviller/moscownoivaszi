@@ -53,6 +53,34 @@ export const contratosTable = pgTable("contratos", {
    * não incide (§2º) e não anda a escada.
    */
   reajustesDeData: integer("reajustes_de_data").notNull().default(0),
+  /**
+   * E212 — a parcela que cobrou o atraso na devolução (cláusula 16ª).
+   *
+   * É o mesmo vínculo que `avarias.parcela_id` guarda do outro lado, e existe
+   * pela mesma razão medida no E97/F22: sem ele, o botão não muda de estado
+   * depois do clique, e dois cliques — o que acontece quando a rede demora e a
+   * pessoa insiste — criam DUAS parcelas cobrando o mesmo atraso.
+   *
+   * Fica no CONTRATO, e não no bloqueio, porque a cobrança é uma só para todas
+   * as peças atrasadas: o §2º manda ratear a conta entre elas, então a multa do
+   * §1º é uma por devolução, não uma por vestido.
+   *
+   * **Sem FK, e a decisão é declarada.** A irmã (`avarias.parcela_id`) referencia
+   * `parcelas` com `on delete set null`; esta não pode: `parcelasTable` mora em
+   * `financeiro.ts`, que **já importa** este arquivo, e a referência fecharia um
+   * ciclo de módulo ESM — o `pgTable` do outro lado ainda seria `undefined` na
+   * hora da avaliação.
+   *
+   * **E o vínculo não depende da FK para estar certo**, que é o que faz a
+   * ausência ser aceitável em vez de dívida: quem decide se o atraso já foi
+   * cobrado não é "a coluna está preenchida?", é `cobrancaViva()` — que lê o
+   * STATUS da parcela e devolve falso tanto para a apagada (nenhuma linha)
+   * quanto para a CANCELADA. É a régua do V2/E167, que achou a avaria presa
+   * para sempre em "Cobrado" depois de um cancelamento de contrato; ela
+   * atravessa esta porta pela mesma função, e um id órfão aqui responde
+   * exatamente como um nulo.
+   */
+  atrasoParcelaId: text("atraso_parcela_id"),
   dataRetirada: timestamp("data_retirada", { withTimezone: true }),
   dataDevolucao: timestamp("data_devolucao", { withTimezone: true }),
   observacoes: text("observacoes"),

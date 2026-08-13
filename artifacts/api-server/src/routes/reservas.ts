@@ -22,7 +22,11 @@ import {
   CreateAvariaBody,
   CreateAvariaResponse,
   CobrarAvariaBody,
-  CobrarAvariaResponse
+  CobrarAvariaResponse,
+  // E212 — a conta do atraso na devolução (cláusula 16ª).
+  CobrarAtrasoDaDevolucaoBody,
+  CobrarAtrasoDaDevolucaoResponse,
+  PreviaDaCobrancaDeAtrasoResponse
 } from "@workspace/api-zod";
 import { avariasTable, parcelasTable, contratosTable, contratoItensTable } from "@workspace/db";
 import { identificarImagem } from "../lib/imagem";
@@ -55,11 +59,15 @@ import {
   addDias,
   ancoraDeNegocio,
   avaliarTaxaDeAvaria,
+  cobrancaDoAtraso,
   diaDeNegocio,
+  diasDeAtraso,
   explicacaoDaFaixa,
+  explicacaoDoAtraso,
   hojeLocal,
   reajusteDaTrocaDeData,
   reancorarDataDeNegocio,
+  type PecaAtrasada,
   type TipoDeAvaria,
 } from "@workspace/financeiro-core";
 
@@ -1935,6 +1943,313 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
     ),
   );
 });
+
+/**
+ * **E212 — as peças deste contrato que não voltaram na data** (cláusula 16ª).
+ *
+ * O atraso já era VISÍVEL e nunca foi CONTÁVEL: `janelasDoBloqueio` pinta a
+ * janela física como `ATRASO_DEVOLUCAO` quando há retirada sem devolução depois
+ * do fim do uso previsto, e essa é a única leitura do fato em todo o sistema.
+ * Aqui ele vira número.
+ *
+ * A régua do fim do uso é a MESMA de `disponibilidade.ts` — `casamento +
+ * usoDiasDepois`, em dia de NEGÓCIO (S-O117) —, e tem de continuar sendo: se as
+ * duas divergirem, a tela mostra a peça em dia e a porta cobra o atraso dela.
+ *
+ * **A peça que nunca saiu não atrasa.** Sem `retiradaDataReal` não houve
+ * locação daquela peça, e a 16ª fala de *"não devolução"* — o que nunca foi
+ * retirado não tem o que devolver.
+ *
+ * `semAluguel` são as peças atrasadas que não estão no rol de itens do
+ * contrato. A 16ª cobra sobre *"o valor do aluguel de cada peça"*: sem aluguel
+ * não há diária nem múltiplo, e a régua diz que não conferiu em vez de inventar
+ * um número — a mesma escolha que o E214 fez para o dano em peça fora de
+ * contrato.
+ */
+async function pecasAtrasadasDoContrato(
+  contratoId: string,
+  lojaId: string,
+  executor: DbExecutor = db,
+): Promise<{ pecas: PecaAtrasada[]; semAluguel: string[] }> {
+  const regra = await buscarRegra(lojaId, executor);
+  // A janela de uso INTEIRA é o divisor da diária: os dias antes, o dia do
+  // casamento e os dias depois. No padrão da loja são 3 + 1 + 2 = 6.
+  const diasDeAluguel = regra.usoDiasAntes + regra.usoDiasDepois + 1;
+  const hoje = hojeLocal();
+
+  const bloqueios = await executor
+    .select({
+      id: bloqueioVestidosTable.id,
+      vestidoId: bloqueioVestidosTable.vestidoId,
+      casamentoData: bloqueioVestidosTable.casamentoData,
+      retiradaDataReal: bloqueioVestidosTable.retiradaDataReal,
+      devolucaoDataReal: bloqueioVestidosTable.devolucaoDataReal,
+      nome: vestidosTable.nome,
+    })
+    .from(contratoBloqueiosTable)
+    .innerJoin(bloqueioVestidosTable, eq(bloqueioVestidosTable.id, contratoBloqueiosTable.bloqueioId))
+    .innerJoin(vestidosTable, eq(vestidosTable.id, bloqueioVestidosTable.vestidoId))
+    .where(and(
+      eq(contratoBloqueiosTable.contratoId, contratoId),
+      eq(bloqueioVestidosTable.lojaId, lojaId),
+    ));
+
+  const pecas: PecaAtrasada[] = [];
+  const semAluguel: string[] = [];
+  for (const b of bloqueios) {
+    if (!b.casamentoData || !b.retiradaDataReal) continue;
+    const fimUsoPrevisto = addDias(diaDeNegocio(b.casamentoData), regra.usoDiasDepois);
+    // Devolvida: conta até o dia da volta. Ainda fora: conta até HOJE, e o
+    // número cresce sozinho — que é o comportamento certo para o extravio, o
+    // caso em que a peça nunca volta e nenhum evento nasce para disparar a
+    // conta.
+    const diaDaVolta = b.devolucaoDataReal ? diaLocal(b.devolucaoDataReal) : hoje;
+    const dias = diasDeAtraso(fimUsoPrevisto, diaDaVolta);
+    if (dias <= 0) continue;
+
+    const aluguel = await aluguelDaPecaNoContrato({ contratoId, vestidoId: b.vestidoId }, executor);
+    if (aluguel === null) {
+      semAluguel.push(b.nome);
+      continue;
+    }
+    pecas.push({ descricao: b.nome, aluguel, diasDeAluguel, dias });
+  }
+  return { pecas, semAluguel };
+}
+
+/** O envelope que as duas portas devolvem — a mesma conta, cobrada ou não. */
+function envelopeDoAtraso(
+  cobranca: ReturnType<typeof cobrancaDoAtraso>,
+  semAluguel: string[],
+  vinculo: { jaCobrada: boolean; parcelaId: string | null },
+) {
+  return {
+    devida: cobranca !== null,
+    linhas: cobranca?.linhas ?? [],
+    multa: cobranca?.multa ?? 0,
+    valor: cobranca?.valor ?? 0,
+    temExtravio: cobranca?.temExtravio ?? false,
+    maiorAtraso: cobranca?.maiorAtraso ?? 0,
+    explicacao: cobranca ? explicacaoDoAtraso(cobranca) : null,
+    semAluguel,
+    jaCobrada: vinculo.jaCobrada,
+    parcelaId: vinculo.parcelaId,
+  };
+}
+
+/**
+ * **A conta antes do clique** — mesma razão do aviso do reajuste (E211).
+ *
+ * Quem recebe a peça de volta precisa saber que ela custa R$ 1.750,00 de atraso
+ * ANTES de dizer à noiva que está tudo certo. Descobrir a cobrança depois é o
+ * defeito que o E211 fechou do lado da troca de data, e ele entra igual por
+ * aqui.
+ *
+ * **O módulo é `contratos`, e a régua me fez voltar atrás.** A irmã desta rota
+ * — a cobrança do reparo (`/avarias/:id/cobrar`, E97/F22) — também cria parcela
+ * no carnê e pede `vestidos.editar`, e o primeiro instinto foi copiá-la: as
+ * duas nascem no balcão que recebe a peça de volta. A
+ * `s36-gate-da-tela-unit` acusou o desencontro
+ * (*"[bloqueioId].tsx — gateia por [vestidos,agenda] e escreve em
+ * [contratos]"*) e o comentário dela decide a direção: *"o conserto é quase
+ * sempre na TELA — o servidor é a autoridade —, e mudar o servidor para caber
+ * na tela é a saída errada: ela afrouxa a permissão para calar um teste."*
+ *
+ * A diferença com a avaria não é de gesto, é de VALOR: o reparo é uma taxa que
+ * a peça danificada explica, e o extravio da 16ª é **4× o aluguel** — R$
+ * 12.000,00 num vestido de R$ 3.000,00 — decidido sobre o contrato, sem peça
+ * nenhuma para mostrar. Quem lança isso no carnê da noiva decide dinheiro de
+ * contrato, e é `contratos.editar` que diz quem pode. A TELA passou a gatear
+ * pelo mesmo módulo.
+ */
+router.get(
+  "/lojas/:lojaId/contratos/:contratoId/cobranca-de-atraso",
+  requireModulo("contratos"),
+  async (req, res): Promise<void> => {
+    const { lojaId, contratoId } = req.params as { lojaId: string; contratoId: string };
+    const [contrato] = await db
+      .select({ id: contratosTable.id, atrasoParcelaId: contratosTable.atrasoParcelaId })
+      .from(contratosTable)
+      .where(and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)));
+    if (!contrato) {
+      res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
+      return;
+    }
+    const { pecas, semAluguel } = await pecasAtrasadasDoContrato(contratoId, lojaId);
+    // V2/E167 aplicado a este vínculo: `atraso_parcela_id` preenchido NÃO é o
+    // mesmo que cobrança viva. Cancelado o contrato, a parcela do atraso morre
+    // junto, e a tela mostraria "Cobrado" para sempre sobre um carnê que não
+    // cobra mais nada.
+    const viva = contrato.atrasoParcelaId ? await cobrancaViva(contrato.atrasoParcelaId) : false;
+    res.json(
+      PreviaDaCobrancaDeAtrasoResponse.parse(
+        envelopeDoAtraso(cobrancaDoAtraso(pecas), semAluguel, {
+          jaCobrada: viva,
+          parcelaId: viva ? contrato.atrasoParcelaId : null,
+        }),
+      ),
+    );
+  },
+);
+
+/** O atraso já virou parcela — o 409 que impede o segundo clique de cobrar de novo. */
+class AtrasoJaCobrado extends Error {}
+
+/**
+ * **E212 — o atraso vira parcela, uma vez só** (cláusula 16ª e seus dois §§).
+ *
+ * Mesmo desenho do E97/F22 para a avaria, e pela mesma razão medida: a parcela
+ * e o vínculo nascem na MESMA transação, e o `UPDATE` do vínculo é condicional
+ * ao estado que a rota LEU. Quem perde a corrida não grava nada — a exceção
+ * derruba a transação inteira e a parcela que ela acabou de inserir some junto,
+ * que é exatamente a segunda cobrança que esta guarda existe para impedir.
+ *
+ * **Uma parcela para todas as peças, e não uma por peça.** É o §2º quem manda:
+ * ele reparte os valores entre os trajes e acessórios que não voltaram, e a
+ * multa do §1º é do EVENTO — a devolução que passou da data —, não de cada
+ * vestido. Três peças atrasadas pagam três diárias e uma multa de R$ 250,00.
+ */
+router.post(
+  "/lojas/:lojaId/contratos/:contratoId/cobranca-de-atraso",
+  requireModulo("contratos", "editar"),
+  async (req, res): Promise<void> => {
+    const { lojaId, contratoId } = req.params as { lojaId: string; contratoId: string };
+    const parsed = CobrarAtrasoDaDevolucaoBody.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      res.status(400).json(erroDeValidacao(parsed.error));
+      return;
+    }
+
+    const [contrato] = await db
+      .select({
+        id: contratosTable.id,
+        status: contratosTable.status,
+        atrasoParcelaId: contratosTable.atrasoParcelaId,
+      })
+      .from(contratosTable)
+      .where(and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)));
+    if (!contrato) {
+      res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
+      return;
+    }
+    if (contrato.status !== "ATIVO") {
+      res.status(422).json({ error: "CONTRATO_NAO_ATIVO", detalhe: "Contrato não está ativo" });
+      return;
+    }
+    if (contrato.atrasoParcelaId && (await cobrancaViva(contrato.atrasoParcelaId))) {
+      res.status(409).json({
+        error: "ATRASO_JA_COBRADO",
+        detalhe: "O atraso deste contrato já virou parcela",
+        campos: [{ campo: "contratoId", motivo: "Já existe uma cobrança para este atraso" }],
+      });
+      return;
+    }
+
+    const { pecas, semAluguel } = await pecasAtrasadasDoContrato(contratoId, lojaId);
+    const cobranca = cobrancaDoAtraso(pecas);
+    if (!cobranca) {
+      // Peça atrasada que não está no rol é o único caso em que "sem conta" não
+      // significa "sem atraso" — e dizer só `SEM_ATRASO` esconderia o defeito de
+      // cadastro atrás de uma resposta tranquilizadora.
+      if (semAluguel.length > 0) {
+        res.status(422).json({
+          error: "ATRASO_SEM_ALUGUEL",
+          detalhe:
+            `${semAluguel.join(", ")} — esta(s) peça(s) atrasou(aram) e não está(ão) no rol de itens ` +
+            "do contrato. A cláusula 16ª cobra sobre o aluguel de cada peça, e não há de onde tirá-lo.",
+        });
+        return;
+      }
+      res.status(422).json({
+        error: "SEM_ATRASO",
+        detalhe: "Nenhuma peça deste contrato passou da data prevista de devolução",
+      });
+      return;
+    }
+
+    const parcelaId = randomUUID();
+    const desfecho = await db.transaction(async (tx) => {
+      // Mesma conta da rota irmã do E97: `numero: 0` é a ENTRADA do carnê, e
+      // com `unique(contratoId, numero)` um zero fixo devolveria
+      // `REGISTRO_DUPLICADO` — um 409 que se lê como "já cobrei isso".
+      const [{ maior }] = await tx
+        .select({ maior: sql<number>`coalesce(max(${parcelasTable.numero}), 0)` })
+        .from(parcelasTable)
+        .where(eq(parcelasTable.contratoId, contratoId));
+
+      await tx.insert(parcelasTable).values({
+        id: parcelaId,
+        lojaId,
+        contratoId,
+        numero: Number(maior) + 1,
+        origem: "ATRASO_DEVOLUCAO",
+        // A MESMA frase que a tela imprimiu antes do clique. Duas grafias da
+        // mesma conta divergiriam no dia em que a régua mudasse (E214).
+        descricao: `Atraso na devolução — ${explicacaoDoAtraso(cobranca)}`.slice(0, 200),
+        valorPrevisto: cobranca.valor,
+        // Dia de negócio, e não `new Date()`: das 21h à meia-noite o instante
+        // cru joga o vencimento para o dia seguinte (S-O117).
+        vencimento: ancoraDeNegocio(addDias(hojeLocal(), parsed.data.prazoDias ?? 7)),
+      });
+
+      const [marcado] = await tx
+        .update(contratosTable)
+        .set({ atrasoParcelaId: parcelaId, updatedAt: new Date() })
+        .where(and(
+          eq(contratosTable.id, contratoId),
+          contrato.atrasoParcelaId
+            ? eq(contratosTable.atrasoParcelaId, contrato.atrasoParcelaId)
+            : isNull(contratosTable.atrasoParcelaId),
+        ))
+        .returning();
+      if (!marcado) throw new AtrasoJaCobrado();
+
+      /**
+       * A trilha, e ela não é opcional aqui.
+       *
+       * Esta é a única cobrança do sistema cujo VALOR depende do dia em que
+       * alguém clicou: a peça que não voltou soma uma diária por dia, então a
+       * mesma peça cobrada na terça e na quinta dá números diferentes. Sem a
+       * linha, "por que este atraso custou R$ 4.750,00?" não tem resposta
+       * depois do fato — nem para a dona, nem para a noiva que contestar.
+       */
+      await registrarAuditoria(tx, {
+        lojaId,
+        usuario: req.usuario!,
+        acao: "ATRASO_COBRADO",
+        entidade: "contrato",
+        entidadeId: contratoId,
+        detalhe: {
+          parcelaId,
+          valor: cobranca.valor,
+          multa: cobranca.multa,
+          maiorAtraso: cobranca.maiorAtraso,
+          temExtravio: cobranca.temExtravio,
+          linhas: cobranca.linhas,
+          semAluguel,
+        },
+      });
+      return { ok: true as const };
+    }).catch((err) => {
+      if (err instanceof AtrasoJaCobrado) return { jaCobrada: true as const };
+      throw err;
+    });
+
+    if ("jaCobrada" in desfecho) {
+      res.status(409).json({
+        error: "ATRASO_JA_COBRADO",
+        detalhe: "O atraso deste contrato já virou parcela",
+      });
+      return;
+    }
+
+    res.status(201).json(
+      CobrarAtrasoDaDevolucaoResponse.parse(
+        envelopeDoAtraso(cobranca, semAluguel, { jaCobrada: true, parcelaId }),
+      ),
+    );
+  },
+);
 
 /**
  * E97/F23 — a avaria não some enquanto sustenta uma cobrança.

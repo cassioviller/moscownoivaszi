@@ -2471,6 +2471,81 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /lojas/{lojaId}/contratos/{contratoId}/cobranca-de-atraso:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: contratoId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: previaDaCobrancaDeAtraso
+      tags: [reservas]
+      summary: A conta do atraso na devolução, sem cobrar (E212, cláusula 16ª)
+      description: >
+        A MESMA conta que o POST cobra, calculada e devolvida sem escrever nada.
+        Existe para a tela mostrar o número antes do clique — mesma razão do
+        aviso do reajuste (E211): a vendedora descobriria a cobrança depois de
+        já ter recebido a peça de volta.
+
+
+        `devida: false` é a resposta da devolução no prazo, que é a maioria
+        delas, e não é erro.
+      responses:
+        "200":
+          description: A conta (ou a ausência dela)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CobrancaDeAtraso"
+        "404":
+          description: Contrato não encontrado nesta loja
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: cobrarAtrasoDaDevolucao
+      tags: [reservas]
+      summary: Transforma o atraso numa parcela do contrato (E212, cláusula 16ª)
+      description: >
+        Cria UMA parcela com a conta do atraso e grava o vínculo em
+        `contratos.atraso_parcela_id` na MESMA transação — mesmo desenho do
+        E97/F22 para a avaria, e pela mesma razão: sem vínculo, dois cliques
+        cobram o mesmo atraso duas vezes e nada no sistema sabe que são a mesma
+        coisa. A segunda chamada responde 409 `ATRASO_JA_COBRADO`.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CobrarAtrasoInput"
+      responses:
+        "201":
+          description: Atraso cobrado — a conta e a parcela que nasceu dela
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CobrancaDeAtraso"
+        "409":
+          description: Atraso já cobrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: >
+            `SEM_ATRASO` (nenhuma peça passou da data), `CONTRATO_NAO_ATIVO`, ou
+            `ATRASO_SEM_ALUGUEL` — a peça atrasada não está no rol de itens do
+            contrato, e a 16ª cobra sobre *"o valor do aluguel de cada peça"*.
+            Sem aluguel não há diária nem múltiplo, e a porta diz isso em vez de
+            inventar um número.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /lojas/{lojaId}/avarias/{avariaId}/foto:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -6121,6 +6196,66 @@ components:
         parcelaStatus: { type: ["string", "null"], enum: [PREVISTA, PARCIAL, PAGA, CANCELADA, null] }
         registradoPorNome: { type: ["string", "null"] }
         criadaEm: { type: string, format: date-time }
+
+    # ───────── E212 — o atraso na devolução (cláusula 16ª e seus dois §§) ─────────
+    #
+    # O sistema já enxergava o atraso (`ATRASO_DEVOLUCAO` em disponibilidade.ts)
+    # e nenhuma cobrança nascia. A conta mora no `financeiro-core`, e a TELA usa
+    # a mesma: duas grafias da mesma conta divergiriam no dia em que a régua
+    # mudasse, e a vendedora leria na tela um valor que a porta não pratica.
+    CobrancaDeAtrasoLinha:
+      type: object
+      required: [descricao, tipo, clausula, dias, diaria, valor]
+      properties:
+        descricao: { type: string }
+        # ATRASO é o §1º (1 a 9 dias: diária + multa); EXTRAVIO é o caput (10
+        # dias ou mais: 4× o aluguel, e SEM a multa, que o caput não menciona).
+        # As duas faixas são exclusivas — o §1º só vale "em prazo inferior ao
+        # descrito no caput".
+        tipo: { type: string, enum: [ATRASO, EXTRAVIO] }
+        clausula: { type: string }
+        dias: { type: integer }
+        # O aluguel da peça dividido pelos dias da janela de uso prevista
+        # (decisão da dona, 13/08/2026). A outra leitura — o aluguel inteiro por
+        # dia — faz nove dias custarem mais que o extravio do décimo, e a escada
+        # do contrato desceria.
+        diaria: { type: number }
+        valor: { type: number }
+
+    CobrancaDeAtraso:
+      type: object
+      required: [devida, linhas, multa, valor, temExtravio, maiorAtraso, semAluguel, jaCobrada]
+      properties:
+        # false = devolução no prazo. É a resposta da maioria, e não é erro.
+        devida: { type: boolean }
+        linhas:
+          type: array
+          items: { $ref: "#/components/schemas/CobrancaDeAtrasoLinha" }
+        # A multa do §1º entra UMA vez por devolução atrasada, não uma por peça:
+        # o §2º manda RATEAR os valores entre as peças, não multiplicá-los.
+        multa: { type: number }
+        valor: { type: number }
+        temExtravio: { type: boolean }
+        maiorAtraso: { type: integer }
+        # A frase única — a tela imprime esta, e a descrição da parcela grava
+        # esta. Lição do E214 aplicada ao texto.
+        explicacao: { type: ["string", "null"] }
+        # As peças atrasadas que NÃO estão no rol de itens do contrato. A 16ª
+        # cobra sobre o aluguel de cada peça; sem aluguel a régua diz que não
+        # conferiu em vez de inventar um número (mesma escolha do E214 para o
+        # dano em peça fora de contrato).
+        semAluguel:
+          type: array
+          items: { type: string }
+        jaCobrada: { type: boolean }
+        parcelaId: { type: ["string", "null"] }
+
+    CobrarAtrasoInput:
+      type: object
+      properties:
+        # Dias até o vencimento, contados do dia de negócio de hoje — mesma
+        # régua do `CobrarAvariaInput`.
+        prazoDias: { type: integer, minimum: 0, maximum: 365 }
 
     CobrarAvariaInput:
       type: object

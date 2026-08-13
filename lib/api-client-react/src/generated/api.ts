@@ -67,6 +67,8 @@ import type {
   CaptacaoToken,
   CaptarLeadParams,
   CheckDisponibilidadeVestidosParams,
+  CobrancaDeAtraso,
+  CobrarAtrasoInput,
   CobrarAvariaInput,
   ComissaoFechamento,
   ComissaoPreviewLinha,
@@ -8717,7 +8719,7 @@ export const getCreateAvariaUrl = (lojaId: string,
 /**
  * E71: o atraso já era detectado; a avaria morria numa conversa. A foto é opcional, validada por magic bytes como as de vestido (E3), e quando há contrato o custo pode virar parcela avulsa cobrável.
  *
- * E214: a taxa passa a ter FAIXA — R$ 350,00 a R$ 2.500,00 na limpeza (cláusula 14ª) e 5× o aluguel da peça no dano (15ª). Valor fora dela entra com `justificativaDaTaxa`, que vai para a trilha.
+ * E214: a taxa passa a ter FAIXA — R$ 350,00 a R$ 2.500,00 na limpeza (cláusula 14ª) e 5× o aluguel da peça no dano (15ª). Valor que VIOLA um número do papel entra com `justificativaDaTaxa`, que vai para a trilha. Dano em peça fora de contrato não tem teto calculável: a 15ª não alcança o caso, então a porta aceita e a trilha registra que não conferiu.
  * @summary Registra uma avaria — descrição, custo estimado e foto-evidência
  */
 export const createAvaria = async (lojaId: string,
@@ -8922,6 +8924,165 @@ export const useCobrarAvaria = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getCobrarAvariaMutationOptions(options));
+    }
+
+export const getPreviaDaCobrancaDeAtrasoUrl = (lojaId: string,
+    contratoId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/contratos/${contratoId}/cobranca-de-atraso`
+}
+
+/**
+ * A MESMA conta que o POST cobra, calculada e devolvida sem escrever nada. Existe para a tela mostrar o número antes do clique — mesma razão do aviso do reajuste (E211): a vendedora descobriria a cobrança depois de já ter recebido a peça de volta.
+ *
+ * `devida: false` é a resposta da devolução no prazo, que é a maioria delas, e não é erro.
+ * @summary A conta do atraso na devolução, sem cobrar (E212, cláusula 16ª)
+ */
+export const previaDaCobrancaDeAtraso = async (lojaId: string,
+    contratoId: string, options?: RequestInit): Promise<CobrancaDeAtraso> => {
+
+  return customFetch<CobrancaDeAtraso>(getPreviaDaCobrancaDeAtrasoUrl(lojaId,contratoId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getPreviaDaCobrancaDeAtrasoQueryKey = (lojaId: string,
+    contratoId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/contratos/${contratoId}/cobranca-de-atraso`
+    ] as const;
+    }
+
+
+export const getPreviaDaCobrancaDeAtrasoQueryOptions = <TData = Awaited<ReturnType<typeof previaDaCobrancaDeAtraso>>, TError = ErrorType<ErrorResponse>>(lojaId: string,
+    contratoId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof previaDaCobrancaDeAtraso>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPreviaDaCobrancaDeAtrasoQueryKey(lojaId,contratoId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof previaDaCobrancaDeAtraso>>> = ({ signal }) => previaDaCobrancaDeAtraso(lojaId,contratoId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined && contratoId !== null && contratoId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof previaDaCobrancaDeAtraso>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type PreviaDaCobrancaDeAtrasoQueryResult = NonNullable<Awaited<ReturnType<typeof previaDaCobrancaDeAtraso>>>
+export type PreviaDaCobrancaDeAtrasoQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary A conta do atraso na devolução, sem cobrar (E212, cláusula 16ª)
+ */
+
+export function usePreviaDaCobrancaDeAtraso<TData = Awaited<ReturnType<typeof previaDaCobrancaDeAtraso>>, TError = ErrorType<ErrorResponse>>(
+ lojaId: string,
+    contratoId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof previaDaCobrancaDeAtraso>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getPreviaDaCobrancaDeAtrasoQueryOptions(lojaId,contratoId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCobrarAtrasoDaDevolucaoUrl = (lojaId: string,
+    contratoId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/contratos/${contratoId}/cobranca-de-atraso`
+}
+
+/**
+ * Cria UMA parcela com a conta do atraso e grava o vínculo em `contratos.atraso_parcela_id` na MESMA transação — mesmo desenho do E97/F22 para a avaria, e pela mesma razão: sem vínculo, dois cliques cobram o mesmo atraso duas vezes e nada no sistema sabe que são a mesma coisa. A segunda chamada responde 409 `ATRASO_JA_COBRADO`.
+ * @summary Transforma o atraso numa parcela do contrato (E212, cláusula 16ª)
+ */
+export const cobrarAtrasoDaDevolucao = async (lojaId: string,
+    contratoId: string,
+    cobrarAtrasoInput?: CobrarAtrasoInput, options?: RequestInit): Promise<CobrancaDeAtraso> => {
+
+  return customFetch<CobrancaDeAtraso>(getCobrarAtrasoDaDevolucaoUrl(lojaId,contratoId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(cobrarAtrasoInput)
+  }
+);}
+
+
+
+
+export const getCobrarAtrasoDaDevolucaoMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cobrarAtrasoDaDevolucao>>, TError,{lojaId: string;contratoId: string;data?: BodyType<CobrarAtrasoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cobrarAtrasoDaDevolucao>>, TError,{lojaId: string;contratoId: string;data?: BodyType<CobrarAtrasoInput>}, TContext> => {
+
+const mutationKey = ['cobrarAtrasoDaDevolucao'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cobrarAtrasoDaDevolucao>>, {lojaId: string;contratoId: string;data?: BodyType<CobrarAtrasoInput>}> = (props) => {
+          const {lojaId,contratoId,data} = props ?? {};
+
+          return  cobrarAtrasoDaDevolucao(lojaId,contratoId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CobrarAtrasoDaDevolucaoMutationResult = NonNullable<Awaited<ReturnType<typeof cobrarAtrasoDaDevolucao>>>
+    export type CobrarAtrasoDaDevolucaoMutationBody = BodyType<CobrarAtrasoInput> | undefined
+    export type CobrarAtrasoDaDevolucaoMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Transforma o atraso numa parcela do contrato (E212, cláusula 16ª)
+ */
+export const useCobrarAtrasoDaDevolucao = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cobrarAtrasoDaDevolucao>>, TError,{lojaId: string;contratoId: string;data?: BodyType<CobrarAtrasoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cobrarAtrasoDaDevolucao>>,
+        TError,
+        {lojaId: string;contratoId: string;data?: BodyType<CobrarAtrasoInput>},
+        TContext
+      > => {
+      return useMutation(getCobrarAtrasoDaDevolucaoMutationOptions(options));
     }
 
 export const getGetAvariaFotoUrl = (lojaId: string,

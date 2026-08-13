@@ -223,13 +223,28 @@ const SEM_DISCIPLINA: Record<string, number> = {
    * deixar de passar por aquele `UPDATE`, esta conta perde a serialização em
    * silêncio — e é por isso que ela fica declarada aqui em vez de resolvida com
    * um comentário no código.
+   *
+   * **De 3 para 4 no E212** — a cobrança do atraso na devolução (cláusula 16ª).
+   * A rota escreve DUAS vezes e só uma entra aqui, e a diferença é o achado:
+   *
+   * - o `INSERT` da parcela do atraso é **nascimento**, pelo mesmo critério das
+   *   duas linhas acima — a linha não existe, não há estado anterior a reler;
+   * - o `UPDATE contratos SET atraso_parcela_id` **é CAS de verdade**, e a
+   *   varredura não o enxergava. O `where` da escrita repete a condição lida
+   *   (`atraso_parcela_id IS NULL`, ou o valor morto que a rota conferiu), o
+   *   segundo clique não casa, o `returning()` volta vazio e a transação
+   *   inteira cai — levando junto a parcela que ela acabou de inserir. Estava
+   *   invisível porque `COLUNAS_DE_ESTADO.contratosTable` listava só `status` e
+   *   `canceladoEm`: **a régua media menos do que anuncia**, e desta vez na
+   *   direção que acusa código certo. `atrasoParcelaId` entrou na lista
+   *   (`portas-de-escrita.ts`), e com ela a porta passou a medir CAS.
    */
-  "artifacts/api-server/src/routes/reservas.ts": 3,
+  "artifacts/api-server/src/routes/reservas.ts": 4,
   // Era 6; a sétima é o carnê (`:525`), que só ficou visível quando `parcelas`
   // virou tabela quente no E180. Mesma família das outras seis, mesmo veredito.
   "scripts/loja-de-demonstracao.ts": 7,
 };
-const TOTAL_SEM_DISCIPLINA = 11;
+const TOTAL_SEM_DISCIPLINA = 12;
 
 describe("varredura — a enumeração das portas de escrita", () => {
   /**
@@ -376,7 +391,7 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
     expect(hoje).toEqual(SEM_DISCIPLINA);
   });
 
-  it("o total da dívida é 11 — 4 de nascimento/serialização implícita e 7 do gerador da demo", () => {
+  it("o total da dívida é 12 — 5 de nascimento/serialização implícita e 7 do gerador da demo", () => {
     expect(abertas.length).toBe(TOTAL_SEM_DISCIPLINA);
     expect(Object.values(SEM_DISCIPLINA).reduce((s, n) => s + n, 0)).toBe(TOTAL_SEM_DISCIPLINA);
   });

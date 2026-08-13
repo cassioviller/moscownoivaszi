@@ -116,7 +116,13 @@ export const PAIS: Record<TabelaQuente, readonly string[]> = {
  * repetir no `where`.
  */
 export const COLUNAS_DE_ESTADO: Record<TabelaQuente, readonly string[]> = {
-  contratosTable: ["status", "canceladoEm"],
+  // E212 — `atrasoParcelaId` É coluna de estado: ela responde "este atraso já
+  // virou parcela?", e o CAS sobre ela é a guarda inteira do duplo clique
+  // (cláusula 16ª). Sem ela na lista, a varredura lia a porta do E212 como
+  // ABERTA enquanto o `where` da escrita repetia exatamente a condição lida —
+  // a classe da "régua que mede menos do que anuncia" (E186/E199), aqui na
+  // direção que acusa código certo.
+  contratosTable: ["status", "canceladoEm", "atrasoParcelaId"],
   reservasTable: ["status"],
   orcamentosTable: ["status", "aceitoEm", "aprovadoEm", "publicoAbertoEm"],
   bloqueioVestidosTable: ["canceladoEm"],

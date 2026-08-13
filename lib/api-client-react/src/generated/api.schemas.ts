@@ -1478,6 +1478,46 @@ export interface Avaria {
   criadaEm: string;
 }
 
+export type CobrancaDeAtrasoLinhaTipo = typeof CobrancaDeAtrasoLinhaTipo[keyof typeof CobrancaDeAtrasoLinhaTipo];
+
+
+export const CobrancaDeAtrasoLinhaTipo = {
+  ATRASO: 'ATRASO',
+  EXTRAVIO: 'EXTRAVIO',
+} as const;
+
+export interface CobrancaDeAtrasoLinha {
+  descricao: string;
+  tipo: CobrancaDeAtrasoLinhaTipo;
+  clausula: string;
+  dias: number;
+  diaria: number;
+  valor: number;
+}
+
+export interface CobrancaDeAtraso {
+  devida: boolean;
+  linhas: CobrancaDeAtrasoLinha[];
+  multa: number;
+  valor: number;
+  temExtravio: boolean;
+  maiorAtraso: number;
+  /** @nullable */
+  explicacao?: string | null;
+  semAluguel: string[];
+  jaCobrada: boolean;
+  /** @nullable */
+  parcelaId?: string | null;
+}
+
+export interface CobrarAtrasoInput {
+  /**
+     * @minimum 0
+     * @maximum 365
+     */
+  prazoDias?: number;
+}
+
 export interface CobrarAvariaInput {
   contratoId: string;
   /**

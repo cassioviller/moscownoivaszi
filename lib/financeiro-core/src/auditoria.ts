@@ -140,6 +140,13 @@ export const ACOES_AUDITORIA = [
   // o porquê fica. Sem esta linha, "R$ 9.000,00 de limpeza" seria de novo um
   // número sem dono: quem autorizou, quando, e contra qual teto.
   "AVARIA_FORA_DA_FAIXA",
+  // E212: a cobrança do atraso na devolução (cláusula 16ª). É a ÚNICA cobrança
+  // do sistema cujo valor depende do dia em que alguém clicou — a peça que não
+  // voltou soma uma diária por dia, então a mesma peça cobrada na terça e na
+  // quinta dá números diferentes. Sem esta linha, "por que este atraso custou
+  // R$ 4.750,00?" não tem resposta depois do fato, nem para a dona nem para a
+  // noiva que contestar.
+  "ATRASO_COBRADO",
   // S-M1: o sexto DELETE cru, que o E115 não alcançou. A cabine é o único cuja
   // cascata leva ATENDIMENTOS inteiros — a guarda nova recusa apagar cabine com
   // agenda, e o rastro cobre a que não tem: depois do DELETE não sobra linha de
@@ -227,6 +234,7 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   ORCAMENTO_REMOVIDO: "Orçamento removido",
   AVARIA_REMOVIDA: "Avaria removida",
   AVARIA_FORA_DA_FAIXA: "Taxa de avaria fora da faixa do contrato (com justificativa)",
+  ATRASO_COBRADO: "Atraso na devolução cobrado (cláusula 16ª)",
   CABINE_REMOVIDA: "Cabine removida",
   ITEM_ESTOQUE_REMOVIDO: "Item de estoque removido",
   AJUSTE_REMOVIDO: "Trabalho de costura removido da fila",

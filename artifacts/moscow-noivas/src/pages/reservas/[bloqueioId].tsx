@@ -26,6 +26,11 @@ import {
   useListContratos,
   getListContratosQueryKey,
   useCobrarAvaria,
+  // E212 — a conta do atraso na devolução (cláusula 16ª): a prévia que a tela
+  // mostra antes do clique, e a porta que a cobra.
+  usePreviaDaCobrancaDeAtraso,
+  getPreviaDaCobrancaDeAtrasoQueryKey,
+  useCobrarAtrasoDaDevolucao,
   type Ajuste,
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -85,6 +90,20 @@ import { explicacaoDaFaixa, type TipoDeAvaria } from "@workspace/financeiro-core
 export default function ReservaDetalhe() {
   const { lojaId, bloqueioId } = useParams();
   const { activeLojaId, acessosModulos } = useAuth();
+  /**
+   * E212 — quem pode ver e cobrar o atraso da 16ª.
+   *
+   * É `contratos`, e não `vestidos` como o resto desta tela: a cobrança do
+   * atraso lança parcela no carnê e o extravio vale **4× o aluguel** — R$
+   * 12.000,00 num vestido de R$ 3.000,00 —, decidido sobre o contrato e sem
+   * peça nenhuma para mostrar. A `s36-gate-da-tela-unit` cobra que a tela peça
+   * o MESMO módulo que o servidor guarda, e o servidor guarda `contratos`.
+   *
+   * Sem `contratos` de leitura a prévia nem é pedida — a costureira não vê
+   * dinheiro de contrato, que é a régua do E172.
+   */
+  const podeVerAtraso = podeNoModulo(acessosModulos, "contratos", "ver");
+  const podeCobrarAtraso = podeNoModulo(acessosModulos, "contratos", "editar");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -307,6 +326,51 @@ export default function ReservaDetalhe() {
       "Cobrança criada — entrou como parcela do contrato",
       "Não deu para criar a cobrança",
     );
+
+  /**
+   * **E212 — a conta do atraso, e ela aparece ANTES do clique** (cláusula 16ª).
+   *
+   * A prévia é a MESMA conta que o POST cobra, calculada pelo servidor e
+   * devolvida sem escrever nada. Existe pela razão que o E211 mediu do lado da
+   * troca de data: quem recebe a peça de volta precisa saber que ela custa
+   * R$ 1.750,00 de atraso **antes** de dizer à noiva que está tudo certo.
+   *
+   * A conta não é refeita aqui. Duas grafias da mesma régua divergiriam no dia
+   * em que a dona mudasse um número, e a vendedora leria na tela um valor que a
+   * porta não pratica — é a lição do E214 sobre `explicacaoDaFaixa`.
+   */
+  const atraso = usePreviaDaCobrancaDeAtraso(activeLojaId!, contratoAtivo?.id ?? "", {
+    query: {
+      queryKey: getPreviaDaCobrancaDeAtrasoQueryKey(activeLojaId!, contratoAtivo?.id ?? ""),
+      enabled: !!activeLojaId && !!contratoAtivo?.id && podeVerAtraso,
+    },
+  });
+  const cobrarAtraso = useCobrarAtrasoDaDevolucao();
+  const cobrarAtrasoDaDevolucaoDoContrato = () =>
+    comToast(
+      async () => {
+        if (!contratoAtivo) return;
+        await cobrarAtraso.mutateAsync({
+          lojaId: activeLojaId!,
+          contratoId: contratoAtivo.id,
+          data: {},
+        });
+        // Mesma régua do reparo: cobrar o atraso CRIA parcela no carnê, então
+        // é movimento de caixa e passa pela invalidação do D9/E93 — não só
+        // pela prévia desta tela.
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: getPreviaDaCobrancaDeAtrasoQueryKey(activeLojaId!, contratoAtivo.id),
+          }),
+          invalidarCaixa(queryClient, activeLojaId!),
+        ]);
+      },
+      "Atraso cobrado — entrou como parcela do contrato",
+      "Não deu para cobrar o atraso",
+    );
+  // S-O16/S-O65: a ausência entra na PERGUNTA, não numa asserção `!` lá
+  // embaixo — a asserção sobrevive a quem mexer na guarda de cima.
+  const pecasSemAluguel = atraso.data?.semAluguel ?? [];
   const provas = useMemo(
     () =>
       // O recorte (bloqueio + PROVA) já veio do servidor; sobra ordenar.
@@ -709,6 +773,64 @@ export default function ReservaDetalhe() {
       {/* Movimentação do vestido — saída/volta da peça (fecha a jornada) */}
       <section className="space-y-3">
         <h2 className="text-xs uppercase tracking-wider text-muted-foreground">Movimentação</h2>
+
+        {/* E212 — o atraso na devolução tem preço (cláusula 16ª e seus §§).
+            O sistema já pintava a janela como ATRASO_DEVOLUCAO e nunca cobrava:
+            a peça aparecia vermelha no acervo e a conta não existia. O aviso
+            vem ANTES do botão pela razão que o E211 mediu — descobrir a
+            cobrança depois de já ter dito à noiva que está tudo certo é o
+            defeito, não o valor. A conta é a do SERVIDOR: refazê-la aqui seria
+            a segunda grafia que diverge no dia em que a régua mudar. */}
+        {atraso.data?.devida && (
+          <Card className={atraso.data.temExtravio ? "border-destructive" : "border-amber-500"}>
+            <CardContent className="pt-6 space-y-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium" data-testid="atraso-titulo">
+                  {atraso.data.temExtravio
+                    ? `Extravio — ${atraso.data.maiorAtraso} dias sem devolução (cláusula 16ª)`
+                    : `Devolução atrasada em ${atraso.data.maiorAtraso} dia(s) (cláusula 16ª §1º)`}
+                </p>
+                <p className="text-xs text-muted-foreground" data-testid="atraso-explicacao">
+                  {atraso.data.explicacao}
+                </p>
+              </div>
+              <p className="text-sm" data-testid="atraso-valor">
+                A cobrar: <span className="font-semibold">{brl(atraso.data.valor)}</span>
+              </p>
+              {atraso.data.jaCobrada ? (
+                <p className="text-xs text-muted-foreground" data-testid="atraso-ja-cobrado">
+                  Já cobrado — entrou como parcela do contrato.
+                </p>
+              ) : (
+                podeCobrarAtraso && (
+                  <Button
+                    size="sm"
+                    disabled={cobrarAtraso.isPending}
+                    onClick={cobrarAtrasoDaDevolucaoDoContrato}
+                    data-testid="cobrar-atraso"
+                  >
+                    Cobrar o atraso
+                  </Button>
+                )
+              )}
+            </CardContent>
+          </Card>
+        )}
+        {/* A peça atrasada que NÃO está no rol de itens do contrato: a 16ª cobra
+            sobre o aluguel de cada peça, e não há de onde tirá-lo. A tela diz
+            que não conferiu em vez de calar — mesma escolha do E214. */}
+        {pecasSemAluguel.length > 0 && (
+          <Card className="border-amber-500">
+            <CardContent className="pt-6">
+              <p className="text-xs text-muted-foreground" data-testid="atraso-sem-aluguel">
+                {pecasSemAluguel.join(", ")} — atrasou e não está no rol de itens do
+                contrato. A cláusula 16ª cobra sobre o aluguel de cada peça, e não há de onde
+                tirá-lo: confira o contrato antes de cobrar.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {reserva.devolucaoDataReal ? (
           <Card>
             <CardContent className="pt-6 space-y-3">

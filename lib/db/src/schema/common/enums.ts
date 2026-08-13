@@ -197,7 +197,19 @@ export const parcelaStatusEnum = pgEnum("parcela_status", [
  * desenho da AVARIA, para aparecer na cobrança e na comissão como qualquer
  * outro dinheiro, e para a origem dizer por que ele existe.
  */
-export const parcelaOrigemEnum = pgEnum("parcela_origem", ["PLANO", "AVULSA", "AVARIA", "REAJUSTE_DATA"]);
+/**
+ * `ATRASO_DEVOLUCAO` nasceu no E212: a cláusula 16ª e seus dois parágrafos
+ * cobram a peça que não voltou na data — diária + multa até o nono dia, 4× o
+ * aluguel a partir do décimo, que o contrato chama de EXTRAVIO. O sistema já
+ * enxergava o atraso (o motivo homônimo em `disponibilidade.ts`) e nunca o
+ * cobrava; a origem é o que faz a linha dizer de onde ela veio.
+ *
+ * **Uma origem para as duas faixas, e não duas.** Elas são cláusulas
+ * diferentes, mas o FATO é o mesmo — a peça não voltou —, e a origem responde
+ * "de onde esta cobrança veio". Qual das duas faixas incidiu está na descrição
+ * da parcela e na trilha, que é onde a régua mora.
+ */
+export const parcelaOrigemEnum = pgEnum("parcela_origem", ["PLANO", "AVULSA", "AVARIA", "REAJUSTE_DATA", "ATRASO_DEVOLUCAO"]);
 
 export const contaPagarTipoEnum = pgEnum("conta_pagar_tipo", [
   "DESPESA",
