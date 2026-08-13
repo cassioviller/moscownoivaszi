@@ -44,10 +44,11 @@ describe("E218 — a reserva de 40% (8ª §1º)", () => {
     expect(a?.falta).toBe(1000);
     expect(a?.pct).toBe(20);
     expect(a?.aviso).toContain("8ª §1º");
-    // O espaço do `brl` é DURO (NBSP), e escrito escapado de propósito: a
-    // S-C30 registra que a régua do PDF carrega o caractere literal e um editor
-    // que normalize espaços a desliga em silêncio.
-    expect(a?.aviso).toContain("R$ 2.000,00");
+    // O espaço do `brl` é DURO (NBSP), e escrito escapado de propósito: o
+    // literal é invisível no editor, e quem normaliza espaços o troca sem
+    // aparecer no diff. A S-C30 fechou os 9 sítios que o carregavam, e a
+    // `varredura-espaco-duro-literal` reprova o próximo.
+    expect(a?.aviso).toContain("R$\u00a02.000,00");
     // A frase diz que dá para seguir: quem decide o desconto é a loja.
     expect(a?.aviso).toContain("Pode seguir");
   });

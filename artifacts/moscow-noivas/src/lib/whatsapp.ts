@@ -46,8 +46,21 @@ export type ConfirmacaoAtendimento = {
 
 export type Cobranca = {
   noivaNome?: string | null;
-  /** Total vencido da noiva, em reais. */
+  /**
+   * Total vencido da noiva, em reais — **já com a multa e os juros da cláusula
+   * 9ª** desde o E213, que é o mesmo número que o portal dela mostra.
+   */
   totalVencido: number;
+  /**
+   * S-C34 — a parte de `totalVencido` que é multa e juros da 9ª, em reais.
+   *
+   * Ausente ou zero (parcela sem mora, multa perdoada, cliente antigo em
+   * cache) a mensagem fica **exatamente** como era. Quem chama passa o
+   * `acrescimoVencido` da fila, que já vem somado em centavos: a mensagem não
+   * refaz conta nenhuma, e é por isso que ela recebe a parcela do total em vez
+   * de subtrair um número do outro.
+   */
+  acrescimo?: number;
   /** Dias de atraso da parcela mais antiga (≥1 — o aging descarta o que vence hoje). */
   diasMaisAntigo: number;
   lojaNome?: string | null;
@@ -68,14 +81,40 @@ function linhaPortal(portalUrl: string | null | undefined): string[] {
  * Cita o valor e há quanto tempo, mas mantém o tom concierge que a tela escolheu
  * (a cobrança do atelier é um lembrete afetuoso, não uma régua): a saída para
  * "já paguei" vem escrita, para a noiva em dia não se sentir cobrada por erro.
+ *
+ * ## S-C34 — o valor que ela lê aqui inclui a multa, e a mensagem a NOMEIA
+ *
+ * Desde o E213 o total da fila traz a multa de 2% e os juros de 1% ao mês da
+ * cláusula 9ª. A mensagem imprimia só o número: a noiva de uma parcela de
+ * R$ 500,00 vencida há 30 dias recebia *"um valor em aberto: R$ 515,00, há 30
+ * dias"*, conferia o carnê, via **R$ 500,00** e ligava para a loja perguntando
+ * de onde vinham os R$ 15,00. Era o OPOSTO do que o mesmo épico fez no portal,
+ * onde o acréscimo aparece com a conta escrita ao lado.
+ *
+ * **A forma, decidida aqui:** uma segunda linha, só quando há acréscimo, que
+ * diz que o total *já inclui* multa e juros e cita a cláusula. Ela não repete o
+ * principal por duas razões: a frase fica curta (é WhatsApp, e o tom é de
+ * lembrete), e a mensagem passa a não fazer **nenhuma** aritmética — 515 menos
+ * 15 seria uma segunda grafia de uma conta que a fila já fez em centavos, que é
+ * exatamente o que o E187 achou cinco vezes no desconto. Quem lê "R$ 515,00, e
+ * R$ 15,00 disso é multa e juros" chega aos R$ 500,00 do carnê sozinha.
+ *
+ * A cláusula é citada pelo número porque é o mesmo endereço que a noiva tem no
+ * papel que assinou: quem quiser conferir sabe onde olhar.
  */
 export function msgCobranca(p: Cobranca): string {
   const quem = p.noivaNome || "noiva";
   const daLoja = p.lojaNome ? `da ${p.lojaNome}` : "do atelier";
   const atraso = p.diasMaisAntigo === 1 ? "desde ontem" : `há ${p.diasMaisAntigo} dias`;
+  const acrescimo = p.acrescimo ?? 0;
   return [
     `Olá, ${quem}! Aqui é ${daLoja}.`,
     `Passando com carinho para lembrar de um valor em aberto: ${brl(p.totalVencido)}, ${atraso}.`,
+    ...(acrescimo > 0
+      ? [
+          `Esse total já inclui ${brl(acrescimo)} de multa e juros pelo atraso (cláusula 9ª do contrato).`,
+        ]
+      : []),
     "Se já tiver acertado, é só desconsiderar. Qualquer dúvida, estou à disposição.",
     ...linhaPortal(p.portalUrl),
   ].join("\n");

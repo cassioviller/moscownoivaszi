@@ -155,7 +155,7 @@ describe("a faixa da taxa de avaria — as cláusulas 14ª e 15ª", () => {
     // aqui é escrito com espaço comum de propósito: quem lê o teste tem de
     // conseguir digitar a frase. A normalização é do teste, não do código.
     const frase = (v: Parameters<typeof explicacaoDaFaixa>[0]) =>
-      explicacaoDaFaixa(v).replace(/ /g, " ");
+      explicacaoDaFaixa(v).replace(/\u00a0/g, " ");
     expect(frase(avaliarTaxaDeAvaria({ tipo: "LIMPEZA", valor: 50, aluguelDaPeca: null })))
       .toBe("A taxa de limpeza vai de R$ 350,00 a R$ 2.500,00 (cláusula 14ª).");
     expect(frase(avaliarTaxaDeAvaria({ tipo: "DANO", valor: 20000, aluguelDaPeca: 3000 })))

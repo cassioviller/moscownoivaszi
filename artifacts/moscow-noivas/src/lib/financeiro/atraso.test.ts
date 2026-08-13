@@ -172,14 +172,15 @@ describe("cobrancaDoAtraso — a conta, e a escada que ela tem de subir", () => 
 
 /**
  * **O `brl` separa "R$" do número com ESPAÇO DURO** (U+00A0), e é por isso que
- * as frases abaixo o escrevem escapado (` `).
+ * as frases abaixo o escrevem escapado (`\u00a0`).
  *
  * Escrito com espaço comum, o assert falha exibindo duas strings visualmente
  * IDÊNTICAS — `expected 'Vestido Serena: 3 dia(s) × R$ 500,00 …' to be
  * 'Vestido Serena: 3 dia(s) × R$ 500,00 …'` —, que é o pior vermelho possível:
- * o que não diz o que está errado. É a sobra **S-C30** vista da outra ponta.
+ * o que não diz o que está errado. É a sobra **S-C30** vista da outra ponta —
+ * ela fechou, e a `varredura-espaco-duro-literal` guarda a régua.
  */
-const RS = "R$ ";
+const RS = "R$\u00a0";
 
 describe("explicacaoDoAtraso — a tela e a parcela dizem a MESMA frase", () => {
   it("o atraso simples traz a diária, os dias e a multa", () => {

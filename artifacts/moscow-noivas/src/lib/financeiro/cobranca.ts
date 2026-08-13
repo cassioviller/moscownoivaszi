@@ -60,7 +60,17 @@ export type NoivaInadimplente = {
   noivaNome: string | null;
   whatsapp: string | null;
   contratoId: string;
+  /** O que a noiva deve HOJE — com a multa e os juros da 9ª (E213). */
   totalVencido: number;
+  /**
+   * S-C34 — quanto de `totalVencido` é multa e juros da cláusula 9ª, em reais.
+   *
+   * Somado em centavos junto com o total, na mesma passada: a mensagem de
+   * cobrança precisa NOMEAR o acréscimo (a noiva confere o carnê e vê o
+   * principal), e derivá-lo lá por subtração seria a segunda grafia de uma
+   * conta que já existe. Zero quando não há mora, ou quando ela foi perdoada.
+   */
+  acrescimoVencido: number;
   qtdParcelas: number;
   diasMaisAntigo: number;
   faixaMaisAntiga: Faixa;
@@ -119,6 +129,7 @@ export function agingDeParcelas(
       whatsapp: string | null;
       contratoId: string;
       totalC: number;
+      acrescimoC: number;
       qtd: number;
       vencMaisAntigo: string;
       parcelaMaisAntigaId: string;
@@ -151,7 +162,11 @@ export function agingDeParcelas(
      * tela não a refaz. É a lição do E187, que achou cinco grafias da mesma
      * conta de desconto, três acertando por cópia e duas errando.
      */
-    const valorC = centavos(p.mora && !p.mora.perdoada ? p.mora.total : saldoAberto(p));
+    const moraViva = p.mora && !p.mora.perdoada ? p.mora : null;
+    const valorC = centavos(moraViva ? moraViva.total : saldoAberto(p));
+    // S-C34 — a metade que é multa e juros anda junto com o total, e é o que
+    // deixa a mensagem de cobrança dizer de onde veio a diferença.
+    const acrescimoC = moraViva ? centavos(moraViva.acrescimo) : 0;
     faixaTotC[f] += valorC;
     faixaNoivas[f].add(leadId);
 
@@ -163,6 +178,7 @@ export function agingDeParcelas(
         whatsapp: p.contrato?.lead?.whatsapp ?? null,
         contratoId: p.contratoId,
         totalC: 0,
+        acrescimoC: 0,
         qtd: 0,
         vencMaisAntigo: venc,
         parcelaMaisAntigaId: p.id,
@@ -171,6 +187,7 @@ export function agingDeParcelas(
       porNoiva.set(leadId, n);
     }
     n.totalC += valorC;
+    n.acrescimoC += acrescimoC;
     n.qtd += 1;
     // Empate de vencimento desempata pelo id: sem isso a parcela oferecida
     // dependeria da ordem em que o servidor devolveu a lista.
@@ -189,6 +206,7 @@ export function agingDeParcelas(
         whatsapp: n.whatsapp,
         contratoId: n.contratoId,
         totalVencido: reais(n.totalC),
+        acrescimoVencido: reais(n.acrescimoC),
         qtdParcelas: n.qtd,
         diasMaisAntigo,
         faixaMaisAntiga: faixaDeAtraso(diasMaisAntigo),

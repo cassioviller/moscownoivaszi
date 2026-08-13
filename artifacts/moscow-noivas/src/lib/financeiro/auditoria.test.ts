@@ -93,7 +93,7 @@ describe("resumoDetalhe", () => {
     const r = resumoDetalhe(
       linha({ detalhe: { valorPago: 500, contas: [{ id: "c1", descricao: "Aluguel" }] } }),
     );
-    expect(r).toBe("R$ 500,00 · Aluguel");
+    expect(r).toBe("R$\u00a0500,00 · Aluguel");
   });
 
   it("a saída multi-conta lista as contas", () => {
@@ -108,7 +108,7 @@ describe("resumoDetalhe", () => {
         },
       }),
     );
-    expect(r).toBe("R$ 160,00 · Luz, Água");
+    expect(r).toBe("R$\u00a0160,00 · Luz, Água");
   });
 
   it("a saída que quita muitas contas corta em vez de esticar a linha", () => {
@@ -137,6 +137,6 @@ describe("resumoDetalhe", () => {
         },
       }),
     );
-    expect(r).toBe("R$ 2.000,00 · motivo: Noiva desistiu");
+    expect(r).toBe("R$\u00a02.000,00 · motivo: Noiva desistiu");
   });
 });

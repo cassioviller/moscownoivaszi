@@ -173,6 +173,40 @@ describe("msgCobranca", () => {
     expect(link).toContain("https://wa.me/5511988887777?text=");
     expect(decodeURIComponent(link!.split("text=")[1]!)).toBe(msg);
   });
+
+  /**
+   * **S-C34 — a mensagem cobra a multa e a NOMEIA.**
+   *
+   * Desde o E213 o `totalVencido` da fila inclui a multa e os juros da cláusula
+   * 9ª. A mensagem imprimia só o número: a noiva de uma parcela de R$ 500,00
+   * lia *"um valor em aberto: R$ 515,00, há 30 dias"*, conferia o carnê, via
+   * R$ 500,00 e ligava para a loja. É o OPOSTO do que o mesmo épico fez no
+   * portal, onde o acréscimo vem com a conta escrita ao lado.
+   */
+  const semDuro = (s: string) => s.replace(/\u00a0/g, " ");
+
+  it("nomeia a multa e os juros quando o total já os inclui", () => {
+    // R$ 500,00 vencidos há 30 dias: 2% = R$ 10,00 + 1% × 30/30 = R$ 5,00.
+    const msg = semDuro(
+      msgCobranca({ noivaNome: "Ana", totalVencido: 515, acrescimo: 15, diasMaisAntigo: 30 }),
+    );
+    expect(msg).toContain("um valor em aberto: R$ 515,00");
+    expect(msg).toContain("R$ 15,00 de multa e juros pelo atraso");
+    expect(msg).toContain("cláusula 9ª");
+    // O tom concierge e a saída para "já paguei" continuam de pé.
+    expect(msg).toContain("Se já tiver acertado");
+  });
+
+  it("sem acréscimo — parcela sem mora ou multa perdoada — a mensagem fica como era", () => {
+    for (const msg of [
+      msgCobranca({ noivaNome: "Ana", totalVencido: 500, diasMaisAntigo: 30 }),
+      msgCobranca({ noivaNome: "Ana", totalVencido: 500, acrescimo: 0, diasMaisAntigo: 30 }),
+    ]) {
+      expect(msg).toContain("um valor em aberto");
+      expect(msg).not.toContain("multa");
+      expect(msg).not.toContain("cláusula");
+    }
+  });
 });
 
 describe("rotuloContato", () => {
@@ -229,5 +263,22 @@ describe("agingDeParcelas — a multa e os juros da 9ª entram no total (E213)",
     // servidor: a ausência não pode virar zero nem `NaN`.
     const r = agingDeParcelas([vencida(30)], HOJE);
     expect(r.noivas[0]!.totalVencido).toBe(100);
+  });
+
+  /**
+   * S-C34 — o total sozinho não deixa a mensagem NOMEAR o acréscimo, e foi por
+   * isso que a noiva passou a receber um número que o carnê dela não confirma.
+   * A fila soma as duas metades em centavos, uma vez; a mensagem não subtrai
+   * nada (é a lição do E187 — cinco grafias da mesma conta, duas errando).
+   */
+  it("a fila carrega o acréscimo SEPARADO do total, somado em centavos", () => {
+    const r = agingDeParcelas([comMora(30, { total: 103 }), comMora(30, { total: 103 })], HOJE);
+    expect(r.noivas[0]!.totalVencido).toBe(206);
+    expect(r.noivas[0]!.acrescimoVencido).toBe(6);
+  });
+
+  it("perdoada não carrega acréscimo, e parcela sem mora tampouco", () => {
+    expect(agingDeParcelas([comMora(30, { total: 103, perdoada: true })], HOJE).noivas[0]!.acrescimoVencido).toBe(0);
+    expect(agingDeParcelas([vencida(30)], HOJE).noivas[0]!.acrescimoVencido).toBe(0);
   });
 });

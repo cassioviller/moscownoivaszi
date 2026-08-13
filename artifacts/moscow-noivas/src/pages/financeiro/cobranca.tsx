@@ -89,6 +89,9 @@ function LinhaNoiva({
     msgCobranca({
       noivaNome: noiva.noivaNome,
       totalVencido: noiva.totalVencido,
+      // S-C34 — o total já traz a multa da 9ª; a mensagem só a nomeia porque
+      // recebe a parcela dela em separado.
+      acrescimo: noiva.acrescimoVencido,
       diasMaisAntigo: noiva.diasMaisAntigo,
       lojaNome,
       portalUrl,

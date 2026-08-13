@@ -519,6 +519,8 @@ export default function MensagensDoDia() {
                     msgCobranca({
                       noivaNome: n.noivaNome,
                       totalVencido: n.totalVencido,
+                      // S-C34 — a multa da 9ª vem nomeada, não embutida muda.
+                      acrescimo: n.acrescimoVencido,
                       diasMaisAntigo: n.diasMaisAntigo,
                       lojaNome: lojaAtiva?.nome,
                       portalUrl: portalUrls.get(n.leadId),

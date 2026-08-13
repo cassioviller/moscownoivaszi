@@ -158,7 +158,7 @@ describe("moraDaParcela — a conta da 9ª", () => {
  * frases abaixo o escrevem escapado, senão o assert falha exibindo duas strings
  * visualmente idênticas.
  */
-const RS = "R$ ";
+const RS = "R$\u00a0";
 
 describe("explicacaoDaMora — a frase diz o que a conta TEM e o que ela não tem", () => {
   it("decompõe multa e juros, e declara a ausência da correção monetária", () => {
