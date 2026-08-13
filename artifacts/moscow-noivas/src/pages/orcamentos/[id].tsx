@@ -1766,7 +1766,17 @@ export default function OrcamentoDetail() {
       </Dialog>
 
       <Dialog open={contratoOpen} onOpenChange={setContratoOpen}>
-        <DialogContent>
+        {/* E224 — o diálogo ROLA, e não é preferência de estilo: ele ganhou os
+            campos de retirada e devolução e cresceu além da tela. O E2E mediu o
+            que ninguém tinha medido — `element is outside of the viewport`
+            depois de `done scrolling`, com o botão "Gerar contrato" visível,
+            habilitado e estável e mesmo assim inalcançável. **Se o Playwright
+            não chega no botão depois de rolar, a vendedora também não chega**, e
+            o contrato deixa de fechar em qualquer tela mais baixa.
+
+            `max-h-[80vh] overflow-y-auto` é o padrão que o repositório já usa no
+            diálogo alto de `financeiro/receber` — não inventei forma nova. */}
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Gerar contrato — {brl(totais.liquido)}</DialogTitle>
           </DialogHeader>
