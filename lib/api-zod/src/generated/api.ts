@@ -5514,6 +5514,13 @@ export const GetPortalResponse = zod.object({
   "vencimento": zod.coerce.date(),
   "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA'])
 })),
+  "recibos": zod.array(zod.object({
+  "id": zod.string(),
+  "parcela": zod.string(),
+  "valor": zod.number(),
+  "pagoEm": zod.coerce.date(),
+  "forma": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullable()
+})),
   "contrato": zod.union([zod.object({
   "valorTotal": zod.number(),
   "totalBruto": zod.number(),
@@ -5619,6 +5626,18 @@ export const GetPortalContratoPdfQueryParams = zod.object({
 })
 
 export const GetPortalContratoPdfResponse = zod.unknown()
+
+
+/**
+ * O recibo de UM pagamento, servido pelo token do PORTAL — o mesmo documento que a loja baixa (`lib/recibo-do-papel.ts`). É a sexta rota pública com documento financeiro dentro: checa TTL **e** revogação como as outras cinco.
+ * Diferente do contrato, aqui há um id na query — contrato ativo é um, recibos são muitos. O pertencimento é por CONSTRUÇÃO: os recibos são montados a partir das parcelas do contrato ATIVO desta noiva, e o id pedido é procurado dentro dessa lista. Id de outra noiva não está lá. O mesmo caminho cobre o estorno — recebimento desfeito responde 404.
+ */
+export const GetPortalReciboPdfQueryParams = zod.object({
+  "token": zod.coerce.string(),
+  "reciboId": zod.coerce.string()
+})
+
+export const GetPortalReciboPdfResponse = zod.unknown()
 
 
 /**
@@ -6180,6 +6199,44 @@ export const GetContratoPdfParams = zod.object({
 })
 
 export const GetContratoPdfResponse = zod.unknown()
+
+
+/**
+ * Um recibo por RECEBIMENTO — a cláusula 7ª manda fornecer "todos os recibos de pagamentos EFETUADOS", e uma parcela deste sistema recebe em pedaços (E49). Recebimento estornado não aparece: o estorno deste repositório é tudo-ou-nada e anula os recibos anteriores da parcela. Ordenados pelo dia do pagamento.
+ * @summary Os recibos de pagamento do contrato (E221, cláusula 7ª)
+ */
+export const ListRecibosParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "contratoId": zod.coerce.string()
+})
+
+export const ListRecibosResponse = zod.object({
+  "recibos": zod.array(zod.object({
+  "id": zod.string(),
+  "parcelaId": zod.string(),
+  "contratoId": zod.string(),
+  "parcela": zod.string(),
+  "valor": zod.number(),
+  "pagoEm": zod.coerce.date(),
+  "forma": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullable(),
+  "lancadoPor": zod.string(),
+  "totalRecebido": zod.number(),
+  "saldoRestante": zod.number()
+}))
+})
+
+
+/**
+ * O papel é o MESMO que desce pelo portal da noiva (`lib/recibo-do-papel.ts`); o que muda é a prova de quem pode vê-lo. Recibo estornado responde 404 e não um documento — recibo de dinheiro devolvido é documento falso.
+ * @summary O recibo em PDF (E221)
+ */
+export const GetReciboPdfParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "contratoId": zod.coerce.string(),
+  "reciboId": zod.coerce.string()
+})
+
+export const GetReciboPdfResponse = zod.unknown()
 
 
 export const CancelarContratoParams = zod.object({

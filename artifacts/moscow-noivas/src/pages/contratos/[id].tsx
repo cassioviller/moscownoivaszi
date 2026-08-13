@@ -8,6 +8,8 @@ import {
   useGerarPlanoParcelas,
   useEstornarParcela,
   useRemoveParcela,
+  useListRecibos,
+  getListRecibosQueryKey,
   type Parcela,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -50,6 +52,7 @@ import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl, diaParaISO, statusContratoLabel, instanteDia, diaMesAno } from "@/lib/formatos";
 import { fraseEstornoParcela, fraseRemocaoParcela } from "@/lib/financeiro/confirmacoes";
+import { recibosPorParcela } from "@/lib/recibos-da-parcela";
 import { DialogoReceberParcela, rotuloParcela } from "@/components/dialogo-receber-parcela";
 import {
   rotuloForma,
@@ -148,6 +151,23 @@ export default function ContratoDetail() {
   const parcelas = useMemo(
     () => [...(contrato?.parcelas ?? [])].sort((a, b) => a.numero - b.numero),
     [contrato?.parcelas],
+  );
+
+  /**
+   * E221 — os recibos da cláusula 7ª. A loja também precisa CONSEGUIR emitir:
+   * a noiva liga pedindo o comprovante do Pix de março, e sem isto a vendedora
+   * não tem o que mandar.
+   *
+   * Um por RECEBIMENTO, então uma parcela recebida em três vezes tem três
+   * links — e é isso que a tela diz, em vez de fingir que houve um pagamento
+   * só de R$ 1.000,00 no dia do último.
+   */
+  const { data: dadosRecibos } = useListRecibos(activeLojaId!, id!, {
+    query: { queryKey: getListRecibosQueryKey(activeLojaId!, id!), enabled: !!activeLojaId && !!id },
+  });
+  const recibosDa = useMemo(
+    () => recibosPorParcela(dadosRecibos?.recibos ?? []),
+    [dadosRecibos?.recibos],
   );
   // S-M19: a pergunta do servidor (`origem === PLANO`), não `length > 0` — a
   // parcela de avaria cobrada antes do carnê não pode esconder o "Gerar plano".
@@ -255,6 +275,10 @@ export default function ContratoDetail() {
   const invalidarParcelas = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: getGetContratoQueryKey(activeLojaId!, id!) }),
+      // E221: receber e estornar CRIAM e APAGAM recibo. `chavesDoCaixa` é por
+      // loja e esta lista é por contrato, então ela entra aqui — sem isto o
+      // link do recibo estornado continuaria na tela, e clicar nele daria 404.
+      queryClient.invalidateQueries({ queryKey: getListRecibosQueryKey(activeLojaId!, id!) }),
       invalidarCaixa(queryClient, activeLojaId!),
     ]);
 
@@ -626,6 +650,30 @@ export default function ContratoDetail() {
                             )}
                           </div>
                         )}
+                        {/* E221 — a cláusula 7ª: "a LOCADORA deverá fornecer
+                            todos os recibos de pagamentos EFETUADOS". Um link
+                            por RECEBIMENTO, com o valor e o dia DAQUELE
+                            pagamento — a parcela recebida em duas vezes tem
+                            dois papéis, e o de março não pode sair datado de
+                            abril. Âncora crua e não o client gerado: é um
+                            download do navegador, como o "Baixar PDF". */}
+                        {(recibosDa.get(parcela.id) ?? []).length > 0 && (
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <span className="text-xs text-muted-foreground">Recibos:</span>
+                            {(recibosDa.get(parcela.id) ?? []).map((r) => (
+                              <a
+                                key={r.id}
+                                href={`/api/lojas/${lojaId}/contratos/${contrato.id}/recibos/${r.id}/pdf`}
+                                target="_blank"
+                                rel="noreferrer"
+                                data-testid="recibo-da-parcela"
+                                className="text-xs underline underline-offset-2 tabular-nums"
+                              >
+                                {brl(r.valor)} · {diaMesAno(r.pagoEm)}
+                              </a>
+                            ))}
+                          </div>
+                        )}
                         {/* E115: `teveRecebimento` agora vê a CANCELADA que
                             guardou dinheiro ('manter') — mas estorná-la o
                             servidor recusa (contrato não está ativo), então o
@@ -851,7 +899,12 @@ export default function ContratoDetail() {
         parcela={parcelaReceber}
         onFechar={() => setParcelaReceber(null)}
         aoReceber={() =>
-          queryClient.invalidateQueries({ queryKey: getGetContratoQueryKey(activeLojaId!, id!) })
+          Promise.all([
+            queryClient.invalidateQueries({ queryKey: getGetContratoQueryKey(activeLojaId!, id!) }),
+            // E221: o recibo nasce do recebimento, então o link tem de aparecer
+            // sem recarregar a página — é o comprovante que a noiva pede agora.
+            queryClient.invalidateQueries({ queryKey: getListRecibosQueryKey(activeLojaId!, id!) }),
+          ])
         }
       />
 

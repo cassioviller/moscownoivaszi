@@ -637,6 +637,18 @@ rode o codegen.
   andamento — E100/F39). O papel do contrato é montado por
   `lib/contrato-do-papel.ts`, a mesma régua dos dois lados: a loja e a noiva
   baixam byte por byte o mesmo documento.
+  E desde o E221 ele mostra **"Seus recibos"** — a cláusula 7ª do instrumento
+  de papel manda a locadora *"fornecer todos os recibos de pagamentos
+  efetuados"*, e o recibo é por **RECEBIMENTO**, não por parcela: uma parcela
+  recebe em pedaços (E49), e quem pagou R$ 300,00 em 01/03 tem o papel de
+  01/03. Não há tabela de recibos — o ato individual existe na linha
+  `PARCELA_RECEBIDA` da trilha, escrita na MESMA transação do dinheiro, e o
+  papel **concilia** com o `valorRecebido` da parcela antes de sair (soma maior
+  que o recebido = nenhum recibo). Estorno anula os anteriores pelos dois
+  caminhos (avulso e cancelamento com `destinoPago: estornar`), e o link morre
+  junto. Montagem em `lib/recibo-do-papel.ts`, bytes em `lib/pdf-desenhista.ts`
+  (o motor que saiu de dentro do `contrato-pdf.ts` quando nasceu o segundo
+  papel); a loja emite por `GET /contratos/:id/recibos[/:id/pdf]`.
 - **Comercial** — orçamento → contrato (com snapshot dos itens) → plano de
   parcelas → PDF do contrato. A noiva vê a última versão ENVIADA (E75) e
   aceita pelo link com rastro (instante, versão, hash — E74).

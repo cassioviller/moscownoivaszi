@@ -44,6 +44,21 @@ export const auditLogTable = pgTable(
   },
   (t) => ({
     lojaCriadoEmIdx: index("audit_log_loja_criado_em_idx").on(t.lojaId, t.criadoEm),
+    /**
+     * E221 — a trilha passou a ser LIDA por entidade, e não só por período.
+     *
+     * O recibo da cláusula 7ª é o documento de um recebimento, e o recebimento
+     * individual existe num lugar só: a linha `PARCELA_RECEBIDA` desta tabela
+     * (a parcela guarda o acumulado, não os atos). Abrir o portal da noiva
+     * passou a perguntar *"as linhas destas 12 parcelas"*, e o único índice que
+     * havia abre por `(loja_id, criado_em)`: a pergunta varria a trilha INTEIRA
+     * da loja — uma tabela que só cresce, um clique por ação sensível — para
+     * devolver algumas linhas.
+     *
+     * É a regra do B10/E91 (*"o Postgres não cria índice para FK"*) aplicada à
+     * coluna que virou chave de busca.
+     */
+    lojaEntidadeIdx: index("audit_log_loja_entidade_idx").on(t.lojaId, t.entidadeId),
   }),
 );
 

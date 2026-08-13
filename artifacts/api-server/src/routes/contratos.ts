@@ -21,6 +21,10 @@ import { avancarEtapaLead } from "../lib/estados";
 // S-O56/E185 — a régua do dono, a mesma que as portas de leitura respondem.
 import { comDono } from "../lib/dono-do-bloqueio";
 import { pdfDoContrato, nomeDoArquivo } from "../lib/contrato-do-papel";
+// E221 — o recibo da cláusula 7ª: a montagem é pura, a leitura da trilha é do
+// `recibos-do-banco`, e o escopo (a loja da URL) fica aqui, como no PDF.
+import { nomeDoArquivoDoRecibo, pdfDoRecibo, recibosDoContrato } from "../lib/recibo-do-papel";
+import { trilhaDosRecibos } from "../lib/recibos-do-banco";
 import {
   EstornarParcelaResponse,
   GerarPlanoParcelasBody,
@@ -37,6 +41,7 @@ import {
   CancelarContratoBody,
   CancelarContratoResponse,
   ListParcelasResponse,
+  ListRecibosResponse,
   ReceberParcelaBody,
   ReceberParcelaResponse
 } from "@workspace/api-zod";
@@ -1062,6 +1067,67 @@ router.get("/lojas/:lojaId/contratos/:contratoId/pdf", async (req, res): Promise
   res.send(Buffer.from(pdfDoContrato(contrato)));
 });
 
+/**
+ * E221 — os recibos da cláusula 7ª, do lado da loja.
+ *
+ * > **CLÁUSULA 7ª** — A LOCADORA deverá fornecer **todos os recibos de
+ * > pagamentos efetuados pelo LOCATÁRIO.**
+ *
+ * Um recibo por RECEBIMENTO, e não por parcela — a leitura da cláusula e a
+ * razão dela estão em `lib/recibo-do-papel.ts`, junto com a conciliação que
+ * impede o papel de sair quando a trilha diz mais dinheiro do que a parcela
+ * guarda.
+ *
+ * A rota é de LEITURA e nasce sob `/lojas/:lojaId/contratos`, então herda o
+ * `requireModulo("contratos")` de `:75` com a ação derivada do método (`ver`).
+ * Quem enxerga o contrato enxerga os recibos dele: eles são o extrato do que a
+ * noiva já pagou nele.
+ */
+router.get("/lojas/:lojaId/contratos/:contratoId/recibos", async (req, res): Promise<void> => {
+  const { lojaId, contratoId } = req.params as { lojaId: string; contratoId: string };
+  const contrato = await db.query.contratosTable.findFirst({
+    where: and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)),
+    with: { parcelas: true },
+  });
+  if (!contrato) {
+    res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
+    return;
+  }
+  const trilha = await trilhaDosRecibos(lojaId, contrato.id, contrato.parcelas.map((p) => p.id));
+  res.json(ListRecibosResponse.parse({ recibos: recibosDoContrato(contrato.parcelas, trilha) }));
+});
+
+/**
+ * O PDF de UM recibo. O id é o da linha da trilha, e o papel só sai se aquele
+ * recebimento ainda vale: estornado, ele não está entre os válidos e a resposta
+ * é 404, não um documento. **Recibo de dinheiro devolvido é documento falso** —
+ * é a única coisa que esta rota tem de garantir além do escopo.
+ */
+router.get("/lojas/:lojaId/contratos/:contratoId/recibos/:reciboId/pdf", async (req, res): Promise<void> => {
+  const { lojaId, contratoId, reciboId } = req.params as {
+    lojaId: string; contratoId: string; reciboId: string;
+  };
+  const contrato = await db.query.contratosTable.findFirst({
+    where: and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)),
+    with: { loja: true, lead: true, parcelas: true },
+  });
+  if (!contrato) {
+    res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
+    return;
+  }
+  const trilha = await trilhaDosRecibos(lojaId, contrato.id, contrato.parcelas.map((p) => p.id));
+  const recibo = recibosDoContrato(contrato.parcelas, trilha).find((r) => r.id === reciboId);
+  if (!recibo) {
+    res.status(404).json({ error: "RECIBO_NAO_ENCONTRADO", detalhe: "Este recibo não existe neste contrato." });
+    return;
+  }
+
+  res.status(200)
+    .type("application/pdf")
+    .setHeader("Content-Disposition", `inline; filename="${nomeDoArquivoDoRecibo(recibo, contrato.lead)}"`);
+  res.send(Buffer.from(pdfDoRecibo({ recibo, loja: contrato.loja, lead: contrato.lead, contrato })));
+});
+
 router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<void> => {
   const { lojaId, contratoId } = req.params;
   const parsed = UpdateContratoBody.safeParse(req.body);
@@ -1651,6 +1717,18 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("contrat
         // acumulado e o que sobrou — sem eles um recebimento parcial na
         // trilha não diz se quitou.
         valorRecebido: parsed.data.valorRecebido,
+        /**
+         * E221 — o DIA do pagamento, que a trilha não guardava.
+         *
+         * `recebidoEm` é informado pela vendedora e pode ser anterior ao
+         * lançamento: o dinheiro entrou no sábado, ela lança na segunda. A
+         * parcela sobrescreve o campo a cada recebimento (é sempre o do
+         * ÚLTIMO), então o dia dos recebimentos anteriores só existia aqui —
+         * e aqui não estava. O recibo da cláusula 7ª prova *quando* o
+         * pagamento foi efetuado; sem esta linha ele dataria pelo instante em
+         * que a linha foi escrita, que é outro dia.
+         */
+        recebidoEm: parsed.data.recebidoEm,
         totalRecebido: reais(totalRecebidoC),
         saldoRestante: reais(centavos(existente.valorPrevisto) - totalRecebidoC),
         formaRecebimento: parsed.data.formaRecebimento ?? null,

@@ -28,6 +28,7 @@ import {
   PedirRemarcacaoPortalQueryParams,
   PedirRemarcacaoPortalResponse,
   GetPortalContratoPdfQueryParams,
+  GetPortalReciboPdfQueryParams,
   GetPortalLeadResponse,
   CriarPortalLeadResponse,
   ListPortaisResponse,
@@ -42,6 +43,8 @@ import {
   montarVestidoDaNoiva,
 } from "../lib/visao-noiva";
 import { pdfDoContrato, nomeDoArquivo } from "../lib/contrato-do-papel";
+import { nomeDoArquivoDoRecibo, pdfDoRecibo, recibosDoContrato } from "../lib/recibo-do-papel";
+import { trilhaDosRecibos } from "../lib/recibos-do-banco";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
 import { abertoEmCentavos, brutoEmCentavos, estaAberta, reais, saldoAberto } from "@workspace/financeiro-core";
@@ -198,6 +201,25 @@ router.get("/portal", async (req, res): Promise<void> => {
    * cobraria de novo o que ela já pagou, na tela dela. Desde o E125 a soma é a
    * MESMA função que a tela do contrato e a ficha usam para "falta receber".
    */
+  /**
+   * E221 — os recibos DELA, na mesma resposta do extrato.
+   *
+   * A cláusula 7ª manda a locadora FORNECER os recibos, e fornecer é a noiva
+   * conseguir pegar sozinha: o portal já é onde ela vê o que pagou e o que
+   * falta, e o recibo é o comprovante da linha que ela está olhando. Uma rota
+   * de listagem à parte cobraria dela um segundo carregamento para descobrir
+   * que existem — e o portal é a tela que ela abre no celular.
+   *
+   * Vem vazio quando não há contrato: sem contrato não há parcela, e sem
+   * parcela não há recebimento.
+   */
+  const recibos = contrato[0]
+    ? recibosDoContrato(
+        parcelas,
+        await trilhaDosRecibos(portal.lojaId, contrato[0].id, parcelas.map((p) => p.id)),
+      )
+    : [];
+
   const abertas = parcelas.filter((p) => estaAberta(p));
   const faltaPagarC = abertoEmCentavos(parcelas);
   const proxima = [...abertas].sort(
@@ -240,6 +262,19 @@ router.get("/portal", async (req, res): Promise<void> => {
           vencimento: p.vencimento,
           status: p.status,
         })),
+      /**
+       * E221 — os comprovantes. O que desce é o que o papel precisa para ser
+       * ESCOLHIDO na tela (qual pagamento, de quanto, de que dia); quem
+       * lançou fica de fora, pela mesma razão que o telefone da vendedora
+       * ficou fora do rodapé (F35): o portal é público por token.
+       */
+      recibos: recibos.map((r) => ({
+        id: r.id,
+        parcela: r.parcela,
+        valor: r.valor,
+        pagoEm: r.pagoEm,
+        forma: r.forma,
+      })),
       /**
        * F21 — o contrato assinado, o único artefato do sistema que não tinha
        * caminho até ela. O `totalBruto` sai da SOMA DOS ITENS e não de um campo
@@ -317,6 +352,69 @@ router.get("/portal/contrato-pdf", async (req, res): Promise<void> => {
     .type("application/pdf")
     .setHeader("Content-Disposition", `inline; filename="${nomeDoArquivo(contrato)}"`);
   res.send(Buffer.from(pdfDoContrato(contrato)));
+});
+
+/**
+ * E221 — o PDF de UM recibo, pelo token da noiva. A sexta rota pública com
+ * documento financeiro dentro.
+ *
+ * O `reciboId` está na query, e diferente do contrato ele NÃO sai do token
+ * sozinho — um contrato ativo é um; recibos são muitos, e ela escolhe qual.
+ * A prova de pertencimento é por CONSTRUÇÃO e não por comparação: os recibos
+ * são montados a partir das parcelas do contrato ATIVO **desta** noiva, e o id
+ * pedido é procurado dentro dessa lista. Um id de outra noiva não está lá — não
+ * há caminho em que ele passe.
+ *
+ * O mesmo `find` cobre o estorno: recebimento desfeito não está entre os
+ * válidos, e a resposta é 404 em vez de um comprovante de dinheiro que voltou.
+ */
+router.get("/portal/recibo-pdf", async (req, res): Promise<void> => {
+  const parsed = GetPortalReciboPdfQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json(erroDeValidacao(parsed.error));
+    return;
+  }
+  const linha = await buscarPorToken(parsed.data.token);
+  if (!linha) {
+    res.status(404).json({ error: "LINK_INVALIDO" });
+    return;
+  }
+  if (linha.portal.expiraEm <= new Date()) {
+    res.status(410).json({ error: "LINK_EXPIRADO" });
+    return;
+  }
+
+  const contrato = await db.query.contratosTable.findFirst({
+    where: and(
+      eq(contratosTable.lojaId, linha.portal.lojaId),
+      eq(contratosTable.leadId, linha.portal.leadId),
+      eq(contratosTable.status, "ATIVO"),
+    ),
+    with: { loja: true, lead: true, parcelas: true },
+    orderBy: desc(contratosTable.fechadoEm),
+  });
+  if (!contrato) {
+    res.status(404).json({ error: "CONTRATO_INEXISTENTE" });
+    return;
+  }
+
+  const trilha = await trilhaDosRecibos(
+    linha.portal.lojaId,
+    contrato.id,
+    contrato.parcelas.map((p) => p.id),
+  );
+  const recibo = recibosDoContrato(contrato.parcelas, trilha).find(
+    (r) => r.id === parsed.data.reciboId,
+  );
+  if (!recibo) {
+    res.status(404).json({ error: "RECIBO_NAO_ENCONTRADO" });
+    return;
+  }
+
+  res.status(200)
+    .type("application/pdf")
+    .setHeader("Content-Disposition", `inline; filename="${nomeDoArquivoDoRecibo(recibo, contrato.lead)}"`);
+  res.send(Buffer.from(pdfDoRecibo({ recibo, loja: contrato.loja, lead: contrato.lead, contrato })));
 });
 
 // O aceite pelo portal delega à MESMA rotina do E74 (uma transação, um

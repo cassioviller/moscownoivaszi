@@ -226,9 +226,25 @@ describe("S-A20 — os scripts à mão e o schema falam os mesmos nomes", () => 
     // para baixo — migração não se apaga.
     expect(scripts.length).toBeGreaterThan(30);
 
+    /**
+     * **E221 — a régua lia o COMENTÁRIO como DDL.**
+     *
+     * Os scripts desta pasta são metade prosa: o cabeçalho explica por que a
+     * migração existe, e essa explicação cita DDL. A varredura casava o regex
+     * contra o arquivo inteiro, então a frase *"um `CREATE INDEX` comum tranca
+     * a tabela"* — escrita para justificar o `CONCURRENTLY` — virava o índice
+     * inexistente `comum`, e o script reprovava por causa da própria
+     * documentação dele. Medido: `2026-08-13-e221-... → comum`.
+     *
+     * Ela mede o que os scripts EXECUTAM; comentário não executa. As duas
+     * formas do SQL saem antes da varredura, e nada mais muda.
+     */
+    const semComentario = (sql: string) =>
+      sql.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
+
     const desconhecidos: string[] = [];
     for (const arquivo of scripts) {
-      const sql = readFileSync(join(migracoesDir, arquivo), "utf8");
+      const sql = semComentario(readFileSync(join(migracoesDir, arquivo), "utf8"));
       for (const [, nome] of sql.matchAll(criaNome)) {
         if (!conhecidos.has(nome)) desconhecidos.push(`${arquivo} → ${nome}`);
       }

@@ -3163,6 +3163,48 @@ paths:
         "410":
           description: Link expirado
 
+  /portal/recibo-pdf:
+    get:
+      operationId: getPortalReciboPdf
+      tags: [portal]
+      security: []
+      description: >
+        O recibo de UM pagamento, servido pelo token do PORTAL — o mesmo
+        documento que a loja baixa (`lib/recibo-do-papel.ts`). É a sexta rota
+        pública com documento financeiro dentro: checa TTL **e** revogação como
+        as outras cinco.
+
+        Diferente do contrato, aqui há um id na query — contrato ativo é um,
+        recibos são muitos. O pertencimento é por CONSTRUÇÃO: os recibos são
+        montados a partir das parcelas do contrato ATIVO desta noiva, e o id
+        pedido é procurado dentro dessa lista. Id de outra noiva não está lá.
+        O mesmo caminho cobre o estorno — recebimento desfeito responde 404.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: reciboId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: O PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: >
+            Token desconhecido/revogado, noiva sem contrato ativo, ou recibo
+            que não é dela (ou foi estornado)
+        "410":
+          description: Link expirado
+
   /lojas/{lojaId}/portais:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -3367,6 +3409,71 @@ paths:
               schema:
                 type: string
                 format: binary
+  /lojas/{lojaId}/contratos/{contratoId}/recibos:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: contratoId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: listRecibos
+      tags: [contratos]
+      summary: Os recibos de pagamento do contrato (E221, cláusula 7ª)
+      description: >
+        Um recibo por RECEBIMENTO — a cláusula 7ª manda fornecer "todos os
+        recibos de pagamentos EFETUADOS", e uma parcela deste sistema recebe em
+        pedaços (E49). Recebimento estornado não aparece: o estorno deste
+        repositório é tudo-ou-nada e anula os recibos anteriores da parcela.
+        Ordenados pelo dia do pagamento.
+      responses:
+        "200":
+          description: Os recibos, do mais antigo ao mais recente
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [recibos]
+                properties:
+                  recibos:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Recibo"
+        "404":
+          description: Contrato inexistente nesta loja
+  /lojas/{lojaId}/contratos/{contratoId}/recibos/{reciboId}/pdf:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: contratoId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: reciboId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getReciboPdf
+      tags: [contratos]
+      summary: O recibo em PDF (E221)
+      description: >
+        O papel é o MESMO que desce pelo portal da noiva
+        (`lib/recibo-do-papel.ts`); o que muda é a prova de quem pode vê-lo.
+        Recibo estornado responde 404 e não um documento — recibo de dinheiro
+        devolvido é documento falso.
+      responses:
+        "200":
+          description: Recibo em PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Contrato ou recibo inexistente
   /lojas/{lojaId}/contratos/{contratoId}/cancelar:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -6318,7 +6425,7 @@ components:
       # interno além do vestidoId (necessário para pedir a foto). NUNCA dados
       # de outra noiva ou da loja.
       type: object
-      required: [noivaNome, lojaNome, lojaEndereco, lojaTelefone, orcamento, lookbook, provas, parcelas, contrato, vestido]
+      required: [noivaNome, lojaNome, lojaEndereco, lojaTelefone, orcamento, lookbook, provas, parcelas, recibos, contrato, vestido]
       properties:
         noivaNome: { type: string }
         lojaNome: { type: string }
@@ -6384,6 +6491,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PortalParcela"
+        # E221 — os comprovantes da cláusula 7ª ("a LOCADORA deverá fornecer
+        # todos os recibos de pagamentos efetuados"). Um por RECEBIMENTO, e não
+        # por parcela: uma parcela deste sistema recebe em pedaços, e o
+        # pagamento de R$ 300,00 de hoje tem de ter o recibo DELE hoje.
+        # Vazio antes do contrato, e vazio para quem nunca pagou nada.
+        recibos:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortalRecibo"
         # E100/F21: o contrato assinado é o documento que ela mais vai querer
         # rever, e era o único artefato do sistema sem caminho até ela — o PDF
         # só descia no computador da loja. O snapshot de itens já existe em
@@ -6456,6 +6572,28 @@ components:
         valorRecebido: { type: ["number", "null"] }
         vencimento: { type: string, format: date-time }
         status: { type: string, enum: [PREVISTA, PARCIAL, PAGA, CANCELADA] }
+    PortalRecibo:
+      # E221 — o recibo como a NOIVA o vê: o bastante para escolher qual PDF
+      # baixar. Quem LANÇOU o recebimento fica de fora, pela mesma fronteira do
+      # rodapé (F35): a loja sim, a pessoa não.
+      #
+      # O `id` é o da linha da trilha — o recebimento individual só existe lá,
+      # porque a parcela guarda o acumulado. É o que vai em
+      # GET /portal/recibo-pdf?reciboId=.
+      type: object
+      required: [id, parcela, valor, pagoEm, forma]
+      properties:
+        id: { type: string }
+        # "Entrada" ou "Parcela 3" — o rótulo do MOMENTO do pagamento. O
+        # `gerar-plano` renumera as parcelas depois (P2/E94), e o recibo tem de
+        # continuar dizendo o que a noiva viu no dia.
+        parcela: { type: string }
+        # O que entrou NESTE pagamento, não o acumulado da parcela.
+        valor: { type: number }
+        # O dia do PAGAMENTO (`recebidoEm`), que pode ser anterior ao
+        # lançamento: o dinheiro entrou no sábado, a loja lançou na segunda.
+        pagoEm: { type: string, format: date-time }
+        forma: { type: ["string", "null"], enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO, null] }
     PortalStatus:
       # O card da ficha da vendedora: gerar/copiar/revogar, "último acesso há X".
       type: object
@@ -6466,6 +6604,32 @@ components:
         criadoEm: { type: string, format: date-time }
         revogadoEm: { type: ["string", "null"], format: date-time }
         ultimoAcessoEm: { type: ["string", "null"], format: date-time }
+
+    # ── Recibos (E221, cláusula 7ª) ──
+    Recibo:
+      # O recibo como a LOJA o vê: tudo o que a noiva vê, mais quem lançou o
+      # recebimento e a posição da parcela depois dele (acumulado e saldo) —
+      # que é o que a vendedora precisa para responder "e o resto?".
+      #
+      # Não há tabela de recibos, e isso é decisão: o recebimento individual
+      # existe numa linha de trilha (`PARCELA_RECEBIDA`, escrita na MESMA
+      # transação do dinheiro), enquanto a parcela guarda só o acumulado. Uma
+      # tabela nova seria o mesmo fato gravado duas vezes. A razão inteira, e a
+      # conciliação que impede o papel de sair quando as duas divergem, estão
+      # em `lib/recibo-do-papel.ts`.
+      type: object
+      required: [id, parcelaId, contratoId, parcela, valor, pagoEm, forma, lancadoPor, totalRecebido, saldoRestante]
+      properties:
+        id: { type: string }
+        parcelaId: { type: string }
+        contratoId: { type: string }
+        parcela: { type: string }
+        valor: { type: number }
+        pagoEm: { type: string, format: date-time }
+        forma: { type: ["string", "null"], enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO, null] }
+        lancadoPor: { type: string }
+        totalRecebido: { type: number }
+        saldoRestante: { type: number }
 
     # ── Contratos ──
     Contrato:

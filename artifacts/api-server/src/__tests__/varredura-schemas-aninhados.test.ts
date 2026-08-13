@@ -31,7 +31,10 @@ import {
  *
  * (Medida de novo no E199, quando o motor passou a seguir a chamada para fora
  * do handler: 252 → 254 pares e 147 → 165 entregues, sem uma linha de porta
- * mudar. Um sexto do "não entrega" era o motor não olhando.)
+ * mudar. Um sexto do "não entrega" era o motor não olhando. E de novo no E221,
+ * que somou as três operações do recibo: **203 · 144 · 70 · 255 · 166 · 89** —
+ * a coluna do NÃO não se mexeu, que é o que se espera de porta nova cuja
+ * resposta é montada por função pura.)
  *
  * Os 89 não são 89 defeitos, e é isso que as duas tabelas abaixo separam:
  * schema é COMPARTILHADO, e a mesma `Lead` viaja em 27 respostas prometendo um
@@ -74,9 +77,19 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
    * acrescenta um objeto aninhado a um schema de resposta, e é aí que a régua
    * serve — obriga a perguntar quem vai preenchê-lo.
    */
-  it("200 operações · 143 com schema de resposta · 70 com relação · 254 pares na fronteira", () => {
-    expect(c.operacoes, "operação nova no spec: confira quem monta a resposta dela e atualize esta contagem").toBe(200);
-    expect(c.comSchemaDeResposta).toBe(143);
+  it("203 operações · 144 com schema de resposta · 70 com relação · 255 pares na fronteira", () => {
+    /**
+     * E221: 200 → 203, e as três são do recibo da cláusula 7ª — `listRecibos`,
+     * `getReciboPdf` e `getPortalReciboPdf`. **Só uma acrescenta par à
+     * fronteira**: as duas do PDF devolvem binário, sem schema a aninhar. O par
+     * é `listRecibos → recibos`, e a pergunta que esta régua obriga a fazer
+     * ("quem vai preencher isto?") tem resposta curta: uma função PURA sobre a
+     * trilha (`recibosDoContrato`), que preenche os dez campos do `Recibo` —
+     * não um `with` que possa esquecer um filho. Por isso ele nasce entregue.
+     */
+    expect(c.operacoes, "operação nova no spec: confira quem monta a resposta dela e atualize esta contagem").toBe(203);
+    // E221: 143 → 144. Só o `listRecibos` entra — as outras duas devolvem PDF.
+    expect(c.comSchemaDeResposta).toBe(144);
     expect(c.comRelacao).toBe(70);
     // E194: 250 → 252. A fronteira CRESCE quando um pai passa a ser entregue —
     // o `PATCH /contratos` deixou de responder a linha crua, então `lead`,
@@ -85,7 +98,10 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // E199/S-O114: 252 → 254. O motor passou a SEGUIR a chamada para fora do
     // handler, então dois pais que eram montados por helper passaram a chegar e
     // os filhos deles entraram na fronteira.
-    expect(c.pares.length, "a fronteira mudou — um objeto aninhado nasceu, ou um pai passou a ser entregue").toBe(254);
+    // E221: 254 → 255. O par novo é `listRecibos → recibos`, e ele nasce
+    // ENTREGUE: quem monta a lista é uma função pura sobre a trilha
+    // (`recibosDoContrato`), não um `with` que possa esquecer um filho.
+    expect(c.pares.length, "a fronteira mudou — um objeto aninhado nasceu, ou um pai passou a ser entregue").toBe(255);
     /**
      * **E199/S-O114 — 147 → 165 entregues, e é o maior salto que esta conta já
      * deu.** Não entrou uma linha de porta: o motor deixou de parar na borda da
@@ -95,7 +111,7 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
      * A medida do ponto cego é essa: **um sexto do "não entrega" era o motor
      * não olhando**, não a porta não entregando.
      */
-    expect(c.pares.filter((p) => p.entregue).length).toBe(165);
+    expect(c.pares.filter((p) => p.entregue).length).toBe(166);
     expect(c.pares.filter((p) => !p.entregue).length).toBe(89);
   });
 

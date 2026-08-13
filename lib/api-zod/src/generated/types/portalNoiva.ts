@@ -12,6 +12,7 @@ import type { PortalNoivaProvasItem } from './portalNoivaProvasItem';
 import type { PortalNoivaResumoPagamento } from './portalNoivaResumoPagamento';
 import type { PortalNoivaVestido } from './portalNoivaVestido';
 import type { PortalParcela } from './portalParcela';
+import type { PortalRecibo } from './portalRecibo';
 
 export interface PortalNoiva {
   noivaNome: string;
@@ -25,6 +26,7 @@ export interface PortalNoiva {
   lookbook: PortalNoivaLookbook;
   provas: PortalNoivaProvasItem[];
   parcelas: PortalParcela[];
+  recibos: PortalRecibo[];
   contrato: PortalNoivaContrato;
   vestido: PortalNoivaVestido;
 }

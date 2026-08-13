@@ -106,6 +106,15 @@ describe("E100 — o rodapé da loja e a renovação do prazo", () => {
    * outro — que é exatamente o pedido para pensar duas vezes. As duas entraram
    * por decisão, e as guardas do que sai dentro delas estão em
    * `e100-contrato-e-vestido-api.test.ts`.
+   *
+   * **E cobrou de novo no E221**, com `recibos` (cláusula 7ª: *"a LOCADORA
+   * deverá fornecer todos os recibos de pagamentos efetuados"*). A decisão que
+   * ele obriga a tomar está tomada, e o cuidado (a) foi respeitado: o recibo
+   * que desce para a noiva tem `id`, `parcela`, `valor`, `pagoEm` e `forma` —
+   * **quem LANÇOU o recebimento fica de fora**, pela mesma fronteira do rodapé
+   * (F35): a loja sim, a pessoa não. O nome de quem lançou só existe do lado da
+   * loja, que já está atrás de sessão. A guarda dessa fronteira está em
+   * `e221-recibo-de-pagamento-api.test.ts`.
    */
   it("a RAIZ do payload público tem exatamente as chaves declaradas — nada de pessoa da loja", async () => {
     const { token } = await noivaComPortal();
@@ -124,6 +133,8 @@ describe("E100 — o rodapé da loja e a renovação do prazo", () => {
         "orcamento",
         "parcelas",
         "provas",
+        // E221 — os comprovantes da cláusula 7ª, sem o nome de quem lançou.
+        "recibos",
         "resumoPagamento",
       ].sort(),
     );

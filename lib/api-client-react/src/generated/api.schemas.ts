@@ -1939,6 +1939,31 @@ export interface PortalParcela {
   status: PortalParcelaStatus;
 }
 
+/**
+ * @nullable
+ */
+export type PortalReciboForma = typeof PortalReciboForma[keyof typeof PortalReciboForma] | null;
+
+
+export const PortalReciboForma = {
+  PIX: 'PIX',
+  CARTAO_CREDITO: 'CARTAO_CREDITO',
+  CARTAO_DEBITO: 'CARTAO_DEBITO',
+  DINHEIRO: 'DINHEIRO',
+  BOLETO: 'BOLETO',
+  TRANSFERENCIA: 'TRANSFERENCIA',
+  OUTRO: 'OUTRO',
+} as const;
+
+export interface PortalRecibo {
+  id: string;
+  parcela: string;
+  valor: number;
+  pagoEm: string;
+  /** @nullable */
+  forma: PortalReciboForma;
+}
+
 export interface PortalNoiva {
   noivaNome: string;
   lojaNome: string;
@@ -1951,6 +1976,7 @@ export interface PortalNoiva {
   lookbook: PortalNoivaLookbook;
   provas: PortalNoivaProvasItem[];
   parcelas: PortalParcela[];
+  recibos: PortalRecibo[];
   contrato: PortalNoivaContrato;
   vestido: PortalNoivaVestido;
 }
@@ -1963,6 +1989,36 @@ export interface PortalStatus {
   revogadoEm: string | null;
   /** @nullable */
   ultimoAcessoEm: string | null;
+}
+
+/**
+ * @nullable
+ */
+export type ReciboForma = typeof ReciboForma[keyof typeof ReciboForma] | null;
+
+
+export const ReciboForma = {
+  PIX: 'PIX',
+  CARTAO_CREDITO: 'CARTAO_CREDITO',
+  CARTAO_DEBITO: 'CARTAO_DEBITO',
+  DINHEIRO: 'DINHEIRO',
+  BOLETO: 'BOLETO',
+  TRANSFERENCIA: 'TRANSFERENCIA',
+  OUTRO: 'OUTRO',
+} as const;
+
+export interface Recibo {
+  id: string;
+  parcelaId: string;
+  contratoId: string;
+  parcela: string;
+  valor: number;
+  pagoEm: string;
+  /** @nullable */
+  forma: ReciboForma;
+  lancadoPor: string;
+  totalRecebido: number;
+  saldoRestante: number;
 }
 
 export type ContratoStatus = typeof ContratoStatus[keyof typeof ContratoStatus];
@@ -3166,6 +3222,11 @@ export type GetPortalContratoPdfParams = {
 token: string;
 };
 
+export type GetPortalReciboPdfParams = {
+token: string;
+reciboId: string;
+};
+
 export type ListPortais200Item = {
   leadId: string;
   token: string;
@@ -3212,6 +3273,10 @@ export const ListContratosOrdem = {
   antigos: 'antigos',
   recentes: 'recentes',
 } as const;
+
+export type ListRecibos200 = {
+  recibos: Recibo[];
+};
 
 export type ListParcelasParams = {
 /**

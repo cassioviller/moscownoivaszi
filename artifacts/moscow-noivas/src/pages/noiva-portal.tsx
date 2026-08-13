@@ -19,6 +19,7 @@ import {
   Clock,
 } from "lucide-react";
 import { brl, capitalizar, instanteLongo, tipoItemLabel } from "@/lib/formatos";
+import { rotuloForma } from "@/lib/financeiro/forma";
 import { centavos, linhaDeDesconto, reais } from "@/lib/financeiro/dinheiro";
 import { linkWhatsApp, msgDaNoivaParaAtelier } from "@/lib/whatsapp";
 
@@ -689,6 +690,48 @@ export default function NoivaPortal() {
                     );
                   })}
                 </ul>
+                {/* E221 — a cláusula 7ª do contrato que ela assinou: "a
+                    LOCADORA deverá fornecer todos os recibos de pagamentos
+                    efetuados pelo LOCATÁRIO". O sistema registrava o
+                    recebimento desde sempre e ela nunca recebia comprovante de
+                    nada — medido na auditoria do papel: zero ocorrências de
+                    "recibo" no código.
+
+                    Um por PAGAMENTO, e não por parcela: quem pagou R$ 300,00
+                    hoje e R$ 700,00 no mês que vem tem dois papéis, cada um com
+                    o seu dia. Âncora crua, como o PDF do contrato. */}
+                {dados.recibos.length > 0 && (
+                  <div className="space-y-2 border-t pt-4">
+                    <h3 className="font-medium">Seus recibos</h3>
+                    <ul className="divide-y">
+                      {dados.recibos.map((r) => (
+                        <li
+                          key={r.id}
+                          className="flex items-center justify-between gap-3 py-2"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm tabular-nums">{brl(r.valor)}</p>
+                            <p className="text-muted-foreground text-xs">
+                              {r.parcela} · {instanteLongo(r.pagoEm)}
+                              {r.forma ? ` · ${rotuloForma(r.forma)}` : ""}
+                            </p>
+                          </div>
+                          <Button variant="outline" size="sm" asChild className="shrink-0">
+                            <a
+                              href={`/api/portal/recibo-pdf?token=${encodeURIComponent(token!)}&reciboId=${encodeURIComponent(r.id)}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              data-testid="baixar-recibo-portal"
+                            >
+                              <FileText className="mr-2 h-4 w-4" />
+                              Recibo
+                            </a>
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
                   Para pagar ou combinar valores, fale com a sua vendedora —
                   este extrato é só para você acompanhar.

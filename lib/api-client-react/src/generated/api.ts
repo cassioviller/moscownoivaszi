@@ -122,6 +122,7 @@ import type {
   GetPortalContratoPdfParams,
   GetPortalFotoParams,
   GetPortalParams,
+  GetPortalReciboPdfParams,
   GetSazonalidadeCasamentos200Item,
   GetUtilizacaoVestidosParams,
   GetVestidoFotoParams,
@@ -149,6 +150,7 @@ import type {
   ListPagamentosParams,
   ListParcelasParams,
   ListPortais200Item,
+  ListRecibos200,
   ListReservasParams,
   LoginInput,
   Loja,
@@ -10721,6 +10723,88 @@ export function useGetPortalContratoPdf<TData = Awaited<ReturnType<typeof getPor
 
 
 
+export const getGetPortalReciboPdfUrl = (params: GetPortalReciboPdfParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/portal/recibo-pdf?${stringifiedParams}` : `/api/portal/recibo-pdf`
+}
+
+/**
+ * O recibo de UM pagamento, servido pelo token do PORTAL — o mesmo documento que a loja baixa (`lib/recibo-do-papel.ts`). É a sexta rota pública com documento financeiro dentro: checa TTL **e** revogação como as outras cinco.
+ * Diferente do contrato, aqui há um id na query — contrato ativo é um, recibos são muitos. O pertencimento é por CONSTRUÇÃO: os recibos são montados a partir das parcelas do contrato ATIVO desta noiva, e o id pedido é procurado dentro dessa lista. Id de outra noiva não está lá. O mesmo caminho cobre o estorno — recebimento desfeito responde 404.
+ */
+export const getPortalReciboPdf = async (params: GetPortalReciboPdfParams, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetPortalReciboPdfUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPortalReciboPdfQueryKey = (params?: GetPortalReciboPdfParams,) => {
+    return [
+    `/api/portal/recibo-pdf`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPortalReciboPdfQueryOptions = <TData = Awaited<ReturnType<typeof getPortalReciboPdf>>, TError = ErrorType<void>>(params: GetPortalReciboPdfParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPortalReciboPdf>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPortalReciboPdfQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPortalReciboPdf>>> = ({ signal }) => getPortalReciboPdf(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPortalReciboPdf>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPortalReciboPdfQueryResult = NonNullable<Awaited<ReturnType<typeof getPortalReciboPdf>>>
+export type GetPortalReciboPdfQueryError = ErrorType<void>
+
+
+
+export function useGetPortalReciboPdf<TData = Awaited<ReturnType<typeof getPortalReciboPdf>>, TError = ErrorType<void>>(
+ params: GetPortalReciboPdfParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPortalReciboPdf>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPortalReciboPdfQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getListPortaisUrl = (lojaId: string,) => {
 
 
@@ -11384,6 +11468,177 @@ export function useGetContratoPdf<TData = Awaited<ReturnType<typeof getContratoP
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetContratoPdfQueryOptions(lojaId,contratoId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListRecibosUrl = (lojaId: string,
+    contratoId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/contratos/${contratoId}/recibos`
+}
+
+/**
+ * Um recibo por RECEBIMENTO — a cláusula 7ª manda fornecer "todos os recibos de pagamentos EFETUADOS", e uma parcela deste sistema recebe em pedaços (E49). Recebimento estornado não aparece: o estorno deste repositório é tudo-ou-nada e anula os recibos anteriores da parcela. Ordenados pelo dia do pagamento.
+ * @summary Os recibos de pagamento do contrato (E221, cláusula 7ª)
+ */
+export const listRecibos = async (lojaId: string,
+    contratoId: string, options?: RequestInit): Promise<ListRecibos200> => {
+
+  return customFetch<ListRecibos200>(getListRecibosUrl(lojaId,contratoId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListRecibosQueryKey = (lojaId: string,
+    contratoId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/contratos/${contratoId}/recibos`
+    ] as const;
+    }
+
+
+export const getListRecibosQueryOptions = <TData = Awaited<ReturnType<typeof listRecibos>>, TError = ErrorType<void>>(lojaId: string,
+    contratoId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRecibos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListRecibosQueryKey(lojaId,contratoId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRecibos>>> = ({ signal }) => listRecibos(lojaId,contratoId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined && contratoId !== null && contratoId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listRecibos>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListRecibosQueryResult = NonNullable<Awaited<ReturnType<typeof listRecibos>>>
+export type ListRecibosQueryError = ErrorType<void>
+
+
+/**
+ * @summary Os recibos de pagamento do contrato (E221, cláusula 7ª)
+ */
+
+export function useListRecibos<TData = Awaited<ReturnType<typeof listRecibos>>, TError = ErrorType<void>>(
+ lojaId: string,
+    contratoId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRecibos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListRecibosQueryOptions(lojaId,contratoId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetReciboPdfUrl = (lojaId: string,
+    contratoId: string,
+    reciboId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/contratos/${contratoId}/recibos/${reciboId}/pdf`
+}
+
+/**
+ * O papel é o MESMO que desce pelo portal da noiva (`lib/recibo-do-papel.ts`); o que muda é a prova de quem pode vê-lo. Recibo estornado responde 404 e não um documento — recibo de dinheiro devolvido é documento falso.
+ * @summary O recibo em PDF (E221)
+ */
+export const getReciboPdf = async (lojaId: string,
+    contratoId: string,
+    reciboId: string, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetReciboPdfUrl(lojaId,contratoId,reciboId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetReciboPdfQueryKey = (lojaId: string,
+    contratoId: string,
+    reciboId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/contratos/${contratoId}/recibos/${reciboId}/pdf`
+    ] as const;
+    }
+
+
+export const getGetReciboPdfQueryOptions = <TData = Awaited<ReturnType<typeof getReciboPdf>>, TError = ErrorType<void>>(lojaId: string,
+    contratoId: string,
+    reciboId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReciboPdf>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetReciboPdfQueryKey(lojaId,contratoId,reciboId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getReciboPdf>>> = ({ signal }) => getReciboPdf(lojaId,contratoId,reciboId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined && contratoId !== null && contratoId !== undefined && reciboId !== null && reciboId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getReciboPdf>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetReciboPdfQueryResult = NonNullable<Awaited<ReturnType<typeof getReciboPdf>>>
+export type GetReciboPdfQueryError = ErrorType<void>
+
+
+/**
+ * @summary O recibo em PDF (E221)
+ */
+
+export function useGetReciboPdf<TData = Awaited<ReturnType<typeof getReciboPdf>>, TError = ErrorType<void>>(
+ lojaId: string,
+    contratoId: string,
+    reciboId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReciboPdf>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetReciboPdfQueryOptions(lojaId,contratoId,reciboId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -149,13 +149,18 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
    * do repositório inteiro**, sem uma linha de rota mudar. É a medida do que
    * custava a promessa vazia — e a prova de que este número conta a dívida de
    * verdade, porque ele desceu quando a dívida desceu.
+   *
+   * **816 → 818 no E221**, e as duas são o caso inofensivo do E179: o `pagoEm`
+   * do `Recibo` (loja) e o do `PortalRecibo` (noiva) são campos de RESPOSTA —
+   * o recibo é lido, nunca enviado, e não há corpo em que um `null` entre. A
+   * conta sobe assim mesmo, pelo motivo escrito acima.
    */
   it("as datas coercidas estão contadas — `null` vira 1970 e o zod aprova", () => {
     const coeridas = (zod.match(/coerce\.date\(\)/g) ?? []).length;
     expect(
       coeridas,
       "mudou o número de datas coercidas? A guarda do V12 (`reservas.ts`) é campo a campo, não global",
-    ).toBe(816);
+    ).toBe(818);
   });
 
   /**
