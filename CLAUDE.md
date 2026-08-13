@@ -99,7 +99,7 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | **Ótica dos papéis** | **`2026-08-11-otica-dos-papeis/`** | **EXECUTADA — 149 achados em 14 épicos (E158–E171), as quatro faixas fechadas, mais o **E172** que os manuais fizeram nascer, o **resto das sobras em E173–E188**, a **onda 1 (E189–E192)** e a **onda 2 (E193–E196)**. O que resta dela são as sobras S-O da tabela do `EXECUCAO.md` — **27, e a única 🟡 entre elas nasceu na onda 2**; conte lá** |
+   | **Ótica dos papéis** | **`2026-08-11-otica-dos-papeis/`** | **EXECUTADA — 149 achados em 14 épicos (E158–E171), as quatro faixas fechadas, mais o **E172** que os manuais fizeram nascer, o **resto das sobras em E173–E188**, a **onda 1 (E189–E192)**, a **onda 2 (E193–E196)** e o **E197** (onda 3). O que resta dela são as sobras S-O da tabela do `EXECUCAO.md` — **27, e a única 🟡 entre elas nasceu no E197**; conte lá** |
    | Revisão max | `2026-08-10-revisao-max/` | fechada como fila — 18 sobras da rodada 1 (16 fechadas) + 53 da rodada 2 (10 épicos). **Resta 1 🟡**: a S-M17, que espera dados de banco real. A **S-M10 fechou no E169** (`fe8afdd`) |
    | Rodada 6 | `2026-07-25-rodada-6/` | fechada — **ZERO sobras abertas.** Era o backlog mais pesado do repositório |
    | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — **ZERO sobras abertas** |
@@ -112,6 +112,23 @@ para o documento que manda.
    peça"). Toda linha de código aberta hoje está na tabela de Sobras da trilha
    da ótica dos papéis — **conte lá, são 27** (2026-08-12, depois da onda 2).
 
+   **O E197 (onda 3) fechou a S-O117, que era a única 🟡 aberta — e a que restou
+   nasceu dele, pela mesma confusão do outro lado.** A sobra apontava a leitura;
+   o fecho foram **sete portas**, porque enquanto a coluna guardar meia-noite UTC
+   são quatro réguas que não se falam tendo de saber da convenção. O vermelho
+   mais caro não estava na sobra: **a guarda de divergência RECUSAVA o contrato**
+   (`expected 422 to be 201`), dizendo à vendedora que a data do contrato não
+   batia com a da reserva quando as duas eram o mesmo dia. **352 linhas no banco,
+   zero desancoradas** — sem migração, porque tudo que existe entrou pela tela, e
+   **não se acha clicando o que só se alcança pela API**. A nova 🟡 é a
+   **S-O119**: a mesma troca de instante por dia, agora nas RÉGUAS —
+   `ajustes-prazo.test.ts` reprova entre 00:00 e 03:00 UTC, e o `global-setup` do
+   E2E insere a data sem âncora. E uma lição de ferramenta que custou o conserto
+   inteiro: **`cmd > arquivo && git checkout` são duas sentenças**, e a segunda
+   roda mesmo quando a primeira falha por diretório inexistente — para guardar
+   trabalho antes de mexer na árvore o instrumento é `git stash push
+   --include-untracked`, que ou guarda tudo ou falha inteiro.
+
    **A onda 2 (E193–E196) fechou as três 🟡 que estavam abertas, e a única 🟡
    que restou nasceu dentro dela.** O que ela ensinou, e as três lições são de
    MEDIÇÃO:
@@ -122,11 +139,11 @@ para o documento que manda.
      dizendo quem mudou. A prova continua onde estava (a decisão da prova órfã,
      pela mesma razão), e agora é DITA: `RESERVA_DATA_MOVIDA` conta quantas
      ficaram fora da janela, e o selo âmbar entra nas quatro telas do selo
-     vermelho. Dele nasceu a **S-O117**, a única 🟡 aberta: `casamentoData` é
+     vermelho. Dele nasceu a **S-O117**, fechada no E197: `casamentoData` é
      data de NEGÓCIO e a disponibilidade a lê como INSTANTE —
      `2028-09-05T00:00:00Z` vira **2028-09-04** em fuso SP e as três janelas
      andam um dia. A tela ancora ao meio-dia antes de mandar; **a porta não
-     obriga**.
+     obrigava** — e é o que o E197 mudou.
    - **O E194 foi acusado pela própria régua.** Ao tirar a conta do prazo do
      `GET /ajustes` para um helper — justamente para as TRÊS portas a entregarem
      —, a varredura do E192 passou a dizer que `Ajuste.pecaDoAcervo` **não é
@@ -284,11 +301,16 @@ para o documento que manda.
    ainda está em dia — esta linha envelhece a cada commit, e já envelheceu
    cinco vezes.
 
-   Hoje a régua é **API 1382 (198 arquivos) · frontend 704 · E2E 171 ·
-   typecheck verde em 5 projetos**. Ela é MEDIDA a cada onda, e envelhece
-   depressa: quando a onda 2 abriu, este parágrafo dizia *1349 · 683* e o `main`
-   dava *1369 · 692* — a onda 1 somara 20 e 9 sem que ninguém refizesse a conta.
-   **Meça antes de citar.** O typecheck passou a incluir os 68 arquivos de `e2e/` (S-D23,
+   Hoje a régua é **API 1389 (199 arquivos) · frontend 704 · E2E 171 ·
+   typecheck verde em 5 projetos** (medida em 2026-08-13, no E197). Ela é MEDIDA
+   a cada onda, e envelhece depressa: quando a onda 2 abriu, este parágrafo dizia
+   *1349 · 683* e o `main` dava *1369 · 692* — a onda 1 somara 20 e 9 sem que
+   ninguém refizesse a conta. **Meça antes de citar.** E **o frontend não está
+   verde**: são 703 de 704, pela S-O119 — o helper `emDiasISO` fabrica a data
+   como instante e o código a lê como dia, então o arquivo `ajustes-prazo`
+   reprova entre 00:00 e 03:00 UTC e passa nas outras 21 horas. **Régua que
+   depende da hora em que roda não é régua**; quem medir de madrugada e vir
+   vermelho, confira a hora antes de procurar o defeito. O typecheck passou a incluir os 68 arquivos de `e2e/` (S-D23,
    `acdd9b3`) **e o `scripts/`** (`60adc7c`), que nenhum `tsconfig` cobria. O
    `scripts/tsconfig.json` ganhou `lib: DOM` em 2026-08-12, com o custo
    declarado no próprio arquivo: o corpo de `page.evaluate` roda no NAVEGADOR, e
