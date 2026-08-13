@@ -2407,6 +2407,66 @@ paths:
         required: true
         schema:
           type: string
+    patch:
+      operationId: updateAvaria
+      tags: [reservas]
+      summary: Corrige a avaria registrada (S-C11)
+      description: >
+        S-C11: `descricao`, `tipo`, `custoReparo` e `justificativaDaTaxa` só
+        entravam no POST de nascimento. Quem digitou R$ 1.500,00 onde eram
+        R$ 150,00 só tinha o caminho de apagar e refazer — que o E115 RECUSA
+        quando a avaria sustenta cobrança viva, e que leva a FOTO-prova junto.
+
+
+        A régua do E214 vale aqui inteira: valor que VIOLA um número das
+        cláusulas 14ª/15ª entra com `justificativaDaTaxa`, e a razão vai para a
+        trilha (`AVARIA_FORA_DA_FAIXA`, com `momento: EDICAO`). Sem isto a
+        edição seria a porta dos fundos da régua que o E214 pôs na frente.
+
+
+        Havendo cobrança VIVA, o teto conferido é o do contrato que a COBRA, e
+        `parcelas.valorPrevisto` segue o novo valor na mesma transação — deixar
+        os dois divergirem é dois números para uma decisão só. E havendo
+        RECEBIMENTO na parcela a linha congela (409 `AVARIA_COM_RECEBIMENTO`):
+        o extrato, o fluxo e o DRE já contaram aquele real, e o caminho de volta
+        é estornar a parcela antes de corrigir.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AvariaUpdate"
+      responses:
+        "200":
+          description: Avaria corrigida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Avaria"
+        "404":
+          description: Avaria não encontrada nesta loja
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >
+            `AVARIA_COM_RECEBIMENTO` — a parcela deste reparo já recebeu
+            dinheiro, e reescrever o número por baixo do caixa é reescrever o
+            passado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: >
+            `TAXA_FORA_DA_FAIXA` (o valor viola a 14ª/15ª e veio sem razão
+            escrita) ou `AVARIA_SEM_CUSTO` (apagar o custo de uma avaria com
+            cobrança viva deixaria a parcela sem número).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       operationId: deleteAvaria
       tags: [reservas]
@@ -6402,6 +6462,27 @@ components:
         # Foto-evidência opcional, base64 — mesma borda das fotos de vestido
         # (E3): mime e dimensões saem do BINÁRIO, nunca da palavra do cliente.
         fotoBase64: { type: string }
+
+    # S-C11 — a CORREÇÃO da avaria. Os quatro campos de texto e de dinheiro do
+    # nascimento, e só eles: a FOTO não entra.
+    #
+    # Trocar a prova não é corrigir um número — é substituir a evidência que
+    # sustenta a cobrança, e o gesto que a sobra pede é o do zero a mais. Quem
+    # precisar de outra foto registra outra avaria; a porta que apaga esta já
+    # existe e já diz o que leva junto (E115).
+    #
+    # A gramática é a da casa (S-M10): **campo ausente é "não mexi"**, e `null`
+    # APAGA — em `custoReparo` devolve a avaria a "ainda não avaliado" (E71), e
+    # em `justificativaDaTaxa` tira a razão escrita. Os tetos de texto são os
+    # MESMOS do `AvariaInput` (1.000 e 300), pelo motivo do E186: dois números
+    # para o mesmo campo é a marca de que a decisão não foi tomada.
+    AvariaUpdate:
+      type: object
+      properties:
+        descricao: { type: string, minLength: 1, maxLength: 1000 }
+        tipo: { type: string, enum: [LIMPEZA, DANO] }
+        custoReparo: { type: ["number", "null"], minimum: 0 }
+        justificativaDaTaxa: { type: ["string", "null"], maxLength: 300 }
     BloqueioVestidoUpdate:
       type: object
       properties:

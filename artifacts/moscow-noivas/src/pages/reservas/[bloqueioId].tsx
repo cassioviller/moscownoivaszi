@@ -22,6 +22,8 @@ import {
   useListAvarias,
   getListAvariasQueryKey,
   useCreateAvaria,
+  // S-C11 — corrigir o número digitado errado, sem apagar a foto-prova.
+  useUpdateAvaria,
   useDeleteAvaria,
   useListContratos,
   getListContratosQueryKey,
@@ -32,6 +34,7 @@ import {
   getPreviaDaCobrancaDeAtrasoQueryKey,
   useCobrarAtrasoDaDevolucao,
   type Ajuste,
+  type Avaria,
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -52,13 +55,21 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertCircle, ArrowLeft, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, Pencil, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl, diaMesAbrevAno, diaMesAnoLongo, diaParaISO } from "@/lib/formatos";
 import { parseValor } from "@/lib/financeiro/dinheiro";
@@ -203,6 +214,7 @@ export default function ReservaDetalhe() {
   });
   const contratoAtivo = contratoAtivoDaNoiva(contratosDaNoiva.data?.itens);
   const createAvaria = useCreateAvaria();
+  const updateAvaria = useUpdateAvaria();
   const deleteAvaria = useDeleteAvaria();
   const cobrarAvaria = useCobrarAvaria();
 
@@ -233,6 +245,104 @@ export default function ReservaDetalhe() {
     tipo: avariaTipo,
     valor: parseValor(avariaCusto),
   });
+
+  /**
+   * **S-C11 — a correção da avaria, e por que ela é um DIÁLOGO.**
+   *
+   * O gesto que faltava é o do zero a mais: R$ 1.500,00 onde eram R$ 150,00. O
+   * único caminho era o `X` de remover — que o servidor recusa quando a avaria
+   * sustenta cobrança viva, e que leva a **foto-prova** junto quando aceita.
+   *
+   * Diálogo, e não edição em linha, porque os quatro campos andam juntos: o
+   * `tipo` TROCA a régua do valor (a 14ª tem faixa absoluta, a 15ª tem teto de
+   * 5× o aluguel), e a justificativa só existe em função das duas. Editar o
+   * custo sem ver a faixa ao lado é o defeito que o E214 fechou no cadastro.
+   */
+  const [avariaEmEdicao, setAvariaEmEdicao] = useState<Avaria | null>(null);
+  const [edicaoDescricao, setEdicaoDescricao] = useState("");
+  const [edicaoCusto, setEdicaoCusto] = useState("");
+  const [edicaoTipo, setEdicaoTipo] = useState<TipoDeAvaria>("DANO");
+  const [edicaoJustificativa, setEdicaoJustificativa] = useState("");
+
+  /**
+   * A MESMA conta do cadastro, sobre os valores em edição — e a mesma do
+   * servidor, porque as duas chamam `avaliarTaxaDeAvaria`.
+   *
+   * Uma nota de honestidade: havendo cobrança viva, o servidor confere o teto
+   * contra o contrato que **cobra** o reparo, e aqui a tela pergunta ao contrato
+   * ATIVO da noiva. Na esmagadora maioria é o mesmo contrato; quando não for, a
+   * autoridade é o servidor e o 422 diz o teto certo. A tela existe para não
+   * OFERECER o que ele vai negar, não para decidir.
+   */
+  const veredictoDaEdicao = faixaNaTela({
+    contratos: contratosDaNoiva.data?.itens,
+    vestidoId: reserva?.vestidoId,
+    tipo: edicaoTipo,
+    valor: parseValor(edicaoCusto),
+  });
+
+  /**
+   * Dinheiro que ENTROU congela a linha (409 `AVARIA_COM_RECEBIMENTO`). A tela
+   * lê o mesmo estado pelo `parcelaStatus` que o payload já carrega desde o
+   * V2/E167, e **diz o caminho em vez de esconder o botão**: quem abre o
+   * diálogo aprende que o gesto é estornar a parcela antes.
+   */
+  const edicaoTemRecebimento =
+    avariaEmEdicao?.parcelaStatus === "PAGA" || avariaEmEdicao?.parcelaStatus === "PARCIAL";
+
+  const abrirEdicaoDaAvaria = (a: Avaria) => {
+    setAvariaEmEdicao(a);
+    setEdicaoDescricao(a.descricao);
+    setEdicaoCusto(a.custoReparo != null ? String(a.custoReparo).replace(".", ",") : "");
+    setEdicaoTipo(a.tipo as TipoDeAvaria);
+    setEdicaoJustificativa(a.justificativaDaTaxa ?? "");
+  };
+
+  const salvarEdicaoDaAvaria = () => {
+    const alvo = avariaEmEdicao;
+    if (!alvo) return;
+    // A mesma leitura pt-BR do cadastro (C3): `Number("1.500")` é 1,5, e a
+    // correção de R$ 1.500,00 viraria R$ 1,50 — o defeito que este épico existe
+    // para consertar, cometido pelo próprio conserto.
+    const custo = parseValor(edicaoCusto);
+    if (custo !== null && !Number.isFinite(custo)) {
+      toast({
+        title: "Custo do reparo inválido",
+        description: "Informe um valor em reais (ex.: 150,00).",
+        variant: "destructive",
+      });
+      return;
+    }
+    return comToast(
+      async () => {
+        await updateAvaria.mutateAsync({
+          lojaId: activeLojaId!,
+          avariaId: alvo.id,
+          data: {
+            descricao: edicaoDescricao.trim(),
+            tipo: edicaoTipo,
+            custoReparo: custo,
+            justificativaDaTaxa:
+              veredictoDaEdicao.exigeJustificativa && edicaoJustificativa.trim()
+                ? edicaoJustificativa.trim()
+                : null,
+          },
+        });
+        await queryClient.invalidateQueries({
+          queryKey: getListAvariasQueryKey(activeLojaId!, bloqueioId!),
+        });
+        // O carnê pode ter seguido o valor: a parcela do reparo vive no contrato
+        // e no caixa, e a ficha ao lado leria o número velho.
+        await queryClient.invalidateQueries({
+          queryKey: getListContratosQueryKey(activeLojaId!, filtroDoContrato),
+        });
+        await invalidarCaixa(queryClient, activeLojaId!);
+        setAvariaEmEdicao(null);
+      },
+      "Avaria corrigida",
+      "Não deu para corrigir a avaria",
+    );
+  };
 
   const aoEscolherFotoAvaria = async (arquivo: File | undefined) => {
     if (!arquivo) return;
@@ -1096,6 +1206,20 @@ export default function ReservaDetalhe() {
                             </Button>
                           )
                         )}
+                        {/* S-C11: o conserto do zero a mais. Antes daqui, o
+                            único gesto ao lado do número errado era o `X` —
+                            que leva a foto-prova junto, e que o servidor recusa
+                            enquanto a cobrança estiver viva. */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9"
+                          aria-label="Corrigir avaria"
+                          data-testid={`corrigir-avaria-${a.id}`}
+                          onClick={() => abrirEdicaoDaAvaria(a)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
                         {/* F23: a foto é a PROVA que sustenta a cobrança. Ela
                             saía por um toque num ícone de 28px, sem uma palavra
                             — e a parcela continuava no carnê. */}
@@ -1254,6 +1378,99 @@ export default function ReservaDetalhe() {
           </CardContent>
         </Card>
       </section>
+
+      {/* S-C11 — a correção da avaria. Os quatro campos do cadastro, menos a
+          FOTO: trocar a prova não é corrigir um número, e quem precisar de
+          outra evidência registra outra avaria. */}
+      <Dialog open={avariaEmEdicao !== null} onOpenChange={(aberto) => !aberto && setAvariaEmEdicao(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Corrigir a avaria</DialogTitle>
+            <DialogDescription>
+              A foto e a data do registro ficam como estão. Se este reparo já virou parcela do
+              contrato, o valor do carnê acompanha a correção.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              value={edicaoDescricao}
+              onChange={(e) => setEdicaoDescricao(e.target.value)}
+              aria-label="Descrição da avaria"
+              placeholder="O que aconteceu com a peça"
+              maxLength={AVARIA_DESCRICAO_MAX_CHARS}
+            />
+            <div className="flex flex-wrap gap-2">
+              <Select
+                value={edicaoTipo}
+                onValueChange={(v) => setEdicaoTipo(v as TipoDeAvaria)}
+              >
+                <SelectTrigger className="w-44" aria-label="Tipo da avaria">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="LIMPEZA">Limpeza (14ª)</SelectItem>
+                  <SelectItem value="DANO">Dano (15ª)</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                className="w-40"
+                value={edicaoCusto}
+                onChange={(e) => setEdicaoCusto(e.target.value)}
+                aria-label="Custo do reparo"
+                placeholder="Custo do reparo"
+                inputMode="decimal"
+              />
+            </div>
+            {/* A MESMA frase do cadastro e do 422 — ela sai de
+                `explicacaoDaFaixa`, no `financeiro-core`. */}
+            <p
+              className={`text-xs ${veredictoDaEdicao.exigeJustificativa ? "text-destructive" : "text-muted-foreground"}`}
+              data-testid="faixa-da-avaria-edicao"
+            >
+              {explicacaoDaFaixa(veredictoDaEdicao)}
+              {veredictoDaEdicao.exigeJustificativa &&
+                " A régua não impede — escreva por que este valor sai dela."}
+            </p>
+            {veredictoDaEdicao.exigeJustificativa && (
+              <Input
+                placeholder="Por que esta taxa sai da faixa do contrato?"
+                value={edicaoJustificativa}
+                onChange={(e) => setEdicaoJustificativa(e.target.value)}
+                aria-label="Justificativa da taxa"
+                maxLength={AVARIA_JUSTIFICATIVA_MAX_CHARS}
+                data-testid="justificativa-da-taxa-edicao"
+              />
+            )}
+            {edicaoTemRecebimento && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Este reparo já recebeu dinheiro</AlertTitle>
+                <AlertDescription>
+                  O extrato e o caixa já contaram esse valor no dia em que ele entrou. Estorne a
+                  parcela no contrato e volte aqui para corrigir.
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAvariaEmEdicao(null)}>
+              Cancelar
+            </Button>
+            <Button
+              disabled={
+                !edicaoDescricao.trim() ||
+                updateAvaria.isPending ||
+                edicaoTemRecebimento ||
+                (veredictoDaEdicao.exigeJustificativa && !edicaoJustificativa.trim())
+              }
+              onClick={salvarEdicaoDaAvaria}
+              data-testid="salvar-avaria-editada"
+            >
+              Salvar correção
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Provas da reserva + ajustes de costura com checklist */}
       <section className="space-y-4">

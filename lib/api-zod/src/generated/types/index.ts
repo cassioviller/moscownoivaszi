@@ -64,6 +64,8 @@ export * from './avariaInput';
 export * from './avariaInputTipo';
 export * from './avariaParcelaStatus';
 export * from './avariaTipo';
+export * from './avariaUpdate';
+export * from './avariaUpdateTipo';
 export * from './backupLog';
 export * from './backupLogGatilho';
 export * from './backupLogStatus';

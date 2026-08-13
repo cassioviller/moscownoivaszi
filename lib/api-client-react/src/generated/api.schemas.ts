@@ -1598,6 +1598,33 @@ export interface AvariaInput {
   fotoBase64?: string;
 }
 
+export type AvariaUpdateTipo = typeof AvariaUpdateTipo[keyof typeof AvariaUpdateTipo];
+
+
+export const AvariaUpdateTipo = {
+  LIMPEZA: 'LIMPEZA',
+  DANO: 'DANO',
+} as const;
+
+export interface AvariaUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  descricao?: string;
+  tipo?: AvariaUpdateTipo;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  custoReparo?: number | null;
+  /**
+     * @maxLength 300
+     * @nullable
+     */
+  justificativaDaTaxa?: string | null;
+}
+
 export interface BloqueioVestidoUpdate {
   /** @nullable */
   leadId?: string | null;

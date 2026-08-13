@@ -21,6 +21,9 @@ import {
   ListAvariasResponse,
   CreateAvariaBody,
   CreateAvariaResponse,
+  // S-C11 — a porta de correção da avaria.
+  UpdateAvariaBody,
+  UpdateAvariaResponse,
   CobrarAvariaBody,
   CobrarAvariaResponse,
   // E212 — a conta do atraso na devolução (cláusula 16ª).
@@ -67,8 +70,12 @@ import {
   hojeLocal,
   reajusteDaTrocaDeData,
   reancorarDataDeNegocio,
+  // S-C11: a régua única do "entrou dinheiro?" (E115/S5) — nunca a lista de
+  // status, que mente na PARCIAL preservada pelo `destinoPago: "manter"`.
+  teveRecebimento,
   type PecaAtrasada,
   type TipoDeAvaria,
+  type VeredictoDaTaxa,
 } from "@workspace/financeiro-core";
 
 const router: IRouter = Router();
@@ -1496,11 +1503,16 @@ async function aluguelDaPecaNoContrato(
 async function aluguelDaPecaDoBloqueio(
   bloqueio: { vestidoId: string | null; leadId: string | null; reservaId: string | null },
   lojaId: string,
+  // S-C11: o `executor` existe porque a EDIÇÃO chama esta conta de dentro da
+  // transação que já segura a avaria e a parcela. Pedir uma segunda conexão do
+  // pool com locks na mão é como se esgota um pool — e o `donoDoBloqueio` e o
+  // `aluguelDaPecaNoContrato` já aceitavam o `tx` desde que nasceram.
+  executor: DbExecutor = db,
 ): Promise<number | null> {
   if (!bloqueio.vestidoId) return null;
-  const dono = await donoDoBloqueio(bloqueio);
+  const dono = await donoDoBloqueio(bloqueio, executor);
   if (!dono) return null;
-  const [contrato] = await db
+  const [contrato] = await executor
     .select({ id: contratosTable.id })
     .from(contratosTable)
     .where(and(
@@ -1509,7 +1521,7 @@ async function aluguelDaPecaDoBloqueio(
       eq(contratosTable.status, "ATIVO"),
     ));
   if (!contrato) return null;
-  return aluguelDaPecaNoContrato({ contratoId: contrato.id, vestidoId: bloqueio.vestidoId });
+  return aluguelDaPecaNoContrato({ contratoId: contrato.id, vestidoId: bloqueio.vestidoId }, executor);
 }
 
 async function contratoAtivoDaLoja(
@@ -2255,6 +2267,263 @@ router.post(
         envelopeDoAtraso(cobranca, semAluguel, { jaCobrada: true, parcelaId }),
       ),
     );
+  },
+);
+
+/**
+ * **S-C11 — o zero a mais tem conserto.**
+ *
+ * `descricao`, `tipo`, `custo_reparo` e `justificativa_da_taxa` só entravam no
+ * `POST` de nascimento. Quem digitou **R$ 1.500,00** onde eram **R$ 150,00** só
+ * tinha um caminho: apagar a linha e refazer. E o `DELETE` logo abaixo RECUSA
+ * apagar quando a avaria sustenta cobrança viva (E97/F23) — e mesmo quando
+ * aceita, leva a **foto-prova** junto. O erro de digitação mais comum do
+ * sistema, o de dez vezes o valor, era o único sem conserto.
+ *
+ * ## As três decisões desta porta
+ *
+ * **1. A régua do E214 vale na edição INTEIRA.** As cláusulas 14ª e 15ª são
+ * conferidas de novo sobre o valor final, e quem violar um número do papel
+ * escreve a razão — que fica gravada na linha e vai para a trilha com
+ * `momento: "EDICAO"`. Sem isto a edição seria a porta dos fundos da régua que
+ * o E214 pôs na frente: bastaria nascer com R$ 400,00 e corrigir para
+ * R$ 9.000,00.
+ *
+ * **2. A cobrança VIVA segue o número, e o teto conferido é o DELA.**
+ * `parcelas.valor_previsto` nasceu de `avarias.custo_reparo` no
+ * `POST /cobrar`; deixar os dois divergirem é dois números para uma decisão só
+ * (a lição do E186) — a ficha diria R$ 150,00 e o carnê cobraria R$ 1.500,00,
+ * com o portal da noiva do lado do carnê. Pela mesma razão, o teto da 15ª sai
+ * do contrato que **cobra** o reparo e não do derivado: é ali que o dinheiro
+ * está, exatamente como o `POST /cobrar` decidiu no E214.
+ *
+ * **3. Dinheiro que ENTROU congela a linha** — 409 `AVARIA_COM_RECEBIMENTO`.
+ * Com `recebidoEm` na parcela, o extrato, o fluxo e o DRE já contaram aquele
+ * real no dia em que ele chegou, e baixar o previsto por baixo deles reescreve
+ * o passado. **O caminho de volta existe e é o de sempre**: estornar a parcela
+ * (que zera `valorRecebido`/`recebidoEm`, E115/S5) e então corrigir. A assimetria
+ * com o `DELETE` é de propósito e é o julgamento deste épico: apagar recusa em
+ * QUALQUER cobrança viva, porque a foto sustenta a parcela; corrigir recusa só
+ * onde houve recebimento, porque mexer no previsto de uma parcela que ninguém
+ * pagou não move um centavo de caixa — e é exatamente o gesto que faltava.
+ *
+ * A FOTO não entra no corpo. Trocar a prova não é corrigir um número; quem
+ * precisar de outra evidência registra outra avaria.
+ */
+// O gate é o do PREFIXO (`:1376`, `requireModulo("vestidos")`), que deriva a
+// ação do método: PATCH é `editar`. Escrevi um `requireModulo` explícito aqui
+// primeiro, por ter lido só o topo do arquivo e concluído que `/avarias` não
+// tinha gate nenhum — **medi, e tinha**: sem `vestidos` no perfil, as três
+// portas respondem 403. Dois lugares declarando a mesma permissão é a marca de
+// que a decisão não foi tomada (E186), e o que sobra é este comentário para
+// quem repetir a leitura.
+router.patch(
+  "/lojas/:lojaId/avarias/:avariaId",
+  async (req, res): Promise<void> => {
+    const { lojaId, avariaId } = req.params;
+    const parsed = UpdateAvariaBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json(erroDeValidacao(parsed.error));
+      return;
+    }
+
+    /**
+     * **Tudo decidido SOB a tranca, e é por isso que não há releitura à parte.**
+     *
+     * A alternativa — ler no pool, decidir, trancar e conferir — tem a janela
+     * que o V15 mediu no `DELETE` logo abaixo: entre a leitura e a escrita cabe
+     * o `POST /cobrar` inteiro, e a avaria passaria a ter uma parcela que esta
+     * conta não viu. Aqui a linha é trancada ANTES da primeira pergunta, e a
+     * ordem é a do módulo: **avaria → parcela**, os degraus 3 e 6 da cadeia
+     * declarada em `__tests__/portas-de-escrita.ts`.
+     */
+    const desfecho = await db.transaction(async (tx) => {
+      const [avaria] = await tx
+        .select({
+          id: avariasTable.id,
+          bloqueioId: avariasTable.bloqueioId,
+          descricao: avariasTable.descricao,
+          tipo: avariasTable.tipo,
+          custoReparo: avariasTable.custoReparo,
+          justificativaDaTaxa: avariasTable.justificativaDaTaxa,
+          parcelaId: avariasTable.parcelaId,
+        })
+        .from(avariasTable)
+        .where(and(eq(avariasTable.id, avariaId as string), eq(avariasTable.lojaId, lojaId as string)))
+        .for("update");
+      if (!avaria) return { naoEncontrada: true as const };
+
+      // A parcela do reparo, sob a MESMA transação: é ela que diz se há
+      // cobrança viva, se alguém já pagou, e em qual contrato o teto vive.
+      const [parcela] = avaria.parcelaId
+        ? await tx
+            .select({
+              id: parcelasTable.id,
+              status: parcelasTable.status,
+              contratoId: parcelasTable.contratoId,
+              recebidoEm: parcelasTable.recebidoEm,
+              valorRecebido: parcelasTable.valorRecebido,
+            })
+            .from(parcelasTable)
+            .where(eq(parcelasTable.id, avaria.parcelaId))
+            .for("update")
+        : [undefined];
+      // V2/E167 — "cobrada" é cobrança VIVA, não `parcelaId` preenchido. Com o
+      // contrato cancelado a parcela vira CANCELADA junto, e a partir daí ela é
+      // história: não há número que ela sustente.
+      const cobrancaViva = parcela !== undefined && parcela.status !== "CANCELADA";
+      if (cobrancaViva && teveRecebimento(parcela)) return { comRecebimento: true as const };
+
+      // Campo ausente é "não mexi"; `null` APAGA (a gramática do S-M10).
+      const descricao = parsed.data.descricao ?? avaria.descricao;
+      const tipo = (parsed.data.tipo ?? avaria.tipo) as TipoDeAvaria;
+      const custoReparo =
+        parsed.data.custoReparo !== undefined ? parsed.data.custoReparo : avaria.custoReparo;
+
+      // Apagar o custo de uma cobrança viva deixaria a parcela sem número — é o
+      // mesmo `AVARIA_SEM_CUSTO` que o `POST /cobrar` já devolve, na direção
+      // contrária.
+      if (cobrancaViva && (custoReparo === null || custoReparo <= 0)) {
+        return { semCusto: true as const };
+      }
+
+      const [bloqueio] = await tx
+        .select({
+          vestidoId: bloqueioVestidosTable.vestidoId,
+          leadId: bloqueioVestidosTable.leadId,
+          reservaId: bloqueioVestidosTable.reservaId,
+        })
+        .from(bloqueioVestidosTable)
+        .where(eq(bloqueioVestidosTable.id, avaria.bloqueioId));
+
+      const aluguel =
+        cobrancaViva && parcela
+          ? await aluguelDaPecaNoContrato(
+              { contratoId: parcela.contratoId, vestidoId: bloqueio?.vestidoId ?? null },
+              tx,
+            )
+          : bloqueio
+            ? await aluguelDaPecaDoBloqueio(bloqueio, lojaId as string, tx)
+            : null;
+
+      const veredicto = avaliarTaxaDeAvaria({ tipo, valor: custoReparo, aluguelDaPeca: aluguel });
+      const justificativaPedida =
+        parsed.data.justificativaDaTaxa !== undefined
+          ? parsed.data.justificativaDaTaxa
+          : avaria.justificativaDaTaxa;
+      const justificativa = justificativaPedida?.trim() || null;
+      if (veredicto.exigeJustificativa && !justificativa) {
+        return { foraDaFaixa: veredicto as VeredictoDaTaxa };
+      }
+
+      /**
+       * A parcela segue o número ANTES de a avaria mudar, e sob o CAS do
+       * recebimento: se alguém receber entre a tranca e esta linha — não pode,
+       * a tranca o impede —, zero linhas voltam e o `returning()` vazio derruba
+       * a transação inteira. É a mesma cinta e suspensório do `cobrar`.
+       */
+      let parcelaSeguiu: string | null = null;
+      if (cobrancaViva && parcela && custoReparo !== null && custoReparo !== avaria.custoReparo) {
+        await tx
+          .update(parcelasTable)
+          .set({ valorPrevisto: custoReparo })
+          .where(and(eq(parcelasTable.id, parcela.id), isNull(parcelasTable.recebidoEm)));
+        parcelaSeguiu = parcela.id;
+      }
+
+      // Justificativa colada numa taxa que CABE não vira selo permanente — a
+      // mesma decisão do nascimento (E214). Corrigido o valor para dentro da
+      // faixa, o vermelho da ficha some junto com o motivo dele.
+      const justificativaFinal = veredicto.exigeJustificativa ? justificativa : null;
+      const [linha] = await tx
+        .update(avariasTable)
+        .set({ descricao, tipo, custoReparo, justificativaDaTaxa: justificativaFinal })
+        .where(and(eq(avariasTable.id, avaria.id), eq(avariasTable.lojaId, lojaId as string)))
+        .returning();
+
+      /**
+       * O DE e o PARA, porque o valor anterior deixa de existir nesta escrita.
+       * *"Quem baixou este reparo de R$ 1.500,00 para R$ 150,00, e quando?"* não
+       * tem outra resposta depois do fato — e quando `parcelaSeguiu` está
+       * preenchido a pergunta vale dinheiro no carnê da noiva.
+       */
+      await registrarAuditoria(tx, {
+        lojaId: lojaId as string,
+        usuario: req.usuario!,
+        acao: "AVARIA_EDITADA",
+        entidade: "avaria",
+        entidadeId: avaria.id,
+        detalhe: {
+          de: {
+            descricao: avaria.descricao,
+            tipo: avaria.tipo,
+            custoReparo: avaria.custoReparo,
+            justificativaDaTaxa: avaria.justificativaDaTaxa,
+          },
+          para: {
+            descricao,
+            tipo,
+            custoReparo,
+            justificativaDaTaxa: justificativaFinal,
+          },
+          parcelaSeguiu,
+        },
+      });
+      // A MESMA linha do E214, com o momento dito: a violação escrita com razão,
+      // e a conta que não pôde ser conferida. É o que impede a decisão "não
+      // barra" de virar silêncio na edição, como já impedia no nascimento.
+      if (veredicto.mereceTrilha) {
+        await registrarAuditoria(tx, {
+          lojaId: lojaId as string,
+          usuario: req.usuario!,
+          acao: "AVARIA_FORA_DA_FAIXA",
+          entidade: "avaria",
+          entidadeId: avaria.id,
+          detalhe: {
+            momento: "EDICAO",
+            contratoId: cobrancaViva && parcela ? parcela.contratoId : null,
+            tipo: veredicto.tipo,
+            clausula: veredicto.clausula,
+            valor: veredicto.valor,
+            piso: veredicto.piso,
+            teto: veredicto.teto,
+            conferida: veredicto.conferida,
+            motivo: veredicto.motivo,
+            justificativa,
+          },
+        });
+      }
+      return { linha: linha!, status: parcela?.status ?? null };
+    });
+
+    if ("naoEncontrada" in desfecho) {
+      res.status(404).json({ error: "AVARIA_NAO_ENCONTRADA", detalhe: "Esta avaria não existe nesta loja." });
+      return;
+    }
+    if ("comRecebimento" in desfecho) {
+      res.status(409).json({
+        error: "AVARIA_COM_RECEBIMENTO",
+        detalhe: "Este reparo já recebeu dinheiro — estorne a parcela antes de corrigir o valor.",
+      });
+      return;
+    }
+    if ("semCusto" in desfecho) {
+      res.status(422).json({
+        error: "AVARIA_SEM_CUSTO",
+        detalhe: "Este reparo já virou parcela do contrato — a parcela ficaria sem valor.",
+        campos: [{ campo: "custoReparo", motivo: "Informe o custo do reparo" }],
+      });
+      return;
+    }
+    if ("foraDaFaixa" in desfecho) {
+      res.status(422).json({
+        error: "TAXA_FORA_DA_FAIXA",
+        detalhe: `${explicacaoDaFaixa(desfecho.foraDaFaixa!)} Para cobrar fora dela, escreva a razão.`,
+        campos: [{ campo: "justificativaDaTaxa", motivo: "Diga por que a taxa sai da faixa do contrato" }],
+      });
+      return;
+    }
+    res.status(200).json(UpdateAvariaResponse.parse(avariaMeta(desfecho.linha, desfecho.status)));
   },
 );
 

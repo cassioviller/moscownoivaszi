@@ -4558,6 +4558,50 @@ export const CreateAvariaResponse = zod.object({
 
 
 /**
+ * S-C11: `descricao`, `tipo`, `custoReparo` e `justificativaDaTaxa` só entravam no POST de nascimento. Quem digitou R$ 1.500,00 onde eram R$ 150,00 só tinha o caminho de apagar e refazer — que o E115 RECUSA quando a avaria sustenta cobrança viva, e que leva a FOTO-prova junto.
+ *
+ * A régua do E214 vale aqui inteira: valor que VIOLA um número das cláusulas 14ª/15ª entra com `justificativaDaTaxa`, e a razão vai para a trilha (`AVARIA_FORA_DA_FAIXA`, com `momento: EDICAO`). Sem isto a edição seria a porta dos fundos da régua que o E214 pôs na frente.
+ *
+ * Havendo cobrança VIVA, o teto conferido é o do contrato que a COBRA, e `parcelas.valorPrevisto` segue o novo valor na mesma transação — deixar os dois divergirem é dois números para uma decisão só. E havendo RECEBIMENTO na parcela a linha congela (409 `AVARIA_COM_RECEBIMENTO`): o extrato, o fluxo e o DRE já contaram aquele real, e o caminho de volta é estornar a parcela antes de corrigir.
+ * @summary Corrige a avaria registrada (S-C11)
+ */
+export const UpdateAvariaParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "avariaId": zod.coerce.string()
+})
+
+export const updateAvariaBodyDescricaoMax = 1000;
+
+export const updateAvariaBodyCustoReparoMin = 0;
+
+export const updateAvariaBodyJustificativaDaTaxaMax = 300;
+
+
+
+export const UpdateAvariaBody = zod.object({
+  "descricao": zod.string().min(1).max(updateAvariaBodyDescricaoMax).optional(),
+  "tipo": zod.enum(['LIMPEZA', 'DANO']).optional(),
+  "custoReparo": zod.number().min(updateAvariaBodyCustoReparoMin).nullish(),
+  "justificativaDaTaxa": zod.string().max(updateAvariaBodyJustificativaDaTaxaMax).nullish()
+})
+
+export const UpdateAvariaResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "bloqueioId": zod.string(),
+  "descricao": zod.string(),
+  "tipo": zod.enum(['LIMPEZA', 'DANO']),
+  "custoReparo": zod.number().nullish(),
+  "justificativaDaTaxa": zod.string().nullish(),
+  "temFoto": zod.boolean().describe('A foto vem por \/avarias\/{id}\/foto'),
+  "parcelaId": zod.string().nullish(),
+  "parcelaStatus": zod.union([zod.literal('PREVISTA'),zod.literal('PARCIAL'),zod.literal('PAGA'),zod.literal('CANCELADA'),zod.literal(null)]).nullish(),
+  "registradoPorNome": zod.string().nullish(),
+  "criadaEm": zod.coerce.date()
+})
+
+
+/**
  * Recusa com 409 `AVARIA_COM_COBRANCA` quando a avaria já virou parcela (E97/F23): a FOTO é a prova que sustenta a cobrança, e apagá-la deixando a parcela viva faz a noiva dever por um dano que o sistema não consegue mais mostrar.
  */
 export const DeleteAvariaParams = zod.object({

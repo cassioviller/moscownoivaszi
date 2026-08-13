@@ -166,9 +166,13 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   escrita** (`insert`/`update`/`delete`) nas **cinco tabelas quentes** —
   `bloqueio_vestidos`, `reservas`, `contratos`, `orcamentos` e **`parcelas`
   (S-O34, a tabela onde o dinheiro mora)** — e classifica cada porta em
-  **TRANCA**, **CAS** ou **ABERTA**. Hoje: **48 portas · 31 TRANCA · 8 CAS · 9
-  na dívida declarada** (2 nascimentos de linha-pai, 7 do gerador da loja de
-  demonstração) — **desde o E191 nenhuma porta ABERTA é porta de ROTA**. Desde o
+  **TRANCA**, **CAS** ou **ABERTA**. Hoje, **medido em 2026-08-13 (S-C11): 56
+  portas · 32 TRANCA · 11 CAS · 13 na dívida declarada** (6 de nascimento ou
+  serialização implícita, 7 do gerador da loja de demonstração) — **desde o E191
+  nenhuma porta ABERTA é porta de ROTA**. Este parágrafo dizia *48 · 31 · 8 · 9*
+  e envelheceu em silêncio: os pisos do teste são `>=`, então as portas que
+  E212, E213, E216 e E221 acrescentaram nunca cobraram a recontagem (S-C46).
+  **Meça antes de citar.** Desde o
   E180 ela também confere a **ORDEM**
   das trancas (S-O33): a sequência de `FOR UPDATE` de cada transação sobe os
   degraus de `DEGRAUS_DA_ORDEM` sem descer nenhum, e toda tranca dentro de laço
@@ -204,10 +208,13 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   vezes (E167, E179, E185) e **saiu errada as três**. O motor
   (`__tests__/schemas-aninhados.ts`) cruza as **operações do spec**, com `$ref`
   transitivo, contra o **`with` da consulta relacional** que monta a resposta,
-  e só pergunta pela FRONTEIRA — o filho de um pai que chegou. Hoje: **200
-  operações · 143 com schema de resposta · 70 com relação · 250 pares
-  (operação, caminho) · 144 entregues · 106 não · 31 operações montadas fora do
-  `with`**. Os 106 não são 106 defeitos, e as duas tabelas separam o que é o
+  e só pergunta pela FRONTEIRA — o filho de um pai que chegou. Hoje, **medido em
+  2026-08-13 (S-C11): 208 operações · 149 com schema de resposta · 74 com
+  relação · 273 pares (operação, caminho) · 174 entregues · 99 não · 30
+  operações montadas fora do `with`**. (Este parágrafo dizia *200 · 143 · 70 ·
+  250 · 144 · 106 · 31*, de antes do E199 — as contas do TESTE estão travadas em
+  igualdade e cobraram a cada épico; a prosa daqui não tem quem a cobre.) Os 99
+  não são 99 defeitos, e as duas tabelas separam o que é o
   quê: **7 arestas que porta nenhuma entrega** (cada uma com o endereço do
   serializador escrito à mão, em `MONTADO_FORA_DO_HANDLER`) e **16 entregues
   por umas portas e não por outras** (schema compartilhado — `Lead.interesse`
@@ -583,6 +590,22 @@ rode o codegen.
   novo seria apagá-la, destruindo a foto-prova. A conta mora em
   `financeiro-core/avaria.ts`, **inclusive a frase**, e a tela chama a mesma:
   quem digita R$ 50,00 de limpeza lê os R$ 350,00 no ato, não no 422.
+- **A avaria se CORRIGE, e a cobrança viva segue o número (S-C11).**
+  `PATCH /lojas/:lojaId/avarias/:avariaId` edita descrição, tipo, custo e
+  justificativa — **a foto não**, porque trocar a prova não é corrigir um
+  número. Antes disso o zero a mais (**R$ 1.500,00 onde eram R$ 150,00**) só
+  tinha a saída de apagar a linha, que o E115 recusa sob cobrança viva e que
+  leva a foto-prova junto. Três coisas valem: a **régua do E214 é reconferida
+  na edição** (senão bastaria nascer com R$ 400,00 e corrigir para R$ 9.000,00);
+  havendo cobrança viva o teto sai do contrato que **cobra**, e
+  `parcelas.valor_previsto` **acompanha** o novo valor na mesma transação — a
+  ficha e o carnê não podem dizer números diferentes; e **dinheiro que entrou
+  congela a linha** (409 `AVARIA_COM_RECEBIMENTO`), com o caminho de volta dito
+  na resposta e na tela: estornar a parcela e então corrigir. A assimetria com o
+  `DELETE` é a decisão do épico — apagar recusa em QUALQUER cobrança viva
+  (a foto sustenta a parcela), corrigir recusa só onde houve recebimento. Toda
+  edição deixa `AVARIA_EDITADA` na trilha com o **de** e o **para** de cada
+  campo, e a parcela que seguiu.
 - **A reserva se lê sozinha, e o dono do bloqueio é dito em toda porta de
   `reservas.ts` (E179).** `GET /lojas/:lojaId/reservas/:reservaId` existe — até
   aqui a única leitura de reserva era a listagem da loja INTEIRA, e foi ela que

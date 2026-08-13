@@ -182,13 +182,18 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
    * do `Recibo` (loja) e o do `PortalRecibo` (noiva) são campos de RESPOSTA —
    * o recibo é lido, nunca enviado, e não há corpo em que um `null` entre. A
    * conta sobe assim mesmo, pelo motivo escrito acima.
+   *
+   * **838 → 839 na S-C11**, e a única é o `criadaEm` do `Avaria` visto pela
+   * porta nova: o `PATCH /avarias/:id` devolve o mesmo schema que o `POST`, e o
+   * gerador escreve um `coerce.date()` por OPERAÇÃO, não por schema. É o caso
+   * inofensivo de sempre — campo de RESPOSTA, sem corpo em que um `null` entre.
    */
-  it("838 datas coercidas — as datas coercidas estão contadas — `null` vira 1970 e o zod aprova", () => {
+  it("839 datas coercidas — as datas coercidas estão contadas — `null` vira 1970 e o zod aprova", () => {
     const coeridas = (zod.match(/coerce\.date\(\)/g) ?? []).length;
     expect(
       coeridas,
       "mudou o número de datas coercidas? A guarda do V12 (`reservas.ts`) é campo a campo, não global",
-    ).toBe(838);
+    ).toBe(839);
   });
 
   /**

@@ -50,6 +50,7 @@ import type {
   AutorAuditoria,
   Avaria,
   AvariaInput,
+  AvariaUpdate,
   BackupLog,
   BackupStatus,
   BaixaEstornoComissao,
@@ -8782,6 +8783,84 @@ export const useCreateAvaria = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getCreateAvariaMutationOptions(options));
+    }
+
+export const getUpdateAvariaUrl = (lojaId: string,
+    avariaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/avarias/${avariaId}`
+}
+
+/**
+ * S-C11: `descricao`, `tipo`, `custoReparo` e `justificativaDaTaxa` só entravam no POST de nascimento. Quem digitou R$ 1.500,00 onde eram R$ 150,00 só tinha o caminho de apagar e refazer — que o E115 RECUSA quando a avaria sustenta cobrança viva, e que leva a FOTO-prova junto.
+ *
+ * A régua do E214 vale aqui inteira: valor que VIOLA um número das cláusulas 14ª/15ª entra com `justificativaDaTaxa`, e a razão vai para a trilha (`AVARIA_FORA_DA_FAIXA`, com `momento: EDICAO`). Sem isto a edição seria a porta dos fundos da régua que o E214 pôs na frente.
+ *
+ * Havendo cobrança VIVA, o teto conferido é o do contrato que a COBRA, e `parcelas.valorPrevisto` segue o novo valor na mesma transação — deixar os dois divergirem é dois números para uma decisão só. E havendo RECEBIMENTO na parcela a linha congela (409 `AVARIA_COM_RECEBIMENTO`): o extrato, o fluxo e o DRE já contaram aquele real, e o caminho de volta é estornar a parcela antes de corrigir.
+ * @summary Corrige a avaria registrada (S-C11)
+ */
+export const updateAvaria = async (lojaId: string,
+    avariaId: string,
+    avariaUpdate: AvariaUpdate, options?: RequestInit): Promise<Avaria> => {
+
+  return customFetch<Avaria>(getUpdateAvariaUrl(lojaId,avariaId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(avariaUpdate)
+  }
+);}
+
+
+
+
+export const getUpdateAvariaMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAvaria>>, TError,{lojaId: string;avariaId: string;data: BodyType<AvariaUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAvaria>>, TError,{lojaId: string;avariaId: string;data: BodyType<AvariaUpdate>}, TContext> => {
+
+const mutationKey = ['updateAvaria'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAvaria>>, {lojaId: string;avariaId: string;data: BodyType<AvariaUpdate>}> = (props) => {
+          const {lojaId,avariaId,data} = props ?? {};
+
+          return  updateAvaria(lojaId,avariaId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAvariaMutationResult = NonNullable<Awaited<ReturnType<typeof updateAvaria>>>
+    export type UpdateAvariaMutationBody = BodyType<AvariaUpdate>
+    export type UpdateAvariaMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Corrige a avaria registrada (S-C11)
+ */
+export const useUpdateAvaria = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAvaria>>, TError,{lojaId: string;avariaId: string;data: BodyType<AvariaUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAvaria>>,
+        TError,
+        {lojaId: string;avariaId: string;data: BodyType<AvariaUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateAvariaMutationOptions(options));
     }
 
 export const getDeleteAvariaUrl = (lojaId: string,

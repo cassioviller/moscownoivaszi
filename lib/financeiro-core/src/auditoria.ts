@@ -140,6 +140,14 @@ export const ACOES_AUDITORIA = [
   // o porquê fica. Sem esta linha, "R$ 9.000,00 de limpeza" seria de novo um
   // número sem dono: quem autorizou, quando, e contra qual teto.
   "AVARIA_FORA_DA_FAIXA",
+  // S-C11: a CORREÇÃO da avaria — o zero a mais que a mão comete. Até aqui os
+  // quatro campos só entravam no nascimento, e a única saída era apagar a
+  // linha (que o E115 recusa sob cobrança viva, e que leva a foto-prova junto).
+  // A trilha guarda o DE e o PARA porque o valor anterior deixa de existir na
+  // escrita: "quem baixou este reparo de R$ 1.500,00 para R$ 150,00, e quando?"
+  // não tem outra resposta depois do fato — e quando há cobrança viva a
+  // pergunta vale dinheiro, porque `parcelas.valor_previsto` muda junto.
+  "AVARIA_EDITADA",
   // E212: a cobrança do atraso na devolução (cláusula 16ª). É a ÚNICA cobrança
   // do sistema cujo valor depende do dia em que alguém clicou — a peça que não
   // voltou soma uma diária por dia, então a mesma peça cobrada na terça e na
@@ -244,6 +252,7 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   ORCAMENTO_REMOVIDO: "Orçamento removido",
   AVARIA_REMOVIDA: "Avaria removida",
   AVARIA_FORA_DA_FAIXA: "Taxa de avaria fora da faixa do contrato (com justificativa)",
+  AVARIA_EDITADA: "Avaria corrigida",
   ATRASO_COBRADO: "Atraso na devolução cobrado (cláusula 16ª)",
   MORA_PERDOADA: "Multa e juros da parcela vencida perdoados (cláusula 9ª)",
   MORA_RESTABELECIDA: "Multa e juros da parcela vencida restabelecidos (cláusula 9ª)",

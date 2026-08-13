@@ -290,7 +290,15 @@ describe("varredura — a enumeração das portas de escrita", () => {
     expect(arquivosVarridos().length).toBeGreaterThan(200);
   });
 
-  it("acha as portas — o piso é 22, e hoje são 48", () => {
+  /**
+   * **Medido em 2026-08-13 (S-C11): 56 portas — 32 TRANCA · 11 CAS · 13 na
+   * dívida.** O título anterior dizia 48, e a diferença NÃO é deste épico: a
+   * S-C11 acrescentou UMA (a parcela que segue o valor corrigido da avaria), e
+   * as outras sete entraram nos épicos da trilha do contrato sem que ninguém
+   * refizesse a conta. Os pisos são `>=`, então a prosa envelheceu em silêncio
+   * enquanto a régua continuava verde — *meça antes de citar*.
+   */
+  it("acha as portas — o piso é 22, e hoje são 56", () => {
     expect(portas.length).toBeGreaterThanOrEqual(22);
   });
 
@@ -576,12 +584,25 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
    * isto, um refactor que apagasse metade das trancas deixaria a dívida em 12 e
    * a suíte verde — a varredura estaria contando o que sobrou, não o que há.
    */
-  it("e as portas com disciplina são 39 — 31 sob tranca e 8 por CAS", () => {
+  it("e as portas com disciplina são 43 — 32 sob tranca e 11 por CAS", () => {
     const conta = { TRANCA: 0, CAS: 0, ABERTA: 0 };
     for (const p of portas) conta[p.disciplina] += 1;
     // Eram 28 até o E191, que fechou as três de `comissao.ts` (S-O79).
-    expect(conta.TRANCA).toBeGreaterThanOrEqual(31);
-    expect(conta.CAS).toBeGreaterThanOrEqual(8);
+    //
+    // **S-C11 — 31 → 32 sob tranca, e 8 → 11 por CAS.** Só a primeira é deste
+    // épico: o `UPDATE parcelas SET valor_previsto` do `PATCH /avarias/:id`,
+    // que faz a cobrança viva seguir o valor corrigido. Ele tranca a avaria
+    // (degrau 3) e depois a parcela (degrau 6), relê `parcelas.status` sob a
+    // tranca e ainda repete `recebido_em IS NULL` no `where` da escrita —
+    // medido: `TRANCA trancou=[avariasTable,parcelasTable] releitura=tranca lê
+    // parcelasTable.status cas=[recebidoEm]`.
+    //
+    // As três de CAS são drift ANTERIOR, medido aqui pela primeira vez: os
+    // pisos são `>=` e ninguém os subiu depois do E212 e do E213. Piso três
+    // abaixo do real deixa três portas sumirem caladas — que é exatamente o que
+    // esta conta existe para impedir.
+    expect(conta.TRANCA).toBeGreaterThanOrEqual(32);
+    expect(conta.CAS).toBeGreaterThanOrEqual(11);
   });
 });
 

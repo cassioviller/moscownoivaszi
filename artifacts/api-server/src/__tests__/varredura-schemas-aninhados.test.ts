@@ -77,7 +77,7 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
    * acrescenta um objeto aninhado a um schema de resposta, e é aí que a régua
    * serve — obriga a perguntar quem vai preenchê-lo.
    */
-  it("207 operações · 148 com schema de resposta · 74 com relação · 273 pares na fronteira", () => {
+  it("208 operações · 149 com schema de resposta · 74 com relação · 273 pares na fronteira", () => {
     /**
      * E221: 200 → 203, e as três são do recibo da cláusula 7ª — `listRecibos`,
      * `getReciboPdf` e `getPortalReciboPdf`. **Só uma acrescenta par à
@@ -87,7 +87,13 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
      * trilha (`recibosDoContrato`), que preenche os dez campos do `Recibo` —
      * não um `with` que possa esquecer um filho. Por isso ele nasce entregue.
      */
-    expect(c.operacoes, "operação nova no spec: confira quem monta a resposta dela e atualize esta contagem").toBe(207);
+    /**
+     * S-C11: 207 → 208. A porta de EDIÇÃO da avaria (`PATCH /avarias/:id`), e
+     * ela **não acrescenta par à fronteira**: `Avaria` é schema PLANO — não há
+     * `$ref` filho que alguém possa esquecer de preencher. A resposta sai do
+     * `returning()` da própria escrita, o mesmo caminho do `POST` irmão.
+     */
+    expect(c.operacoes, "operação nova no spec: confira quem monta a resposta dela e atualize esta contagem").toBe(208);
     // E221: 143 → 144. Só o `listRecibos` entra — as outras duas devolvem PDF.
     // E212: 144 → 146. As duas novas são a prévia e a cobrança do atraso da
     // cláusula 16ª, e as duas devolvem o MESMO `CobrancaDeAtraso` — de
@@ -96,7 +102,10 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // E213: 146 → 148. As duas novas são `perdoarMora` e `restabelecerMora`,
     // e as duas devolvem `Parcela` — a mesma resposta do recebimento, de
     // propósito: quem perdoa vê a parcela como a fila vai vê-la.
-    expect(c.comSchemaDeResposta).toBe(148);
+    // S-C11: 148 → 149. O `PATCH /avarias/:id` devolve o MESMO `Avaria` do
+    // `POST`, de propósito: a ficha relê a linha corrigida pelo mesmo formato
+    // com que a leu, e um segundo schema seria a segunda grafia que diverge.
+    expect(c.comSchemaDeResposta).toBe(149);
     // E212: 70 → 72. `CobrancaDeAtraso` aninha `CobrancaDeAtrasoLinha` — a conta
     // é uma linha POR PEÇA, que é o §2º da cláusula 16ª ("aplicados
     // proporcionalmente a trajes e/ou acessórios avulsos") virando forma.
