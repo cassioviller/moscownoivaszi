@@ -16,8 +16,12 @@ contra o código, com `arquivo:linha`; onde não há âncora, está dito que nã
 
 ## O retrato em uma linha
 
-**De 21 cláusulas e 15 parágrafos, o sistema implementa 4 e colide com 3. As
-outras 21 regras operacionais simplesmente não existem nele** — e a maioria é
+**A régua desta auditoria é a decisão da dona de 13/08/2026: o contrato está
+certo.** Onde papel e sistema divergem, é o sistema que se ajusta — e a releitura
+sob essa régua já corrigiu um julgamento meu (o horário, abaixo).
+
+**De 21 cláusulas e 15 parágrafos, o sistema implementa 4 e colide com 2. As
+outras 22 regras operacionais simplesmente não existem nele** — e a maioria é
 dinheiro: multa, juros, reajuste, taxa de limpeza, taxa de dano, extravio.
 
 O documento que o sistema imprime (`lib/contrato-do-papel.ts`) **não tem uma
@@ -95,8 +99,8 @@ vive fora do sistema.
 
 | cláusula | regra | estado |
 |---|---|---|
-| **4ª** | loja aberta **ter–sex 10:30–19:00, sáb 10:30–18:00** | ⚠️ **COLIDE, e o sistema é que está certo.** O horário gravado é `atendimentoAberturaHora: 9`, `atendimentoFechamentoHora: 20`, `diasFuncionamento: [0,1,2,3,4,5,6]` — **sete dias, 9h às 20h**. E não é chute: a decisão **S-A8** saiu do caderno de papel — 7 compromissos em 5 domingos e provas às 18:30 que o fechamento anterior recusava. **O ateliê já atende domingo e depois das 19h; o contrato promete o contrário.** Nota fina: o horário do sistema é de ATENDIMENTO (provas); o da cláusula é de RETIRADA e DEVOLUÇÃO, e essa distinção não existe no modelo |
-| **5ª** | locação começa às **10:30** e termina às **18:00** | ⚠️ `contratos.dataRetirada` e `dataDevolucao` são `timestamp`, então a hora cabe — mas nenhuma régua a fixa nem a confere. Na prática o sistema trata as duas como DIA |
+| **4ª** | loja aberta **ter–sex 10:30–19:00, sáb 10:30–18:00** | ❌ **falta um calendário inteiro, e não é contradição — é ausência.** O único horário do sistema (`atendimentoAberturaHora: 9`, `atendimentoFechamentoHora: 20`, `diasFuncionamento: [0..6]`) mora em `routes/agenda.ts:1346` e governa **ATENDIMENTO** — as provas. Ele veio do caderno (S-A8: 7 compromissos em 5 domingos, provas às 18:30) e está certo **para provas**. A cláusula fala de **RETIRADA e DEVOLUÇÃO**, que é outro expediente — e desse o sistema não sabe nada. Um ateliê que prova aos domingos e só entrega de terça a sábado é perfeitamente coerente; **o modelo é que tem um calendário onde o negócio tem dois** |
+| **5ª** | locação começa às **10:30** e termina às **18:00** | ❌ `contratos.dataRetirada` e `dataDevolucao` são `timestamp`, então a hora cabe — mas **nada as valida**: medido em `routes/contratos.ts:825`, o valor é gravado como veio. Hoje o sistema aceita retirada num domingo às 23h sem uma palavra |
 | **5ª §1º** | locadora não responde por traje não retirado | ⬜ |
 | **5ª §2º** | entregar lavados e passados | ✅ o modelo conhece a **lavagem** como janela (`lavagemDiasDepois: 7`, `disponibilidade.ts`), que é o mecanismo que garante a peça limpa para a próxima |
 | **5ª §3º** | dano constatado na locação → substituição | ❌ há `avarias` na DEVOLUÇÃO; não há registro de dano constatado na ENTREGA, nem gesto de substituir a peça |
@@ -164,21 +168,34 @@ vive fora do sistema.
 
 ---
 
-## As três colisões, separadas do resto
+## As duas colisões, separadas do resto
 
 Ausência é dívida; **colisão é o sistema afirmando o contrário do contrato**, e
-só há três:
+só há duas:
 
-1. **Horário (4ª).** O contrato promete ter–sex até 19h e sábado até 18h. O
-   sistema atende **os sete dias até as 20h**, e essa configuração veio da
-   realidade medida no caderno. **É o papel que está errado**, e consertá-lo é
-   mais barato e mais honesto que estreitar o sistema.
-2. **Cópia do instrumento (6ª).** O sistema entrega um resumo financeiro no
+1. **Cópia do instrumento (6ª).** O sistema entrega um resumo financeiro no
    lugar do contrato. Quem lê a cláusula supõe que o PDF do sistema seja o
    instrumento; não é.
-3. **Taxas de avaria (14ª e 15ª).** O contrato dá faixa e teto; o sistema aceita
+2. **Taxas de avaria (14ª e 15ª).** O contrato dá faixa e teto; o sistema aceita
    qualquer número. Não é ausência pura porque o campo existe — ele só não
    obedece.
+
+### E a que eu tinha contado como terceira, errado
+
+A primeira versão desta auditoria listava o **horário (4ª)** como colisão e
+concluía que *"é o papel que está errado"*. **A dona decidiu em 13/08/2026 que o
+contrato está certo**, e ao reler com essa régua o defeito era meu, não do papel:
+
+O horário do sistema governa **ATENDIMENTO** (`routes/agenda.ts:1346`) e veio do
+caderno — provas aos domingos e às 18:30 são fato medido (S-A8). A cláusula 4ª
+governa **RETIRADA e DEVOLUÇÃO**. **São dois expedientes diferentes, e eu tratei
+como um só porque o sistema trata como um só.** Provar sete dias e entregar de
+terça a sábado é coerente; o que falta é o segundo calendário.
+
+A lição vale além desta linha: **duas regras que falam de horários diferentes não
+se contradizem — a contradição estava no modelo que só tem um horário.** Foi a
+régua "o contrato está certo" que obrigou a reler; sem ela, eu teria proposto
+estreitar o sistema para caber numa comparação errada.
 
 ## O que a auditoria mudou de opinião no meio
 

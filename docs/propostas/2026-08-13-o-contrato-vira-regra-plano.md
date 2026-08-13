@@ -7,9 +7,12 @@ Base `02634e7`.
 
 ## O que a auditoria devolveu
 
-De 21 cláusulas e 15 parágrafos: **4 o sistema já cumpre, 3 colidem, 21 regras
+De 21 cláusulas e 15 parágrafos: **4 o sistema já cumpre, 2 colidem, 22 regras
 operacionais não existem nele.** A maioria das ausentes é dinheiro — multa,
 juros, reajuste, taxa de limpeza, taxa de dano, extravio.
+
+(Eram 3 colisões na primeira versão. A régua *"o contrato está certo"* obrigou a
+reler o horário, e o erro era meu — está contado na auditoria e no E222.)
 
 E o achado de maior alcance não é nenhuma cláusula isolada: **o sistema não
 guarda 9 dos 13 dados que o contrato exige do LOCATÁRIO** (estado civil,
@@ -17,20 +20,40 @@ profissão, RG, data de nascimento, e-mail e o endereço inteiro). Hoje a
 vendedora fecha o contrato no sistema e preenche a identificação **à mão no
 papel**.
 
-## Fase 0 — o que só a dona decide
+## Fase 0 — a decisão que já veio, e as duas que faltam
 
-**Nenhuma linha de código antes destas respostas.** Quatro delas travam trabalho
-de verdade; as outras são para o contrato, não para o sistema.
+### A régua, decidida em 13/08/2026
 
-| # | pergunta | por que trava |
+> **"O contrato está certo."**
+
+Onde papel e sistema divergirem, **é o sistema que se ajusta**. A decisão fecha
+D2, D5 e D6 de uma vez — e já corrigiu um erro meu:
+
+- **D2 — resolvida, e a pergunta estava MAL FEITA.** Eu a apresentei como escolha
+  entre corrigir o papel ou estreitar o sistema. Não era: a cláusula 4ª fala de
+  **retirada e devolução**, e o horário do sistema é de **atendimento** (provas,
+  `routes/agenda.ts:1346`, sete dias até as 20h, vindo do caderno pela S-A8).
+  **São dois expedientes, e o sistema só tem um.** Nasce o **E222**.
+- **D5 — resolvida.** A cláusula de pandemia (13ª §1º) fica como está.
+- **D6 — resolvida.** O aviso prévio de 365 dias (10ª) fica como está.
+  Nenhuma das duas pede código.
+
+### As duas que a régua NÃO consegue responder
+
+Estas não sobrevivem a "o contrato está certo" porque **o contrato não diz**: ele
+se contradiz numa e fica em branco na outra.
+
+| # | pergunta | por que a régua não resolve |
 |---|---|---|
-| **D1** | **Qual é o CNPJ certo?** O papel traz **37.771.644/0001-93** na identificação e **31.897.111/0001-76** na assinatura | É o que o sistema vai imprimir em todo contrato. Imprimir o errado é pior que não imprimir |
-| **D2** | O contrato promete loja **ter–sex 10:30–19:00 e sáb até 18:00**; o ateliê atende **os sete dias até as 20h** (foi o caderno que disse, S-A8). **Corrige-se o contrato, ou o sistema deve passar a distinguir horário de PROVA e horário de RETIRADA?** | Decide se isto é conserto de papel (barato) ou modelo novo (caro) |
-| **D3** | **Cláusula 18ª está incompleta no papel**: *"se comunicar o cancelamento até ____ dias antes"*. Qual é o prazo? | Sem o número, a cláusula é inaplicável e não há o que programar |
-| **D4** | O **PDF do sistema deve virar o instrumento com as 21 cláusulas**, ou continuar sendo o resumo financeiro e o papel seguir separado? | Decide se existe a Fase 3 inteira |
-| D5 | A **13ª §1º** ainda fala em decretos da pandemia (Covid-19). Mantém, reescreve ou remove? | só papel |
-| D6 | A **10ª** pede aviso prévio de **365 dias** para rescisão imotivada, num contrato de casamento. Mantém? | só papel |
-| D7 | O representante legal (Renato) e a chave PIX (CPF de Karina) — o sistema deve guardá-los para imprimir? | abre um campo de cadastro |
+| **D1** | **Qual é o CNPJ?** O papel traz **37.771.644/0001-93** na identificação (p. 1) e **31.897.111/0001-76** na assinatura (p. 6) | O contrato afirma os DOIS, e são números diferentes. "Está certo" não escolhe entre eles — e é o número que todo contrato impresso vai carregar |
+| **D3** | **Cláusula 18ª: até quantos dias antes?** — *"se comunicar o cancelamento até _____ dias antes"* | O molde tem a **lacuna em branco**. Não há regra a seguir porque não há regra escrita |
+
+### As que seguem abertas por escolha, não por impedimento
+
+| # | pergunta |
+|---|---|
+| **D4** | O **PDF do sistema deve virar o instrumento com as 21 cláusulas**? A régua nova empurra para o sim — a 6ª manda entregar cópia *"do presente instrumento"*, e hoje o sistema entrega outra coisa (E220) |
+| **D7** | O representante legal (Renato) e a chave PIX (CPF de Karina) devem ser guardados no cadastro da loja, para o sistema imprimir? |
 
 ## A ordem, e a razão dela
 
@@ -145,6 +168,26 @@ Passa a calcular:
   retirada** — hoje nada compara `parcelas.vencimento` com
   `contratos.dataRetirada`.
 
+### E222 — o ateliê tem DOIS expedientes, e o sistema só conhece um (4ª e 5ª)
+
+**Nasceu da decisão de 13/08.** O horário que existe governa **atendimento** —
+provas, sete dias até as 20h, medido no caderno (S-A8) e correto. A cláusula 4ª
+governa **retirada e devolução**: **terça a sexta, 10:30–19:00; sábado,
+10:30–18:00** — fechado domingo e segunda.
+
+- nasce o expediente de **retirada/devolução**, ao lado do de atendimento, na
+  mesma tela de "Cabines & horário";
+- `contratos.dataRetirada` e `dataDevolucao` passam a ser **validadas** contra
+  ele — hoje são gravadas como vierem (`routes/contratos.ts:825`), e o sistema
+  aceita retirada num domingo às 23h sem uma palavra;
+- os **defaults** saem do contrato (10:30 e 18:00, cláusula 5ª), configuráveis
+  por loja como todo o resto;
+- o recado da recusa cita o expediente, não um código.
+
+**Cuidado que o épico tem de medir**: o E2E e o seed criam contratos com datas
+arbitrárias. Estreitar a porta sem olhar a fixture reprova a suíte por dado de
+teste, não por defeito — foi o que o E198 aprendeu com o `e87`.
+
 ### E219 — a troca de traje tem prazo (17ª e §1º)
 
 - sem troca **após 7 dias** da locação;
@@ -182,9 +225,10 @@ não existe recibo nenhum (medido: zero ocorrências no código). O recebimento 
 
 - **A nota promissória (5ª §4º)** — é papel assinado na retirada. O sistema pode
   no máximo lembrar que ela existe; não vale épico.
-- **O crédito de pandemia (13ª §1º e §2º)** — espera D5. Se a cláusula for
-  reescrita como "crédito por qualquer motivo", vira épico; como está, é letra
-  morta.
+- **O crédito de pandemia (13ª §1º e §2º)** — a D5 decidiu que a cláusula fica
+  como está, e como está ela é de pandemia. Enquanto o gatilho for decreto de
+  Covid-19, não há gesto a programar. Se um dia virar "crédito por qualquer
+  motivo", vira épico.
 - **As cláusulas 2ª, 3ª, 9ª § único, 10ª, 19ª, 20ª** — direito, não software.
 - **O dano constatado na ENTREGA (5ª §3º)** — o sistema só conhece avaria na
   devolução. Fica anotado como sobra, não como épico: é caso raro e a dona não
@@ -192,13 +236,18 @@ não existe recibo nenhum (medido: zero ocorrências no código). O recebimento 
 
 ## A ordem sugerida, se for para começar hoje
 
-1. **Fase 0** — as quatro decisões que travam (D1 a D4).
-2. **E211** (data que muda tem preço) — não depende de decisão nenhuma, usa dado
-   que já existe, e é dinheiro que o contrato já manda cobrar e ninguém cobra.
+1. **D1 e D3** — as duas perguntas que a régua não resolve, e que travam o E220
+   (o CNPJ que vai impresso) e o E217 (o prazo da 18ª).
+2. **E211** (a data que muda tem preço) — não depende de decisão nenhuma, usa
+   dado que já existe, e é dinheiro que o contrato manda cobrar e ninguém cobra.
 3. **E212** e **E213** — mesma natureza, mesma fonte de dado.
-4. **E215** — abre a Faixa B, porque o E220 depende dele.
-5. O resto, na ordem do plano.
+4. **E222** — o segundo expediente. Sobe na fila porque a decisão de hoje o fez
+   nascer, e porque é a única cláusula em que o sistema hoje **deixa acontecer**
+   o que o contrato proíbe (retirada fora do horário da loja).
+5. **E215** — abre a Faixa B, porque o E220 depende dele.
+6. O resto, na ordem do plano.
 
-**O E211 é o que eu faria primeiro**, e por uma razão que não é técnica: é a
-única regra do contrato que o ateliê **perde dinheiro** por não ter — cada troca
-de data para o ano seguinte deveria somar 10% ao contrato, e hoje some.
+**O E211 continua sendo o que eu faria primeiro**, e por uma razão que não é
+técnica: é a única regra do contrato que o ateliê **perde dinheiro** por não ter
+— cada troca de data para o ano seguinte deveria somar 10% ao contrato, e hoje
+some.
