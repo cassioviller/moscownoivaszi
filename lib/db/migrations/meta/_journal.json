@@ -183,6 +183,13 @@
       "when": 1786629235017,
       "tag": "0025_last_captain_flint",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1786651602819,
+      "tag": "0026_broad_rockslide",
+      "breakpoints": true
     }
   ]
 }

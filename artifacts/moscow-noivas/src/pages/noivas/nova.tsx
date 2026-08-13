@@ -34,6 +34,23 @@ export default function NovaNoiva() {
           casamentoHorario: values.casamentoHorario || undefined,
           casamentoLocal: values.casamentoLocal || undefined,
           origem: values.origem,
+          // E215 — a qualificação de quem assina. `undefined` e não `null`
+          // aqui: no POST o campo ausente é "não preenchi", e a coluna nasce
+          // nula sozinha — mandar `null` explícito diria a mesma coisa por um
+          // caminho a mais.
+          cpf: values.cpf || undefined,
+          rg: values.rg || undefined,
+          estadoCivil: values.estadoCivil,
+          profissao: values.profissao || undefined,
+          nascimento: values.nascimento ? diaParaISO(values.nascimento) : undefined,
+          email: values.email || undefined,
+          enderecoLogradouro: values.enderecoLogradouro || undefined,
+          enderecoNumero: values.enderecoNumero || undefined,
+          enderecoComplemento: values.enderecoComplemento || undefined,
+          enderecoBairro: values.enderecoBairro || undefined,
+          enderecoCep: values.enderecoCep || undefined,
+          enderecoCidade: values.enderecoCidade || undefined,
+          enderecoEstado: values.enderecoEstado || undefined,
         },
       });
       await queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey(activeLojaId!) });

@@ -21,6 +21,7 @@ import { registrarAuditoria } from "../lib/auditoria";
 import { avancarEtapaLead } from "../lib/estados";
 // S-O56/E185 — a régua do dono, a mesma que as portas de leitura respondem.
 import { comDono } from "../lib/dono-do-bloqueio";
+import { faltasDaQualificacao, congelarQualificacao } from "../lib/qualificacao-da-locataria";
 import { pdfDoContrato, nomeDoArquivo } from "../lib/contrato-do-papel";
 // E221 — o recibo da cláusula 7ª: a montagem é pura, a leitura da trilha é do
 // `recibos-do-banco`, e o escopo (a loja da URL) fica aqui, como no PDF.
@@ -239,10 +240,50 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
     id: leadsTable.id,
     etapa: leadsTable.etapa,
     contratoFechadoEm: leadsTable.contratoFechadoEm,
+    // E215 — a qualificação da locatária vem da FICHA, e é ela que o contrato
+    // congela. Uma fonte só: o `cpf` do corpo era a segunda grafia do mesmo
+    // dado, e é a classe do E187.
+    cpf: leadsTable.cpf,
+    rg: leadsTable.rg,
+    estadoCivil: leadsTable.estadoCivil,
+    profissao: leadsTable.profissao,
+    nascimento: leadsTable.nascimento,
+    email: leadsTable.email,
+    enderecoLogradouro: leadsTable.enderecoLogradouro,
+    enderecoNumero: leadsTable.enderecoNumero,
+    enderecoComplemento: leadsTable.enderecoComplemento,
+    enderecoBairro: leadsTable.enderecoBairro,
+    enderecoCep: leadsTable.enderecoCep,
+    enderecoCidade: leadsTable.enderecoCidade,
+    enderecoEstado: leadsTable.enderecoEstado,
   }).from(leadsTable)
     .where(and(eq(leadsTable.id, contratoData.leadId), eq(leadsTable.lojaId, lojaId)));
   if (!lead) {
     res.status(422).json({ error: "LEAD_INVALIDO", detalhe: "Lead não encontrado nesta loja" });
+    return;
+  }
+
+  /**
+   * 1a. E215 — **o contrato não fecha sem saber quem assina** (qualificação
+   * das partes).
+   *
+   * A recusa nomeia TODOS os campos que faltam, não o primeiro: quem está
+   * fechando com a noiva na frente precisa saber tudo de uma vez, senão a
+   * correção vira doze idas à ficha.
+   *
+   * A régua é da PORTA e não da coluna, e é por isso que ela pode existir sem
+   * migração destrutiva: os 1413 leads que já existem seguem válidos como
+   * FICHA, e os 735 contratos já fechados não são tocados — eles nasceram sob
+   * outra regra, e reescrever o passado seria dizer que a noiva assinou o que
+   * não assinou.
+   */
+  const faltas = faltasDaQualificacao(lead);
+  if (faltas.length > 0) {
+    res.status(422).json({
+      error: "QUALIFICACAO_INCOMPLETA",
+      detalhe: `O contrato qualifica quem assina, e a ficha da noiva ainda não tem ${faltas.length === 1 ? "um dado" : `${faltas.length} dados`}. Complete a ficha e feche o contrato em seguida.`,
+      campos: faltas,
+    });
     return;
   }
 
@@ -888,7 +929,10 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       orcamentoId: contratoData.orcamentoId ?? null,
       bloqueioVestidoId: contratoData.bloqueioVestidoId ?? null,
       vendedoraId: contratoData.vendedoraId,
-      cpf: contratoData.cpf ?? null,
+      // E215 — a qualificação CONGELA aqui, vinda da ficha conferida acima. O
+      // `cpf` do corpo deixou de ser lido: era a segunda grafia do mesmo dado,
+      // e das duas só a ficha é editável depois.
+      ...congelarQualificacao(lead),
       vestidoDescricao: contratoData.vestidoDescricao ?? null,
       valorTotal: contratoData.valorTotal,
       descontoTipo,

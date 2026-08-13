@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { eq } from "drizzle-orm";
 import { db, leadsTable, contratosTable, parcelasTable } from "../lib/db/src/index";
-import { lerEstado, API_URL } from "./helpers";
+import { lerEstado, API_URL, QUALIFICACAO_DA_NOIVA } from "./helpers";
 
 const estado = lerEstado();
 
@@ -34,7 +34,7 @@ test.describe("Recebimentos por meio (E50)", () => {
     // Duas parcelas recebidas hoje por meios diferentes: é o mínimo para o
     // recorte ter mais de uma linha e a soma poder divergir se estiver errada.
     const lead = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/leads`, {
-      data: { noivaNome: `E2E Meio ${stamp}`, origem: "LOJA" },
+      data: { noivaNome: `E2E Meio ${stamp}`, origem: "LOJA", ...QUALIFICACAO_DA_NOIVA },
     });
     expect(lead.status(), await lead.text()).toBe(201);
     leadId = ((await lead.json()) as { id: string }).id;

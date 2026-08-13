@@ -8,7 +8,7 @@ import { orcamentosTable } from "./orcamentos";
 import { bloqueioVestidosTable } from "./atendimentos";
 import { vestidosTable, itensEstoqueTable } from "./vestidos";
 import { usuariosTable } from "./usuarios";
-import { contratoStatusEnum, formaPagamentoEnum, orcamentoItemTipoEnum, descontoTipoEnum } from "./common/enums";
+import { contratoStatusEnum, formaPagamentoEnum, orcamentoItemTipoEnum, descontoTipoEnum, estadoCivilEnum } from "./common/enums";
 
 export const contratosTable = pgTable("contratos", {
   id: text("id").primaryKey(),
@@ -27,7 +27,33 @@ export const contratosTable = pgTable("contratos", {
   // O caminho suportado para quem sai do ateliê é INATIVAR (`usuarios.ativo`).
   vendedoraId: text("vendedora_id").notNull().references(() => usuariosTable.id, { onDelete: "restrict" }),
   status: contratoStatusEnum("status").notNull().default("ATIVO"),
+  /**
+   * E215 — a qualificação da locatária, **CONGELADA no fecho**.
+   *
+   * A ficha da noiva (`leads`) continua viva e editável: ela muda de endereço,
+   * casa, troca de profissão. O contrato é o que ela **assinou**, e o papel
+   * tem de poder ser reimpresso anos depois dizendo o que dizia no dia — é a
+   * mesma razão do `vestidoDescricao` e do par `descontoTipo`/`descontoValor`
+   * logo abaixo: o snapshot existe porque a fonte é viva.
+   *
+   * O `cpf` já era assim desde antes e ficou sozinho, o que era o defeito: um
+   * campo de qualificação congelado e os outros doze inexistentes. Medido em
+   * 13/08, **0 de 735 contratos tinham CPF preenchido** — congelar um campo
+   * opcional é congelar `null`.
+   */
   cpf: text("cpf"),
+  rg: text("rg"),
+  estadoCivil: estadoCivilEnum("estado_civil"),
+  profissao: text("profissao"),
+  nascimento: timestamp("nascimento", { withTimezone: true }),
+  email: text("email"),
+  enderecoLogradouro: text("endereco_logradouro"),
+  enderecoNumero: text("endereco_numero"),
+  enderecoComplemento: text("endereco_complemento"),
+  enderecoBairro: text("endereco_bairro"),
+  enderecoCep: text("endereco_cep"),
+  enderecoCidade: text("endereco_cidade"),
+  enderecoEstado: text("endereco_estado"),
   vestidoDescricao: text("vestido_descricao"),
   valorTotal: decimal("valor_total", { precision: 10, scale: 2, mode: "number" }).notNull(),
   // Desconto CONGELADO do orçamento no fecho. Sem isto, o snapshot guarda os

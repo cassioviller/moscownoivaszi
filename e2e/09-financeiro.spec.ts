@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { eq } from "drizzle-orm";
 import { db, leadsTable, contratosTable, parcelasTable, contasPagarTable } from "../lib/db/src/index";
-import { coletarErrosApi, resumoErros, lerEstado, API_URL , diaLocalSP} from "./helpers";
+import { coletarErrosApi, resumoErros, lerEstado, API_URL , diaLocalSP, QUALIFICACAO_DA_NOIVA} from "./helpers";
 
 const estado = lerEstado();
 
@@ -62,7 +62,7 @@ test.describe("Financeiro", () => {
 
     // Lead próprio: o contrato exige que o lead não tenha outro contrato ativo.
     const lead = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/leads`, {
-      data: { noivaNome: `E2E Financeiro ${stamp}`, origem: "LOJA" },
+      data: { noivaNome: `E2E Financeiro ${stamp}`, origem: "LOJA", ...QUALIFICACAO_DA_NOIVA },
     });
     expect(lead.status(), await lead.text()).toBe(201);
     leadId = ((await lead.json()) as { id: string }).id;

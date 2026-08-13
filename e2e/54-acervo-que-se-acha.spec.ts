@@ -9,7 +9,7 @@ import {
   orcamentosTable,
   orcamentoItensTable,
 } from "../lib/db/src/index";
-import { lerEstado, API_URL } from "./helpers";
+import { lerEstado, API_URL, QUALIFICACAO_DA_NOIVA } from "./helpers";
 
 const estado = lerEstado();
 
@@ -41,7 +41,7 @@ test.describe("E124 — busca no acervo e no balcão", () => {
     await request.post(`${API_URL}/api/auth/selecionar-loja`, { data: { lojaId: estado.lojaId } });
 
     const lead = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/leads`, {
-      data: { noivaNome, whatsapp: "11955554444" },
+      data: { noivaNome, whatsapp: "11955554444", ...QUALIFICACAO_DA_NOIVA },
     });
     expect(lead.status(), await lead.text()).toBe(201);
     leadId = (await lead.json()).id;

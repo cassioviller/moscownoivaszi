@@ -48,7 +48,41 @@ const noivaSchema = z.object({
   origem: z.enum(["LOJA", "WHATSAPP", "SITE", "INSTAGRAM"], {
     message: "Escolha de onde ela veio",
   }),
+  /**
+   * E215 — a qualificação de quem assina o contrato.
+   *
+   * **Opcionais AQUI, e é decisão.** A régua mora na porta do fecho
+   * (`POST /contratos` recusa com `QUALIFICACAO_INCOMPLETA` nomeando o campo),
+   * não neste formulário: a noiva vira ficha quando liga perguntando preço, e
+   * exigir CPF no cadastro travaria o balcão. O formulário AVISA o que vai
+   * fazer falta — no molde do E218, onde a entrada de 40% avisa em vez de
+   * recusar.
+   */
+  cpf: z.string().optional(),
+  rg: z.string().optional(),
+  // Uma linha só, e não é estilo: a `enums-do-contrato` lê este `z.enum`
+  // TEXTUALMENTE (importar o schema exigiria montar a tela inteira), e o regex
+  // dela pede `z.enum(` contíguo. Quebrado em `z\n.enum(`, o leitor não acha e
+  // falha alto — que é o comportamento certo dele, e foi como este comentário
+  // nasceu.
+  estadoCivil: z.enum(["SOLTEIRA", "CASADA", "DIVORCIADA", "VIUVA", "SEPARADA", "UNIAO_ESTAVEL"]).optional(),
+  profissao: z.string().optional(),
+  nascimento: z.string().optional(),
+  email: z
+    .string()
+    .optional()
+    .refine((v) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), {
+      message: "Confira o e-mail — o contrato é enviado para ele.",
+    }),
+  enderecoLogradouro: z.string().optional(),
+  enderecoNumero: z.string().optional(),
+  enderecoComplemento: z.string().optional(),
+  enderecoBairro: z.string().optional(),
+  enderecoCep: z.string().optional(),
+  enderecoCidade: z.string().optional(),
+  enderecoEstado: z.string().optional(),
 });
+
 
 export type NoivaFormValues = z.infer<typeof noivaSchema>;
 
@@ -72,6 +106,22 @@ const VAZIO: DefaultValues<NoivaFormValues> = {
   casamentoHorario: "",
   casamentoLocal: "",
   origem: undefined,
+  // E215 — a qualificação. Vazias como as irmãs de texto; `estadoCivil` é
+  // `undefined` pela mesma razão de `origem`: select que já vem respondido é
+  // resposta que ninguém deu (F2).
+  cpf: "",
+  rg: "",
+  estadoCivil: undefined,
+  profissao: "",
+  nascimento: "",
+  email: "",
+  enderecoLogradouro: "",
+  enderecoNumero: "",
+  enderecoComplemento: "",
+  enderecoBairro: "",
+  enderecoCep: "",
+  enderecoCidade: "",
+  enderecoEstado: "",
 };
 
 /**
@@ -266,6 +316,219 @@ export function NoivaForm({
             </FormItem>
           )}
         />
+
+        {/*
+          E215 — a qualificação de quem assina o contrato.
+          Fica no fim porque não é o que se pergunta na primeira ligação: a
+          noiva vira ficha perguntando preço, e estes campos só fazem falta no
+          dia do fecho. O aviso abaixo diz isso em vez de deixar a vendedora
+          descobrir no 422.
+        */}
+        <div className="space-y-1 border-t pt-5">
+          <p className="text-xs font-medium text-muted-foreground">
+            Para o contrato
+          </p>
+          <p className="text-xs text-muted-foreground" data-testid="texto-aviso-qualificacao">
+            O contrato de locação qualifica quem assina. Sem estes dados dá para
+            cadastrar e orçar, mas <strong>não dá para fechar contrato</strong> —
+            e aí a tela do fecho diz exatamente o que falta.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="cpf"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>CPF</FormLabel>
+                <FormControl>
+                  <Input inputMode="numeric" placeholder="000.000.000-00" data-testid="input-noiva-cpf" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="rg"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>RG</FormLabel>
+                <FormControl>
+                  <Input data-testid="input-noiva-rg" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="nascimento"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Data de nascimento</FormLabel>
+                <FormControl>
+                  <Input type="date" data-testid="input-noiva-nascimento" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="estadoCivil"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Estado civil</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-noiva-estado-civil">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="SOLTEIRA">Solteira</SelectItem>
+                    <SelectItem value="CASADA">Casada</SelectItem>
+                    <SelectItem value="DIVORCIADA">Divorciada</SelectItem>
+                    <SelectItem value="VIUVA">Viúva</SelectItem>
+                    <SelectItem value="SEPARADA">Separada</SelectItem>
+                    <SelectItem value="UNIAO_ESTAVEL">União estável</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <FormField
+          control={form.control}
+          name="profissao"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Profissão</FormLabel>
+              <FormControl>
+                <Input data-testid="input-noiva-profissao" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>E-mail</FormLabel>
+              <FormControl>
+                <Input type="email" inputMode="email" autoComplete="email" data-testid="input-noiva-email" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-[1fr_auto] gap-4">
+          <FormField
+            control={form.control}
+            name="enderecoLogradouro"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Logradouro</FormLabel>
+                <FormControl>
+                  <Input data-testid="input-noiva-logradouro" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="enderecoNumero"
+            render={({ field }) => (
+              <FormItem className="w-24">
+                <FormLabel>Número</FormLabel>
+                <FormControl>
+                  <Input data-testid="input-noiva-numero" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="enderecoComplemento"
+            render={({ field }) => (
+              <FormItem>
+                {/* O único da lista que o contrato NÃO exige: casa térrea não
+                    tem apto 42, e exigi-lo produziria "-" em toda ficha. */}
+                <FormLabel>Complemento</FormLabel>
+                <FormControl>
+                  <Input data-testid="input-noiva-complemento" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="enderecoBairro"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Bairro</FormLabel>
+                <FormControl>
+                  <Input data-testid="input-noiva-bairro" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <div className="grid grid-cols-[7rem_1fr_5rem] gap-4">
+          <FormField
+            control={form.control}
+            name="enderecoCep"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>CEP</FormLabel>
+                <FormControl>
+                  <Input inputMode="numeric" placeholder="00000-000" data-testid="input-noiva-cep" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="enderecoCidade"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Cidade</FormLabel>
+                <FormControl>
+                  <Input data-testid="input-noiva-cidade" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="enderecoEstado"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>UF</FormLabel>
+                <FormControl>
+                  <Input maxLength={2} data-testid="input-noiva-estado" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <Button type="submit" disabled={pending} data-testid="button-salvar-noiva">
           {pending ? "Salvando…" : submitLabel}

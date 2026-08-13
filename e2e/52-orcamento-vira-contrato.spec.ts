@@ -12,7 +12,7 @@ import {
   vestidosTable,
   bloqueioVestidosTable,
 } from "../lib/db/src/index";
-import { lerEstado, API_URL } from "./helpers";
+import { lerEstado, API_URL, QUALIFICACAO_DA_NOIVA } from "./helpers";
 
 const estado = lerEstado();
 
@@ -57,6 +57,18 @@ test.describe("Orçamento vira contrato (E120 + E162)", () => {
       noivaNome,
       // Meio-dia UTC: o `slice(0, 10)` da tela lê o dia sem risco de véspera.
       casamentoData: new Date(`${CASAMENTO}T12:00:00Z`),
+      /**
+       * E215 — este spec insere o lead DIRETO no banco (não pela porta), então
+       * a qualificação entra como coluna e não como payload. Sem ela o caminho
+       * inteiro que o spec encena — aceite → fila → reserva inline → contrato —
+       * morre no último passo com `422 QUALIFICACAO_INCOMPLETA`, que é o
+       * comportamento certo da porta sobre uma noiva que não pode assinar.
+       *
+       * `nascimento` é `Date` aqui e string ISO na `QUALIFICACAO_DA_NOIVA` dos
+       * outros dez: lá o valor atravessa o zod da porta, aqui vai para a coluna.
+       */
+      ...QUALIFICACAO_DA_NOIVA,
+      nascimento: new Date("1996-03-12T12:00:00Z"),
     });
 
     // E162: a peça REAL do acervo — é ela que faz o gate do E150 rodar.

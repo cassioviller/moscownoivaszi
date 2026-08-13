@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ContratoDescontoTipo } from './contratoDescontoTipo';
+import type { ContratoEstadoCivil } from './contratoEstadoCivil';
 import type { ContratoFormaPagamento } from './contratoFormaPagamento';
 import type { ContratoItem } from './contratoItem';
 import type { ContratoStatus } from './contratoStatus';
@@ -26,6 +27,30 @@ export interface Contrato {
   status: ContratoStatus;
   /** @nullable */
   cpf?: string | null;
+  /** @nullable */
+  rg?: string | null;
+  /** @nullable */
+  estadoCivil?: ContratoEstadoCivil;
+  /** @nullable */
+  profissao?: string | null;
+  /** @nullable */
+  nascimento?: Date | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  enderecoLogradouro?: string | null;
+  /** @nullable */
+  enderecoNumero?: string | null;
+  /** @nullable */
+  enderecoComplemento?: string | null;
+  /** @nullable */
+  enderecoBairro?: string | null;
+  /** @nullable */
+  enderecoCep?: string | null;
+  /** @nullable */
+  enderecoCidade?: string | null;
+  /** @nullable */
+  enderecoEstado?: string | null;
   /** @nullable */
   vestidoDescricao?: string | null;
   valorTotal: number;

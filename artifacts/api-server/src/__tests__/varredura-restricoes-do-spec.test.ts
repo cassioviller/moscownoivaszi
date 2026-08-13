@@ -199,13 +199,34 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
    * porta nova: o `PATCH /avarias/:id` devolve o mesmo schema que o `POST`, e o
    * gerador escreve um `coerce.date()` por OPERAÇÃO, não por schema. É o caso
    * inofensivo de sempre — campo de RESPOSTA, sem corpo em que um `null` entre.
+   *
+   * **839 → 892 no E215, e este salto é o MAIOR da história deste número —
+   * 53 de uma vez.** Ele tem uma causa só: o campo `nascimento`, acrescentado a
+   * `Lead`, `LeadInput`, `LeadUpdate` e `Contrato`. Como o gerador escreve um
+   * `coerce.date()` por OPERAÇÃO, e `Lead` e `Contrato` são devolvidos por
+   * dezenas delas, um campo de data vira 53 linhas.
+   *
+   * **E pela primeira vez a subida NÃO é toda inofensiva, o que é exatamente o
+   * que esta régua existe para obrigar alguém a olhar.** Os casos anteriores
+   * eram campos de RESPOSTA — não há corpo em que um `null` entre. Aqui há:
+   * `LeadUpdate.nascimento` aceita `null` **de propósito**, para apagar dado
+   * pessoal errado sem esperar o expurgo de 24 meses. Se o `coerce`
+   * transformasse esse `null` numa data, a noiva passaria a ter nascido em
+   * **01/01/1970** — e o contrato congelaria isso no papel que ela assina.
+   *
+   * **Medido pela porta, e não deduzido do YAML:** o gerador escreve
+   * `zod.coerce.date().nullish()`, e o `nullish` deixa o `null` passar ANTES da
+   * coerção. O `PATCH` com `nascimento: null` apaga a coluna —
+   * `e215-qualificacao-api.test.ts`, *"apagar o `nascimento` com null APAGA —
+   * não grava 1970 (V12)"*. A dívida sobe, o caso é seguro, e agora há teste
+   * dizendo por quê em vez de um comentário afirmando.
    */
-  it("839 datas coercidas — as datas coercidas estão contadas — `null` vira 1970 e o zod aprova", () => {
+  it("892 datas coercidas — as datas coercidas estão contadas — `null` vira 1970 e o zod aprova", () => {
     const coeridas = (zod.match(/coerce\.date\(\)/g) ?? []).length;
     expect(
       coeridas,
       "mudou o número de datas coercidas? A guarda do V12 (`reservas.ts`) é campo a campo, não global",
-    ).toBe(839);
+    ).toBe(892);
   });
 
   /**

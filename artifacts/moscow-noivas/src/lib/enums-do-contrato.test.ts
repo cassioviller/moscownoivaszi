@@ -6,6 +6,7 @@ import {
   AtributoTipo,
   AtendimentoTipo,
   OrcamentoItemTipo,
+  LeadInputEstadoCivil,
 } from "@workspace/api-client-react";
 
 /**
@@ -19,10 +20,18 @@ import {
  * peso. O caminho barato que a sobra deixou escrito é este: **teste de
  * paridade**.
  *
- * **A contagem da sobra envelheceu, e é o que a regra 20 manda conferir.** Ela
- * dizia "a duplicação real medida é UM enum de cada lado, não doze"; hoje são
- * **quatro**. Nenhum divergia — o custo até agora foi zero —, mas quatro cópias
- * crescendo em silêncio é como a primeira nasceu.
+ * **A contagem da sobra envelheceu duas vezes, e é o que a regra 20 manda
+ * conferir.** Ela dizia "a duplicação real medida é UM enum de cada lado, não
+ * doze"; virou **quatro**, e o E215 fez **cinco**. Nenhum divergiu até hoje — o
+ * custo medido é zero —, mas cinco cópias crescendo em silêncio é como a
+ * primeira nasceu.
+ *
+ * **E a segunda subida mostrou o furo da própria régua:** `PARES` é lista
+ * CURADA À MÃO, então ela enumera o que alguém lembrou de escrever, não os
+ * `z.enum` do repositório. O `estadoCivil` do E215 passou verde por não ter
+ * sido olhado, e só entrou porque quem escreveu o épico foi conferir. É a
+ * S-C33 e a S-C55 numa terceira lista — e continua aberto derivar `PARES` do
+ * fonte em vez de mantê-lo.
  *
  * O que uma divergência custa: o formulário recusa no cliente um valor que a
  * API aceita (a opção some da tela e ninguém sabe por quê), ou aceita um que a
@@ -70,6 +79,26 @@ const PARES = [
     arquivo: "pages/orcamentos/[id].tsx",
     campo: "tipo",
     doContrato: OrcamentoItemTipo,
+  },
+  {
+    /**
+     * E215 — o quinto par, e ele entrou porque a lista é CURADA À MÃO.
+     *
+     * Nada obrigava o `estadoCivil` a aparecer aqui: a varredura enumera
+     * `PARES`, não os `z.enum` do repositório, então um enum novo nasce
+     * invisível para ela — é a S-C33 e a S-C55 nesta terceira lista. O E215
+     * acrescentou um enum de SEIS valores num formulário que a vendedora usa
+     * em toda noiva, e ele passou verde por não ter sido olhado.
+     *
+     * O que a divergência custaria aqui é maior que nos quatro de cima: um
+     * valor a menos na tela e a noiva DIVORCIADA não tem como ser qualificada,
+     * então o contrato dela não fecha — e a mensagem seria sobre um campo
+     * vazio, não sobre uma opção que falta no select.
+     */
+    o_que: "o estado civil de quem assina o contrato",
+    arquivo: "pages/noivas/noiva-form.tsx",
+    campo: "estadoCivil",
+    doContrato: LeadInputEstadoCivil,
   },
 ] as const;
 

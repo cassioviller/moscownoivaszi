@@ -54,6 +54,24 @@ export default function EditarNoiva() {
           casamentoHorario: values.casamentoHorario ?? "",
           casamentoLocal: values.casamentoLocal ?? "",
           origem: values.origem,
+          // E215 — a qualificação de quem assina. Texto vazio vira `null` de
+          // propósito: o PATCH aceita null para APAGAR (dado pessoal errado tem
+          // de poder sair sem esperar o expurgo de 24 meses), e "" gravado como
+          // string vazia faria a guarda do contrato dizer "não está na ficha"
+          // sobre um campo que a tela mostra preenchido com nada.
+          cpf: values.cpf || null,
+          rg: values.rg || null,
+          estadoCivil: values.estadoCivil ?? null,
+          profissao: values.profissao || null,
+          nascimento: values.nascimento ? diaParaISO(values.nascimento) : null,
+          email: values.email || null,
+          enderecoLogradouro: values.enderecoLogradouro || null,
+          enderecoNumero: values.enderecoNumero || null,
+          enderecoComplemento: values.enderecoComplemento || null,
+          enderecoBairro: values.enderecoBairro || null,
+          enderecoCep: values.enderecoCep || null,
+          enderecoCidade: values.enderecoCidade || null,
+          enderecoEstado: values.enderecoEstado || null,
         },
       });
       await Promise.all([
@@ -114,6 +132,23 @@ export default function EditarNoiva() {
             casamentoHorario: lead.casamentoHorario ?? "",
             casamentoLocal: lead.casamentoLocal ?? "",
             origem: lead.origem,
+            // E215 — a qualificação. `nascimento` passa por `diaDeNegocio`
+            // pela mesma razão de `casamentoData`: a coluna guarda um INSTANTE
+            // e o campo `type="date"` quer o DIA, e ler o instante cru mostra
+            // o dia anterior em fuso de São Paulo (S-O117).
+            cpf: lead.cpf ?? "",
+            rg: lead.rg ?? "",
+            estadoCivil: lead.estadoCivil ?? undefined,
+            profissao: lead.profissao ?? "",
+            nascimento: lead.nascimento ? diaDeNegocio(lead.nascimento) : "",
+            email: lead.email ?? "",
+            enderecoLogradouro: lead.enderecoLogradouro ?? "",
+            enderecoNumero: lead.enderecoNumero ?? "",
+            enderecoComplemento: lead.enderecoComplemento ?? "",
+            enderecoBairro: lead.enderecoBairro ?? "",
+            enderecoCep: lead.enderecoCep ?? "",
+            enderecoCidade: lead.enderecoCidade ?? "",
+            enderecoEstado: lead.enderecoEstado ?? "",
           }}
         />
       )}

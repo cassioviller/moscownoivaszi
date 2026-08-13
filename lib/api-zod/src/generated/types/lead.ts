@@ -5,6 +5,7 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { LeadEstadoCivil } from './leadEstadoCivil';
 import type { LeadEtapa } from './leadEtapa';
 import type { LeadInteresse } from './leadInteresse';
 import type { LeadOrigem } from './leadOrigem';
@@ -44,5 +45,31 @@ export interface Lead {
   createdAt: Date;
   /** @nullable */
   ultimoContatoEm?: Date | null;
+  /** @nullable */
+  cpf?: string | null;
+  /** @nullable */
+  rg?: string | null;
+  /** @nullable */
+  estadoCivil?: LeadEstadoCivil;
+  /** @nullable */
+  profissao?: string | null;
+  /** @nullable */
+  nascimento?: Date | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  enderecoLogradouro?: string | null;
+  /** @nullable */
+  enderecoNumero?: string | null;
+  /** @nullable */
+  enderecoComplemento?: string | null;
+  /** @nullable */
+  enderecoBairro?: string | null;
+  /** @nullable */
+  enderecoCep?: string | null;
+  /** @nullable */
+  enderecoCidade?: string | null;
+  /** @nullable */
+  enderecoEstado?: string | null;
   interesse?: LeadInteresse;
 }

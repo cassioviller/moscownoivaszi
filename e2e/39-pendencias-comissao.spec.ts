@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { eq, inArray } from "drizzle-orm";
 import { db, contratosTable } from "../lib/db/src/index";
-import { lerEstado, API_URL } from "./helpers";
+import { lerEstado, API_URL, QUALIFICACAO_DA_NOIVA } from "./helpers";
 
 const estado = lerEstado();
 
@@ -38,7 +38,7 @@ test.describe("Competência esquecida (E53)", () => {
     const vendedoraId = (await me.json()).usuario.id;
 
     const lead = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/leads`, {
-      data: { noivaNome: `E2E Esquecida ${stamp}`, origem: "LOJA" },
+      data: { noivaNome: `E2E Esquecida ${stamp}`, origem: "LOJA", ...QUALIFICACAO_DA_NOIVA },
     });
     expect(lead.status(), await lead.text()).toBe(201);
 

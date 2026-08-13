@@ -592,6 +592,21 @@ export const LeadOrigem = {
   INSTAGRAM: 'INSTAGRAM',
 } as const;
 
+/**
+ * @nullable
+ */
+export type LeadEstadoCivil = typeof LeadEstadoCivil[keyof typeof LeadEstadoCivil] | null;
+
+
+export const LeadEstadoCivil = {
+  SOLTEIRA: 'SOLTEIRA',
+  CASADA: 'CASADA',
+  DIVORCIADA: 'DIVORCIADA',
+  VIUVA: 'VIUVA',
+  SEPARADA: 'SEPARADA',
+  UNIAO_ESTAVEL: 'UNIAO_ESTAVEL',
+} as const;
+
 export interface LeadInteresse {
   leadId: string;
   /** @nullable */
@@ -637,6 +652,32 @@ export interface Lead {
   createdAt: string;
   /** @nullable */
   ultimoContatoEm?: string | null;
+  /** @nullable */
+  cpf?: string | null;
+  /** @nullable */
+  rg?: string | null;
+  /** @nullable */
+  estadoCivil?: LeadEstadoCivil;
+  /** @nullable */
+  profissao?: string | null;
+  /** @nullable */
+  nascimento?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  enderecoLogradouro?: string | null;
+  /** @nullable */
+  enderecoNumero?: string | null;
+  /** @nullable */
+  enderecoComplemento?: string | null;
+  /** @nullable */
+  enderecoBairro?: string | null;
+  /** @nullable */
+  enderecoCep?: string | null;
+  /** @nullable */
+  enderecoCidade?: string | null;
+  /** @nullable */
+  enderecoEstado?: string | null;
   interesse?: LeadInteresse;
 }
 
@@ -655,6 +696,18 @@ export const LeadInputOrigem = {
   INSTAGRAM: 'INSTAGRAM',
 } as const;
 
+export type LeadInputEstadoCivil = typeof LeadInputEstadoCivil[keyof typeof LeadInputEstadoCivil];
+
+
+export const LeadInputEstadoCivil = {
+  SOLTEIRA: 'SOLTEIRA',
+  CASADA: 'CASADA',
+  DIVORCIADA: 'DIVORCIADA',
+  VIUVA: 'VIUVA',
+  SEPARADA: 'SEPARADA',
+  UNIAO_ESTAVEL: 'UNIAO_ESTAVEL',
+} as const;
+
 export interface LeadInput {
   /** @minLength 1 */
   noivaNome: string;
@@ -665,6 +718,23 @@ export interface LeadInput {
   casamentoHorario?: string;
   casamentoLocal?: string;
   origem?: LeadInputOrigem;
+  cpf?: string;
+  rg?: string;
+  estadoCivil?: LeadInputEstadoCivil;
+  profissao?: string;
+  nascimento?: string;
+  email?: string;
+  enderecoLogradouro?: string;
+  enderecoNumero?: string;
+  enderecoComplemento?: string;
+  enderecoBairro?: string;
+  enderecoCep?: string;
+  enderecoCidade?: string;
+  /**
+     * @minLength 2
+     * @maxLength 2
+     */
+  enderecoEstado?: string;
 }
 
 export type LeadUpdateEtapa = typeof LeadUpdateEtapa[keyof typeof LeadUpdateEtapa];
@@ -712,6 +782,21 @@ export const LeadUpdateOrigem = {
   INSTAGRAM: 'INSTAGRAM',
 } as const;
 
+/**
+ * @nullable
+ */
+export type LeadUpdateEstadoCivil = typeof LeadUpdateEstadoCivil[keyof typeof LeadUpdateEstadoCivil] | null;
+
+
+export const LeadUpdateEstadoCivil = {
+  SOLTEIRA: 'SOLTEIRA',
+  CASADA: 'CASADA',
+  DIVORCIADA: 'DIVORCIADA',
+  VIUVA: 'VIUVA',
+  SEPARADA: 'SEPARADA',
+  UNIAO_ESTAVEL: 'UNIAO_ESTAVEL',
+} as const;
+
 export interface LeadUpdate {
   etapa?: LeadUpdateEtapa;
   noivaNome?: string;
@@ -726,6 +811,32 @@ export interface LeadUpdate {
   perdidaDetalhe?: string;
   /** Corrigível enquanto o lead não converteu (CONTRATO_FECHADO ou além) */
   origem?: LeadUpdateOrigem;
+  /** @nullable */
+  cpf?: string | null;
+  /** @nullable */
+  rg?: string | null;
+  /** @nullable */
+  estadoCivil?: LeadUpdateEstadoCivil;
+  /** @nullable */
+  profissao?: string | null;
+  /** @nullable */
+  nascimento?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  enderecoLogradouro?: string | null;
+  /** @nullable */
+  enderecoNumero?: string | null;
+  /** @nullable */
+  enderecoComplemento?: string | null;
+  /** @nullable */
+  enderecoBairro?: string | null;
+  /** @nullable */
+  enderecoCep?: string | null;
+  /** @nullable */
+  enderecoCidade?: string | null;
+  /** @nullable */
+  enderecoEstado?: string | null;
 }
 
 export interface LeadInteresseInput {
@@ -2222,6 +2333,21 @@ export const ContratoStatus = {
 /**
  * @nullable
  */
+export type ContratoEstadoCivil = typeof ContratoEstadoCivil[keyof typeof ContratoEstadoCivil] | null;
+
+
+export const ContratoEstadoCivil = {
+  SOLTEIRA: 'SOLTEIRA',
+  CASADA: 'CASADA',
+  DIVORCIADA: 'DIVORCIADA',
+  VIUVA: 'VIUVA',
+  SEPARADA: 'SEPARADA',
+  UNIAO_ESTAVEL: 'UNIAO_ESTAVEL',
+} as const;
+
+/**
+ * @nullable
+ */
 export type ContratoDescontoTipo = typeof ContratoDescontoTipo[keyof typeof ContratoDescontoTipo] | null;
 
 
@@ -2365,6 +2491,30 @@ export interface Contrato {
   status: ContratoStatus;
   /** @nullable */
   cpf?: string | null;
+  /** @nullable */
+  rg?: string | null;
+  /** @nullable */
+  estadoCivil?: ContratoEstadoCivil;
+  /** @nullable */
+  profissao?: string | null;
+  /** @nullable */
+  nascimento?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  enderecoLogradouro?: string | null;
+  /** @nullable */
+  enderecoNumero?: string | null;
+  /** @nullable */
+  enderecoComplemento?: string | null;
+  /** @nullable */
+  enderecoBairro?: string | null;
+  /** @nullable */
+  enderecoCep?: string | null;
+  /** @nullable */
+  enderecoCidade?: string | null;
+  /** @nullable */
+  enderecoEstado?: string | null;
   /** @nullable */
   vestidoDescricao?: string | null;
   valorTotal: number;

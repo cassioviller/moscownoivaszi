@@ -29,7 +29,20 @@ describe("PDF do contrato", () => {
 
   it("devolve um PDF com os dados do contrato (200)", async () => {
     const agent = await loginComLoja(f.vendedoraEmail, f.lojaId);
-    const lead = await criarLead(f, { noivaNome: "Ana Lima", whatsapp: "11999990000" });
+    /**
+     * E215 — o CPF do papel vem da FICHA, não do corpo do `POST /contratos`.
+     *
+     * Este teste mandava `cpf: "123.456.789-00"` no corpo e cobrava o número no
+     * PDF. Desde o E215 o contrato CONGELA a qualificação da ficha e o campo do
+     * corpo deixou de ser lido — o `cpf` era a segunda grafia do mesmo dado, e
+     * das duas só a ficha é editável depois (E187). O número mudou de lugar,
+     * não de papel: continua sendo o CPF impresso.
+     */
+    const lead = await criarLead(f, {
+      noivaNome: "Ana Lima",
+      whatsapp: "11999990000",
+      cpf: "123.456.789-00",
+    });
     const orcamento = await criarOrcamento(f, { leadId: lead.id, status: "APROVADO" });
     await criarOrcamentoItem(f, { orcamentoId: orcamento.id, descricao: "Vestido Sereia", valorUnitario: 3000 });
 
@@ -40,7 +53,6 @@ describe("PDF do contrato", () => {
         vendedoraId: f.vendedoraId,
         orcamentoId: orcamento.id,
         valorTotal: 3000,
-        cpf: "123.456.789-00",
         formaPagamento: "PIX",
         parcelas: [
           { numero: 0, valorPrevisto: 1000, vencimento: dataFutura(-60).toISOString() },

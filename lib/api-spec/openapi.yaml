@@ -5707,6 +5707,27 @@ components:
         # dias sem contato" sem uma consulta por card. `null` = nunca contatada,
         # e aí a contagem do funil corre desde `createdAt`.
         ultimoContatoEm: { type: ["string", "null"], format: date-time }
+        # E215 — a qualificação de quem assina o contrato. Todos ANULÁVEIS aqui,
+        # e obrigatórios só na PORTA do fecho (`POST /contratos`), que recusa
+        # nomeando o campo: a noiva vira ficha muito antes de virar contrato, e
+        # exigir CPF de quem só ligou perguntando preço travaria o cadastro.
+        # O CPF é o caso que ensinou o resto — ele já existia em `contratos`,
+        # a tela já o oferecia, era opcional, e estava em 0 de 735.
+        cpf: { type: ["string", "null"] }
+        rg: { type: ["string", "null"] }
+        estadoCivil:
+          type: ["string", "null"]
+          enum: [SOLTEIRA, CASADA, DIVORCIADA, VIUVA, SEPARADA, UNIAO_ESTAVEL, null]
+        profissao: { type: ["string", "null"] }
+        nascimento: { type: ["string", "null"], format: date-time }
+        email: { type: ["string", "null"] }
+        enderecoLogradouro: { type: ["string", "null"] }
+        enderecoNumero: { type: ["string", "null"] }
+        enderecoComplemento: { type: ["string", "null"] }
+        enderecoBairro: { type: ["string", "null"] }
+        enderecoCep: { type: ["string", "null"] }
+        enderecoCidade: { type: ["string", "null"] }
+        enderecoEstado: { type: ["string", "null"] }
         interesse:
           $ref: "#/components/schemas/LeadInteresse"
     # Envelope da listagem: `total` é o universo do filtro, não da página —
@@ -5732,6 +5753,21 @@ components:
         casamentoHorario: { type: string }
         casamentoLocal: { type: string }
         origem: { type: string, enum: [LOJA, WHATSAPP, SITE, INSTAGRAM] }
+        # E215 — a qualificação de quem assina. Opcionais aqui de propósito: o
+        # cadastro nasce de uma ligação perguntando preço, e a régua é do FECHO.
+        cpf: { type: string }
+        rg: { type: string }
+        estadoCivil: { type: string, enum: [SOLTEIRA, CASADA, DIVORCIADA, VIUVA, SEPARADA, UNIAO_ESTAVEL] }
+        profissao: { type: string }
+        nascimento: { type: string, format: date-time }
+        email: { type: string, format: email }
+        enderecoLogradouro: { type: string }
+        enderecoNumero: { type: string }
+        enderecoComplemento: { type: string }
+        enderecoBairro: { type: string }
+        enderecoCep: { type: string }
+        enderecoCidade: { type: string }
+        enderecoEstado: { type: string, minLength: 2, maxLength: 2 }
     LeadUpdate:
       type: object
       properties:
@@ -5759,6 +5795,26 @@ components:
           type: string
           enum: [LOJA, WHATSAPP, SITE, INSTAGRAM]
           description: "Corrigível enquanto o lead não converteu (CONTRATO_FECHADO ou além)"
+        # E215 — a qualificação de quem assina, corrigível pela ficha. É por
+        # AQUI que a noiva chega ao fecho com os campos preenchidos: o
+        # `POST /contratos` recusa o que falta, e a ficha é onde se preenche.
+        # Aceitam `null` para APAGAR, que os irmãos acima não aceitam — dado
+        # pessoal errado tem de poder sair sem esperar o expurgo de 24 meses.
+        cpf: { type: ["string", "null"] }
+        rg: { type: ["string", "null"] }
+        estadoCivil:
+          type: ["string", "null"]
+          enum: [SOLTEIRA, CASADA, DIVORCIADA, VIUVA, SEPARADA, UNIAO_ESTAVEL, null]
+        profissao: { type: ["string", "null"] }
+        nascimento: { type: ["string", "null"], format: date-time }
+        email: { type: ["string", "null"] }
+        enderecoLogradouro: { type: ["string", "null"] }
+        enderecoNumero: { type: ["string", "null"] }
+        enderecoComplemento: { type: ["string", "null"] }
+        enderecoBairro: { type: ["string", "null"] }
+        enderecoCep: { type: ["string", "null"] }
+        enderecoCidade: { type: ["string", "null"] }
+        enderecoEstado: { type: ["string", "null"] }
     LeadInteresse:
       type: object
       required: [leadId]
@@ -7186,7 +7242,26 @@ components:
           items: { type: string }
         vendedoraId: { type: string }
         status: { type: string, enum: [ATIVO, CANCELADO] }
+        # E215 — a qualificação da locatária CONGELADA no fecho, pela mesma razão
+        # de `vestidoDescricao` e do par desconto* abaixo: a ficha da noiva é
+        # viva (ela muda de endereço, casa, troca de profissão) e o papel tem de
+        # poder ser reimpresso anos depois dizendo o que dizia no dia.
+        # O `cpf` já era congelado e estava sozinho, o que era o defeito.
         cpf: { type: ["string", "null"] }
+        rg: { type: ["string", "null"] }
+        estadoCivil:
+          type: ["string", "null"]
+          enum: [SOLTEIRA, CASADA, DIVORCIADA, VIUVA, SEPARADA, UNIAO_ESTAVEL, null]
+        profissao: { type: ["string", "null"] }
+        nascimento: { type: ["string", "null"], format: date-time }
+        email: { type: ["string", "null"] }
+        enderecoLogradouro: { type: ["string", "null"] }
+        enderecoNumero: { type: ["string", "null"] }
+        enderecoComplemento: { type: ["string", "null"] }
+        enderecoBairro: { type: ["string", "null"] }
+        enderecoCep: { type: ["string", "null"] }
+        enderecoCidade: { type: ["string", "null"] }
+        enderecoEstado: { type: ["string", "null"] }
         vestidoDescricao: { type: ["string", "null"] }
         valorTotal: { type: number }
         # Desconto congelado do orçamento. valorTotal é o líquido; estes dão a

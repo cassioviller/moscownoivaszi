@@ -2,7 +2,7 @@ import { pgTable, text, timestamp, decimal, index, primaryKey, unique } from "dr
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable } from "./loja";
-import { leadEtapaEnum, leadOrigemEnum, leadPerdidaMotivoEnum } from "./common/enums";
+import { leadEtapaEnum, leadOrigemEnum, leadPerdidaMotivoEnum, estadoCivilEnum } from "./common/enums";
 import { atributosTable, atributoOpcoesTable } from "./vestidos";
 
 export const leadsTable = pgTable("leads", {
@@ -48,6 +48,43 @@ export const leadsTable = pgTable("leads", {
   consentimentoEm: timestamp("consentimento_em", { withTimezone: true }),
   // E77: carimbo da anonimização — a linha fica (histórico e números), a PII sai.
   anonimizadaEm: timestamp("anonimizada_em", { withTimezone: true }),
+  /**
+   * E215 — **quem assina o contrato.** As treze colunas abaixo são a
+   * qualificação da locatária que o instrumento de papel exige e que a ficha
+   * não tinha: até aqui a vendedora preenchia à mão, no papel, e o sistema
+   * imprimia um contrato com os campos em branco.
+   *
+   * **Todas são ANULÁVEIS, e isso é decisão, não descuido.** A dona decidiu em
+   * 13/08 que os campos são obrigatórios **no fecho do contrato** — a régua
+   * mora na PORTA (`POST /contratos`), que recusa nomeando o campo que falta.
+   * Pô-las `NOT NULL` puniria os **1413 leads** que já existem, nenhum dos
+   * quais tem um só dado civil, e travaria o cadastro de quem só ligou
+   * perguntando preço: a noiva vira ficha muito antes de virar contrato.
+   *
+   * O CPF é o caso que ensina o resto. Ele já existia — em `contratos`, não
+   * aqui —, a tela de fechar contrato já o oferecia, e ele era **opcional**:
+   * medido em 13/08, **0 de 735 contratos têm CPF**. Campo que dá para pular
+   * é campo vazio, e por isso a obrigatoriedade da porta é o épico, não a
+   * coluna.
+   *
+   * **Dado pessoal novo entra nas DUAS pontas da LGPD ou nasce fora da lei**
+   * (a lição da S-C33, na direção que custa processo): o expurgo de
+   * `routes/leads.ts` é `set({…})` de lista curada à mão, e campo que não
+   * entra nela sobrevive à anonimização. As treze estão lá.
+   */
+  cpf: text("cpf"),
+  rg: text("rg"),
+  estadoCivil: estadoCivilEnum("estado_civil"),
+  profissao: text("profissao"),
+  nascimento: timestamp("nascimento", { withTimezone: true }),
+  email: text("email"),
+  enderecoLogradouro: text("endereco_logradouro"),
+  enderecoNumero: text("endereco_numero"),
+  enderecoComplemento: text("endereco_complemento"),
+  enderecoBairro: text("endereco_bairro"),
+  enderecoCep: text("endereco_cep"),
+  enderecoCidade: text("endereco_cidade"),
+  enderecoEstado: text("endereco_estado"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => ({

@@ -5,6 +5,7 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { LeadInputEstadoCivil } from './leadInputEstadoCivil';
 import type { LeadInputOrigem } from './leadInputOrigem';
 
 export interface LeadInput {
@@ -17,4 +18,21 @@ export interface LeadInput {
   casamentoHorario?: string;
   casamentoLocal?: string;
   origem?: LeadInputOrigem;
+  cpf?: string;
+  rg?: string;
+  estadoCivil?: LeadInputEstadoCivil;
+  profissao?: string;
+  nascimento?: Date;
+  email?: string;
+  enderecoLogradouro?: string;
+  enderecoNumero?: string;
+  enderecoComplemento?: string;
+  enderecoBairro?: string;
+  enderecoCep?: string;
+  enderecoCidade?: string;
+  /**
+     * @minLength 2
+     * @maxLength 2
+     */
+  enderecoEstado?: string;
 }

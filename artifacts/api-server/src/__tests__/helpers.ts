@@ -239,6 +239,40 @@ export async function criarLead(
       id: randomUUID(),
       lojaId: f.lojaId,
       noivaNome: `Noiva Teste ${sufixo}`,
+      /**
+       * E215 — a noiva de teste nasce com a ficha COMPLETA, e é o default certo
+       * por duas razões.
+       *
+       * A primeira é de fidelidade: desde o E215 o `POST /contratos` recusa
+       * fechar sem a qualificação de quem assina, então uma noiva sem CPF, RG
+       * e endereço não é "uma noiva simples" — é uma noiva que **não pode
+       * fechar contrato**. Fixture que não fecha contrato não representa a
+       * população que os testes de contrato querem exercitar.
+       *
+       * A segunda é de custo: sem isto, **43 arquivos de teste** que batem no
+       * `POST /api/lojas/:id/contratos` passariam a reprovar de uma vez — o
+       * vermelho medido foi `expected 201 "Created", got 422` e
+       * `expected 'QUALIFICACAO_INCOMPLETA' to be 'DATA_DIVERGE_DA_RESERVA'`,
+       * que é a guarda nova comendo a asserção de outra guarda. Consertar 43
+       * arquivos à mão seria 43 chances de escrever o dado de teste diferente,
+       * e o plano do E215 avisava: estreitar a porta sem olhar reprova a suíte
+       * por DADO DE TESTE, não por defeito.
+       *
+       * Quem testa a guarda passa `cpf: null` (ou o campo que quiser derrubar)
+       * pelos overrides — é o que `e215-qualificacao-api.test.ts` faz.
+       */
+      cpf: "390.533.447-05",
+      rg: "12.345.678-9",
+      estadoCivil: "SOLTEIRA",
+      profissao: "Professora",
+      nascimento: new Date("1996-03-12T12:00:00-03:00"),
+      email: `noiva.${sufixo}@exemplo.com.br`,
+      enderecoLogradouro: "Rua das Noivas",
+      enderecoNumero: "123",
+      enderecoBairro: "Centro",
+      enderecoCep: "12243-260",
+      enderecoCidade: "São José dos Campos",
+      enderecoEstado: "SP",
       ...overrides,
     })
     .returning();

@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { inArray } from "drizzle-orm";
 import { db, contratosTable, leadsTable } from "../lib/db/src/index";
-import { lerEstado, sessaoViaAPI, API_URL } from "./helpers";
+import { lerEstado, sessaoViaAPI, API_URL, QUALIFICACAO_DA_NOIVA } from "./helpers";
 
 const estado = lerEstado();
 
@@ -51,7 +51,7 @@ test.describe("Colocação no extrato pessoal (E55)", () => {
       [maria.usuarioId, 9000],
     ] as const) {
       const lead = await api.post(`${API_URL}/api/lojas/${estado.lojaId}/leads`, {
-        data: { noivaNome: `E2E Colocacao ${stamp}-${valorTotal}`, origem: "LOJA" },
+        data: { noivaNome: `E2E Colocacao ${stamp}-${valorTotal}`, origem: "LOJA", ...QUALIFICACAO_DA_NOIVA },
       });
       const leadId = (await lead.json()).id as string;
       leads.push(leadId);

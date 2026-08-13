@@ -207,6 +207,15 @@ router.post("/lojas/:lojaId/leads", async (req, res): Promise<void> => {
     ...(parsed.data.casamentoData
       ? { casamentoData: reancorarDataDeNegocio(parsed.data.casamentoData) }
       : {}),
+    // E215: `nascimento` é da MESMA classe — dia de negócio, não instante. A
+    // noiva nasceu num DIA, e o RG dela imprime esse dia; gravar a meia-noite
+    // UTC que um cliente de API manda (`new Date("1996-03-12")`) faria a ficha
+    // e o contrato dizerem **11/03** em fuso SP. É a S-O117 num terceiro campo,
+    // e a única razão de ela não ter mordido aqui antes é que a coluna não
+    // existia.
+    ...(parsed.data.nascimento
+      ? { nascimento: reancorarDataDeNegocio(parsed.data.nascimento) }
+      : {}),
   }).returning();
 
   // Lead recém-criado nunca tem contato registrado — explícito para o campo
@@ -395,6 +404,33 @@ router.post("/lojas/:lojaId/leads/expurgo", requireModulo("admin", "editar"), as
         cerimonialista: null,
         casamentoLocal: null,
         perdidaDetalhe: null,
+        /**
+         * E215 — as treze da qualificação. **Esta lista é curada à mão, e é a
+         * classe da S-C33 na direção que custa PROCESSO:** campo pessoal que
+         * não entra aqui sobrevive à anonimização, e o sistema fica dizendo
+         * "(anonimizada)" ao lado de um CPF, um RG e um endereço completo.
+         *
+         * A varredura `varredura-expurgo-lgpd` prega isto: ela deriva do schema
+         * quais colunas de `leads` são dado pessoal e reprova se alguma não
+         * estiver neste `set`. Sem ela, a próxima coluna nasce fora da lei em
+         * silêncio — que é exatamente como as três anteriores nasceriam.
+         *
+         * `nascimento` sai também: data de nascimento é dado pessoal, e com CEP
+         * e cidade ela reidentifica sozinha.
+         */
+        cpf: null,
+        rg: null,
+        estadoCivil: null,
+        profissao: null,
+        nascimento: null,
+        email: null,
+        enderecoLogradouro: null,
+        enderecoNumero: null,
+        enderecoComplemento: null,
+        enderecoBairro: null,
+        enderecoCep: null,
+        enderecoCidade: null,
+        enderecoEstado: null,
         anonimizadaEm: new Date(),
         updatedAt: new Date(),
       })
@@ -612,8 +648,16 @@ router.patch("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => 
     ? { casamentoData: reancorarDataDeNegocio(resto.casamentoData) }
     : {};
 
+  // E215: `nascimento` é dia de NEGÓCIO pela mesma régua, e corrigir pela ficha
+  // não pode gravar um instante diferente do que a criação grava para o mesmo
+  // dia — foi exatamente essa divergência entre as duas portas que a S-O117
+  // custou sete consertos.
+  const dataDeNascimento = resto.nascimento
+    ? { nascimento: reancorarDataDeNegocio(resto.nascimento) }
+    : {};
+
   const [lead] = await db.update(leadsTable)
-    .set({ ...resto, ...dataDoCasamento, ...perda, ...carimbo, updatedAt: new Date() })
+    .set({ ...resto, ...dataDoCasamento, ...dataDeNascimento, ...perda, ...carimbo, updatedAt: new Date() })
     .where(and(eq(leadsTable.id, leadId as string), eq(leadsTable.lojaId, lojaId as string)))
     .returning();
 

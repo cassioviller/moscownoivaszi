@@ -31,6 +31,27 @@ export const leadPerdidaMotivoEnum = pgEnum("lead_perdida_motivo", [
   "OUTRO",
 ]);
 
+/**
+ * E215 — o estado civil de quem assina o instrumento de locação.
+ *
+ * É ENUM e não texto livre porque o PDF do E220 vai imprimir a palavra na
+ * qualificação da locatária, e ali ela concorda em gênero com o resto da
+ * frase: o molde diz "brasileira, {estado civil}, {profissão}". Texto livre
+ * traria "Solteira", "solteira", "SOLTEIRA" e "Solteiro" para a mesma pessoa,
+ * e o papel é o que ela assina.
+ *
+ * As cinco são as do artigo 1.571 do Código Civil mais a união estável, que o
+ * cartório reconhece e o molde não previa.
+ */
+export const estadoCivilEnum = pgEnum("estado_civil", [
+  "SOLTEIRA",
+  "CASADA",
+  "DIVORCIADA",
+  "VIUVA",
+  "SEPARADA",
+  "UNIAO_ESTAVEL",
+]);
+
 export const bloqueioTipoEnum = pgEnum("bloqueio_tipo", [
   "RESERVA_CASAMENTO",
   "MANUTENCAO",

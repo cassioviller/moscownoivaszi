@@ -50,6 +50,7 @@ import {
 import { AlertCircle, Plus, Pencil, CalendarPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl, diaMesAno, etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS, ROTULO_ORIGEM, instanteCurto, instanteDia, instanteDiaHora } from "@/lib/formatos";
+import { faltasDaQualificacao as calcularFaltas, estadoCivilLabel, enderecoDaNoiva } from "@/lib/qualificacao";
 import { podeNoModulo } from "@/lib/permissoes";
 import { SeloProvaOrfa } from "@/components/selo-prova-orfa";
 import { SeloProvaForaDaJanela } from "@/components/selo-prova-fora-da-janela";
@@ -61,7 +62,7 @@ import { proximaVisita } from "@/lib/proxima-visita";
 import { estadoDasConsultas } from "@/lib/estado-consulta";
 import { abertoEmCentavos } from "@/lib/financeiro/forma";
 import { reais } from "@/lib/financeiro/dinheiro";
-import { hojeLocal, diaLocal } from "@/lib/financeiro/datas";
+import { hojeLocal, diaLocal, diaDeNegocio } from "@/lib/financeiro/datas";
 import {
   dataLongaFmt,
   diasAteCasamento,
@@ -149,6 +150,17 @@ export default function NoivaDetalhe() {
       enabled: !!activeLojaId && !!leadId,
     },
   });
+  /**
+   * E215 — o que falta na ficha para o contrato poder fechar.
+   *
+   * Derivado do mesmo módulo que a tela do fecho usa (`lib/qualificacao`), que
+   * por sua vez é pregado contra o servidor pela
+   * `qualificacao-espelha-servidor`. Três telas, uma conta — é a resposta ao
+   * formato da S-C47, onde a tela e a porta perguntavam a mesma coisa a fontes
+   * diferentes e a tela oferecia o que o 422 recusava.
+   */
+  const faltasDaQualificacao = calcularFaltas(lead);
+
   const podeVerAgenda = podeNoModulo(acessosModulos, "agenda", "ver");
   // E125/D3: a pergunta mais frequente do telefone é "que dia é a minha
   // prova?" — a agenda DELA, recortada no banco e com janela de hoje em
@@ -757,6 +769,51 @@ export default function NoivaDetalhe() {
               <Dado rotulo="Cerimonialista" valor={lead.cerimonialista} />
               {!lead.whatsapp && !lead.cerimonialista && (
                 <p className="text-sm text-muted-foreground">Sem dados de contato.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/*
+          E215 — **quem assina o contrato.**
+
+          A tela de EDIÇÃO passou a coletar os treze campos, e só ela. Quem
+          atende o telefone olha a FICHA — é a lição da S-C91, fechada nesta
+          mesma trilha pelo mesmo motivo: o dado existia, chegava no payload, e
+          a única tela que o mostrava era a errada.
+
+          O card diz as duas coisas que a vendedora precisa saber sem abrir
+          outra tela: o que já está preenchido, e **o que falta para o contrato
+          poder fechar**. A falta é vermelha porque não é ornamento — sem ela a
+          porta recusa com 422, e descobrir isso com a noiva na frente é o caso
+          que o E211 ensinou a evitar (o aviso vem antes do clique).
+        */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Quem assina o contrato</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3" data-testid="card-qualificacao">
+              <div className="grid grid-cols-2 gap-3">
+                <Dado rotulo="CPF" valor={lead.cpf} testid="dado-cpf" />
+                <Dado rotulo="RG" valor={lead.rg} />
+                <Dado
+                  rotulo="Estado civil"
+                  valor={lead.estadoCivil ? estadoCivilLabel(lead.estadoCivil) : null}
+                />
+                <Dado rotulo="Profissão" valor={lead.profissao} />
+                <Dado
+                  rotulo="Nascimento"
+                  valor={lead.nascimento ? diaMesAno(diaDeNegocio(lead.nascimento)) : null}
+                />
+                <Dado rotulo="E-mail" valor={lead.email} />
+              </div>
+              <Dado rotulo="Endereço" valor={enderecoDaNoiva(lead)} testid="dado-endereco" />
+              {faltasDaQualificacao.length > 0 && (
+                <p className="text-sm text-destructive" data-testid="texto-falta-qualificacao">
+                  Para fechar contrato ainda falta:{" "}
+                  <strong>{faltasDaQualificacao.join(", ")}</strong>.
+                </p>
               )}
             </div>
           </CardContent>

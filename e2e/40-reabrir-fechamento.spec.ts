@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { and, eq } from "drizzle-orm";
 import { db, contratosTable, comissaoFechamentosTable } from "../lib/db/src/index";
-import { lerEstado, API_URL } from "./helpers";
+import { lerEstado, API_URL, QUALIFICACAO_DA_NOIVA } from "./helpers";
 
 const estado = lerEstado();
 
@@ -36,7 +36,7 @@ test.describe("Reabrir fechamento (E54)", () => {
     const vendedoraId = (await me.json()).usuario.id;
 
     const lead = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/leads`, {
-      data: { noivaNome: `E2E Reabrir ${stamp}`, origem: "LOJA" },
+      data: { noivaNome: `E2E Reabrir ${stamp}`, origem: "LOJA", ...QUALIFICACAO_DA_NOIVA },
     });
     const contrato = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/contratos`, {
       data: { leadId: (await lead.json()).id, vendedoraId, valorTotal: 8000 },

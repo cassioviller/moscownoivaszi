@@ -322,3 +322,39 @@ export function diaLocalSP(offsetDias = 0, base: Date = new Date()): string {
     day: "2-digit",
   }).format(instante);
 }
+
+/**
+ * E215 — a qualificação da noiva, para os specs que fecham CONTRATO.
+ *
+ * Desde o E215 o `POST /contratos` recusa fechar sem a qualificação de quem
+ * assina (`422 QUALIFICACAO_INCOMPLETA`, nomeando cada campo). Onze specs
+ * criavam a noiva com `{ noivaNome, origem }` e fechavam contrato em seguida
+ * para montar estado financeiro — e passaram a reprovar todos de uma vez, com
+ * a mesma mensagem de doze campos.
+ *
+ * A constante existe por duas razões, e a segunda é a que importa:
+ *
+ * 1. Onze cópias do mesmo bloco de doze campos seriam onze chances de escrever
+ *    o dado de teste diferente — o formato que o `criarLead` das fixtures de
+ *    API resolveu do outro lado.
+ * 2. **Uma noiva sem qualificação não é "uma noiva simples": é uma noiva que
+ *    NÃO PODE fechar contrato.** Spec que fecha contrato e monta a noiva sem
+ *    isto não representa a população que ele quer exercitar — representa o
+ *    caso de recusa, que tem spec próprio.
+ *
+ * Quem testa a RECUSA não usa esta constante: omite o campo que quer derrubar.
+ */
+export const QUALIFICACAO_DA_NOIVA = {
+  cpf: "390.533.447-05",
+  rg: "12.345.678-9",
+  estadoCivil: "SOLTEIRA" as const,
+  profissao: "Professora",
+  nascimento: "1996-03-12T12:00:00.000Z",
+  email: "noiva.e2e@exemplo.com.br",
+  enderecoLogradouro: "Rua Luis Jacinto",
+  enderecoNumero: "297",
+  enderecoBairro: "Centro",
+  enderecoCep: "12243-260",
+  enderecoCidade: "São José dos Campos",
+  enderecoEstado: "SP",
+};

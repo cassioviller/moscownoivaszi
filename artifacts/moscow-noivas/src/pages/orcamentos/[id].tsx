@@ -39,6 +39,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router";
+import { faltasDaQualificacao as calcularFaltas } from "@/lib/qualificacao";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -393,6 +394,16 @@ export default function OrcamentoDetail() {
   // 2.000 noivas baixava as 2.000 para achar um nome que o `getLead` da linha
   // acima já traz completo, com o teto de orçamento junto.
   const lead = leadCompleto.data;
+
+  /**
+   * E215 — o que falta na ficha para o contrato poder fechar.
+   *
+   * Derivado da MESMA lista que a régua `qualificacao-espelha-servidor` prega
+   * contra o servidor, então a tela não pode divergir da porta sem reprovar.
+   * É a resposta ao formato da S-C47, onde a tela e a porta perguntavam a
+   * mesma coisa a fontes diferentes e a tela oferecia o que o 422 recusava.
+   */
+  const faltasDaQualificacao = useMemo(() => calcularFaltas(lead), [lead]);
 
   // A lista já vem recortada pelo orçamento; o find é só o cinto de segurança
   // de o cache devolver uma página de outro queryKey.
@@ -1899,20 +1910,51 @@ export default function OrcamentoDetail() {
                   </FormItem>
                 )}
               />
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={contratoForm.control}
-                  name="cpf"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>CPF da noiva</FormLabel>
-                      <FormControl>
-                        <Input placeholder="000.000.000-00" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+              {/*
+                E215 — o CPF era um INPUT aqui, e virou espelho da ficha.
+
+                Ele foi o campo que ensinou o épico: existia, esta tela o
+                oferecia, era opcional — e estava em **0 de 735 contratos**.
+                Enquanto o dado nascia aqui, ele nascia solto: a ficha da noiva
+                não o guardava, então cada contrato tinha o seu, ninguém podia
+                corrigi-lo depois e o segundo contrato da mesma noiva pedia tudo
+                de novo. Agora a fonte é a FICHA e o contrato CONGELA a cópia —
+                uma grafia só, que é a lição do E187.
+
+                O bloco abaixo mostra o que vai ser congelado. Se faltar algo, a
+                porta recusa com `QUALIFICACAO_INCOMPLETA` nomeando os campos, e
+                o caminho é dito ANTES do clique — o molde do E211, onde o aviso
+                aparece antes de a vendedora prometer a data.
+              */}
+              <div className="rounded-md border p-3 text-sm" data-testid="bloco-qualificacao">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium">Quem assina</span>
+                  {orcamento?.leadId && (
+                    <Link
+                      to={`/loja/${activeLojaId}/noivas/${orcamento.leadId}/editar`}
+                      className="text-xs underline"
+                      data-testid="link-completar-ficha"
+                    >
+                      Editar ficha
+                    </Link>
                   )}
-                />
+                </div>
+                {faltasDaQualificacao.length === 0 ? (
+                  <p className="mt-1 text-muted-foreground" data-testid="texto-qualificacao-ok">
+                    {lead?.noivaNome}
+                    {lead?.cpf ? ` — CPF ${lead.cpf}` : ""}. O contrato congela
+                    estes dados como estão hoje.
+                  </p>
+                ) : (
+                  <p className="mt-1 text-destructive" data-testid="texto-qualificacao-falta">
+                    O contrato qualifica quem assina, e a ficha ainda não tem:{" "}
+                    <strong>{faltasDaQualificacao.join(", ")}</strong>. Complete a
+                    ficha e volte — sem isso o fecho é recusado.
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={contratoForm.control}
                   name="formaPagamento"

@@ -9,7 +9,7 @@ import {
   registrosCobrancaTable,
   auditLogTable,
 } from "../lib/db/src/index";
-import { lerEstado, API_URL } from "./helpers";
+import { lerEstado, API_URL, QUALIFICACAO_DA_NOIVA } from "./helpers";
 
 const estado = lerEstado();
 
@@ -54,7 +54,7 @@ test.describe("Cobrança — o rastro pelas duas portas (E123)", () => {
 
     const criarNoivaEmAtraso = async (nome: string, whatsapp: string) => {
       const lead = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/leads`, {
-        data: { noivaNome: nome, whatsapp },
+        data: { noivaNome: nome, whatsapp, ...QUALIFICACAO_DA_NOIVA },
       });
       expect(lead.status(), await lead.text()).toBe(201);
       const id = (await lead.json()).id as string;
