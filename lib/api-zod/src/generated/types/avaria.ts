@@ -5,6 +5,7 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AvariaConstatadaEm } from './avariaConstatadaEm';
 import type { AvariaParcelaStatus } from './avariaParcelaStatus';
 import type { AvariaTipo } from './avariaTipo';
 
@@ -14,6 +15,7 @@ export interface Avaria {
   bloqueioId: string;
   descricao: string;
   tipo: AvariaTipo;
+  constatadaEm: AvariaConstatadaEm;
   /** @nullable */
   custoReparo?: number | null;
   /** @nullable */

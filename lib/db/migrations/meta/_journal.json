@@ -197,6 +197,13 @@
       "when": 1786684074545,
       "tag": "0027_red_the_order",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1786746356211,
+      "tag": "0028_workable_zuras",
+      "breakpoints": true
     }
   ]
 }

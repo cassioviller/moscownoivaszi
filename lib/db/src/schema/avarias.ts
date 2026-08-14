@@ -36,6 +36,14 @@ export const avariasTable = pgTable(
      * `financeiro-core/avaria.ts` para as duas réguas.
      */
     tipo: avariaTipoEnum("tipo").notNull().default("DANO"),
+    /**
+     * E232/S-C1 — ONDE o dano foi constatado (5ª §3º). Na ENTREGA, a cláusula
+     * manda a LOCADORA substituir a peça: cobrar da noiva é 422 na porta. O
+     * default preserva o ciclo de sempre — a avaria da devolução.
+     */
+    constatadaEm: text("constatada_em", { enum: ["ENTREGA", "DEVOLUCAO"] })
+      .notNull()
+      .default("DEVOLUCAO"),
     /** Custo estimado do reparo, em reais — null quando ainda não avaliado. */
     custoReparo: decimal("custo_reparo", { precision: 10, scale: 2, mode: "number" }),
     /**

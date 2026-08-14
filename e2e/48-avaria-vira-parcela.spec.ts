@@ -109,7 +109,11 @@ test.describe("Avaria vira parcela (E71)", () => {
     await expect(page.getByText(descricaoAvaria)).toBeVisible();
 
     // Cobrar reparo — o custo entra como parcela do contrato ativo.
+    // E232/S-C98: o gesto abre o diálogo do PRAZO, preenchido com a constante
+    // que a porta pratica — a vendedora só mexe quando o combinado é outro.
     await page.getByTestId(/^cobrar-reparo-/).click();
+    await expect(page.getByTestId("input-prazo-cobranca-reparo")).toHaveValue("7");
+    await page.getByTestId("confirmar-cobranca-reparo").click();
     await expect(
       page.getByText("Cobrança criada — entrou como parcela do contrato").first(),
     ).toBeVisible();
@@ -129,5 +133,35 @@ test.describe("Avaria vira parcela (E71)", () => {
     // E110: entra DEPOIS do carnê (entrada 0 + parcelas 1..4), nunca por cima
     // da entrada. É a asserção que distingue o conserto do defeito.
     expect(parcelas[0].numero).toBe(5);
+  });
+
+  /**
+   * E232/S-C48 — o ciclo INTEIRO: registrar → cobrar → corrigir → o carnê
+   * segue. Os specs paravam na cobrança; a correção (S-C11) cruza reserva,
+   * avaria, parcela e contrato, e nenhum teste a encenava de ponta a ponta —
+   * o servidor atualiza a parcela PREVISTA sob o CAS do recebimento, e é isso
+   * que se prega aqui pelo caminho da tela.
+   */
+  test("corrigido o custo depois de cobrado, o carnê segue o número novo", async ({ page }) => {
+    await page.goto(`/reservas/${bloqueioId}`);
+
+    await page.getByTestId(/^corrigir-avaria-/).first().click();
+    const custo = page.getByTestId("edicao-custo-reparo");
+    await custo.fill("500");
+    await page.getByTestId("salvar-avaria-editada").click();
+    await expect(page.getByText("Avaria corrigida").first()).toBeVisible();
+
+    const parcelas = await db
+      .select()
+      .from(parcelasTable)
+      .where(
+        and(
+          eq(parcelasTable.contratoId, contratoId),
+          like(parcelasTable.descricao, `%${descricaoAvaria}%`),
+        ),
+      );
+    expect(parcelas).toHaveLength(1);
+    expect(parcelas[0].valorPrevisto).toBe(500);
+    expect(parcelas[0].status).toBe("PREVISTA");
   });
 });

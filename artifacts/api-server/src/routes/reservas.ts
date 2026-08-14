@@ -76,6 +76,7 @@ import {
   explicacaoDaFaixa,
   explicacaoDoAtraso,
   hojeLocal,
+  PRAZO_DA_COBRANCA_DE_REPARO_DIAS,
   reajusteDaTrocaDeData,
   reancorarDataDeNegocio,
   // S-C11: a régua única do "entrou dinheiro?" (E115/S5) — nunca a lista de
@@ -1799,6 +1800,9 @@ router.post("/lojas/:lojaId/bloqueios/:bloqueioId/avarias", async (req, res): Pr
         bloqueioId: bloqueioId as string,
         descricao: parsed.data.descricao,
         tipo: tipoDaAvaria,
+        // E232/S-C1 — onde o dano foi visto (5ª §3º). O default é o ciclo de
+        // sempre: a avaria da devolução.
+        constatadaEm: parsed.data.constatadaEm ?? "DEVOLUCAO",
         custoReparo: parsed.data.custoReparo ?? null,
         // Só guarda a razão quando ela explica alguma coisa: justificativa
         // colada numa taxa que cabe na faixa viraria selo permanente na tela.
@@ -1869,6 +1873,22 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
       error: "AVARIA_JA_COBRADA",
       detalhe: "Este reparo já virou parcela do contrato",
       campos: [{ campo: "avariaId", motivo: "Já existe uma cobrança para esta avaria" }],
+    });
+    return;
+  }
+  /**
+   * E232/S-C1 — o dano visto NA ENTREGA não vira carnê da noiva: a 5ª §3º
+   * manda a LOCADORA substituir a peça. O registro existe (com foto, para a
+   * troca ter prova); o que a porta impede é a cláusula da loja virar cobrança
+   * de quem recebeu o defeito pronto.
+   */
+  if (avaria.constatadaEm === "ENTREGA") {
+    res.status(422).json({
+      error: "DANO_DA_ENTREGA",
+      detalhe:
+        "Este dano foi constatado na ENTREGA — pela cláusula 5ª §3º, a loja substitui a peça; " +
+        "não se cobra da noiva o defeito que ela recebeu pronto.",
+      campos: [{ campo: "avariaId", motivo: "Avaria constatada no ato da locação" }],
     });
     return;
   }
@@ -2124,7 +2144,7 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
       valorPrevisto: avaria.custoReparo!,
       // Dia de negócio, não instante: `new Date()` das 21h à meia-noite jogava
       // o vencimento para o dia seguinte (a mesma classe do C6).
-      vencimento: ancoraDeNegocio(addDias(hojeLocal(), parsed.data.prazoDias ?? 7)),
+      vencimento: ancoraDeNegocio(addDias(hojeLocal(), parsed.data.prazoDias ?? PRAZO_DA_COBRANCA_DE_REPARO_DIAS)),
     });
 
     // O vínculo é condicional ao estado que a rota LEU: vazio, ou a mesma
@@ -2767,7 +2787,7 @@ router.post(
         valorPrevisto: cobranca.valor,
         // Dia de negócio, e não `new Date()`: das 21h à meia-noite o instante
         // cru joga o vencimento para o dia seguinte (S-O117).
-        vencimento: ancoraDeNegocio(addDias(hojeLocal(), parsed.data.prazoDias ?? 7)),
+        vencimento: ancoraDeNegocio(addDias(hojeLocal(), parsed.data.prazoDias ?? PRAZO_DA_COBRANCA_DE_REPARO_DIAS)),
       });
 
       const [marcado] = await tx

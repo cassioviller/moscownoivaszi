@@ -1613,6 +1613,14 @@ export const AvariaTipo = {
   DANO: 'DANO',
 } as const;
 
+export type AvariaConstatadaEm = typeof AvariaConstatadaEm[keyof typeof AvariaConstatadaEm];
+
+
+export const AvariaConstatadaEm = {
+  ENTREGA: 'ENTREGA',
+  DEVOLUCAO: 'DEVOLUCAO',
+} as const;
+
 /**
  * @nullable
  */
@@ -1632,6 +1640,7 @@ export interface Avaria {
   bloqueioId: string;
   descricao: string;
   tipo: AvariaTipo;
+  constatadaEm: AvariaConstatadaEm;
   /** @nullable */
   custoReparo?: number | null;
   /** @nullable */
@@ -1747,6 +1756,14 @@ export const AvariaInputTipo = {
   DANO: 'DANO',
 } as const;
 
+export type AvariaInputConstatadaEm = typeof AvariaInputConstatadaEm[keyof typeof AvariaInputConstatadaEm];
+
+
+export const AvariaInputConstatadaEm = {
+  ENTREGA: 'ENTREGA',
+  DEVOLUCAO: 'DEVOLUCAO',
+} as const;
+
 export interface AvariaInput {
   /**
      * @minLength 1
@@ -1754,6 +1771,7 @@ export interface AvariaInput {
      */
   descricao: string;
   tipo?: AvariaInputTipo;
+  constatadaEm?: AvariaInputConstatadaEm;
   /** @minimum 0 */
   custoReparo?: number;
   /**

@@ -46,6 +46,14 @@ import { brl, centavos } from "./dinheiro";
  * está em `avaliarTaxaDeAvaria`.
  */
 
+/**
+ * E232/S-C98 — o prazo padrão da cobrança de reparo, em dias. Era um `?? 7`
+ * cru em dois sítios de `reservas.ts` — e número sem nome é invisível para a
+ * régua dos manuais (a lição da S-C95). A tela oferece este valor e a porta o
+ * pratica quando ninguém escolhe outro.
+ */
+export const PRAZO_DA_COBRANCA_DE_REPARO_DIAS = 7;
+
 /** Cláusula 14ª — o piso da taxa de limpeza, em reais. */
 export const TAXA_LIMPEZA_MINIMA = 350;
 /** Cláusula 14ª — o teto da taxa de limpeza, em reais. */

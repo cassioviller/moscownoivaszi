@@ -129,6 +129,8 @@ test.describe.serial("E167 — a avaria fecha na ficha sem noiva própria", () =
     // Era aqui que a ficha parava: sem `leadId` no bloqueio a consulta do
     // contrato nem saía, e o botão não existia em 97% das avarias do banco.
     await page.getByRole("button", { name: "Cobrar reparo", exact: true }).click();
+    // E232/S-C98: o diálogo do prazo entrou no caminho.
+    await page.getByTestId("confirmar-cobranca-reparo").click();
     await expect(
       page.getByText("Cobrança criada — entrou como parcela do contrato").first(),
     ).toBeVisible();
@@ -198,6 +200,7 @@ test.describe.serial("E167 — a avaria fecha na ficha sem noiva própria", () =
     await page.getByRole("button", { name: "Cancelar" }).click();
 
     await page.getByRole("button", { name: "Recobrar reparo" }).first().click();
+    await page.getByTestId("confirmar-cobranca-reparo").click();
     await expect(
       page.getByText("Cobrança criada — entrou como parcela do contrato").first(),
     ).toBeVisible();

@@ -6487,7 +6487,7 @@ components:
         reservaId: { type: string }
     Avaria:
       type: object
-      required: [id, lojaId, bloqueioId, descricao, tipo, temFoto, criadaEm, aluguelDaPeca]
+      required: [id, lojaId, bloqueioId, descricao, tipo, temFoto, criadaEm, aluguelDaPeca, constatadaEm]
       properties:
         id: { type: string }
         lojaId: { type: string }
@@ -6498,6 +6498,9 @@ components:
         # da peça). Sem o tipo, `custoReparo` é um número sem régua: não há como
         # dizer se R$ 400,00 cabe sem saber qual das duas o rege.
         tipo: { type: string, enum: [LIMPEZA, DANO] }
+        # E232/S-C1 — ONDE o dano foi constatado (5ª §3º). Na ENTREGA, a
+        # locadora substitui a peça: cobrar da noiva é 422 (`DANO_DA_ENTREGA`).
+        constatadaEm: { type: string, enum: [ENTREGA, DEVOLUCAO] }
         custoReparo: { type: ["number", "null"] }
         # E214 — por que o valor saiu da faixa. Preenchida = alguém decidiu fora
         # do que a cláusula manda e disse por quê; a mesma frase está na trilha
@@ -6719,6 +6722,9 @@ components:
         # coluna: cliente antigo que não manda o campo continua registrando o
         # que sempre registrou.
         tipo: { type: string, enum: [LIMPEZA, DANO] }
+        # E232/S-C1 — o default é DEVOLUCAO, o mesmo da coluna: o ciclo de
+        # sempre não muda para quem não escolher.
+        constatadaEm: { type: string, enum: [ENTREGA, DEVOLUCAO] }
         custoReparo: { type: number, minimum: 0 }
         # E214 — a razão escrita, obrigatória quando o valor sai da faixa.
         #

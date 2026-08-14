@@ -5,6 +5,7 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AvariaInputConstatadaEm } from './avariaInputConstatadaEm';
 import type { AvariaInputTipo } from './avariaInputTipo';
 
 export interface AvariaInput {
@@ -14,6 +15,7 @@ export interface AvariaInput {
      */
   descricao: string;
   tipo?: AvariaInputTipo;
+  constatadaEm?: AvariaInputConstatadaEm;
   /** @minimum 0 */
   custoReparo?: number;
   /**

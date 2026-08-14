@@ -1,0 +1,2 @@
+ALTER TABLE "avarias" ADD COLUMN "constatada_em" text DEFAULT 'DEVOLUCAO' NOT NULL;--> statement-breakpoint
+CREATE INDEX "bloqueio_vestidos_loja_na_rua_idx" ON "bloqueio_vestidos" USING btree ("loja_id") WHERE retirada_data_real is not null;

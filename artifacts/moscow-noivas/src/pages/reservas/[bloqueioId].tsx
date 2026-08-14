@@ -41,6 +41,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CabecalhoDetalhe } from "@/components/cabecalho-detalhe";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -89,7 +90,7 @@ import {
 import { donaDaFicha, temReservaMae } from "@/lib/dona-da-ficha-da-reserva";
 // E214: a faixa das cláusulas 14ª/15ª vem da MESMA conta do servidor.
 import { faixaDaAvariaRegistrada, faixaNaTela } from "@/lib/faixa-da-avaria";
-import { explicacaoDaFaixa, type TipoDeAvaria } from "@workspace/financeiro-core";
+import { explicacaoDaFaixa, PRAZO_DA_COBRANCA_DE_REPARO_DIAS, type TipoDeAvaria } from "@workspace/financeiro-core";
 
 /**
  * Detalhe da reserva (porte da /reservas/[bloqueioId] do feat/orcamentos) — o
@@ -222,6 +223,11 @@ export default function ReservaDetalhe() {
   const [avariaCusto, setAvariaCusto] = useState("");
   // E214: de qual cláusula a taxa sai. DANO é o padrão, o mesmo da coluna.
   const [avariaTipo, setAvariaTipo] = useState<TipoDeAvaria>("DANO");
+  // E232/S-C1 — o default é o ciclo de sempre: a avaria da devolução.
+  const [avariaConstatadaEm, setAvariaConstatadaEm] = useState<"ENTREGA" | "DEVOLUCAO">("DEVOLUCAO");
+  // E232/S-C98 — a avaria cuja cobrança está sendo montada, e o prazo dela.
+  const [avariaCobrar, setAvariaCobrar] = useState<{ id: string } | null>(null);
+  const [prazoCobranca, setPrazoCobranca] = useState(String(PRAZO_DA_COBRANCA_DE_REPARO_DIAS));
   const [avariaJustificativa, setAvariaJustificativa] = useState("");
   const [avariaFotoBase64, setAvariaFotoBase64] = useState<string | null>(null);
   const [avariaFotoNome, setAvariaFotoNome] = useState<string | null>(null);
@@ -389,6 +395,7 @@ export default function ReservaDetalhe() {
           data: {
             descricao: avariaDescricao.trim(),
             tipo: avariaTipo,
+            constatadaEm: avariaConstatadaEm,
             ...(custo !== null ? { custoReparo: custo } : {}),
             // E214: só vai quando explica alguma coisa — o servidor descarta a
             // razão colada numa taxa que cabe na faixa, e a tela não a manda.
@@ -422,14 +429,29 @@ export default function ReservaDetalhe() {
    * carnê da noiva. Agora `POST /avarias/:id/cobrar` grava parcela e vínculo na
    * mesma transação, e a segunda chamada responde 409.
    */
-  const cobrarReparo = (avaria: { id: string }) =>
+  /**
+   * E232/S-C98 — a cobrança ganha o PRAZO: a porta aceitava `prazoDias` desde
+   * o E214 e a tela nunca o oferecia — o vencimento caía sempre nos 7 dias do
+   * servidor, sem ninguém escolher. O campo abre preenchido com a MESMA
+   * constante que a porta pratica (`PRAZO_DA_COBRANCA_DE_REPARO_DIAS` — uma
+   * grafia, E187).
+   */
+  const abrirCobranca = (avaria: { id: string }) => {
+    setPrazoCobranca(String(PRAZO_DA_COBRANCA_DE_REPARO_DIAS));
+    setAvariaCobrar(avaria);
+  };
+
+  const cobrarReparo = (avaria: { id: string }, prazoDias?: number) =>
     comToast(
       async () => {
         if (!contratoAtivo) return;
         await cobrarAvaria.mutateAsync({
           lojaId: activeLojaId!,
           avariaId: avaria.id,
-          data: { contratoId: contratoAtivo.id },
+          data: {
+            contratoId: contratoAtivo.id,
+            ...(prazoDias !== undefined ? { prazoDias } : {}),
+          },
         });
         // Cobrar o reparo CRIA parcela no carnê da noiva: é movimento de
         // caixa, e por isso passa pela régua do D9/E93 e não só pela lista de
@@ -1189,12 +1211,23 @@ export default function ReservaDetalhe() {
                               </Link>
                             </Button>
                           )
+                        ) : a.constatadaEm === "ENTREGA" ? (
+                          /* E232/S-C1 — vista na ENTREGA, a 5ª §3º manda a
+                             LOJA substituir: o botão de cobrar não nasce, e o
+                             motivo fica onde ele estaria (a régua do E166). */
+                          <span
+                            className="max-w-56 text-xs text-muted-foreground"
+                            data-testid={`motivo-nao-cobra-${a.id}`}
+                          >
+                            Vista na entrega — a loja substitui a peça (5ª §3º); não se cobra da
+                            noiva o defeito que ela recebeu pronto.
+                          </span>
                         ) : contratoAtivo && a.custoReparo != null && a.custoReparo > 0 ? (
                           <Button
                             variant="outline"
                             size="sm"
                             disabled={cobrarAvaria.isPending}
-                            onClick={() => cobrarReparo(a)}
+                            onClick={() => abrirCobranca(a)}
                             data-testid={`cobrar-reparo-${a.id}`}
                           >
                             {/* A cobrança anterior morreu com o contrato: o
@@ -1224,16 +1257,18 @@ export default function ReservaDetalhe() {
                         {/* S-C11: o conserto do zero a mais. Antes daqui, o
                             único gesto ao lado do número errado era o `X` —
                             que leva a foto-prova junto, e que o servidor recusa
-                            enquanto a cobrança estiver viva. */}
+                            enquanto a cobrança estiver viva.
+                            E232/S-C99: o botão ganha NOME — era só ícone com
+                            `aria-label`, e botão que só o leitor de tela sabe
+                            o que faz não é botão para quem enxerga. */}
                         <Button
                           variant="ghost"
-                          size="icon"
-                          className="h-9 w-9"
-                          aria-label="Corrigir avaria"
+                          size="sm"
                           data-testid={`corrigir-avaria-${a.id}`}
                           onClick={() => abrirEdicaoDaAvaria(a)}
                         >
-                          <Pencil className="h-3.5 w-3.5" />
+                          <Pencil className="mr-1 h-3.5 w-3.5" />
+                          Corrigir
                         </Button>
                         {/* F23: a foto é a PROVA que sustenta a cobrança. Ela
                             saía por um toque num ícone de 28px, sem uma palavra
@@ -1331,6 +1366,21 @@ export default function ReservaDetalhe() {
                     <SelectContent>
                       <SelectItem value="DANO">Dano (cláusula 15ª)</SelectItem>
                       <SelectItem value="LIMPEZA">Limpeza (cláusula 14ª)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {/* E232/S-C1 — ONDE o dano foi visto. Na entrega, a 5ª §3º
+                      manda a LOJA substituir: o registro existe (com foto,
+                      para a troca ter prova) e a cobrança não nasce. */}
+                  <Select
+                    value={avariaConstatadaEm}
+                    onValueChange={(v) => setAvariaConstatadaEm(v as "ENTREGA" | "DEVOLUCAO")}
+                  >
+                    <SelectTrigger className="w-52" aria-label="Onde foi constatada" data-testid="avaria-constatada-em">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DEVOLUCAO">Vista na devolução</SelectItem>
+                      <SelectItem value="ENTREGA">Vista na entrega (5ª §3º)</SelectItem>
                     </SelectContent>
                   </Select>
                   <Input
@@ -1434,6 +1484,7 @@ export default function ReservaDetalhe() {
                 aria-label="Custo do reparo"
                 placeholder="Custo do reparo"
                 inputMode="decimal"
+                data-testid="edicao-custo-reparo"
               />
             </div>
             {/* A MESMA frase do cadastro e do 422 — ela sai de
@@ -1482,6 +1533,51 @@ export default function ReservaDetalhe() {
               data-testid="salvar-avaria-editada"
             >
               Salvar correção
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* E232/S-C98 — a cobrança do reparo com o PRAZO escolhível. O campo
+          abre com a constante que a porta pratica; a vendedora só mexe quando
+          o combinado é outro. */}
+      <Dialog open={avariaCobrar !== null} onOpenChange={(aberto) => !aberto && setAvariaCobrar(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cobrar o reparo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              A parcela do reparo entra no carnê do contrato ativo da noiva.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="prazo-cobranca-reparo">Vence em (dias)</Label>
+              <Input
+                id="prazo-cobranca-reparo"
+                type="number"
+                min={0}
+                max={365}
+                inputMode="numeric"
+                value={prazoCobranca}
+                onChange={(e) => setPrazoCobranca(e.target.value)}
+                data-testid="input-prazo-cobranca-reparo"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAvariaCobrar(null)}>
+              Voltar
+            </Button>
+            <Button
+              disabled={cobrarAvaria.isPending || Number.isNaN(Number(prazoCobranca))}
+              onClick={() => {
+                if (!avariaCobrar) return;
+                void cobrarReparo(avariaCobrar, Number(prazoCobranca));
+                setAvariaCobrar(null);
+              }}
+              data-testid="confirmar-cobranca-reparo"
+            >
+              {cobrarAvaria.isPending ? "Cobrando…" : "Cobrar"}
             </Button>
           </DialogFooter>
         </DialogContent>
