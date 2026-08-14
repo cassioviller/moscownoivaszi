@@ -26,9 +26,12 @@ para o documento que manda.
    **E224** (`75fa2cbf`), que a medição fez nascer. **O E217 fechou a Onda C** —
    a rescisão calcula, e com ela **a regra do E196 destravou**: manual se
    reescreve depois da onda, e a onda acabou.
-   A tabela do `EXECUCAO.md` é a fila; **conte, não deduza** — depois do lote
-   das amarelas em paralelo (14/08) são **55 sobras** (**ZERO 🟠**, 7 🟡, 48 🔵)
-   e **4 pendências que não são software**.
+   A tabela do `EXECUCAO.md` é a fila; **conte, não deduza** — depois da
+   segunda metade de 14/08 (E225, E226, E227, S-C170, S-C180 — as OITO 🟡 de
+   código da manhã fecharam à tarde) são **52 sobras** (**ZERO 🟠**, **4 🟡 —
+   nenhuma pede código sozinha**, 48 🔵) e **4 pendências que não são
+   software**. E a manhã provou a S-A5 dentro do próprio rastreador: a
+   linha-resumo dizia 55 quando a tabela media 57.
 
    **O E215 é o primeiro épico da trilha em que a medição mudou o tamanho nos
    DOIS sentidos**, e as duas metades valem para os que faltam. Encareceu: o
@@ -140,16 +143,44 @@ para o documento que manda.
    (reverter a linha do conserto, rodar, desfazer). O `PROGRESSO.md` da trilha
    anterior já dizia: **o arquivo é o registro, o resto é conveniência.**
 
-   **O próximo da fila são os MANUAIS** — a S-C96 🟡 e as cinco 🔵 irmãs (S-C20,
-   S-C45, S-C88, S-C97, S-C113). Eles esperavam a onda C acabar pela regra do
-   E196, **e ela acabou no E217**. A dívida está medida por documento: nos cinco
-   são **0 "avaria", 0 "multa", 0 "juros", 0 "rescisão", 0 "exclusiva"** — e
-   "cláusula" aparece 6 vezes, todas em `vendedora.html` (5) e `noiva.html` (1),
-   escritas pelo E224 e pelo E221 ao fechar. **`proprietario.html` não cita nem
-   "retirada".** Depois deles vem a **S-C110** (o épico **E225**: a peça que saiu
-   e não voltou some da disponibilidade quando o contrato cai), que é o único
-   item cujo relógio já está andando — população zero hoje, e o gesto que a
-   produz nasceu no E224.
+   **2026-08-14, segunda metade: as OITO 🟡 de código fecharam em cinco
+   commits, e não sobrou NENHUMA linha de código aberta em 🟡.** A sessão leu
+   as 57 sobras em bloco
+   ([`2026-08-14-a-clausula-sem-gesto-plano.md`](docs/propostas/2026-08-14-a-clausula-sem-gesto-plano.md))
+   e executou a fila inteira em série:
+
+   - **E226** (`6d1cf08a`) — a mora aparece onde se decide sobre ela (S-C190,
+     S-C200, S-C210). A correção de medição que ordenou o épico: **o carnê era
+     a quarta porta que a nota do E213 dava por coberta, e o dado NÃO chegava**
+     (`with: { parcelas: true }` cru; `Parcela.mora` é `optional`, nada
+     reprovava). O gesto de perdoar ganhou botão sob a régua do P6, e o E2E
+     derrubou o spec 35 inteiro — era o único teste que encenava o diálogo
+     sobre parcela vencida, e o número esperado agora é LIDO da fila (a mora
+     cresce com os dias, lição da S-O119).
+   - **E227** (`19296ca1`) — a 18ª e a 13ª ganham gesto (S-C211, S-C151). As
+     portas estavam prontas desde o E217; **o épico inteiro coube num `<input>`
+     e num rádio**, e é isso que a sobra denunciava: uma cláusula assinada
+     morta por falta de campo.
+   - **S-C170** (`a2822b82`) — a quebra de linha mudou de DONO: saiu dos
+     call-sites e entrou no paginador, por onde todo papel passa. Régua de
+     EFEITO sobre as linhas desenhadas (`(...) Tj`): `add()` novo sem quebra
+     reprova no dia em que nascer.
+   - **S-C180** (`e176746d`) — a tela deriva a oferta do schema e a varredura
+     reprova a lista literal que repete o conjunto: **a cópia idêntica de hoje
+     é a divergência de amanhã, e só a idêntica é detectável.**
+   - **E225** (`68fa7239`) — a peça que saiu e não voltou OCUPA mesmo com o contrato
+     cancelado (S-C110). Ocupar ganhou a segunda forma ("na rua": retirada real
+     sem devolução, cancelado ou não — a frase da S-C85 aplicada à
+     disponibilidade), num predicado só, e as dez portas herdaram. O vermelho:
+     a noiva B levava **201** sobre a peça na casa da A. E um vermelho FALSO
+     que virou nota: `dataFutura(-10)` não é passado — a base do helper é fixa
+     em 2027, e a cena do atraso precisa de `Date.now()` real.
+
+   **O que resta em 🟡 não se fecha escrevendo código**: S-C60 e S-C51 esperam
+   decisão, S-C220 espera a dona decidir o perfil da Recepção, e S-C231 (os
+   cartões-resumo da carteira somam sem a mora que as linhas mostram) espera
+   medir a convenção compartilhada com o dashboard e o sino antes de mexer.
+   Fora isso, 48 🔵 — conte na tabela.
 
    Esta linha já apontou para o **E222** depois de ele estar executado, que é a
    **S-A5 acontecendo de novo**: quem abre a sessão lê o estado velho como se
@@ -444,18 +475,18 @@ para o documento que manda.
    ainda está em dia — esta linha envelhece a cada commit, e já envelheceu
    cinco vezes.
 
-   Hoje a régua é **API 1637 (226 arquivos) · frontend 920 (98 arquivos) ·
-   E2E 171 · typecheck verde em 5 projetos** — as **quatro medidas em série** em
-   2026-08-14, depois de integrar o **lote das quatro amarelas em paralelo**. **E este parágrafo é a
-   prova viva do que ele manda fazer: os QUATRO agentes acharam, cada um por
-   conta própria, que ele estava três épicos atrás** — ele dizia *1616 (221) ·
-   879 (96)* e a base `c2b8a274` já media *1624 (223) · 887 (97)*, antes de
-   qualquer um deles tocar em nada. Quatro medições independentes do mesmo
-   número errado é o formato da duplicata que cabe ao integrador fundir.
-   Antes do lote a régua dizia *1599 · 874* (terceiro lote) e *1389 · 704* (seis
-   épicos do contrato somando 78 testes de API e 99 de frontend sem que ninguém
-   refizesse a conta). **Meça antes de citar** — e a régua do `heliumdb` mede
-   **10,4 min** de API.
+   Hoje a régua é **API 1660 (229 arquivos) · frontend 943 (99 arquivos) ·
+   E2E 174 · typecheck verde** — as **quatro medidas em série** na tarde de
+   2026-08-14, no fecho do E225 (a API rodou INTEIRA quatro vezes na tarde:
+   1648 no E226 e no E227, 1654 na S-C170, 1660 no E225; o E2E, três: 171 no
+   E226, 174 no E227 com o spec 63, 174 no E225). **E este parágrafo é a prova
+   viva do que ele manda fazer: os QUATRO agentes do lote da manhã acharam,
+   cada um por conta própria, que ele estava três épicos atrás** — ele dizia
+   *1616 (221) · 879 (96)* e a base `c2b8a274` já media *1624 (223) · 887
+   (97)*, antes de qualquer um deles tocar em nada. Quatro medições
+   independentes do mesmo número errado é o formato da duplicata que cabe ao
+   integrador fundir. **Meça antes de citar** — a régua do `heliumdb` mede
+   **~11,6 min** de API e **~7 min** de E2E.
    **O E2E é a régua obrigatória e a única que agente nenhum pode rodar**: todo
    relatório de worktree abre dizendo *"E2E obrigatório e NÃO rodado"*, porque
    worktree isola arquivo e banco e **não isola PORTA** — rodá-lo é trabalho do
