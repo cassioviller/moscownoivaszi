@@ -245,11 +245,11 @@
   <header class="capa">
     <p class="eyebrow">Moscow Noivas · Manual de uso</p>
     <h1>Manual da Vendedora</h1>
-    <p class="subtitulo">Do primeiro contato ao contrato assinado — na ordem em que o seu dia acontece.</p>
+    <p class="subtitulo">Do primeiro contato à peça devolvida — na ordem em que o seu dia acontece.</p>
     <div class="contexto">
       <span>Perfil: <b>Vendedora</b></span>
       <span>Abre: <b>noivas, agenda e acervo</b></span>
-      <span>Atualizado em <b>11/08/2026</b></span>
+      <span>Atualizado em <b>14/08/2026</b></span>
     </div>
   </header>
 
@@ -267,6 +267,10 @@
       <li><a href="#link"><span class="num">7</span>Mandar para a noiva</a></li>
       <li><a href="#aprovar"><span class="num">8</span>Aprovar, e a volta</a></li>
       <li><a href="#contrato"><span class="num">9</span>O contrato</a></li>
+      <li><a href="#sai-e-volta"><span class="num">10</span>A peça sai e volta</a></li>
+      <li><a href="#avaria"><span class="num">11</span>A peça volta com avaria</a></li>
+      <li><a href="#cobra"><span class="num">—</span>O que o contrato cobra</a></li>
+      <li><a href="#desistir"><span class="num">—</span>Se a noiva desistir</a></li>
       <li><a href="#nao"><span class="num">—</span>Quando o sistema diz não</a></li>
       <li><a href="#filas"><span class="num">—</span>As filas do seu dia</a></li>
       <li><a href="#prazos"><span class="num">—</span>Os prazos</a></li>
@@ -324,9 +328,12 @@
         <span>Link</span><i>→</i>
         <span>Aceite</span><i>→</i>
         <span>Reserva</span><i>→</i>
-        <span class="fim">Contrato</span>
+        <span>Contrato</span><i>→</i>
+        <span>Retirada</span><i>→</i>
+        <span class="fim">Devolução</span>
       </div>
       <p>Você não precisa seguir essa ordem à risca. Mas é essa a ordem que o sistema espera, e é ela que faz a faixa <strong>“próximo passo”</strong> da ficha saber o que sugerir.</p>
+      <p><strong>Os dois últimos passos são os que custam dinheiro quando saem do lugar.</strong> Até o contrato, o pior que acontece é uma venda que não fecha. Depois dele, o instrumento que a noiva assinou passa a cobrar: a peça que volta suja tem taxa (cláusulas 14ª e 15ª), a que não volta na data tem diária e multa (16ª), a parcela que vence e não é paga rende multa e juros (9ª). Os passos 10 e 11 são sobre isso.</p>
     </section>
 
     <section id="chega">
@@ -398,6 +405,16 @@
       <p>Você corrige a data em <span class="btn">Editar dados</span>, e o bloco <strong>O casamento</strong> passa a mostrar um aviso: <em>“A reserva dela ficou em outra data.”</em>, com o dia antigo e as peças presas nele. <strong>Mudar a ficha não move o vestido</strong> — a reserva é o que segura a peça na arara, e ela só anda quando você manda.</p>
       <p>O botão <span class="btn" data-tela="Mover para ">Mover para 03/10/2028</span> ao lado de cada reserva faz tudo de uma vez: a reserva, <strong>todas as peças dela</strong> e o <strong>contrato ativo</strong> passam para a data nova, e a mudança fica registrada. Se alguma peça já estiver com outra noiva no dia novo, o sistema recusa e diz qual — aí a saída é trocar o vestido ou a data, e a ficha da noiva continua salva do jeito que você corrigiu.</p>
       <p>Sem esse aviso, o erro é silencioso e só aparece no dia: a ficha diz 03/10, o vestido continua reservado para 12/09, e no fim de semana do casamento ele pode estar com outra pessoa.</p>
+
+      <h3>Mudar a data para o ano seguinte tem preço (cláusula 17ª)</h3>
+      <p><strong>Você lê o valor antes de clicar.</strong> Quando a data nova cai no ano seguinte e a noiva já tem contrato ativo, aparece uma linha ao lado do botão de mover, com o percentual e os reais:</p>
+      <div class="fala aviso">
+        <p><em>“Mudar para o ano seguinte reajusta o contrato em 10% — R$ 500,00 a mais, cobrado como parcela (cláusula 17ª).”</em></p>
+      </div>
+      <p><strong>A escada sobe a cada troca de ano:</strong> a primeira cobra 10%, a segunda 20%, a terceira 30%. Da terceira em diante fica em 30% — o contrato nomeia até a terceira e não diz o que vem depois, e o sistema não inventa um degrau que ninguém assinou.</p>
+      <p><strong>O percentual é sobre o valor total do contrato assinado</strong>, não sobre o já reajustado, e o reajuste entra como <strong>parcela nova no carnê</strong> — o total do contrato não muda. É por isso que a segunda troca cobra 20% do mesmo valor de sempre, e não 20% de um total que já cresceu.</p>
+      <p>Adiantar ou atrasar dentro do <strong>mesmo ano</strong> não reajusta nada: a cláusula fala de troca para o ano seguinte, e a linha não aparece.</p>
+      <p class="nota">O aviso existe porque o botão <b>move na hora, sem diálogo de confirmação</b>. Descobrir a cobrança depois de já ter prometido a data à noiva é o defeito que essa linha evita.</p>
 
       <p>Um deles vale destaque, porque é o que a noiva mais usa — o <strong>Portal da noiva</strong>:</p>
       <figure class="print" data-print="ficha-portal"></figure>
@@ -547,6 +564,29 @@
 
       <p><strong>A prévia do carnê aparece enquanto você digita</strong>, e é exatamente o que vai ser gravado. As parcelas vencem todo mês no mesmo dia; se o dia não existir no mês — 31 em fevereiro —, cai no último dia do mês. A entrada, se houver, vence hoje.</p>
 
+      <h3>A entrada de 40% e o prazo dos 20 dias: uma avisa, a outra recusa</h3>
+      <p>São duas regras do mesmo contrato, e o sistema as trata de formas <strong>opostas</strong>. Vale saber qual é qual antes de negociar.</p>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>A cláusula</th><th>Quanto</th><th>O que o sistema faz, e por quê</th></tr></thead>
+          <tbody>
+            <tr><td><strong>8ª §1º</strong> — a reserva antecipada</td><td class="prazo" data-regua="RESERVA_PCT">40% do valor total</td><td><strong>Avisa e deixa passar.</strong> A entrada é onde a loja negocia: <strong>101 dos 208 contratos com entrada já fechados estão abaixo desse percentual</strong>, e a média é 67,6% — uma trava tornaria quase metade do que a loja fez irreproduzível pela tela</td></tr>
+            <tr><td><strong>§ único</strong> — o restante do parcelamento</td><td class="prazo" data-regua="PRAZO_ANTES_DA_RETIRADA_DIAS">pago até 20 dias antes da retirada</td><td><strong>Recusa, e o contrato não nasce.</strong> É o que garante o dinheiro <strong>antes de a peça sair pela porta</strong>. Depois que o vestido está com a noiva, cobrar é outro assunto</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>No campo “Entrada (opcional)”, o valor cinza é a sugestão da cláusula</strong> — 40% do total. Ele <em>não preenche</em> o campo: quem digita é você. Num contrato de R$ 5.000,00 ele mostra R$ 2.000,00.</p>
+      <p>Digitou menos, aparece o aviso em amarelo, com a conta feita: quanto a cláusula pede, quanto sua entrada representa do total e quanto falta. A última frase dele é a que importa — <em>“Pode seguir assim: quem decide é a loja.”</em> É aviso, não trava.</p>
+      <p>O prazo é o contrário. Se qualquer parcela do carnê vencer a menos de 20 dias da retirada, <strong>o contrato não nasce</strong>, e a recusa diz até que dia o carnê pode vencer — retirada em 06/09/2028 fecha o carnê em 17/08/2028. As saídas são duas: antecipar as parcelas ou combinar a retirada mais tarde.</p>
+      <p class="nota">O prazo vale só para o <b>carnê</b>. A cobrança de um reparo, a de um atraso na devolução e a multa por atraso de pagamento nascem <b>depois</b> da retirada por definição — elas passam, e é de propósito.</p>
+
+      <h3>Se alguma peça for exclusiva, o diálogo diz o que ela custa</h3>
+      <p>Peça <strong>exclusiva de primeiro aluguel</strong> é a que a loja mandou fazer para uma noiva e que ainda não saiu nenhuma vez. Se ela estiver no orçamento, o diálogo de fechar o contrato traz um aviso amarelo com <strong>a peça nomeada</strong>:</p>
+      <div class="fala aviso">
+        <p><em>“EX-01 · Exclusivo da Marina é peça exclusiva de primeiro aluguel — se a noiva rescindir, a multa é o valor integral do aluguel (cláusula 12ª), e não os 60% da 11ª.”</em></p>
+      </div>
+      <p><strong>Ele avisa e não bloqueia</strong> — quem decide vender é a loja. O que muda é que você fecha sabendo, e pode dizer à noiva antes de ela assinar. Os detalhes da conta estão em <a href="#desistir">Se a noiva desistir</a>.</p>
+
       <h3>A tela do contrato</h3>
       <p>Traz <strong>“Valor total”</strong>, <strong>“Falta receber”</strong>, a forma de pagamento, o CPF, o vestido, os itens e <strong>“Retirada e devolução”</strong>. Abaixo, o plano de pagamento, parcela por parcela, com o estado de cada uma: Prevista, Paga, Parcial, Atrasada, Cancelada.</p>
       <p><strong>As datas se corrigem sem cancelar nada</strong>: o botão <span class="btn">Alterar</span> (ou <span class="btn">Informar</span>, quando ainda não há data) abre o diálogo com os dois campos. Contrato cancelado não muda mais.</p>
@@ -566,6 +606,208 @@
         <p>O <span class="btn">Estornar</span> apaga os recibos daquela parcela na hora, dos dois lados. O dinheiro voltou, e um comprovante dele seria documento falso. Se ela pagar de novo depois, o recibo novo nasce normalmente.</p>
       </div>
       <p class="nota">O recibo imprime o <b>CNPJ e o endereço da loja</b>, e eles vêm de <em>Configurações → Dados da loja</em>. Enquanto estiverem com o exemplo, o recibo sai com o exemplo — vale conferir antes de mandar o primeiro para uma noiva.</p>
+    </section>
+
+    <section id="sai-e-volta">
+      <h2><span class="passo">10</span>A peça sai e volta</h2>
+      <p class="resumo">Menu → Reservas → a reserva da noiva. É aqui que você registra o dia em que o vestido saiu e o dia em que ele voltou — e é só isso que faz o contador do contrato parar.</p>
+
+      <h3>Os dois gestos, e a diferença entre eles e o contrato</h3>
+      <p>Não confunda com os campos <strong>“Retirada”</strong> e <strong>“Devolução”</strong> da ficha do contrato. Aqueles são o <strong>combinado</strong> — o que a noiva assinou. Estes são o <strong>acontecido</strong>:</p>
+      <ul>
+        <li><span class="btn">Registrar retirada</span> — escolha a data e clique. A ficha passa a dizer <em>“Retirado em … — com a noiva”</em></li>
+        <li><span class="btn">Registrar devolução</span> — o mesmo, do outro lado</li>
+      </ul>
+      <p><strong>Enquanto a devolução não for registrada, o vestido fica indisponível para outras noivas.</strong> A tela diz isso, e é literal: a peça continua ocupando a arara no motor de disponibilidade, aparece em vermelho no acervo e barra quem tentar reservá-la. Não é um detalhe de relatório — é o vestido que a próxima noiva não consegue provar.</p>
+      <p>Errou a data? <span class="btn">Desfazer retirada</span> e <span class="btn">Desfazer devolução</span> existem no mesmo lugar. E quando a peça volta da lavanderia, <span class="btn">Registrar volta</span> a libera a partir do dia seguinte.</p>
+
+      <h3>Registrar a devolução abre uma pergunta, e ela vale dinheiro</h3>
+      <div class="fala aviso">
+        <span class="rotulo">O sistema pergunta</span>
+        <p><strong>“O vestido voltou como saiu?”</strong></p>
+        <p><em>“Confira agora, com a peça na mão. Depois que ela voltar para a arara, um dano encontrado não tem mais como ser cobrado com prova.”</em></p>
+      </div>
+      <p>Dois botões: <span class="btn">Sim, tudo certo</span> fecha, e <span class="btn">Registrar avaria</span> leva você direto ao formulário, mais abaixo na mesma página. <strong>É o único momento em que a peça está na sua mão e a foto ainda pode ser tirada</strong> — o passo 11 é sobre o que fazer aí.</p>
+      <p class="nota">Se o seu perfil tiver <b>ver</b> e <b>editar</b> em Vestidos mas não <b>criar</b>, o diálogo diz isso na letra e o botão de registrar não aparece: chame quem pode <b>antes</b> de a peça voltar para a arara.</p>
+
+      <h3>Quando a peça não volta na data (cláusula 16ª)</h3>
+      <p>Este é o único fato do sistema que nasce de <strong>ninguém fazer nada</strong>. A noiva não devolve, e não há gesto nenhum para disparar um aviso — por isso o sistema vai atrás de você em vez de esperar.</p>
+      <p><strong>A conta cresce todo dia</strong>, e é a única cobrança do sistema de que isso é verdade. O contrato tem duas faixas, e elas não se somam:</p>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>Faixa</th><th>Quanto</th><th>Como se lê</th></tr></thead>
+          <tbody>
+            <tr><td>Atraso (16ª §1º) — de 1 dia até a véspera do extravio</td><td class="prazo" data-regua="MULTA_DE_ATRASO">uma diária por dia de atraso + multa de R$ 250,00</td><td>A multa é <strong>uma por devolução</strong>, não por peça. A diária é <strong>por peça</strong></td></tr>
+            <tr><td>Extravio (16ª caput) — a partir de</td><td class="prazo" data-regua="DIAS_PARA_EXTRAVIO">10 dias sem devolução</td><td>Daqui em diante o contrato não chama mais de atraso: chama de extravio ou roubo</td></tr>
+            <tr><td>O que o extravio cobra</td><td class="prazo" data-regua="MULTIPLICADOR_DE_EXTRAVIO">4× o aluguel de cada peça</td><td>E <strong>sem</strong> a multa: o extravio já cobra a peça inteira quatro vezes</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>A diária é o aluguel da peça dividido pelos dias da janela de uso</strong> — não o aluguel inteiro por dia. Na régua de fábrica a janela tem 6 dias (3 antes do casamento, o dia dele e 2 depois), então um vestido de R$ 3.000,00 tem diária de R$ 500,00.</p>
+      <div class="fala">
+        <span class="rotulo">A conta, com números</span>
+        <p><strong>Nove dias de atraso num vestido de R$ 3.000,00 custam R$ 4.750,00</strong> — nove diárias de R$ 500,00, mais a multa fixa.</p>
+        <p><strong>No décimo dia vira extravio e custa R$ 12.000,00</strong> — quatro vezes o aluguel, e a multa some. É o degrau, e é por isso que o aviso muda de cor e de palavra ali.</p>
+      </div>
+
+      <h3>Onde o atraso aparece sem você procurar</h3>
+      <p>São <strong>três lugares</strong>, e o terceiro é o que resolve o problema de ninguém perguntar:</p>
+      <ul>
+        <li><strong>Na ficha da reserva</strong> — o cartão com o título, a conta decomposta e o botão <span class="btn">Cobrar o atraso</span>. É aqui, e só aqui, que a cobrança vira parcela do contrato</li>
+        <li><strong>No topo de Contratos</strong> — a fila, com a noiva, as peças, há quantos dias e quanto já custa, e o total de todas elas. Cada linha leva a <span class="btn">Abrir a reserva</span></li>
+        <li><strong>No sino</strong>, em qualquer tela: <em>“N peças fora do prazo de devolução”</em>, com a mais antiga e o valor. Ele acende sozinho e volta amanhã com o número maior, porque o aviso carrega o estado do dia</li>
+      </ul>
+      <p><strong>Cobrar não tira a linha da fila.</strong> A peça continua fora da arara, e sumir dali diria que ela voltou. O que aparece é o selo <span class="btn">Cobrado</span> ao lado. Quem tira a linha é <strong>registrar a devolução</strong>.</p>
+
+      <h3>A peça fora do prazo que ninguém consegue cobrar</h3>
+      <p>Há um caso em que a fila mostra a peça e <strong>não soma um centavo</strong>: quando ela está fora e <strong>não há contrato ativo</strong> por trás dela — a reserva que nunca virou venda, ou a venda que foi cancelada com o vestido já na casa da noiva.</p>
+      <div class="fala aviso">
+        <p>A fila diz, em bloco separado: <em>“Fora do prazo e sem contrato ativo: a cláusula 16ª cobra sobre o aluguel de cada peça, e não há de onde tirá-lo.”</em></p>
+      </div>
+      <p><strong>Isso é de propósito, e é um pedido de providência.</strong> A 16ª cobra sobre <em>o aluguel de cada peça</em>, e aluguel só existe dentro de um contrato — sem ele não há número de onde tirar a conta. Calar a peça deixaria um vestido na rua atrás de uma fila vazia. O caminho é o mesmo: abrir a reserva e registrar a devolução, que é o gesto que faz o contador parar.</p>
+      <p class="nota">O mesmo vale, dentro de um contrato, para a peça que atrasou e <b>não está no rol de itens dele</b>: a ficha e a fila a mostram em vermelho, dizem que não há aluguel de onde tirar a conta, e o botão de cobrar recusa. Confira o contrato antes de cobrar.</p>
+    </section>
+
+    <section id="avaria">
+      <h2><span class="passo">11</span>A peça volta com avaria</h2>
+      <p class="resumo">Ficha da reserva → bloco <strong>Avarias</strong>. Descrição, tipo, custo e foto — e a foto é o que sustenta a cobrança depois.</p>
+
+      <h3>Registrar</h3>
+      <p>Quatro campos, e o segundo é o que muda tudo:</p>
+      <ul>
+        <li><strong>“Descrição da avaria”</strong> — <em>“O que aconteceu com o vestido? (ex.: barra rasgada)”</em></li>
+        <li><strong>“Tipo da avaria”</strong> — <span class="btn">Limpeza (cláusula 14ª)</span> ou <span class="btn">Dano (cláusula 15ª)</span></li>
+        <li><strong>“Custo do reparo”</strong>, opcional</li>
+        <li>a <strong>foto</strong>, e vale insistir nela: é a prova que segura a cobrança se a noiva contestar</li>
+      </ul>
+      <p>Depois, <span class="btn">Registrar avaria</span>.</p>
+
+      <h3>O tipo troca a régua do valor, e as duas réguas têm formas diferentes</h3>
+      <p>Não é rótulo de organização. <strong>É o tipo que decide qual limite vale para o número que você digitou</strong>, e as duas cláusulas limitam de maneiras que não se parecem:</p>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>Tipo</th><th>O limite</th><th>A forma dele</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Limpeza</strong> (14ª) — sujeira ou mancha que sai na lavagem</td><td class="prazo" data-regua="TAXA_LIMPEZA_MINIMA">piso de R$ 350,00</td><td rowspan="2"><strong>Absoluta</strong>: os mesmos dois números para qualquer peça, e não dependem de contrato nenhum</td></tr>
+            <tr><td><strong>Limpeza</strong> (14ª) — o teto</td><td class="prazo" data-regua="TAXA_LIMPEZA_MAXIMA">teto de R$ 2.500,00</td></tr>
+            <tr><td><strong>Dano</strong> (15ª) — estrago, ou mancha que não sai</td><td class="prazo" data-regua="TETO_DO_DANO_EM_ALUGUEIS">até 5× o aluguel <strong>daquela peça</strong></td><td><strong>Relativa</strong>: não tem piso, e o teto muda de peça para peça</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="fala">
+        <span class="rotulo">O mesmo número, dois desfechos</span>
+        <p><strong>R$ 9.000,00 de dano cabem no vestido de R$ 3.000,00</strong> — o teto ali é R$ 15.000,00.</p>
+        <p><strong>Os mesmos R$ 9.000,00 não cabem no véu de R$ 400,00</strong> — o teto ali é R$ 2.000,00. O teto acompanha a peça, e é por isso que ele não é um número fixo em lugar nenhum.</p>
+      </div>
+      <p><strong>A faixa aparece embaixo do campo enquanto você digita</strong>, antes de qualquer clique — em cinza quando o valor cabe, em vermelho quando não cabe.</p>
+
+      <h3>Quando o valor sai da faixa: a régua não impede, obriga a dizer por quê</h3>
+      <p>Digitou fora — abaixo do piso da limpeza, acima do teto dela, acima dos cinco aluguéis do dano —, aparece um campo novo: <em>“Por que esta taxa sai da faixa do contrato?”</em>. <strong>Sem preencher, o botão não habilita.</strong></p>
+      <p>Com a razão escrita, a avaria entra normalmente. O que ela ganha é <strong>rastro</strong>: a justificativa fica gravada <em>na própria linha</em>, ao lado do valor, e vai para a trilha de auditoria com o tipo, a cláusula, o valor, o piso e o teto. Quem ler a ficha em março do ano que vem vê o número <strong>com a explicação ao lado</strong>, e não um valor solto que ninguém sabe defender.</p>
+      <p class="nota">Há um caso em que o sistema <b>não consegue conferir</b> o teto do dano: a peça que não está no rol de itens de contrato nenhum. Não há aluguel de onde tirar os cinco. Ele então <b>não barra</b> — a 15ª simplesmente não alcança o caso — e <b>diz que não conferiu</b>, na tela e na trilha. Recusar ali seria inventar uma regra que o contrato não tem.</p>
+
+      <h3>Corrigir uma avaria já registrada</h3>
+      <p><strong>O zero a mais tem conserto.</strong> Digitou R$ 1.500,00 onde eram R$ 150,00? Na linha da avaria há dois ícones: o <strong>lápis</strong> e, ao lado dele, o <em>X</em> de remover. O lápis abre o diálogo de correção — descrição, tipo, custo e justificativa, os quatro juntos, porque o tipo troca a régua do valor e a justificativa só existe em função dos dois. Depois, <span class="btn">Salvar correção</span>.</p>
+      <p>Três coisas que valem saber de cor:</p>
+      <ul>
+        <li><strong>A faixa vale igual na correção.</strong> Não dá para nascer com R$ 400,00 de limpeza e corrigir para R$ 9.000,00 — o mesmo limite morde nos dois momentos, e a correção fora da faixa também pede a razão escrita</li>
+        <li><strong>Corrigido para dentro da faixa, o selo vermelho sai.</strong> A justificativa some junto: ela existe para explicar um valor que não existe mais</li>
+        <li><strong>Se a avaria já virou parcela do contrato, a parcela segue o número.</strong> Corrigiu de R$ 1.500,00 para R$ 150,00, o carnê passa a cobrar R$ 150,00 na mesma hora — os dois não divergem</li>
+      </ul>
+      <div class="fala aviso">
+        <span class="rotulo">O que trava a correção</span>
+        <p><strong>Dinheiro que entrou congela a linha.</strong> Se a parcela do reparo já recebeu qualquer valor, o diálogo mostra o aviso e o botão não habilita: <em>“Este reparo já recebeu dinheiro”</em> — <em>“O extrato e o caixa já contaram esse valor no dia em que ele entrou. Estorne a parcela no contrato e volte aqui para corrigir.”</em></p>
+        <p>O caminho de volta existe e é o de sempre: <span class="btn">Estornar</span> na parcela, dentro do contrato, e voltar aqui.</p>
+      </div>
+      <p class="nota"><b>Parcela cancelada não é reescrita.</b> Se o contrato caiu, a parcela do reparo caiu junto e vira história — corrigir a avaria não mexe mais nela.</p>
+
+      <h3>Cobrar o reparo</h3>
+      <p>Na linha da avaria, <span class="btn">Cobrar reparo</span> lança o valor como parcela do contrato. Se aquela cobrança já tiver sido cancelada, o botão vira <span class="btn">Recobrar reparo</span>.</p>
+      <p><strong>Apagar a avaria depois de cobrada não dá</strong>, e é de propósito: a foto mora na linha, e apagá-la levaria embora a prova que sustenta a parcela. O sistema recusa e ensina o caminho — remova a parcela primeiro.</p>
+      <p class="nota">O reparo de uma peça <b>sem noiva na reserva</b> também é recusado: sem dona, ele entraria no carnê de qualquer contrato. O <b>registro</b> da avaria continua entrando — a peça rasgada é um fato —; o que se recusa é o nascimento do dinheiro. Ligue a reserva à noiva antes de cobrar.</p>
+    </section>
+
+    <section id="cobra">
+      <h2>O que o contrato cobra, e quando</h2>
+      <p class="resumo">As duas cláusulas de dinheiro que não dependem da peça voltar: a parcela que vence e não é paga, e a peça exclusiva. As da devolução estão nos passos 10 e 11.</p>
+
+      <h3>Quando a parcela vence e não é paga (cláusula 9ª)</h3>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>O que</th><th>Quanto vale</th></tr></thead>
+          <tbody>
+            <tr><td>Multa, uma vez, sobre a <strong>parcela</strong> vencida</td><td class="prazo" data-regua="MULTA_DE_MORA_PCT">2% do saldo em aberto</td></tr>
+            <tr><td>Juros de mora, contados dia a dia</td><td class="prazo" data-regua="JUROS_DE_MORA_MENSAL_PCT">1% ao mês</td></tr>
+            <tr><td>Correção monetária</td><td class="prazo"><strong>não é calculada</strong> — o contrato não nomeia índice</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="fala">
+        <span class="rotulo">A conta, com números</span>
+        <p>Uma parcela de <strong>R$ 500,00 vencida há 30 dias</strong> vale <strong>R$ 515,00</strong>: R$ 10,00 de multa mais R$ 5,00 de juros.</p>
+      </div>
+      <p><strong>Vencer hoje não é estar vencida</strong> — o dia do vencimento é o último dia de pagar em dia, e a conta só começa no seguinte.</p>
+      <p><strong>A multa é sobre a parcela, não sobre o contrato inteiro.</strong> Num contrato de R$ 5.000,00 em 10×, isso é <strong>R$ 10,00 e não R$ 100,00</strong> — dez vezes de diferença. E a lei do consumidor limita a multa de mora a 2% <em>da prestação</em>, não do contrato.</p>
+      <p><strong>E a correção monetária o sistema declara que não faz.</strong> A cláusula manda corrigir e não diz por qual índice — IPCA, IGP-M e INPC dariam três números diferentes para a mesma dívida, e escolher um por conta própria seria inventar cláusula. A frase aparece junto da conta, para você não ler o total como se fosse a dívida inteira.</p>
+
+      <h3>Onde a noiva lê isso, e onde você lê</h3>
+      <p><strong>A noiva lê no portal dela</strong>, com a conta escrita por extenso ao lado do número — quantos dias, quanto de multa, quanto de juros, e a frase da correção. É de propósito: um número maior sem explicação é exatamente o que gera a ligação para a loja.</p>
+      <div class="fala aviso">
+        <span class="rotulo">Do seu lado, o carnê do contrato ainda mostra só o principal</span>
+        <p>Na ficha do contrato, a parcela vencida aparece em vermelho com o selo <strong>Atrasada</strong> e o valor de <strong>R$ 500,00</strong> — sem a multa e sem os juros. O campo do diálogo de receber também vem preenchido com R$ 500,00.</p>
+        <p><strong>A porta aceita os R$ 515,00</strong>, e é a noiva quem lê o número certo no portal dela. Enquanto a tela não mostrar a conta, <strong>confira o portal da noiva antes de dizer a ela quanto ela deve</strong> — ou some você mesma: 2% sobre a parcela, mais 1% ao mês pelos dias corridos.</p>
+      </div>
+      <p>O acréscimo aparece para você <strong>depois que o pagamento entra</strong>: o link do recibo, embaixo da parcela, diz <em>“· inclui R$ 15,00 de multa e juros”</em> quando aquele pagamento quitou as duas coisas. Sem isso, um recibo de R$ 515,00 embaixo de uma parcela de R$ 500,00 pareceria erro.</p>
+      <p class="nota"><b>Perdoar a multa é decisão que ainda não tem botão.</b> O sistema sabe registrar quem dispensou o acréscimo, quando e por quê — mas esse gesto ainda não está em tela nenhuma. Enquanto isso, quem quiser abrir mão combina com a dona e recebe o principal.</p>
+      <p class="nota">O bloco <b>“Lembrar de um valor em aberto”</b>, em Mensagens de hoje, é do financeiro e <b>não aparece para você</b>. Quando ele aparece para quem tem o módulo, a mensagem já nomeia o acréscimo em vez de embuti-lo calado: <em>“Esse total já inclui R$ 15,00 de multa e juros pelo atraso (cláusula 9ª do contrato).”</em></p>
+
+      <h3>A peça exclusiva de primeiro aluguel (cláusula 12ª)</h3>
+      <p>É a peça que a loja mandou fazer e que <strong>ainda não saiu nenhuma vez</strong>. As duas metades importam: a marca é permanente e é a loja quem a põe; o “primeiro aluguel” o sistema conta sozinho, pelos contratos. Depois da primeira saída a 12ª deixa de valer, e a marca continua na ficha.</p>
+      <p>O selo <span class="btn">Exclusiva</span> aparece em <strong>quatro lugares</strong>, do mais frio ao mais quente:</p>
+      <ul>
+        <li><strong>Na ficha da peça</strong>, ao lado do status</li>
+        <li><strong>No acervo</strong>, no canto do card</li>
+        <li><strong>No seletor de vestido do orçamento</strong>, na própria linha da lista — <em>“EX-01 · Exclusivo da Marina · exclusiva”</em>. A lista é longa, e ninguém abre a ficha de cada peça antes de escolher</li>
+        <li><strong>Dentro do diálogo “Gerar contrato”</strong>, com a peça nomeada e o que a rescisão custaria</li>
+      </ul>
+      <p>Quem marca a peça é a loja, na ficha dela, em <span class="btn">Editar vestido</span>. <strong>A marca não se apaga sozinha</strong> quando a peça sai pela primeira vez — apagá-la por efeito de um contrato deixaria a ficha errada no dia em que aquele contrato fosse cancelado.</p>
+      <p class="nota">O selo <b>não é filtro</b>: a busca do acervo filtra por atributo do catálogo, e “exclusiva” não é um deles. Para achá-las, o caminho hoje é o selo na lista.</p>
+    </section>
+
+    <section id="desistir">
+      <h2>Se a noiva desistir</h2>
+      <p class="resumo">Contrato → menu do topo → <span class="btn">Cancelar contrato</span>. O diálogo mostra <strong>o que cada cláusula retém e devolve, antes do clique</strong>.</p>
+
+      <h3>O que o diálogo mostra</h3>
+      <p>Sob o título <strong>“O que o contrato manda, se a noiva rescindir”</strong>, uma linha por cláusula que incide — a descrição, o número da cláusula, quanto a loja retém e quanto devolve —, e o total das duas colunas embaixo.</p>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>Cláusula</th><th>O que ela faz</th></tr></thead>
+          <tbody>
+            <tr><td><strong>8ª §2º</strong> — a reserva já paga</td><td>fica com a loja <strong>sob qualquer hipótese</strong>, e sai da conta antes de tudo</td></tr>
+            <tr><td><strong>11ª</strong> — o resto do que ela pagou</td><td class="prazo" data-regua="DEDUCAO_DA_RESCISAO_PCT">deduz 60% como multa; o que sobra é devolvido</td></tr>
+            <tr><td><strong>12ª</strong> — peça exclusiva de primeiro aluguel</td><td class="prazo" data-regua="MULTA_DA_PECA_EXCLUSIVA_PERCENTUAL">a multa é 100% do aluguel <strong>daquela peça</strong></td></tr>
+            <tr><td><strong>13ª §3º</strong> — quando a loja fica devendo</td><td class="prazo" data-regua="PRAZO_DEVOLUCAO_DA_LOJA_DIAS">a devolução vence em 30 dias</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="fala">
+        <span class="rotulo">A conta, com números</span>
+        <p>Contrato de R$ 3.000,00, com <strong>R$ 1.200,00 de reserva e R$ 1.000,00 de carnê</strong> já pagos. O contrato manda <strong>reter R$ 1.800,00 e devolver R$ 400,00</strong>: a reserva inteira fica pela 8ª §2º, e dos R$ 1.000,00 restantes a 11ª deduz R$ 600,00.</p>
+        <p>Havendo devolução, aparece a linha: <em>“A devolução nasce como conta a pagar da loja, vencendo em 30 dias (13ª §3º).”</em> Ela entra sozinha nas contas a pagar.</p>
+      </div>
+      <p><strong>A peça exclusiva muda a conta inteira</strong>, e é o motivo de o aviso aparecer lá atrás, no fecho. Num contrato com um vestido exclusivo de R$ 3.000,00 e um véu comum de R$ 500,00, com R$ 1.000,00 pagos além da reserva, o pago se rateia pelo valor dos itens: os <strong>R$ 857,14</strong> que cabem ao exclusivo ficam <strong>inteiros</strong> com a loja, e só os R$ 142,86 do véu passam pela régua dos 60% — devolvem R$ 57,14.</p>
+
+      <h3>“Manter no caixa” ou “estornar”, e o aviso entre os dois</h3>
+      <p>Abaixo da conta continua a escolha de sempre sobre o dinheiro que já entrou: <em>“A noiva perdeu o sinal — mantém no caixa”</em> ou <em>“Devolvi o valor — estorna … do caixa”</em>. <strong>Ela não some, porque é o caso em que a dona decide contra a régua</strong> — e é uma decisão dela, não do sistema.</p>
+      <p>O que mudou é que a divergência passou a ser <strong>dita</strong>. Escolhendo estornar quando a cláusula manda reter, aparece um alerta vermelho com o número, e o campo de motivo troca de pergunta: ele passa a pedir <em>“Motivo do cancelamento — e por que a loja devolveu o que a cláusula retém”</em>. A razão fica na trilha de auditoria ao lado do valor.</p>
+      <p class="nota">O contrato <b>já cancelado</b> não mostra mais essa conta: registro morto não se recalcula. O que ele reteve está na trilha e na conta a pagar que nasceu no dia.</p>
+
+      <h3>Quando é a LOJA que desiste (cláusula 13ª)</h3>
+      <p>O contrato trata os dois lados de forma diferente: se a rescisão parte da loja, ela <strong>devolve tudo que entrou, reserva incluída</strong> — reter o sinal puniria uma noiva que não causou o cancelamento.</p>
+      <div class="fala aviso">
+        <p><strong>Hoje a tela não pergunta de quem partiu.</strong> O diálogo de cancelar aplica sempre a régua da noiva — retém a reserva e deduz os 60%. Quando o cancelamento for da loja, converse com a dona antes de clicar: a conta que o sistema mostra não é a que a 13ª manda.</p>
+      </div>
     </section>
 
     <section id="nao">
@@ -603,6 +845,20 @@
           </tbody>
         </table>
       </div>
+
+      <h3>Na devolução e na avaria</h3>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>O recado</th><th>O que fazer</th></tr></thead>
+          <tbody>
+            <tr><td>“Este reparo já recebeu dinheiro — estorne a parcela antes de corrigir o valor.”</td><td>O caixa já contou aquele valor. <span class="btn">Estornar</span> a parcela no contrato, e voltar para corrigir</td></tr>
+            <tr><td>“Esta avaria já virou parcela do contrato — remova a parcela antes”</td><td>A foto é a prova que sustenta a cobrança. Remova a parcela e só então apague</td></tr>
+            <tr><td>“O atraso deste contrato já virou parcela”</td><td>Já foi cobrado. O selo <span class="btn">Cobrado</span> na fila diz o mesmo</td></tr>
+            <tr><td>“Nenhuma peça deste contrato passou da data prevista de devolução”</td><td>Não há o que cobrar — nenhuma peça está fora do prazo</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Além desses, dois que não recusam nada e valem leitura: a peça atrasada <strong>fora do rol de itens do contrato</strong> e a avaria de <strong>peça sem noiva na reserva</strong>. Nos dois casos falta o aluguel de onde tirar a conta, e o sistema diz isso em vez de inventar um número.</p>
 
       <h3>Na agenda</h3>
       <p>Os cinco motivos de horário indisponível estão no passo 5. Além deles: <em>“Uma prova precisa da reserva do vestido que vai ser provado.”</em> e <em>“Um atendimento concluído é a história da ficha da noiva — ele não se apaga.”</em></p>
@@ -672,6 +928,19 @@
           </tbody>
         </table>
       </div>
+
+      <h3>Os prazos que saem do contrato</h3>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>O que</th><th>Quanto vale</th></tr></thead>
+          <tbody>
+            <tr><td>O carnê fecha antes da retirada (§ único da 8ª)</td><td class="prazo" data-regua="PRAZO_ANTES_DA_RETIRADA_DIAS">20 dias antes — e o sistema <strong>recusa</strong></td></tr>
+            <tr><td>Atraso na devolução vira extravio (16ª)</td><td class="prazo" data-regua="DIAS_PARA_EXTRAVIO">10 dias sem devolução</td></tr>
+            <tr><td>A loja devolve o que deve numa rescisão (13ª §3º)</td><td class="prazo" data-regua="PRAZO_DEVOLUCAO_DA_LOJA_DIAS">30 dias</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="nota">Os valores em <b>reais e percentual</b> — a taxa de limpeza, o teto do dano, a multa do atraso, a multa e os juros da parcela vencida, a dedução da rescisão — estão em <a href="#cobra">O que o contrato cobra</a> e nos passos 10 e 11, cada um ao lado do gesto que o dispara.</p>
     </section>
 
     <section id="defeitos">
@@ -689,7 +958,8 @@
   </main>
 
   <footer>
-    <p>Este manual descreve o sistema como ele está em <strong>13/08/2026</strong>. Os nomes de botão e os recados de erro são citados literalmente da tela — se algum não bater com o que você vê, o manual envelheceu, e vale avisar.</p>
+    <p>Este manual descreve o sistema como ele está em <strong>14/08/2026</strong>. Os nomes de botão e os recados de erro são citados literalmente da tela — se algum não bater com o que você vê, o manual envelheceu, e vale avisar.</p>
+    <p>Os valores das cláusulas — a faixa da taxa de limpeza, o teto do dano, a multa do atraso, a multa e os juros da parcela vencida, a entrada da reserva, os prazos — <strong>não estão escritos à mão aqui</strong>. Cada um deles é conferido contra a constante do código a cada mudança: se a dona mudar um número, este manual reprova no mesmo dia em que ele mudar.</p>
   </footer>
 
 </div>
