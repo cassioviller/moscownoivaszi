@@ -1,4 +1,5 @@
 import { brl, centavos, reais } from "./dinheiro";
+import { MULTA_DA_PECA_EXCLUSIVA_PERCENTUAL } from "./exclusividade";
 import { addDias, diaLocal } from "./datas";
 
 /**
@@ -211,6 +212,25 @@ export function calcularRescisao(e: EntradaDaRescisao): Rescisao {
     : Math.round((restanteComumC * (100 - DEDUCAO_DA_RESCISAO_PCT)) / 100);
   const multaComumC = restanteComumC - devolucaoComumC;
 
+  /**
+   * **12ª — e a constante era uma garantia FALSA até aqui (S-C212).**
+   *
+   * `MULTA_DA_PECA_EXCLUSIVA_PERCENTUAL = 100` existe desde o E216 e **ninguém
+   * a lia**: este módulo retinha `restanteExclusivoC` inteiro, escrito à mão.
+   * Os dois únicos leitores eram o teste que afirma `toBe(100)` — uma constante
+   * confirmando a si mesma, que não prova nada sobre comportamento — e a régua
+   * dos manuais, que passou a **pregar o manual contra um número que a conta
+   * ignorava**: trocá-la para 50 deixaria tudo verde e o papel mentindo.
+   *
+   * Com 100 o resultado é idêntico ao de antes, e é isso que torna a troca
+   * segura de medir: o que muda é que a cláusula passa a ter **um** número, e
+   * não dois que ninguém compara.
+   */
+  const multaExclusivaC = Math.round(
+    (restanteExclusivoC * MULTA_DA_PECA_EXCLUSIVA_PERCENTUAL) / 100,
+  );
+  const devolucaoExclusivaC = restanteExclusivoC - multaExclusivaC;
+
   const linhas: LinhaDaRescisao[] = [];
   if (reservaRetidaC > 0) {
     linhas.push({
@@ -224,8 +244,8 @@ export function calcularRescisao(e: EntradaDaRescisao): Rescisao {
     linhas.push({
       descricao: "Peça(s) exclusiva(s) de primeiro aluguel",
       clausula: "12ª",
-      retido: reais(restanteExclusivoC),
-      devolvido: 0,
+      retido: reais(multaExclusivaC),
+      devolvido: reais(devolucaoExclusivaC),
     });
   }
   if (restanteComumC > 0) {
@@ -239,8 +259,8 @@ export function calcularRescisao(e: EntradaDaRescisao): Rescisao {
     });
   }
 
-  const devolucaoTotalC = devolucaoComumC;
-  const retencaoTotalC = reservaRetidaC + restanteExclusivoC + multaComumC;
+  const devolucaoTotalC = devolucaoComumC + devolucaoExclusivaC;
+  const retencaoTotalC = reservaRetidaC + multaExclusivaC + multaComumC;
 
   const partes = linhas.map((l) =>
     l.devolvido > 0
