@@ -21,6 +21,12 @@ export const ROTULO_TIPO = {
   FORNECEDOR: "Fornecedores",
   SALARIO: "Salários",
   COMISSAO: "Comissões",
+  // E217/S-C140 — a devolução da rescisão (13ª §3º) nasce como conta a pagar
+  // desde o E217, e o rótulo chegou junto com esta linha, três épicos depois:
+  // o spec ganhou o `DEVOLUCAO` e o CODEGEN não foi re-rodado, então o
+  // `_cobreTodosOsTipos` de `dre.ts` — a régua que existe exatamente para
+  // cobrar este rótulo — nunca viu o tipo novo.
+  DEVOLUCAO: "Devoluções",
 } as const;
 
 /** A categoria livre quando houver; senão o rótulo do tipo. */

@@ -3586,7 +3586,13 @@ paths:
       tags: [contratos]
       responses:
         "200":
-          description: Contrato
+          description: >
+            Contrato. S-C140: em contrato ATIVO vem com `rescisao` PREENCHIDA —
+            o que a cláusula manda reter e devolver **se a noiva rescindir
+            hoje**, para o diálogo de cancelar avisar ANTES do clique. É conta
+            DERIVADA (a 18ª muda de resposta à meia-noite) e por isso não é
+            gravada. Em contrato CANCELADO vem `null`: registro morto não se
+            recalcula — o que ele reteve está na trilha.
           content:
             application/json:
               schema:
@@ -7286,10 +7292,19 @@ components:
         fechadoEm: { type: string, format: date-time }
         # E217 — o que a cláusula manda reter/devolver nesta rescisão. Molde do
         # `Parcela.mora` (E213): campo computado no schema COMPARTILHADO,
-        # ausente onde ninguém o preenche — só o POST /cancelar o povoa. Uma
+        # ausente onde ninguém o preenche. Uma
         # `allOf` chegou a existir aqui e foi descartada: o motor da
         # `varredura-schemas-aninhados` (E192) não resolve `allOf`, e a conta
         # da fronteira caía sem avisar por quê.
+        #
+        # S-C140: **DUAS portas o povoam**, e não uma. O `POST /cancelar` diz o
+        # que aconteceu; o `GET /contratos/{contratoId}` diz o que ACONTECERIA
+        # se a noiva rescindisse hoje — sem ele, o diálogo de cancelar pedia
+        # uma decisão de dinheiro sem mostrar a conta que o instrumento manda,
+        # e a opção "devolvi o valor" estornava 100% contra a 8ª §2º. O
+        # `createContrato`, o `updateContrato` e o `listContratos` seguem sem
+        # ele: contrato que nasce não tem o que rescindir, e a lista não é onde
+        # se decide.
         rescisao:
           anyOf:
             - $ref: "#/components/schemas/Rescisao"

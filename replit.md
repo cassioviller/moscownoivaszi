@@ -595,6 +595,28 @@ rode o codegen.
   servidor sempre aceitou. O diálogo de conferência da devolução só oferece
   "Registrar avaria" a quem tem `vestidos.criar`; os demais leem qual permissão
   falta, em vez de um botão que não faz nada.
+- **A rescisão se lê ANTES do clique, e a conta vem do servidor (S-C140).**
+  `GET /lojas/:lojaId/contratos/:contratoId` devolve `rescisao` **preenchida**
+  em contrato ATIVO — o que as cláusulas 8ª §2º/11ª/12ª/18ª mandam reter e
+  devolver **se a noiva rescindir hoje**, linha a linha —, e `null` em contrato
+  CANCELADO, que é registro morto e não se recalcula. O diálogo "Cancelar
+  contrato" mostra essas linhas antes do gesto. **Ela não é recalculada na
+  tela**, e a razão é estrutural: o predicado da 12ª cruza `vestidos.exclusiva`
+  com a contagem de saídas ATIVAS, e o `ContratoItem` do spec não carrega
+  nenhuma das duas metades — o front adivinharia a linha mais cara. **O `hoje` é
+  INJETADO e a conta é DERIVADA** (a 18ª muda de resposta à meia-noite), como
+  toda conta desta trilha desde o E211. A escolha `destinoPago` continua na
+  tela: ela é o caso em que a dona decide contra a régua, e a divergência é
+  DITA nas duas pontas pela mesma função (`estornoContraARescisao`) — alerta na
+  tela e linha `estornoContraARescisao` no `CONTRATO_CANCELADO` da trilha, no
+  molde do `AVARIA_FORA_DA_FAIXA` do E214. **A leitura não ficou mais cara:** o
+  handler faz as MESMAS 2 queries, porque as duas metades da 12ª entram na
+  consulta relacional que já existia (a marca por `with: { vestido }`, a
+  contagem por `extras` correlacionado) — e `sc140-rescisao-no-get-api.test.ts`
+  prega o número com `vi.spyOn(pool, "query")`, no formato do "exatamente 2
+  queries" do `verificarDisponibilidade`. **A contagem da 12ª exclui ESTE
+  contrato** (`c_outros.id <> $`), coisa que o `POST /cancelar` não precisa
+  fazer porque lá ela roda depois do `UPDATE` para CANCELADO.
 - **A taxa de avaria tem FAIXA, e ela vem do contrato de papel (E214).** A
   avaria passa a dizer de qual cláusula a taxa saiu: **LIMPEZA** é a 14ª (faixa
   absoluta, **R$ 350,00 a R$ 2.500,00**) e **DANO** é a 15ª (teto de **5× o

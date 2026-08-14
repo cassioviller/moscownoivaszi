@@ -7933,7 +7933,7 @@ export const ListContasPagarQueryParams = zod.object({
 export const ListContasPagarResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO']),
+  "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO', 'DEVOLUCAO']),
   "colaboradorId": zod.string().nullish(),
   "competencia": zod.string().nullish(),
   "descricao": zod.string(),
@@ -7967,7 +7967,7 @@ export const createContaPagarBodyValorPrevistoMin = 0.01;
 
 
 export const CreateContaPagarBody = zod.object({
-  "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO']),
+  "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO', 'DEVOLUCAO']),
   "colaboradorId": zod.string().optional(),
   "competencia": zod.string().optional(),
   "descricao": zod.string().min(1),
@@ -7980,7 +7980,7 @@ export const CreateContaPagarBody = zod.object({
 export const CreateContaPagarResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO']),
+  "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO', 'DEVOLUCAO']),
   "colaboradorId": zod.string().nullish(),
   "competencia": zod.string().nullish(),
   "descricao": zod.string(),
@@ -8071,7 +8071,7 @@ export const PagarContaPagarBody = zod.object({
 export const PagarContaPagarResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO']),
+  "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO', 'DEVOLUCAO']),
   "colaboradorId": zod.string().nullish(),
   "competencia": zod.string().nullish(),
   "descricao": zod.string(),
@@ -8159,7 +8159,7 @@ export const ListPagamentosResponseItem = zod.object({
   "contaPagar": zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO']),
+  "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO', 'DEVOLUCAO']),
   "colaboradorId": zod.string().nullish(),
   "competencia": zod.string().nullish(),
   "descricao": zod.string(),
@@ -8229,7 +8229,7 @@ export const CreatePagamentoResponse = zod.object({
   "contaPagar": zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO']),
+  "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO', 'DEVOLUCAO']),
   "colaboradorId": zod.string().nullish(),
   "competencia": zod.string().nullish(),
   "descricao": zod.string(),
@@ -8473,7 +8473,7 @@ export const GerarRecorrenciasResponse = zod.object({
   "contas": zod.array(zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO']),
+  "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO', 'DEVOLUCAO']),
   "colaboradorId": zod.string().nullish(),
   "competencia": zod.string().nullish(),
   "descricao": zod.string(),

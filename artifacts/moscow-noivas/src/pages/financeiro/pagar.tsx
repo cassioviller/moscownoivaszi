@@ -103,6 +103,8 @@ const TIPO_ROTULO: Record<ContaPagarTipo, string> = {
   FORNECEDOR: "Fornecedor",
   SALARIO: "Salário",
   COMISSAO: "Comissão",
+  // E217/S-C140 — a devolução que a rescisão manda pagar em 30 dias (13ª §3º).
+  DEVOLUCAO: "Devolução",
 };
 
 const FILTROS = [

@@ -14,4 +14,5 @@ export const ContaPagarInputTipo = {
   FORNECEDOR: 'FORNECEDOR',
   SALARIO: 'SALARIO',
   COMISSAO: 'COMISSAO',
+  DEVOLUCAO: 'DEVOLUCAO',
 } as const;

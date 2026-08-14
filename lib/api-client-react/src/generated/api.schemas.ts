@@ -2703,6 +2703,7 @@ export const ContaPagarTipo = {
   FORNECEDOR: 'FORNECEDOR',
   SALARIO: 'SALARIO',
   COMISSAO: 'COMISSAO',
+  DEVOLUCAO: 'DEVOLUCAO',
 } as const;
 
 export type ContaPagarStatus = typeof ContaPagarStatus[keyof typeof ContaPagarStatus];
@@ -2755,6 +2756,7 @@ export const ContaPagarInputTipo = {
   FORNECEDOR: 'FORNECEDOR',
   SALARIO: 'SALARIO',
   COMISSAO: 'COMISSAO',
+  DEVOLUCAO: 'DEVOLUCAO',
 } as const;
 
 export interface ContaPagarInput {

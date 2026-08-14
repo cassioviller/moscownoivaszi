@@ -93,6 +93,9 @@ import {
 // E218 — a reserva de 40% da cláusula 8ª §1º: a tela sugere e avisa, e quem
 // decide continua sendo a loja.
 import { avisoDeEntradaAbaixoDaReserva, entradaDaReserva } from "@/lib/financeiro/reserva";
+// S-C140 — a mesma régua que o servidor grava na trilha, para as duas pontas
+// não divergirem sobre o que a cláusula manda reter (é o gesto do E187).
+import { estornoContraARescisao } from "@workspace/financeiro-core";
 import { PreviaDoCarne } from "@/components/previa-do-carne";
 import { invalidarCaixa } from "@/pages/financeiro/helpers";
 import { podeNoModulo } from "@/lib/permissoes";
@@ -228,6 +231,21 @@ export default function ContratoDetail() {
       aberto: reais(abertoEmCentavos(parcelas)),
     };
   }, [parcelas]);
+
+  /**
+   * **S-C140 — a conta da rescisão, do servidor, ANTES do clique.**
+   *
+   * Ela chega preenchida no `GET /contratos/:id` quando o contrato é ATIVO, e
+   * `null` quando ele já foi cancelado — registro morto não se recalcula. Não
+   * há `useMemo` de conta nenhuma aqui **de propósito**: `calcularRescisao`
+   * mora no `financeiro-core` e o front o importa (é o que `faixa-da-avaria.ts`
+   * faz), mas `ItemDaRescisao` exige `exclusivaDePrimeiroAluguel` e o
+   * `ContratoItem` não carrega `vestidos.exclusiva` nem a contagem de saídas.
+   * Recalcular aqui erraria a cláusula 12ª, que é a que retém o aluguel
+   * INTEIRO — a linha mais cara da conta.
+   */
+  const rescisao = contrato?.rescisao ?? null;
+  const avisoDoEstorno = rescisao ? estornoContraARescisao(rescisao, destinoPago) : null;
 
   /**
    * P8/E169 — o "Total do plano" e o alerta que ele acende falam do CARNÊ.
@@ -1062,6 +1080,45 @@ export default function ContratoDetail() {
               </div>
             )}
 
+            {/* S-C140: o que o INSTRUMENTO manda, antes do clique — molde do
+                E211/E216/E218. A conta vem PRONTA do servidor (`rescisao` no
+                GET), e não é recalculada aqui de propósito: o predicado da 12ª
+                cruza `vestidos.exclusiva` com a contagem de saídas, e o
+                `ContratoItem` não carrega nenhuma das duas metades. Refazer a
+                conta na tela seria adivinhar justamente a linha mais cara. */}
+            {rescisao && (
+              <div className="rounded-md border p-3 space-y-2" data-testid="cancelar-rescisao">
+                <p className="text-sm font-medium">O que o contrato manda, se a noiva rescindir</p>
+                <ul className="text-sm space-y-1">
+                  {rescisao.linhas.map((l) => (
+                    <li key={`${l.clausula}-${l.descricao}`} className="flex justify-between gap-3">
+                      <span className="text-muted-foreground">
+                        {l.descricao} <span className="text-xs">(cláusula {l.clausula})</span>
+                      </span>
+                      <span className="tabular-nums whitespace-nowrap">
+                        retém {brl(l.retido)}
+                        {l.devolvido > 0 && <> · devolve {brl(l.devolvido)}</>}
+                      </span>
+                    </li>
+                  ))}
+                  {rescisao.linhas.length === 0 && (
+                    <li className="text-muted-foreground">
+                      Nada foi pago — nada a reter, nada a devolver.
+                    </li>
+                  )}
+                </ul>
+                <div className="flex justify-between gap-3 border-t pt-2 text-sm font-medium">
+                  <span>A loja retém {brl(rescisao.retencaoTotal)}</span>
+                  <span className="tabular-nums">devolve {brl(rescisao.devolucaoTotal)}</span>
+                </div>
+                {rescisao.devolucaoTotal > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    A devolução nasce como conta a pagar da loja, vencendo em 30 dias (13ª §3º).
+                  </p>
+                )}
+              </div>
+            )}
+
             {oQueSeraDesfeito.comRecebimento.length > 0 && (
               <p className="text-sm text-muted-foreground">Sobre o que já foi recebido:</p>
             )}
@@ -1079,8 +1136,22 @@ export default function ContratoDetail() {
                 </Label>
               </div>
             </RadioGroup>
+            {/* S-C140: a escolha manual FICA — ela é o caso em que a dona decide
+                contra a régua. O que muda é que a divergência é dita, aqui e na
+                trilha (`estornoContraARescisao`), como o E214 faz com a taxa de
+                avaria fora da faixa. */}
+            {avisoDoEstorno && (
+              <Alert variant="destructive" data-testid="cancelar-estorno-contra-clausula">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{avisoDoEstorno}</AlertDescription>
+              </Alert>
+            )}
             <Textarea
-              placeholder="Motivo do cancelamento"
+              placeholder={
+                avisoDoEstorno
+                  ? "Motivo do cancelamento — e por que a loja devolveu o que a cláusula retém"
+                  : "Motivo do cancelamento"
+              }
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
             />

@@ -155,7 +155,11 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // (getContrato, createContrato, updateContrato, cancelarContrato e
     // listContratos, que aninha em `itens`) — e o degrau de baixo,
     // `Rescisao.linhas`, é um sexto par, só na fronteira de quem chega lá.
-    expect(c.pares.length, "a fronteira mudou — um objeto aninhado nasceu, ou um pai passou a ser entregue").toBe(282);
+    // S-C140: 282 → 283. O par novo é `Rescisao.linhas` no **getContrato** — o
+    // `GET` passou a povoar `Contrato.rescisao` para contrato ATIVO, e a
+    // fronteira desce um degrau em toda porta que entrega o pai. São DUAS
+    // portas povoando `rescisao` agora, e não uma.
+    expect(c.pares.length, "a fronteira mudou — um objeto aninhado nasceu, ou um pai passou a ser entregue").toBe(283);
     /**
      * **E199/S-O114 — 147 → 165 entregues, e é o maior salto que esta conta já
      * deu.** Não entrou uma linha de porta: o motor deixou de parar na borda da
@@ -185,7 +189,13 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // `Contrato.rescisao` dele e o degrau `Rescisao.linhas` (escrito por
     // extenso no handler, pela mesma razão do `mora: moraDe(p)` do E213)
     // nascem ENTREGUES; os outros quatro `Contrato.rescisao` não (abaixo).
-    expect(c.pares.filter((p) => p.entregue).length).toBe(179);
+    // S-C140: 179 → 181, e os dois são do `GET /contratos/{contratoId}`: o
+    // `Contrato.rescisao` dele (que era a maior das quatro linhas da coluna do
+    // NÃO abaixo) e o degrau `Rescisao.linhas` que nasceu com ele. **O segundo
+    // custou uma medição:** escrito como ternário dentro do `res.json`, a
+    // varredura o media como NÃO entregue — o motor só desce para as chaves de
+    // um literal cujo valor começa em `{`. Ele está num `return` por isso.
+    expect(c.pares.filter((p) => p.entregue).length).toBe(181);
     // E213: 89 → 99, e desta vez a coluna do NÃO cresce com razão. `Parcela` é
     // schema COMPARTILHADO: ela viaja em muitas respostas e só três montam a
     // `mora` (a fila de cobrança, o recebimento/perdão e o portal). É o mesmo
@@ -195,7 +205,13 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // em cinco respostas e só o cancelamento entrega a rescisão — as outras
     // quatro (`Contrato.rescisao` em getContrato/createContrato/
     // updateContrato/listContratos) somam a coluna do NÃO, e é o esperado.
-    expect(c.pares.filter((p) => !p.entregue).length).toBe(103);
+    // S-C140: 103 → 102. `Contrato.rescisao` continua sendo schema
+    // COMPARTILHADO fazendo o papel dele — mas agora são **duas** portas que o
+    // entregam (o cancelamento diz o que aconteceu, o GET diz o que
+    // aconteceria) e três que não: `createContrato` (contrato que nasce não tem
+    // o que rescindir), `updateContrato` e `listContratos` (a lista não é onde
+    // se decide).
+    expect(c.pares.filter((p) => !p.entregue).length).toBe(102);
   });
 
   /**
@@ -282,9 +298,12 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     "BloqueioVestido.vestido",
     "Contrato.lead",
     "Contrato.parcelas",
-    // E217: `rescisao` é o molde do `Parcela.mora` — só o POST /cancelar a
-    // povoa; as outras quatro portas que devolvem Contrato não têm o que
-    // reter/devolver ainda, porque não houve rescisão.
+    // E217: `rescisao` é o molde do `Parcela.mora`. S-C140: são DUAS portas
+    // que a povoam — o `POST /cancelar` diz o que aconteceu e o
+    // `GET /contratos/{contratoId}` diz o que aconteceria se a noiva
+    // rescindisse hoje, que é o que o diálogo de cancelar precisa ler ANTES do
+    // clique. As três que faltam continuam certas: contrato que NASCE não tem
+    // o que rescindir, e a lista não é onde se decide.
     "Contrato.rescisao",
     "Contrato.vendedora",
     "Lead.interesse",

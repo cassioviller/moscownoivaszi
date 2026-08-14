@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcularRescisao } from "@workspace/financeiro-core";
+import { calcularRescisao, estornoContraARescisao } from "@workspace/financeiro-core";
 
 /**
  * E217 — a rescisão calcula (8ª §2º, 11ª, 12ª, 13ª §3º e 18ª).
@@ -144,5 +144,56 @@ describe("E217 — a rescisão do contrato", () => {
     expect(r.linhas).toEqual([]);
     expect(r.devolucaoTotal).toBe(0);
     expect(r.retencaoTotal).toBe(0);
+  });
+});
+
+/**
+ * **S-C140 — o estorno que o instrumento não autoriza.**
+ *
+ * O diálogo de cancelar tem duas opções sobre o dinheiro que já entrou, e a
+ * segunda — *"Devolvi o valor"* — estorna **100% do recebido**. A régua não a
+ * tira da tela: ela NOMEIA a divergência, aqui e na trilha, como o E214 faz
+ * com a taxa de avaria fora da faixa. A mesma função responde às duas pontas
+ * para elas não divergirem — é a lição do E187, onde cinco grafias da mesma
+ * conta davam três acertos por cópia e dois erros.
+ */
+describe("S-C140 — o estorno contra a rescisão", () => {
+  it("estorno de R$ 2.200 onde a cláusula manda reter R$ 1.800 — a frase diz o número", () => {
+    const r = calcularRescisao({
+      iniciativa: "LOCATARIA",
+      itens: [{ descricao: "Vestido", valor: 3000, exclusivaDePrimeiroAluguel: false }],
+      valorTotalContrato: 3000,
+      totalPagoPlano: 2200,
+      reservaPaga: 1200,
+      prazoDevolucaoReservaDias: null,
+      dataRetirada: null,
+      hoje: "2026-08-14",
+    });
+    expect(r.retencaoTotal).toBe(1800);
+    // `brl()` põe o espaço RÍGIDO (U+00A0) entre o símbolo e o número (E92).
+    expect(estornoContraARescisao(r, "estornar")).toContain("1.800,00");
+  });
+
+  it("`manter` segue a régua — não há divergência a anunciar", () => {
+    expect(estornoContraARescisao({ retencaoTotal: 1800 }, "manter")).toBeNull();
+  });
+
+  it("rescisão pela LOJA devolve tudo e não retém nada — o estorno não contraria ninguém", () => {
+    const r = calcularRescisao({
+      iniciativa: "LOJA",
+      itens: [{ descricao: "Vestido", valor: 3000, exclusivaDePrimeiroAluguel: false }],
+      valorTotalContrato: 3000,
+      totalPagoPlano: 2200,
+      reservaPaga: 1200,
+      prazoDevolucaoReservaDias: null,
+      dataRetirada: null,
+      hoje: "2026-08-14",
+    });
+    expect(r.retencaoTotal).toBe(0);
+    expect(estornoContraARescisao(r, "estornar")).toBeNull();
+  });
+
+  it("contrato sem um centavo pago — não há o que devolver a mais", () => {
+    expect(estornoContraARescisao({ retencaoTotal: 0 }, "estornar")).toBeNull();
   });
 });

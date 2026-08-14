@@ -64,6 +64,8 @@ import {
   // E216 — o predicado da peça exclusiva de primeiro aluguel (cláusula 12ª).
   ehExclusivaDePrimeiroAluguel,
   estaAberta,
+  // S-C140 — o estorno de 100% contra a retenção que a cláusula manda.
+  estornoContraARescisao,
   faltanteDoCarneCentavos,
   // E218 — o § único do objeto: o restante do valor entra até 20 dias antes da
   // retirada. Vale para o CARNÊ; avaria, atraso e mora nascem depois dela.
@@ -1151,11 +1153,63 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
   res.status(201).json(CreateContratoResponse.parse(fullContrato));
 });
 
+/**
+ * **S-C140 — a rescisão se lê ANTES do clique.**
+ *
+ * O E217 pôs a conta das cláusulas 8ª §2º/11ª/12ª/13ª/18ª no servidor, e ela só
+ * nascia na RESPOSTA do `POST /cancelar`: não havia como ler antes do gesto o
+ * que só existe depois dele. O diálogo "Cancelar contrato" seguia com a escolha
+ * de antes — *"A noiva perdeu o sinal"* × *"Devolvi o valor — estorna tudo"* —,
+ * e a segunda opção devolve **100% do que entrou**, contra a 8ª §2º, que diz
+ * que a reserva não volta **sob qualquer hipótese**. Medido em `heliumdb`:
+ * **428 contratos CANCELADOS** já passaram por esse diálogo, contra 311 ATIVOS.
+ *
+ * **Recalcular na tela não era opção**, e é o que a sobra não dizia:
+ * `ItemDaRescisao` exige `exclusivaDePrimeiroAluguel` (12ª) e `ContratoItem`
+ * não o carrega — a exclusividade é `vestidos.exclusiva` (a MARCA, E216)
+ * cruzada com a contagem de saídas ATIVAS (o ESTADO). O front adivinharia
+ * justamente a metade cara: a peça exclusiva retém o aluguel INTEIRO.
+ *
+ * Então o servidor **diz** o que usou, no formato da S-C47. E o custo tinha de
+ * ficar igual: o handler fazia **2 queries** (a relacional e a dos vínculos do
+ * E72) e continua fazendo **2**. As duas metades da 12ª entram na consulta que
+ * já existia — a marca por `with: { vestido }`, a contagem por `extras`
+ * correlacionado —, e a consulta relacional do drizzle continua sendo **uma
+ * sentença SQL**. `sc140-rescisao-no-get-api.test.ts` prega o número.
+ *
+ * **A contagem exclui ESTE contrato**, e é a única diferença em relação ao
+ * `POST /cancelar`: lá o `UPDATE` para `CANCELADO` já tinha rodado quando a
+ * contagem é feita, e a exclusão saía de graça. Aqui o contrato ainda é ATIVO —
+ * sem o `<>`, nenhuma peça estaria jamais em primeiro aluguel no exato momento
+ * em que a cláusula precisa dela, que é o aviso escrito em `exclusividade.ts`.
+ */
+const locacoesAtivasDaPeca = (lojaId: string, contratoId: string) =>
+  sql<number>`(
+    select count(*)::int
+      from ${contratoItensTable} as ci_outros
+      join ${contratosTable} as c_outros on c_outros.id = ci_outros.contrato_id
+     where ci_outros.vestido_id = ${contratoItensTable.vestidoId}
+       and ci_outros.loja_id = ${lojaId}
+       and c_outros.status = 'ATIVO'
+       and c_outros.id <> ${contratoId}
+  )`;
+
 router.get("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<void> => {
-  const { lojaId, contratoId } = req.params;
+  const { lojaId, contratoId } = req.params as { lojaId: string; contratoId: string };
   const contrato = await db.query.contratosTable.findFirst({
-    where: and(eq(contratosTable.id, contratoId as string), eq(contratosTable.lojaId, lojaId as string)),
-    with: { lead: true, vendedora: true, parcelas: true, itens: true }
+    where: and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)),
+    with: {
+      lead: true,
+      vendedora: true,
+      parcelas: true,
+      itens: {
+        // As duas metades do predicado da 12ª, na consulta que já existia.
+        // Nenhuma das duas atravessa a borda do `ContratoItem` do spec — o zod
+        // as descarta ao serializar; elas existem para a conta, não para a tela.
+        with: { vestido: { columns: { id: true, exclusiva: true } } },
+        extras: { locacoesAnteriores: locacoesAtivasDaPeca(lojaId, contratoId).as("locacoes_anteriores") },
+      },
+    },
   });
   if (!contrato) {
     res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
@@ -1165,11 +1219,74 @@ router.get("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<voi
   const vinculos = await db
     .select({ bloqueioId: contratoBloqueiosTable.bloqueioId })
     .from(contratoBloqueiosTable)
-    .where(eq(contratoBloqueiosTable.contratoId, contratoId as string));
+    .where(eq(contratoBloqueiosTable.contratoId, contratoId));
+
+  /**
+   * A rescisão é da noiva que **ainda pode** rescindir: contrato CANCELADO é
+   * registro morto (a mesma régua do `PATCH`), e o que ele reteve já está na
+   * trilha (`CONTRATO_CANCELADO`, com `rescisaoDevolucaoTotal`) e na
+   * `contas_pagar` da 13ª §3º. Recalcular hoje o que foi decidido em outro dia
+   * daria um número novo para um fato antigo.
+   *
+   * `hoje` é INJETADO — a régua desta trilha desde o E211. A conta é DERIVADA:
+   * a 18ª depende de quantos dias faltam para a retirada, e ela muda de resposta
+   * à meia-noite. Gravá-la estaria errado a partir do dia seguinte.
+   */
+  const parcelasPlano = contrato.parcelas.filter((p) => p.origem === "PLANO");
+  const rescisao =
+    contrato.status === "ATIVO"
+      ? calcularRescisao({
+          // A tela pergunta pela rescisão da NOIVA — é ela quem lê o aviso antes
+          // de a vendedora clicar. A da loja (13ª) devolve tudo e não precisa
+          // de aviso: ninguém é surpreendido por receber de volta.
+          iniciativa: "LOCATARIA",
+          itens: contrato.itens.map((it) => ({
+            descricao: it.descricao,
+            valor: reais(centavos(it.valorUnitario) * it.quantidade),
+            exclusivaDePrimeiroAluguel: it.vestidoId
+              ? ehExclusivaDePrimeiroAluguel({ exclusiva: it.vestido?.exclusiva ?? false }, it.locacoesAnteriores ?? 0)
+              : false,
+          })),
+          valorTotalContrato: contrato.valorTotal,
+          totalPagoPlano: reais(parcelasPlano.reduce((s, p) => s + centavos(p.valorRecebido ?? 0), 0)),
+          reservaPaga: reais(centavos(parcelasPlano.find((p) => p.numero === 0)?.valorRecebido ?? 0)),
+          prazoDevolucaoReservaDias: contrato.prazoDevolucaoReservaDias,
+          dataRetirada: contrato.dataRetirada,
+          hoje: new Date(),
+        })
+      : null;
+
+  /**
+   * Os campos escritos por EXTENSO, e dentro de um `return`, pela mesma razão
+   * do `POST /cancelar` (E217) e do `mora: moraDe(p)` do E213: a
+   * `varredura-schemas-aninhados` lê TEXTO e não atravessa import de outro
+   * pacote — `calcularRescisao` mora no `financeiro-core`.
+   *
+   * **E o `return` não é estilo: é o que a régua enxerga.** Escrito como
+   * `rescisao: rescisao ? { linhas: … } : null` direto no `res.json`, a
+   * varredura media `Rescisao.linhas` como **não entregue** (`expected [ …(16) ]
+   * to deeply equal [ …(15) ]`, com `Rescisao.linhas` a mais na lista de
+   * entrega desigual): o motor só desce para as chaves de um literal cujo
+   * valor COMEÇA em `{`, e o do ternário começa no nome da variável. Este é o
+   * segundo épico em que a régua do E192 cobra a FORMA da escrita, e o
+   * primeiro foi o E213.
+   */
+  function rescisaoNoPayload() {
+    if (!rescisao) return null;
+    return {
+      linhas: rescisao.linhas,
+      devolucaoTotal: rescisao.devolucaoTotal,
+      retencaoTotal: rescisao.retencaoTotal,
+      aplicou18a: rescisao.aplicou18a,
+      explicacao: rescisao.explicacao,
+    };
+  }
+
   res.json(
     GetContratoResponse.parse({
       ...contrato,
       bloqueioVestidoIds: vinculos.map((v) => v.bloqueioId),
+      rescisao: rescisaoNoPayload(),
     }),
   );
 });
@@ -1868,6 +1985,21 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
         iniciativa: parsed.data.iniciativa ?? "LOCATARIA",
         rescisaoDevolucaoTotal: rescisao.devolucaoTotal,
         rescisaoRetencaoTotal: rescisao.retencaoTotal,
+        /**
+         * S-C140 — a divergência entre as duas linhas acima, DITA.
+         *
+         * A trilha já guardava os dois números e deixava a leitura por conta de
+         * quem auditasse: `totalEstornado: 2200` ao lado de
+         * `rescisaoRetencaoTotal: 1800` é a loja devolvendo R$ 1.800,00 que a
+         * 8ª §2º manda reter, e ninguém somava isso de cabeça meses depois.
+         * Agora a linha diz. É o molde do `AVARIA_FORA_DA_FAIXA` (E214): a
+         * régua não impede a decisão, obriga a nomeá-la — e o `motivo`, que a
+         * porta exige, é onde a razão fica.
+         */
+        estornoContraARescisao: estornoContraARescisao(
+          rescisao,
+          parsed.data.destinoPago ?? "manter",
+        ),
       },
     });
     return { ok: true as const, rescisao };

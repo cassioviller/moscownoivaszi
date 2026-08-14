@@ -114,6 +114,33 @@ export type Rescisao = {
   explicacao: string;
 };
 
+/**
+ * **S-C140 — o estorno que o instrumento não autoriza.**
+ *
+ * O diálogo de cancelar tem, desde antes do E217, uma escolha sobre o dinheiro
+ * que já entrou: *"mantém no caixa"* ou *"devolvi o valor — estorna tudo"*. A
+ * segunda devolve **100% do recebido**, e a 8ª §2º diz que a reserva não volta
+ * **sob qualquer hipótese**: num contrato com R$ 1.200,00 de reserva e mais
+ * R$ 1.000,00 de carnê pagos, a cláusula retém R$ 1.800,00 e devolve R$ 400,00
+ * — o estorno devolve os R$ 2.200,00 inteiros, R$ 1.800,00 a mais do que o
+ * instrumento autoriza.
+ *
+ * **A régua não impede a dona de decidir: obriga a dizer por quê** — é o molde
+ * do E214, onde a taxa de avaria fora da faixa entra com justificativa e vai
+ * para a trilha nomeada. A mesma função responde à TELA (que avisa antes do
+ * clique) e ao SERVIDOR (que grava a divergência), para as duas não divergirem.
+ *
+ * `null` é "não há divergência": ou o caixa segue a régua (`manter`), ou não há
+ * o que reter (rescisão pela loja, contrato sem um centavo pago).
+ */
+export function estornoContraARescisao(
+  rescisao: Pick<Rescisao, "retencaoTotal">,
+  destinoPago: "manter" | "estornar",
+): string | null {
+  if (destinoPago !== "estornar" || rescisao.retencaoTotal <= 0) return null;
+  return `O contrato manda RETER ${brl(rescisao.retencaoTotal)}. Estornar tudo devolve esse valor contra as cláusulas 8ª §2º/11ª/12ª — escreva no motivo por que a loja decidiu devolver.`;
+}
+
 /** A rescisão, sempre — mesmo pagamento zero devolve/retém zero, com a linha dizendo por quê. */
 export function calcularRescisao(e: EntradaDaRescisao): Rescisao {
   const totalPagoC = centavos(e.totalPagoPlano);
