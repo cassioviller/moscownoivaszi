@@ -22,17 +22,22 @@ export type ParcelaComMora = {
   vencimento: Date | string;
   status: string;
   moraPerdoadaEm: Date | null;
+  origem: string;
 };
 
 /**
  * A mora desta parcela, ou `null` quando a cláusula não incide.
  *
- * **A parcela CANCELADA não deve mora**, e é a única exclusão de status: ela
- * não é dívida, é uma linha que deixou de existir para a cobrança. A PAGA sai
+ * **A parcela CANCELADA não deve mora**, e **a linha `MORA` não deve mora de
+ * si mesma** — são as duas exclusões. A primeira já existia; a segunda é
+ * S-C101: o estorno avulso devolve a PRÓPRIA linha de MORA a PREVISTA (ela é
+ * PAGA como qualquer parcela, e a porta não distingue), e sem esta guarda
+ * `moraDe` a recalcula por cima — R$ 15,00 de multa passam a render 2% e
+ * 1%/mês SOBRE SI MESMOS, virando R$ 15,45 no dia seguinte. A PAGA sai
  * sozinha, porque o saldo aberto dela é zero.
  */
 export function moraDe(p: ParcelaComMora) {
-  if (p.status === "CANCELADA") return null;
+  if (p.status === "CANCELADA" || p.origem === "MORA") return null;
   const m = moraDaParcela({
     // O MESMO `saldoAberto` do resto do sistema (E49/E125): o previsto menos o
     // que já entrou, nunca negativo. Incidir sobre o previsto cheio cobraria
