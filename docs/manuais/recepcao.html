@@ -240,7 +240,7 @@
     <div class="contexto">
       <span>Perfil: <b>Recepção</b></span>
       <span>A agenda é sua: <b>por inteiro</b></span>
-      <span>Atualizado em <b>12/08/2026</b></span>
+      <span>Atualizado em <b>14/08/2026</b></span>
     </div>
   </header>
 
@@ -256,6 +256,8 @@
       <li><a href="#mensagens"><span class="num">6</span>Mensagens de hoje</a></li>
       <li><a href="#cadastrar"><span class="num">7</span>A noiva que ligou</a></li>
       <li><a href="#config"><span class="num">8</span>Cabines &amp; horário</a></li>
+      <li><a href="#contrato"><span class="num">—</span>O contrato que você não vê</a></li>
+      <li><a href="#telefone"><span class="num">—</span>O telefone e o contrato</a></li>
       <li><a href="#nao"><span class="num">—</span>Quando o sistema diz não</a></li>
       <li><a href="#prazos"><span class="num">—</span>Os prazos</a></li>
       <li><a href="#verdade"><span class="num">—</span>Duas coisas a saber</a></li>
@@ -319,7 +321,7 @@
             <tr>
               <td><strong>Contratos</strong></td>
               <td>—</td>
-              <td>Nada: o menu não abre para você</td>
+              <td>Nada: o menu não abre para você, e na ficha da noiva o cartão diz <strong>“você não pode ver”</strong> — nunca “não há”. <a href="#contrato">A seção sobre isso</a></td>
             </tr>
             <tr>
               <td><strong>Acervo</strong></td>
@@ -524,10 +526,18 @@
             <tr><td><strong>Dias de funcionamento</strong></td><td>Os dias da semana em que a loja atende — botão por dia, aceso ou apagado</td></tr>
             <tr><td><strong>Duração da prova</strong></td><td>Quantos minutos cada prova prende a cabine. <strong>Em minutos</strong>, não em número de linhas</td></tr>
             <tr><td><strong>Lavagem do estoque (dias)</strong></td><td>Quanto tempo véu, saiote e bolero ficam na lavagem depois de devolvidos, antes de contar como disponíveis. Zero desliga</td></tr>
+            <tr><td><strong>Retirada e devolução</strong></td><td>O <strong>segundo</strong> expediente: em que dias e entre que horas a peça sai da loja e volta. Tem <strong>Abre</strong>, <strong>Fecha</strong>, <strong>Fecha no sábado</strong> e os dias da semana, separados dos de cima</td></tr>
             <tr><td><strong>Cabines</strong></td><td>Adicionar, renomear, ativar e desativar</td></tr>
             <tr><td><strong>Ausências da equipe</strong></td><td>Quem, do dia, até o dia (inclusive) e o motivo</td></tr>
           </tbody>
         </table>
+      </div>
+
+      <div class="fala aviso">
+        <span class="rotulo">São DOIS expedientes no mesmo cartão, e mexer em um não mexe no outro</span>
+        <p>O de cima governa <strong>as provas</strong> — é ele que acende os horários da grade. O ateliê atende sete dias, com hora marcada até no domingo, e está certo que seja assim.</p>
+        <p>O de baixo, <span class="btn">Retirada e devolução</span>, governa <strong>a peça saindo e voltando</strong>, que o contrato de locação trata separado. De fábrica ele vem do papel: <strong>terça a sábado, das 10:30 às 19:00, e no sábado até as 18:00</strong>.</p>
+        <p><strong>Mexer nele muda o que o contrato aceita.</strong> Marcada uma retirada fora desse expediente, o sistema recusa o contrato e diz o horário certo, citando a cláusula. Os dois moram no mesmo cartão de propósito: quem vem mudar horário precisa ver que são dois, senão muda um achando que mudou os dois.</p>
       </div>
 
       <p>O botão fecha em <span class="btn">Salvar expediente</span>, e o sistema confirma: <em>“Horário salvo”</em>. Cabine nova: <em>“Cabine adicionada”</em>. Ausência: <em>“Ausência marcada”</em>.</p>
@@ -539,6 +549,74 @@
       </div>
 
       <p class="nota">Desativar cabine não desmarca ninguém: quem já estava marcado continua lá, e a coluna continua desenhada até esvaziar. <b>Remarque antes de desativar</b>, ou a desativação não termina.</p>
+    </section>
+
+    <section id="contrato">
+      <h2>O contrato que você não vê</h2>
+      <p class="resumo">Toda noiva que fecha assina um <strong>contrato de locação de 21 cláusulas</strong>. Ele decide o dinheiro, o dia em que a peça sai, o dia em que ela volta, e o que se cobra quando alguma dessas coisas atrasa. <strong>Nada disso abre para o seu perfil</strong> — e é justamente por isso que esta seção existe: o que você faz quando a pergunta chega mesmo assim.</p>
+
+      <h3>A ficha diz “você não pode ver”, e isso não quer dizer “não existe”</h3>
+      <p>Na ficha da noiva, o cartão <strong>Contratos</strong> escrevia até 13/08/2026 a frase <em>“Nenhum contrato ainda.”</em> para você — <strong>inclusive quando havia contrato</strong>. A lista era recusada pelo seu acesso, e a tela lia a recusa como “veio vazio”.</p>
+      <p><strong>Não era caso raro: 739 das 1.426 fichas da loja diziam isso</strong> — 51,8% —, e em <strong>311</strong> delas o contrato estava <strong>vivo</strong>. É exatamente a ficha que você abre quando a noiva liga.</p>
+
+      <div class="fala">
+        <span class="rotulo">O que o cartão diz desde 13/08/2026</span>
+        <p><em>“Você não tem permissão para ver os contratos desta noiva.”</em></p>
+        <p><strong>Leia essa frase como “existe ou não existe, e não sou eu quem sabe”.</strong> Nunca como “ela não tem contrato”. Ao telefone, a resposta é <em>“vou confirmar com a vendedora e já te retorno”</em> — e quem retorna é a vendedora.</p>
+        <p>O cartão <strong>Orçamentos</strong>, logo acima, continua abrindo para você: ali <em>“Nenhum orçamento ainda.”</em> quer dizer mesmo que não há.</p>
+      </div>
+
+      <h3>Três coisas somem junto com o contrato</h3>
+      <ul>
+        <li><strong>O valor e o que falta pagar.</strong> O cartão Contratos é o do dinheiro — situação, valor total e saldo. Fechado para você, como o resto do financeiro</li>
+        <li><strong>A retirada e a devolução.</strong> As duas datas entraram no cartão <strong>O casamento</strong> em 13/08/2026, ao lado da data e da próxima prova, pensando em quem atende o telefone — <strong>só que elas saem do contrato</strong>. Sem o contrato, as duas linhas não aparecem para você. A pergunta <em>“que dia eu busco o vestido?”</em> é da vendedora</li>
+        <li><strong>O quadro do próximo passo</strong>, no alto da ficha, <strong>cala</strong> nos passos que dependem de saber do contrato. Ele chegou a mandar <span class="btn">Fechar o contrato</span>, em botão, para quem não pode fechar contrato nenhum — às vezes sobre um contrato já fechado. Os passos de agenda e de interesses continuam aparecendo, e são justamente os seus</li>
+      </ul>
+
+      <p class="nota">Nada disso é falta de confiança, e a razão está escrita na tela do orçamento: <b>quem aprova a proposta congela o preço que o contrato vai cobrar.</b> A decisão de fechar é de quem vendeu.</p>
+    </section>
+
+    <section id="telefone">
+      <h2>O telefone toca, e a pergunta é do contrato</h2>
+      <p class="resumo">Quatro perguntas chegam por telefone e a resposta está no papel. <strong>Você não vê a conta de nenhuma delas</strong> — mas saber o que o contrato diz muda o que você fala, e numa delas muda o tamanho da dívida da noiva.</p>
+
+      <p>Os cinco números abaixo saem do contrato e são conferidos contra o código toda vez que a suíte roda — <strong>se mudarem no sistema, esta tabela reprova e alguém a corrige</strong>. É por isso que eles ficam aqui e não espalhados na prosa.</p>
+
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>O que o contrato cobra</th><th>Quanto</th><th>Cláusula</th></tr></thead>
+          <tbody>
+            <tr><td>Multa da parcela vencida, uma vez sobre o saldo</td><td class="prazo" data-regua="MULTA_DE_MORA_PCT">2%</td><td>9ª</td></tr>
+            <tr><td>Juros da parcela vencida, por dia corrido</td><td class="prazo" data-regua="JUROS_DE_MORA_MENSAL_PCT">1% ao mês</td><td>9ª</td></tr>
+            <tr><td>Multa da devolução atrasada — <strong>uma por devolução</strong>, não por peça</td><td class="prazo" data-regua="MULTA_DE_ATRASO">R$ 250,00</td><td>16ª §1º</td></tr>
+            <tr><td>A partir de quando o atraso vira <strong>extravio</strong></td><td class="prazo" data-regua="DIAS_PARA_EXTRAVIO">10 dias</td><td>16ª</td></tr>
+            <tr><td>O que o extravio cobra de cada peça que não voltou</td><td class="prazo" data-regua="MULTIPLICADOR_DE_EXTRAVIO">4 vezes o aluguel</td><td>16ª</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>“Por que o valor subiu?”</h3>
+      <p>A parcela venceu, e a <strong>cláusula 9ª</strong> acrescentou a multa e os juros das duas primeiras linhas da tabela. Uma parcela de R$ 500,00 vencida há 30 dias vale <strong>R$ 515,00</strong>.</p>
+      <p><strong>Ela já tem a conta escrita na tela dela.</strong> No portal da noiva, embaixo da parcela, o acréscimo aparece por extenso, com a multa, os juros e a soma — e com a ressalva de que <em>não há correção monetária, porque o contrato não nomeia índice</em>. Peça que ela abra o link do portal e leia com você: é a resposta mais rápida, e é a mesma que a loja tem.</p>
+      <p><strong>Perdoar a multa existe, e é gesto da vendedora.</strong> Não prometa perdão ao telefone.</p>
+
+      <h3>“Que dia eu devolvo o vestido?”</h3>
+      <p>A data está no contrato, e o contrato não abre para você — <strong>nem pelo cartão O casamento da ficha</strong>. Encaminhe para a vendedora.</p>
+      <p>O que vale você saber é <strong>por que a devolução é um horário e não um dia</strong>: pela <strong>cláusula 5ª</strong> a locação termina às <strong>18:00</strong> do dia da devolução, e pela <strong>4ª</strong> a loja só entrega e recebe peça <strong>de terça a sábado</strong>. Domingo, nunca — e é o expediente que você mesma configura em <a href="#config">Cabines &amp; horário</a>.</p>
+
+      <h3>“Esqueci de devolver” — e esta é a ligação que vale ouro</h3>
+      <p>Passada a data, a <strong>16ª §1º</strong> cobra <strong>um dia de aluguel a mais de cada peça, por dia de atraso</strong>, mais a multa fixa da tabela — <strong>uma só</strong>, ainda que sejam vestido, véu e tiara. Passado o prazo do caput, deixa de ser atraso e vira <strong>extravio</strong>, que multiplica o aluguel de cada peça.</p>
+      <p>A escada, com um vestido de R$ 3.000,00 alugado numa janela de 6 dias: <strong>R$ 750,00</strong> no primeiro dia de atraso, <strong>R$ 4.750,00</strong> no nono — e <strong>R$ 12.000,00</strong> no primeiro dia de extravio.</p>
+      <div class="fala aviso">
+        <span class="rotulo">O que dizer, e é a única resposta desta página que muda o dinheiro</span>
+        <p><strong>“Traga hoje.”</strong> A conta cresce todo dia e dá um salto quando o prazo do caput vence. Anote o recado, avise a vendedora <strong>no mesmo dia</strong>, e não espere a noiva ligar de novo.</p>
+        <p>Você não cobra e não calcula nada — a conta é do sistema, a cobrança é da vendedora. O que só você pode fazer é <strong>encurtar o atraso</strong>, e cada dia encurtado é um dia de aluguel a menos.</p>
+      </div>
+
+      <h3>“Manchei o vestido” · “rasgou a barra”</h3>
+      <p>O contrato separa dois casos: a <strong>14ª</strong> é a sujeira que sai na lavagem — tinta, esmalte, a barra com terra — e cobra uma taxa de limpeza; a <strong>15ª</strong> é o dano, e a mancha que <em>não</em> sai, com um teto contado em aluguéis daquela peça. <strong>Os valores estão no manual de quem recebe a peça</strong>, e não neste.</p>
+      <p>A razão é a própria 14ª: o valor é apurado <em>pelo grau de dificuldade, durante o recebimento na devolução</em>. Quem avalia é quem está com a peça na mão.</p>
+      <p><strong>Não estime valor ao telefone.</strong> Diga que a peça é conferida na devolução, anote o que ela contou e passe o recado — quanto antes a loja souber, melhor a peça é fotografada e avaliada.</p>
     </section>
 
     <section id="nao">
@@ -580,9 +658,10 @@
     </section>
 
     <section id="verdade">
-      <h2>Duas coisas que este manual dizia, e deixaram de ser verdade</h2>
-      <p class="resumo">Ficam escritas porque quem leu a versão anterior precisa saber que mudou — e porque as duas mudaram por causa deste manual.</p>
+      <h2>Três coisas que deixaram de ser verdade</h2>
+      <p class="resumo">Ficam escritas porque quem leu a versão anterior precisa saber que mudou — e porque as duas primeiras mudaram por causa deste manual.</p>
       <ul>
+        <li><strong>“A ficha da noiva diz que ela não tem contrato.”</strong> Dizia, e mentia em <strong>739 das 1.426 fichas</strong> — em 311 delas sobre contrato vivo. Desde 13/08/2026 o cartão diz que <strong>você não pode ver</strong>, que é outra coisa. <a href="#contrato">A seção inteira sobre isso</a></li>
         <li><strong>“Você cadastra a noiva e não a edita.”</strong> Era assim até 12/08/2026, e a consequência era um WhatsApp errado que só a vendedora consertava. <strong>Agora você edita a ficha</strong>, inclusive o telefone</li>
         <li><strong>“O botão <span class="btn">Gerar contrato</span> aparece para você e funciona. Não deveria.”</strong> Não aparece mais: contrato virou um acesso separado, e ele não é seu. Aproveitou-se a mesma correção para tirar <span class="btn">Aprovar</span> e <span class="btn">Recusar</span> proposta — aprovar congela o preço que o contrato cobra, e essa é a mesma decisão vista um passo antes</li>
       </ul>
@@ -593,7 +672,7 @@
   </main>
 
   <footer>
-    <p>Este manual descreve o sistema como ele está em <strong>13/08/2026</strong>. Os nomes de botão e os recados de erro são citados literalmente da tela — se algum não bater com o que você vê, o manual envelheceu, e vale avisar.</p>
+    <p>Este manual descreve o sistema como ele está em <strong>14/08/2026</strong>. Os nomes de botão e os recados de erro são citados literalmente da tela — se algum não bater com o que você vê, o manual envelheceu, e vale avisar.</p>
   </footer>
 
 </div>
