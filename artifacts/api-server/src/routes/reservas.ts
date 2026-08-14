@@ -2045,7 +2045,27 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
       numero: Number(maior) + 1,
       // S26: o reparo NÃO é carnê — é o que permite ao contrato ainda gerar o dele.
       origem: "AVARIA",
-      descricao: `Reparo de avaria — ${avaria.descricao}`.slice(0, 200),
+      /**
+       * **S-C100 — o corte em 200 comia até 819 caracteres do que a noiva lê.**
+       *
+       * Era `.slice(0, 200)`. `AvariaInput.descricao` tem `maxLength: 1000` no
+       * spec (`openapi.yaml:6656`), e o prefixo *"Reparo de avaria — "* tem 19:
+       * a frase chega a **1019** caracteres e o corte guardava **200**. O que
+       * some é o fim da descrição que a vendedora escreveu olhando a peça — e é
+       * ela que sustenta a cobrança, porque a `justificativaDaTaxa` do E214 é
+       * outro campo e só existe fora da faixa.
+       *
+       * **Não havia limite a respeitar.** Medido no `heliumdb`
+       * (`SELECT current_database()` conferido, 2026-08-14):
+       * `parcelas.descricao` é **`text`**, `character_maximum_length` NULO, e o
+       * spec não impõe teto (`Parcela.descricao: { type: ["string","null"] }`,
+       * `openapi.yaml:7443`). O 200 era palpite sobre o banco — a mesma classe
+       * da S-C71, que o tirou da linha da MORA em `contratos.ts`.
+       *
+       * Dívida no banco: **zero** — 0 avarias no `heliumdb` e no `moscow_base`,
+       * e das 316 parcelas do dev nenhuma tem 200 caracteres (a maior tem 52).
+       */
+      descricao: `Reparo de avaria — ${avaria.descricao}`,
       valorPrevisto: avaria.custoReparo!,
       // Dia de negócio, não instante: `new Date()` das 21h à meia-noite jogava
       // o vencimento para o dia seguinte (a mesma classe do C6).
@@ -2643,9 +2663,24 @@ router.post(
         contratoId,
         numero: Number(maior) + 1,
         origem: "ATRASO_DEVOLUCAO",
-        // A MESMA frase que a tela imprimiu antes do clique. Duas grafias da
-        // mesma conta divergiriam no dia em que a régua mudasse (E214).
-        descricao: `Atraso na devolução — ${explicacaoDoAtraso(cobranca)}`.slice(0, 200),
+        /**
+         * A MESMA frase que a tela imprimiu antes do clique. Duas grafias da
+         * mesma conta divergiriam no dia em que a régua mudasse (E214).
+         *
+         * **S-C100 — e ela chega INTEIRA.** Era `.slice(0, 200)`, e esta frase
+         * cresce com o número de peças: uma sentença por peça, mais a multa do
+         * §1º, mais o total. Medido com a fixture de três peças do
+         * `e212-atraso-na-devolucao-api.test.ts` (R$ 3.000,00 · R$ 400,00 ·
+         * R$ 200,00, dois dias de atraso): **260** caracteres, e o corte
+         * engolia os **60** finais —
+         * *" de atraso (cláusula 16ª §1º): R$ 250,00. Total R$ 1.450,00."*.
+         * A parcela de R$ 1.450,00 chegava ao portal com a descrição terminando
+         * em *"…R$ 66,66; multa"*: sem a multa, sem o total, e cortada no meio
+         * da palavra. **O total é justamente a linha que a noiva confere.**
+         *
+         * A coluna é `text` sem teto (a medição está na porta da avaria, acima).
+         */
+        descricao: `Atraso na devolução — ${explicacaoDoAtraso(cobranca)}`,
         valorPrevisto: cobranca.valor,
         // Dia de negócio, e não `new Date()`: das 21h à meia-noite o instante
         // cru joga o vencimento para o dia seguinte (S-O117).

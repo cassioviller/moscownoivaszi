@@ -172,6 +172,14 @@ describe("E212 — o atraso na devolução tem preço", () => {
    * **A conta que a tela imprimiu é a MESMA que a parcela gravou.** Duas
    * grafias divergiriam no dia em que a régua mudasse, e a noiva leria no carnê
    * um número que ninguém lhe mostrou — é a lição do E214 aplicada ao texto.
+   *
+   * **S-C100 — e o assert escrevia o defeito.** Ele terminava em
+   * `` .slice(0, 200) ``, a mesma expressão que a porta usava: a régua
+   * concordava com o corte em vez de o pegar. E ela nem chegava a pregá-lo —
+   * a fixture aqui é de UMA peça e a frase dá **147** caracteres, então o corte
+   * era inócuo e o teste passava com e sem ele. Hoje ele compara a frase
+   * INTEIRA, e o caso que estoura os 200 mora em
+   * `sc100-descricao-sem-corte-api.test.ts`.
    */
   it("a descrição da parcela repete a frase da prévia, não uma segunda redação", async () => {
     const { contrato } = await noivaComPecas([{ aluguel: 3000, casamentoHaDias: 10, devolvidoHaDias: 5 }]);
@@ -179,7 +187,7 @@ describe("E212 — o atraso na devolução tem preço", () => {
     await cobrar(contrato.id).expect(201);
     const [linha] = await parcelasDeAtraso(contrato.id);
     expect(antes.body.explicacao).toContain("3 dia(s)");
-    expect(linha!.descricao).toBe(`Atraso na devolução — ${antes.body.explicacao}`.slice(0, 200));
+    expect(linha!.descricao).toBe(`Atraso na devolução — ${antes.body.explicacao}`);
   });
 
   it("o segundo clique responde 409 e NÃO cria uma segunda parcela", async () => {
