@@ -1,5 +1,14 @@
 # Recomendações para o que restou — as 4 🟡 e as 48 🔵
 
+> **DECIDIDO em 14/08/2026, todas na recomendação** — como a Fase 0 da ótica
+> dos papéis. A dona confirmou: **S-C60** pode segurar com validade de 7 dias;
+> **S-C220** a Recepção vê só as datas (leitura estreita); **S-C233** a peça
+> devolvida de contrato cancelado passa pela lavanderia (a lavagem ocupa); e as
+> **dez pequenas do Bloco 8** seguem cada uma a recomendação da tabela — as de
+> "manter, dito" fecham por decisão escrita, as de código entram na fila. O que
+> segue abaixo é a proposta como foi apresentada; a execução está na tabela do
+> [`EXECUCAO.md`](../revisao/2026-08-13-contrato-de-papel/EXECUCAO.md).
+
 **Aberto em 14/08/2026**, depois de as oito amarelas de código fecharem
 (E225–E227, S-C170, S-C180). Trilha:
 [`2026-08-13-contrato-de-papel/`](../revisao/2026-08-13-contrato-de-papel/EXECUCAO.md)

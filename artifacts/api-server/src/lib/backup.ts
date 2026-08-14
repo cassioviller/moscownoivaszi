@@ -62,6 +62,10 @@ export async function executarBackup(opcoes: OpcoesBackup): Promise<BackupLog> {
     return ok;
   } catch (err) {
     const mensagem = err instanceof Error ? err.message : String(err);
+    // S-C171 — o corte em 500 é DECISÃO (14/08/2026), não palpite: isto é log
+    // de diagnóstico, os primeiros 500 caracteres de um erro de pg_dump dizem
+    // a causa, e a coluna sem teto viraria depósito de stack trace. Difere do
+    // 200 da S-C100, que cortava a DESCRIÇÃO que o carnê imprime.
     const [falho] = await db
       .update(backupLogTable)
       .set({ status: "erro", concluidoEm: new Date(), erro: mensagem.slice(0, 500) })

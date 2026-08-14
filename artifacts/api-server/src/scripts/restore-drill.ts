@@ -305,6 +305,8 @@ async function main(): Promise<void> {
         concluidoEm: new Date(),
         dumpArquivo,
         tabelasConferidas,
+        // S-C171 — corte decidido (14/08/2026): log de diagnóstico, mesma
+        // razão do irmão em `lib/backup.ts`.
         erro: mensagem.slice(0, 500),
       })
       .where(eq(restoreDrillLogTable.id, registroId));
