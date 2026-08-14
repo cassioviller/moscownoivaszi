@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Parcela } from "@workspace/api-client-react";
 import {
+  emAtrasoComMora,
   moraEmAberto,
   podePerdoarMora,
   sugestaoDeRecebimento,
@@ -141,6 +142,33 @@ describe("moraEmAberto — quando a linha explica o acréscimo", () => {
       moraPerdoadaMotivo: "A noiva avisou da internação do pai",
     });
     expect(moraEmAberto(p)).toBeNull();
+  });
+});
+
+describe("emAtrasoComMora — o cartão de COBRANÇA soma o que a porta aceita (S-C231)", () => {
+  const atrasada = (p: { mora?: unknown }) => p.mora != null;
+
+  it("soma o total com mora das atrasadas — o mesmo número da fila e do diálogo", () => {
+    const lista = [
+      parcela({ mora: MORA_30_DIAS }), // 515
+      parcela(), // em dia — fora
+      parcela({
+        status: "PARCIAL",
+        valorRecebido: 300,
+        mora: { ...MORA_30_DIAS, saldo: 200, multa: 4, juros: 2, acrescimo: 6, total: 206 },
+      }), // 206
+    ];
+    expect(emAtrasoComMora(lista, atrasada)).toBe(721);
+  });
+
+  it("lista vazia soma zero, e centavos não somam torto", () => {
+    expect(emAtrasoComMora([], atrasada)).toBe(0);
+    const comCentavos = [
+      parcela({ mora: { ...MORA_30_DIAS, total: 100.1 } }),
+      parcela({ mora: { ...MORA_30_DIAS, total: 200.2 } }),
+    ];
+    // 100.1 + 200.2 em float dá 300.30000000000007 — a soma é em centavos.
+    expect(emAtrasoComMora(comCentavos, atrasada)).toBe(300.3);
   });
 });
 

@@ -44,7 +44,6 @@ import { Vazio } from "@/components/estado";
 import {
   rotuloForma,
   estaAtrasada,
-  vencidas,
   estaAberta,
   saldoAberto,
   teveRecebimento,
@@ -56,7 +55,7 @@ import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
 import { mensagemApi } from "@/lib/erro-api";
 import { DialogoReceberParcela, rotuloParcela } from "@/components/dialogo-receber-parcela";
 // E226 — a mora da 9ª na leitura, na mesma grafia do carnê e do portal.
-import { moraEmAberto, valorDaParcelaNaTela } from "@/lib/financeiro/mora-na-tela";
+import { emAtrasoComMora, moraEmAberto, valorDaParcelaNaTela } from "@/lib/financeiro/mora-na-tela";
 
 const MENSAGENS_ERRO: Record<string, string> = {
   PARCELA_NAO_PAGA: "Este recebimento não está pago — nada a estornar.",
@@ -172,13 +171,20 @@ export default function Receber() {
   // Abertas contam o SALDO (E49): a parcela meio recebida entra aqui com o
   // que falta, e no "recebido" com o que entrou — as duas coisas ao mesmo
   // tempo, que é a verdade de um pagamento parcial.
+  //
+  // S-C231 — a convenção da mora, decidida em 14/08: **cobrança mostra com
+  // mora, projeção mostra o principal**, e cada cartão diz qual é. "Em
+  // atraso" é cobrança — depois do E226 as linhas abaixo diziam R$ 515,00 e o
+  // cartão somava R$ 500,00, o par de números da S-C200 uma tela adiante.
+  // "A receber" é projeção (o que entra se tudo correr) e fica no principal,
+  // com o rótulo dizendo — a mora é derivada, cresce por dia e é perdoável.
   const resumo = useMemo(() => {
     const abertas = naJanela.filter(estaAberta);
     const comRecebimento = naJanela.filter(teveRecebimento);
     return {
       aReceber: reais(somaCentavos(abertas, saldoAberto)),
       recebido: reais(somaCentavos(comRecebimento, (p) => p.valorRecebido ?? 0)),
-      emAtraso: vencidas(naJanela, hoje).total,
+      emAtraso: emAtrasoComMora(naJanela, (p) => estaAtrasada(p as Parcela, hoje)),
     };
   }, [naJanela, hoje]);
 
@@ -296,9 +302,12 @@ export default function Receber() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <ResumoCard rotulo="A receber" valor={resumo.aReceber} />
+        {/* S-C231 — cada cartão DIZ a convenção que usa: projeção sem multas,
+            cobrança com. Um número maior sem explicação é ligação para a loja;
+            dois números sem rótulo é a noiva escolhendo em qual acreditar. */}
+        <ResumoCard rotulo="A receber (sem multas de atraso)" valor={resumo.aReceber} />
         <ResumoCard rotulo="Recebido" valor={resumo.recebido} />
-        <ResumoCard rotulo="Em atraso" valor={resumo.emAtraso} destaque />
+        <ResumoCard rotulo="Em atraso (com multa e juros)" valor={resumo.emAtraso} destaque />
       </div>
 
       <div className="flex flex-wrap gap-2">

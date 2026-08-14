@@ -75,6 +75,33 @@ export function sugestaoDeRecebimento(p: ComMora): number {
 }
 
 /**
+ * **S-C231 — o total EM ATRASO de uma lista, com a mora: a leitura de
+ * COBRANÇA.**
+ *
+ * A convenção decidida em 14/08 (na recomendação): **cobrança mostra com
+ * mora, projeção mostra o principal** — e cada tela diz qual das duas está
+ * mostrando. O cartão "Em atraso" da carteira é cobrança (quanto de dívida
+ * vencida a loja tem a receber HOJE), e somava `saldoAberto` enquanto a
+ * fila de cobrança, a linha da parcela e a porta de receber já diziam o total
+ * com a 9ª — o mesmo par de números da S-C200, uma tela adiante.
+ *
+ * Soma `sugestaoDeRecebimento` de propósito: é O MESMO número que o diálogo
+ * abre preenchido e que a porta aceita — três leituras, uma grafia.
+ */
+export function emAtrasoComMora(
+  parcelas: readonly ComMora[],
+  estaAtrasada: (p: ComMora) => boolean,
+): number {
+  return (
+    Math.round(
+      parcelas
+        .filter((p) => estaAtrasada(p))
+        .reduce((s, p) => s + sugestaoDeRecebimento(p) * 100, 0),
+    ) / 100
+  );
+}
+
+/**
  * Se o gesto de perdoar cabe nesta parcela.
  *
  * É a mesma régua que o servidor aplica ao recusar com `SEM_MORA` (422), e ela

@@ -292,6 +292,11 @@ export default function Projecao() {
                 <p className="text-xs text-muted-foreground">
                   Vencidos em aberto não entram na projeção: já deviam ter acontecido e cairiam na
                   data errada, inflando a curva com dinheiro que não veio.
+                  {/* S-C231 — a convenção, dita também aqui: projeção fala no
+                      principal; o total COM as multas da 9ª é o da fila de
+                      cobrança e do cartão "Em atraso" da carteira. */}{" "}
+                  Os valores são o principal, sem as multas da cláusula 9ª — o total com multa
+                  está na cobrança.
                 </p>
                 <div className="flex flex-wrap gap-x-8 gap-y-1 text-sm">
                   {emAtraso.aReceber !== 0 && (
