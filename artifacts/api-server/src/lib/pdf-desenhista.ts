@@ -115,6 +115,35 @@ export function montadorDeTokens() {
   };
 }
 
+/**
+ * S-C170 — a quebra por largura é DO PAGINADOR, não de cada chamador.
+ *
+ * O P13 (E165) ensinou a quebra ao texto livre, mas ela morava no call-site —
+ * e todo call-site seguinte a esqueceu: as linhas de parcela, de cobrança
+ * extra e de item chamavam `add()` cru, e a sonda da sobra mediu uma linha de
+ * MORA com 240 caracteres e uma de ATRASO_DEVOLUCAO com 294 desenhadas numa
+ * largura de 92 — o resto saía da página, e o que saía era justamente a conta.
+ * Aqui é por onde TODA linha de TODO papel passa (contrato, recibo, o próximo);
+ * régua que depende de cada chamador lembrar dela não é régua.
+ *
+ * A continuação herda o recuo da primeira linha: sem isso, o texto quebrado de
+ * um item de lista volta à margem e se disfarça de item novo.
+ */
+function quebrarNaLargura(text: string, size: number): string[] {
+  // 92 é calibrado para Helvetica 10/11; corpo maior leva menos por linha.
+  const largura = Math.floor((LARGURA_TEXTO * 11) / Math.max(size, 11));
+  if (text.length <= largura) return [text];
+  const recuo = (text.match(/^ +/)?.[0] ?? "") + "  ";
+  // A continuação quebra já DESCONTANDO o recuo — recuar depois de quebrar
+  // faria a linha recuada passar da largura que a quebra acabou de garantir.
+  const [primeira, ...resto] = quebrarTexto(text, largura);
+  if (resto.length === 0) return [primeira!];
+  return [
+    primeira!,
+    ...quebrarTexto(resto.join(" "), Math.max(largura - recuo.length, 20)).map((l) => recuo + l),
+  ];
+}
+
 /** Distribui os tokens em páginas — nenhuma linha abaixo de Y_MARGEM. */
 function paginar(tokens: Token[]): Linha[][] {
   const paginas: Linha[][] = [[]];
@@ -125,10 +154,12 @@ function paginar(tokens: Token[]): Linha[][] {
     y = Y_TOPO;
   };
   const emitir = (text: string, size: number) => {
-    const h = alturaDe(size);
-    if (y - h < Y_MARGEM) novaPagina();
-    paginas[paginas.length - 1].push({ x: 50, y, size, text });
-    y -= h;
+    for (const linha of quebrarNaLargura(text, size)) {
+      const h = alturaDe(size);
+      if (y - h < Y_MARGEM) novaPagina();
+      paginas[paginas.length - 1].push({ x: 50, y, size, text: linha });
+      y -= h;
+    }
   };
 
   for (const t of tokens) {
