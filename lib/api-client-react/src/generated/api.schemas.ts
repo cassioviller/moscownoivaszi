@@ -2213,6 +2213,10 @@ export type PortalNoivaVestido = {
   retiradaPrevista?: string | null;
   /** @nullable */
   retiradaFeitaEm?: string | null;
+  /** @nullable */
+  devolucaoPrevista?: string | null;
+  /** @nullable */
+  devolucaoFeitaEm?: string | null;
   ajustes: PortalNoivaVestidoAjustesItem[];
 } | null;
 

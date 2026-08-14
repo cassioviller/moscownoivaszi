@@ -1189,22 +1189,36 @@ export default function ReservaDetalhe() {
                               </Link>
                             </Button>
                           )
+                        ) : contratoAtivo && a.custoReparo != null && a.custoReparo > 0 ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={cobrarAvaria.isPending}
+                            onClick={() => cobrarReparo(a)}
+                            data-testid={`cobrar-reparo-${a.id}`}
+                          >
+                            {/* A cobrança anterior morreu com o contrato: o
+                                gesto é o mesmo, e o rótulo diz que já houve
+                                uma. */}
+                            {cobrancaMorreu ? "Recobrar reparo" : "Cobrar reparo"}
+                          </Button>
                         ) : (
-                          contratoAtivo &&
+                          /* E230/S-C112 — o aviso onde o botão NÃO está,
+                             dizendo por que ele não está (a classe do E166). O
+                             422 AVARIA_SEM_DONA já ensinava o caminho e
+                             ninguém lia, porque sem dono derivado o botão nem
+                             nascia — quem abria um véu órfão com avaria via o
+                             dano e não via saída. A frase é a do servidor. */
+                          !donoDaReserva &&
                           a.custoReparo != null &&
                           a.custoReparo > 0 && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={cobrarAvaria.isPending}
-                              onClick={() => cobrarReparo(a)}
-                              data-testid={`cobrar-reparo-${a.id}`}
+                            <span
+                              className="max-w-56 text-xs text-muted-foreground"
+                              data-testid={`motivo-nao-cobra-${a.id}`}
                             >
-                              {/* A cobrança anterior morreu com o contrato: o
-                                  gesto é o mesmo, e o rótulo diz que já houve
-                                  uma. */}
-                              {cobrancaMorreu ? "Recobrar reparo" : "Cobrar reparo"}
-                            </Button>
+                              Sem dona, o reparo entraria no carnê de qualquer contrato — ligue a
+                              reserva à noiva antes de cobrar.
+                            </span>
                           )
                         )}
                         {/* S-C11: o conserto do zero a mais. Antes daqui, o

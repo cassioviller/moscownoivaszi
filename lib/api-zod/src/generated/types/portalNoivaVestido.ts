@@ -16,5 +16,9 @@ export type PortalNoivaVestido = {
   retiradaPrevista?: Date | null;
   /** @nullable */
   retiradaFeitaEm?: Date | null;
+  /** @nullable */
+  devolucaoPrevista?: Date | null;
+  /** @nullable */
+  devolucaoFeitaEm?: Date | null;
   ajustes: PortalNoivaVestidoAjustesItem[];
 } | null;

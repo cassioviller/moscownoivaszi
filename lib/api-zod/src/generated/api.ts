@@ -6380,6 +6380,8 @@ export const GetPortalResponse = zod.object({
 })),
   "retiradaPrevista": zod.coerce.date().nullish(),
   "retiradaFeitaEm": zod.coerce.date().nullish(),
+  "devolucaoPrevista": zod.coerce.date().nullish(),
+  "devolucaoFeitaEm": zod.coerce.date().nullish(),
   "ajustes": zod.array(zod.object({
   "descricao": zod.string(),
   "pronto": zod.boolean()

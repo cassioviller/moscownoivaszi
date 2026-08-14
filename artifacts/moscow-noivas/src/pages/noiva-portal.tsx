@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { brl, capitalizar, instanteLongo, tipoItemLabel } from "@/lib/formatos";
 import { rotuloForma } from "@/lib/financeiro/forma";
+import { clausulasDoContrato } from "@/lib/clausulas-do-portal";
 import { centavos, linhaDeDesconto, reais } from "@/lib/financeiro/dinheiro";
 import { linkWhatsApp, msgDaNoivaParaAtelier } from "@/lib/whatsapp";
 
@@ -593,6 +594,29 @@ export default function NoivaPortal() {
                         A data da retirada ainda vai ser combinada com você.
                       </p>
                     )}
+                    {/* E230/S-C92 — a devolução era a ÚNICA data que a noiva
+                        não via, e é dela que a multa da 16ª corre: o PDF já a
+                        imprimia e o portal calava. Sem data combinada o portal
+                        SILENCIA em vez de prometer "a combinar" — a retirada
+                        acima já ocupa esse papel, e duas linhas de "ainda vai
+                        ser combinada" seriam moldura. */}
+                    {dados.vestido.devolucaoFeitaEm ? (
+                      <p className="text-sm" data-testid="devolucao-da-noiva">
+                        Devolvido em{" "}
+                        <span className="font-medium">
+                          {instanteLongo(dados.vestido.devolucaoFeitaEm)}
+                        </span>
+                        .
+                      </p>
+                    ) : dados.vestido.devolucaoPrevista ? (
+                      <p className="text-sm" data-testid="devolucao-da-noiva">
+                        Devolução combinada para{" "}
+                        <span className="font-medium">
+                          {instanteLongo(dados.vestido.devolucaoPrevista)}
+                        </span>
+                        .
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 
@@ -761,6 +785,38 @@ export default function NoivaPortal() {
                 <p className="text-xs text-muted-foreground">
                   Para pagar ou combinar valores, fale com a sua vendedora —
                   este extrato é só para você acompanhar.
+                </p>
+              </section>
+            )}
+
+            {/* E230/S-C202 — das seis cláusulas de dinheiro, só a 9ª descia ao
+                portal: avaria, atraso, extravio, rescisão e peça exclusiva não
+                tinham seção nenhuma aqui, e o manual da noiva passou a
+                explicá-las com a tela dela muda. Cada número sai da CONSTANTE
+                que a conta usa (`lib/clausulas-do-portal.ts`) — um literal
+                escrito aqui viraria a segunda grafia que diverge da conta no
+                dia em que a dona mudar a regra. Só com contrato: sem ele, não
+                há cláusula valendo sobre a noiva. */}
+            {dados.parcelas.length > 0 && (
+              <section
+                className="bg-card border rounded-lg p-6 shadow-sm space-y-4"
+                data-testid="clausulas-do-contrato"
+              >
+                <h2 className="font-serif text-2xl">O que o seu contrato prevê</h2>
+                <ul className="space-y-3">
+                  {clausulasDoContrato().map((c) => (
+                    <li key={`${c.clausula}-${c.titulo}`}>
+                      <p className="text-sm font-medium">
+                        {c.titulo}{" "}
+                        <span className="text-muted-foreground text-xs">(cláusula {c.clausula})</span>
+                      </p>
+                      <p className="text-muted-foreground text-sm">{c.texto}</p>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-muted-foreground">
+                  Esses são os termos gerais do contrato que você assinou — os valores do seu
+                  caso aparecem nas parcelas acima e com a sua vendedora.
                 </p>
               </section>
             )}

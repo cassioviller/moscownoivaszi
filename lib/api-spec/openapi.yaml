@@ -7174,6 +7174,11 @@ components:
                 # que já aconteceu, e aí a promessa vira registro.
                 retiradaPrevista: { type: ["string", "null"], format: date-time }
                 retiradaFeitaEm: { type: ["string", "null"], format: date-time }
+                # E230/S-C92 — a devolução, simétrica: era a ÚNICA data que a
+                # noiva não via, e é dela que a multa da 16ª corre. O PDF já a
+                # imprimia; o portal calava.
+                devolucaoPrevista: { type: ["string", "null"], format: date-time }
+                devolucaoFeitaEm: { type: ["string", "null"], format: date-time }
                 ajustes:
                   type: array
                   items:

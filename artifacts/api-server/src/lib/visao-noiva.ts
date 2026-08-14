@@ -187,6 +187,13 @@ export type VestidoDaNoiva = {
   fotos: { ordem: number; atualizadaEm: Date }[];
   retiradaPrevista: Date | null;
   retiradaFeitaEm: Date | null;
+  /**
+   * E230/S-C92 — a devolução, simétrica à retirada: era a ÚNICA data que a
+   * noiva não via, e é dela que a multa da 16ª corre. O PDF já a imprimia
+   * (`contrato-pdf.ts`); o portal calava.
+   */
+  devolucaoPrevista: Date | null;
+  devolucaoFeitaEm: Date | null;
   ajustes: { descricao: string; pronto: boolean }[];
 };
 
@@ -196,6 +203,7 @@ export async function montarVestidoDaNoiva(contrato: {
   leadId: string;
   bloqueioVestidoId: string | null;
   dataRetirada: Date | null;
+  dataDevolucao: Date | null;
 }): Promise<VestidoDaNoiva | null> {
   /**
    * O vínculo vivo é o N:N `contrato_bloqueios` (E72) — a coluna singular
@@ -233,6 +241,7 @@ export async function montarVestidoDaNoiva(contrato: {
     .select({
       vestidoId: bloqueioVestidosTable.vestidoId,
       retiradaDataReal: bloqueioVestidosTable.retiradaDataReal,
+      devolucaoDataReal: bloqueioVestidosTable.devolucaoDataReal,
       nome: vestidosTable.nome,
     })
     .from(bloqueioVestidosTable)
@@ -275,6 +284,8 @@ export async function montarVestidoDaNoiva(contrato: {
     // aconteceu, e aí a promessa vira registro.
     retiradaPrevista: contrato.dataRetirada,
     retiradaFeitaEm: bloqueio.retiradaDataReal,
+    devolucaoPrevista: contrato.dataDevolucao,
+    devolucaoFeitaEm: bloqueio.devolucaoDataReal,
     ajustes: ajustes.map((a) => ({ descricao: a.descricao, pronto: a.status === "FEITO" })),
   };
 }
