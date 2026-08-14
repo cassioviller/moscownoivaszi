@@ -126,8 +126,32 @@ function citacoes(): Citacao[] {
   const achadas: Citacao[] = [];
   for (const manual of versionados("docs/manuais/*.html")) {
     const html = ler(manual);
-    for (const m of html.matchAll(/<td class="prazo" data-regua="([A-Z_]+)">([^<]*)<\/td>/g)) {
-      achadas.push({ manual, regua: m[1] as NomeDaRegua, texto: m[2]! });
+    /**
+     * **`<span>` entrou junto com o `<td>`, e não é conveniência.**
+     *
+     * A régua só lia célula de tabela, e por isso o único número que ela
+     * conhecia e ninguém pregava era o `CONVITE_TTL_MS`: o manual do
+     * proprietário diz *"o convite vale 7 dias"* **numa frase**, que é o lugar
+     * certo para ele. A escolha era abrir exceção para a régua ou empurrar a
+     * frase para dentro de uma tabela — as duas erradas, porque a primeira
+     * deixa um número sem dono e a segunda deforma o texto para agradar o teste.
+     * **Anotar a prosa é a terceira saída**, e com ela a garantia de que TODA
+     * régua do registro é prometida por algum manual passa a valer sem buraco.
+     */
+    /**
+     * **O conteúdo aceita marcação dentro, e isso foi medido doendo.**
+     *
+     * O padrão original era `>([^<]*)<` — parava no primeiro `<`. Três células
+     * do manual da vendedora escrevem *"até 5× o aluguel **daquela peça**"*, com
+     * `<strong>` no meio, e a régua **as pulava em silêncio**: anotadas, com o
+     * número certo, e não pregadas. É o pior resultado possível numa varredura,
+     * porque quem escreveu a célula acredita ter pregado o número — o `[]` de
+     * sonda cega da S-C55 outra vez, aqui do lado do HTML.
+     */
+    for (const m of html.matchAll(
+      /<(td|span) class="prazo" data-regua="([A-Z_]+)">(.*?)<\/\1>/g,
+    )) {
+      achadas.push({ manual, regua: m[2] as NomeDaRegua, texto: m[3]! });
     }
   }
   return achadas;
@@ -140,7 +164,53 @@ describe("varredura — o prazo que o manual promete é o que o código decide (
     // Piso de população: sem isto, apagar todos os `data-regua` deixaria a
     // varredura verde e muda. É a régua de sempre das varreduras daqui.
     expect(versionados("docs/manuais/*.html").length, "os manuais sumiram do versionamento").toBe(5);
-    expect(citadas.length, "as anotações `data-regua` sumiram dos manuais").toBeGreaterThanOrEqual(9);
+    // Medido em 2026-08-14, depois de os cinco manuais aprenderem o contrato:
+    // eram **9** e são **69**. O piso subiu junto, porque piso que não sobe é a
+    // S-C46 — *"trava a contagem, mas com folga"* — e um piso de 9 sobre 69
+    // deixaria sumir sete oitavos das promessas sem uma reprova.
+    expect(citadas.length, "as anotações `data-regua` sumiram dos manuais").toBeGreaterThanOrEqual(69);
+  });
+
+  /**
+   * **Nenhuma anotação é pulada em silêncio.**
+   *
+   * O piso e a cobertura contam o que a régua CONSEGUIU ler. Nada, até aqui,
+   * comparava isso com o que os manuais realmente anotaram — e a diferença
+   * existia: três células com `<strong>` dentro do texto ficaram fora do
+   * padrão, anotadas e não pregadas, e o piso de 9 as escondia.
+   *
+   * Aqui a conta é de igualdade contra o número **cru** de `data-regua` no
+   * versionamento. Célula anotada que o padrão não casar reprova nomeando o
+   * arquivo, em vez de sumir da conta.
+   */
+  it("toda anotação `data-regua` do disco é lida pela régua", () => {
+    const cruas = versionados("docs/manuais/*.html")
+      .map((m) => (ler(m).match(/data-regua="/g) ?? []).length)
+      .reduce((a, b) => a + b, 0);
+    expect(
+      citadas.length,
+      "há anotação `data-regua` que o padrão não casa — célula anotada e NÃO pregada",
+    ).toBe(cruas);
+  });
+
+  /**
+   * **A garantia que o piso não dá, e que é a razão de tudo isto (S-C96).**
+   *
+   * Piso conta anotações; ele não sabe QUAIS. Com 69 células, apagar a única
+   * que promete a multa de atraso ainda deixaria 68 — verde, com a 16ª §1º
+   * calada. E manual que **cala** é invisível para quem lê: não há como
+   * estranhar o que não está escrito, que é o achado do E196 e o motivo de este
+   * lote existir.
+   *
+   * O que se prega aqui é a cobertura: **todo número que o contrato de papel
+   * cobra é prometido por pelo menos um manual**. Sem exceção nomeada — a
+   * última que faltava era o `CONVITE_TTL_MS`, resolvida ensinando a régua a
+   * ler prosa anotada em vez de abrir buraco para ela.
+   */
+  it("toda régua do registro é prometida por algum manual", () => {
+    const prometidas = new Set(citadas.map((c) => c.regua));
+    const orfas = (Object.keys(REGUAS) as NomeDaRegua[]).filter((n) => !prometidas.has(n));
+    expect(orfas, "o código pratica um número que manual nenhum promete").toEqual([]);
   });
 
   it("toda régua citada por um manual existe no código", () => {
