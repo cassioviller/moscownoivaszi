@@ -101,6 +101,14 @@ antes de podar, e é o que está feito acima: só `eaa4e90` (E216) tem o mesmo
 
 ## Sobras
 
+**As 8 🟡 abertas têm plano próprio, medido em 14/08:**
+[`2026-08-14-as-oito-amarelas-plano.md`](../../propostas/2026-08-14-as-oito-amarelas-plano.md).
+Ele corrige **sete** das oito sobras sobre si mesmas — a S-C100 são **dois**
+sítios e não três, a S-C110 são **8** e não dez, a divergência da S-C130 é
+**zero** hoje, e a S-C96 já foi meio fechada pelo E224 sem que ninguém a
+riscasse. **Cinco das oito têm população ZERO**, e a S-C110 é a única em que o
+zero é um relógio: o gesto que a produz nasceu no E224.
+
 | # | O que é | Sev. | Nasceu em | Estado |
 |---|---|---|---|---|
 | **S-C1** | **O dano constatado na ENTREGA não tem registro.** A 5ª §3º manda a locadora substituir a peça quando o dano é visto **no ato da locação**; o sistema só conhece avaria na **devolução** (`avarias.bloqueioId`). Não virou épico porque é caso raro e a dona não pediu — fica contável | 🔵 | auditoria do contrato | aberta |
