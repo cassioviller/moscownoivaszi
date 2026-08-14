@@ -41,6 +41,8 @@ export interface BloqueioVestido {
   /** @nullable */
   ocupacaoFim?: Date | null;
   /** @nullable */
+  orfaoSeguraAte?: Date | null;
+  /** @nullable */
   donoLeadId?: string | null;
   vestido?: Vestido;
   lead?: Lead | null;

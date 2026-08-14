@@ -2221,6 +2221,7 @@ export const ListAtendimentosResponseItem = zod.object({
   "reservaId": zod.string().nullish(),
   "ocupacaoInicio": zod.coerce.date().nullish(),
   "ocupacaoFim": zod.coerce.date().nullish(),
+  "orfaoSeguraAte": zod.coerce.date().nullish(),
   "donoLeadId": zod.string().nullish(),
   "vestido": zod.object({
   "id": zod.string(),
@@ -2424,6 +2425,7 @@ export const CreateAtendimentoResponse = zod.object({
   "reservaId": zod.string().nullish(),
   "ocupacaoInicio": zod.coerce.date().nullish(),
   "ocupacaoFim": zod.coerce.date().nullish(),
+  "orfaoSeguraAte": zod.coerce.date().nullish(),
   "donoLeadId": zod.string().nullish(),
   "vestido": zod.object({
   "id": zod.string(),
@@ -2626,6 +2628,7 @@ export const UpdateAtendimentoResponse = zod.object({
   "reservaId": zod.string().nullish(),
   "ocupacaoInicio": zod.coerce.date().nullish(),
   "ocupacaoFim": zod.coerce.date().nullish(),
+  "orfaoSeguraAte": zod.coerce.date().nullish(),
   "donoLeadId": zod.string().nullish(),
   "vestido": zod.object({
   "id": zod.string(),
@@ -2833,6 +2836,7 @@ export const RegistrarContatoAtendimentoResponse = zod.object({
   "reservaId": zod.string().nullish(),
   "ocupacaoInicio": zod.coerce.date().nullish(),
   "ocupacaoFim": zod.coerce.date().nullish(),
+  "orfaoSeguraAte": zod.coerce.date().nullish(),
   "donoLeadId": zod.string().nullish(),
   "vestido": zod.object({
   "id": zod.string(),
@@ -3030,6 +3034,7 @@ export const DesfazerContatoAtendimentoResponse = zod.object({
   "reservaId": zod.string().nullish(),
   "ocupacaoInicio": zod.coerce.date().nullish(),
   "ocupacaoFim": zod.coerce.date().nullish(),
+  "orfaoSeguraAte": zod.coerce.date().nullish(),
   "donoLeadId": zod.string().nullish(),
   "vestido": zod.object({
   "id": zod.string(),
@@ -3214,6 +3219,7 @@ export const ListAjustesResponseItem = zod.object({
   "reservaId": zod.string().nullish(),
   "ocupacaoInicio": zod.coerce.date().nullish(),
   "ocupacaoFim": zod.coerce.date().nullish(),
+  "orfaoSeguraAte": zod.coerce.date().nullish(),
   "donoLeadId": zod.string().nullish(),
   "vestido": zod.object({
   "id": zod.string(),
@@ -3402,6 +3408,7 @@ export const CreateAjusteResponse = zod.object({
   "reservaId": zod.string().nullish(),
   "ocupacaoInicio": zod.coerce.date().nullish(),
   "ocupacaoFim": zod.coerce.date().nullish(),
+  "orfaoSeguraAte": zod.coerce.date().nullish(),
   "donoLeadId": zod.string().nullish(),
   "vestido": zod.object({
   "id": zod.string(),
@@ -3590,6 +3597,7 @@ export const UpdateAjusteResponse = zod.object({
   "reservaId": zod.string().nullish(),
   "ocupacaoInicio": zod.coerce.date().nullish(),
   "ocupacaoFim": zod.coerce.date().nullish(),
+  "orfaoSeguraAte": zod.coerce.date().nullish(),
   "donoLeadId": zod.string().nullish(),
   "vestido": zod.object({
   "id": zod.string(),
@@ -3891,6 +3899,7 @@ export const ListReservasResponseItem = zod.object({
   "reservaId": zod.string().nullish(),
   "ocupacaoInicio": zod.coerce.date().nullish(),
   "ocupacaoFim": zod.coerce.date().nullish(),
+  "orfaoSeguraAte": zod.coerce.date().nullish(),
   "donoLeadId": zod.string().nullish(),
   "vestido": zod.object({
   "id": zod.string(),
@@ -4049,6 +4058,7 @@ export const CreateReservaResponse = zod.object({
   "reservaId": zod.string().nullish(),
   "ocupacaoInicio": zod.coerce.date().nullish(),
   "ocupacaoFim": zod.coerce.date().nullish(),
+  "orfaoSeguraAte": zod.coerce.date().nullish(),
   "donoLeadId": zod.string().nullish(),
   "vestido": zod.object({
   "id": zod.string(),
@@ -4206,6 +4216,7 @@ export const GetReservaResponse = zod.object({
   "reservaId": zod.string().nullish(),
   "ocupacaoInicio": zod.coerce.date().nullish(),
   "ocupacaoFim": zod.coerce.date().nullish(),
+  "orfaoSeguraAte": zod.coerce.date().nullish(),
   "donoLeadId": zod.string().nullish(),
   "vestido": zod.object({
   "id": zod.string(),
@@ -4364,6 +4375,7 @@ export const UpdateReservaResponse = zod.object({
   "reservaId": zod.string().nullish(),
   "ocupacaoInicio": zod.coerce.date().nullish(),
   "ocupacaoFim": zod.coerce.date().nullish(),
+  "orfaoSeguraAte": zod.coerce.date().nullish(),
   "donoLeadId": zod.string().nullish(),
   "vestido": zod.object({
   "id": zod.string(),
@@ -4523,6 +4535,7 @@ export const ListBloqueiosResponseItem = zod.object({
   "reservaId": zod.string().nullish(),
   "ocupacaoInicio": zod.coerce.date().nullish(),
   "ocupacaoFim": zod.coerce.date().nullish(),
+  "orfaoSeguraAte": zod.coerce.date().nullish(),
   "donoLeadId": zod.string().nullish(),
   "vestido": zod.object({
   "id": zod.string(),
@@ -4635,6 +4648,7 @@ export const CreateBloqueioResponse = zod.object({
   "reservaId": zod.string().nullish(),
   "ocupacaoInicio": zod.coerce.date().nullish(),
   "ocupacaoFim": zod.coerce.date().nullish(),
+  "orfaoSeguraAte": zod.coerce.date().nullish(),
   "donoLeadId": zod.string().nullish(),
   "vestido": zod.object({
   "id": zod.string(),
@@ -4739,6 +4753,7 @@ export const GetBloqueioResponse = zod.object({
   "reservaId": zod.string().nullish(),
   "ocupacaoInicio": zod.coerce.date().nullish(),
   "ocupacaoFim": zod.coerce.date().nullish(),
+  "orfaoSeguraAte": zod.coerce.date().nullish(),
   "donoLeadId": zod.string().nullish(),
   "vestido": zod.object({
   "id": zod.string(),
@@ -4851,6 +4866,7 @@ export const UpdateBloqueioResponse = zod.object({
   "reservaId": zod.string().nullish(),
   "ocupacaoInicio": zod.coerce.date().nullish(),
   "ocupacaoFim": zod.coerce.date().nullish(),
+  "orfaoSeguraAte": zod.coerce.date().nullish(),
   "donoLeadId": zod.string().nullish(),
   "vestido": zod.object({
   "id": zod.string(),
@@ -6003,6 +6019,7 @@ export const ReservarPecaDoOrcamentoResponse = zod.object({
   "reservaId": zod.string().nullish(),
   "ocupacaoInicio": zod.coerce.date().nullish(),
   "ocupacaoFim": zod.coerce.date().nullish(),
+  "orfaoSeguraAte": zod.coerce.date().nullish(),
   "donoLeadId": zod.string().nullish(),
   "vestido": zod.object({
   "id": zod.string(),
@@ -6108,6 +6125,7 @@ export const ListReservasCandidatasResponseItem = zod.object({
   "reservaId": zod.string().nullish(),
   "ocupacaoInicio": zod.coerce.date().nullish(),
   "ocupacaoFim": zod.coerce.date().nullish(),
+  "orfaoSeguraAte": zod.coerce.date().nullish(),
   "donoLeadId": zod.string().nullish(),
   "vestido": zod.object({
   "id": zod.string(),

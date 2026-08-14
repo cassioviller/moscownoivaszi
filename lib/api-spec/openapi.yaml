@@ -6395,6 +6395,14 @@ components:
         reservaId: { type: ["string", "null"] }
         ocupacaoInicio: { type: ["string", "null"], format: date-time }
         ocupacaoFim: { type: ["string", "null"], format: date-time }
+        # E228/S-C60 (decisão da dona, 14/08/2026) — até quando o bloqueio
+        # ÓRFÃO (RESERVA_CASAMENTO sem leadId e sem reservaId) segura a peça.
+        # O servidor manda o VEREDITO em vez de a tela refazer a conta
+        # (created_at + validade): duas grafias do mesmo prazo divergiriam no
+        # dia em que a validade mudasse — a lição do E187. `null` para quem tem
+        # dona, e entregue onde a tela lê (o GET /bloqueios), como a `mora` do
+        # E213.
+        orfaoSeguraAte: { type: ["string", "null"], format: date-time }
         # V14/E167 — de QUEM é este bloqueio, pela MESMA régua que a cobrança
         # de avaria já usa (V3/E163): o `leadId` próprio, ou o da reserva-mãe
         # quando ele é nulo. Medido em 2026-07: 61 das 63 avarias do banco

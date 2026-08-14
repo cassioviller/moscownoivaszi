@@ -17,7 +17,7 @@
  *   `casamentoData` é data de NEGÓCIO — o dia dela é o dia UTC do que foi
  *   gravado, `diaDeNegocio`, a mesma régua de `financeiro-core/datas.ts`.
  */
-import { and, eq, isNotNull, isNull, ne, or, type SQL } from "drizzle-orm";
+import { and, eq, gte, isNotNull, isNull, lt, ne, not, or, type SQL } from "drizzle-orm";
 import { diaDeNegocio } from "@workspace/financeiro-core";
 import {
   db,
@@ -50,6 +50,24 @@ export const REGRA_DEFAULT: RegraJanelas = {
   lavagemDiasDepois: 7,
   estoqueLavagemDiasDepois: 0,
 };
+
+/**
+ * E228/S-C60 — decisão da dona (14/08/2026): a loja PODE segurar um vestido
+ * antes de saber de qual noiva é, **por este prazo**. O bloqueio órfão
+ * (RESERVA_CASAMENTO sem `leadId` e sem `reservaId`) expira sozinho: vencido,
+ * a régua de disponibilidade o solta e a tela o mostra vencido. MANUTENCAO
+ * não conta — é da loja por natureza, não órfã.
+ */
+export const VALIDADE_DO_BLOQUEIO_ORFAO_DIAS = 7;
+
+/**
+ * E228/S-C233 — teto da PRÉ-PENEIRA SQL para a cauda de lavagem do bloqueio
+ * cancelado: devolvido há mais tempo que isto, ele nem entra na conta. Quem
+ * decide a ocupação REAL é `janelasDoBloqueio` com a regra da loja
+ * (`lavagemDiasDepois`, default 7) — este número só limita quantas linhas
+ * históricas a query arrasta, e por isso é um teto folgado, não a regra.
+ */
+export const TETO_DA_CAUDA_DE_LAVAGEM_DIAS = 30;
 
 export type ClasseJanela = "FISICA" | "PROVA";
 export type MotivoJanela =
@@ -466,9 +484,12 @@ export async function buscarBloqueiosAtivos(
     lojaId: string;
     vestidoId?: string;
     ignorarBloqueioId?: string;
+    /** "Hoje" injetado (a régua do E211); ausente, o agora real. */
+    hoje?: Date;
   },
   executor: DbExecutor = db,
 ): Promise<BloqueioAtivoComContexto[]> {
+  const hoje = params.hoje ?? new Date();
   const filtros: SQL[] = [eq(bloqueioVestidosTable.lojaId, params.lojaId)];
   if (params.vestidoId) {
     filtros.push(eq(bloqueioVestidosTable.vestidoId, params.vestidoId));
@@ -476,13 +497,39 @@ export async function buscarBloqueiosAtivos(
   if (params.ignorarBloqueioId) {
     filtros.push(ne(bloqueioVestidosTable.id, params.ignorarBloqueioId));
   }
+  /**
+   * E228/S-C60 — o órfão VENCIDO não ocupa. Órfão é RESERVA_CASAMENTO sem as
+   * duas âncoras de dona; vencido é mais velho que a validade decidida. A
+   * exceção dentro da exceção é física, e é o braço "na rua" lá embaixo: o
+   * órfão que já SAIU não expira — prazo administrativo não traz vestido de
+   * volta, que é a mesma frase da S-C85 e do E225.
+   */
+  const orfaoVencido = and(
+    eq(bloqueioVestidosTable.tipo, "RESERVA_CASAMENTO"),
+    isNull(bloqueioVestidosTable.leadId),
+    isNull(bloqueioVestidosTable.reservaId),
+    lt(
+      bloqueioVestidosTable.createdAt,
+      new Date(hoje.getTime() - VALIDADE_DO_BLOQUEIO_ORFAO_DIAS * MS_POR_DIA),
+    ),
+  );
   const vivo = and(
     isNull(bloqueioVestidosTable.canceladoEm),
     or(isNull(bloqueioVestidosTable.reservaId), ne(reservasTable.status, "CANCELADA")),
+    not(orfaoVencido!),
   );
+  // E228/S-C233 — a decisão da dona: a peça devolvida também ocupa a cauda de
+  // lavagem, cancelada ou não. A pré-peneira usa o teto folgado; a ocupação
+  // real é das janelas, com a regra da loja.
   const naRua = and(
     isNotNull(bloqueioVestidosTable.retiradaDataReal),
-    isNull(bloqueioVestidosTable.devolucaoDataReal),
+    or(
+      isNull(bloqueioVestidosTable.devolucaoDataReal),
+      gte(
+        bloqueioVestidosTable.devolucaoDataReal,
+        new Date(hoje.getTime() - TETO_DA_CAUDA_DE_LAVAGEM_DIAS * MS_POR_DIA),
+      ),
+    ),
   );
   const ocupa = or(vivo, naRua);
   if (ocupa) filtros.push(ocupa);

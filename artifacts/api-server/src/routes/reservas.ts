@@ -48,6 +48,7 @@ import {
   diaLocal,
   inicioDoDia,
   janelaDeProvaPrevista,
+  VALIDADE_DO_BLOQUEIO_ORFAO_DIAS,
   type BloqueioJanelasInput,
   type ConflitoDetalhe,
   type DbExecutor,
@@ -923,7 +924,24 @@ router.get("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
           ? [desc(bloqueioVestidosTable.casamentoData)]
           : undefined,
   });
-  res.json(ListBloqueiosResponse.parse(bloqueios.map((b) => bloqueioComDono(b))));
+  res.json(
+    ListBloqueiosResponse.parse(
+      bloqueios.map((b) => ({
+        ...bloqueioComDono(b),
+        /**
+         * E228/S-C60 — o VEREDITO do órfão, calculado aqui e não na tela: a
+         * validade é constante do servidor, e duas grafias do prazo
+         * divergiriam no dia em que ela mudasse (E187). Escrito por extenso no
+         * handler, como o `mora: moraDe(p)` do E213 — é a grafia que a
+         * `varredura-schemas-aninhados` enxerga.
+         */
+        orfaoSeguraAte:
+          b.tipo === "RESERVA_CASAMENTO" && !b.leadId && !b.reservaId && !b.canceladoEm
+            ? new Date(b.createdAt.getTime() + VALIDADE_DO_BLOQUEIO_ORFAO_DIAS * 86_400_000)
+            : null,
+      })),
+    ),
+  );
 });
 
 // E79: a ficha da reserva pede UM bloqueio, não a loja inteira.

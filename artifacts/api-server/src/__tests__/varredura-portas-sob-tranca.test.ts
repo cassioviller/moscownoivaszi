@@ -177,8 +177,12 @@ const sitio = (p: Porta): string => `${p.arquivo}:${p.linha} ${p.verbo}(${p.tabe
  *
  * **Medido em 2026-08-13 (S-C46), base `c34ac62`: 304 arquivos-fonte
  * versionados.**
+ *
+ * E228: TRANCA 33 → 34 — a solta do órfão vencido (S-C60) é um UPDATE dentro
+ * da transação de `criarReservaDeVestido`, atrás do MESMO `FOR UPDATE` do
+ * vestido que serializa os criadores (S-M22). Porta nova, disciplina velha.
  */
-const RETRATO = { TRANCA: 33, CAS: 11, ABERTA: 13 } as const;
+const RETRATO = { TRANCA: 34, CAS: 11, ABERTA: 13 } as const;
 
 /**
  * O retrato da ORDEM, travado pelo mesmo critério — e é ele que estava 1 e 2

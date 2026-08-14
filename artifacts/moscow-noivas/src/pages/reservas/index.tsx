@@ -10,7 +10,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { etapaLabel, mesAbrev, mesAnoLongo } from "@/lib/formatos";
+import { diaMesAno, etapaLabel, mesAbrev, mesAnoLongo } from "@/lib/formatos";
 import { diasAteCasamento, casamentoUrgente } from "../noivas/helpers";
 import { agruparPorMes } from "./helpers";
 import { Erro } from "@/components/estado";
@@ -129,7 +129,29 @@ export default function Reservas() {
                               {r.lead?.noivaNome ?? "Noiva"}
                             </Link>
                           ) : (
-                            <span className="text-sm font-medium">{r.lead?.noivaNome ?? "Noiva"}</span>
+                            <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                              {r.lead?.noivaNome ?? "Sem noiva"}
+                              {/* E228/S-C60 (decisão da dona, 14/08): o órfão
+                                  segura por prazo, e o prazo é DITO — o
+                                  veredito vem pronto do servidor
+                                  (`orfaoSeguraAte`), porque a validade é
+                                  constante de lá e uma segunda conta aqui
+                                  divergiria no dia em que ela mudasse. */}
+                              {r.orfaoSeguraAte && (
+                                new Date(r.orfaoSeguraAte).getTime() > Date.now() ? (
+                                  <Badge
+                                    className="border-transparent bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200"
+                                    data-testid={`selo-orfa-${r.id}`}
+                                  >
+                                    segura até {diaMesAno(r.orfaoSeguraAte)}
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" data-testid={`selo-orfa-${r.id}`}>
+                                    venceu em {diaMesAno(r.orfaoSeguraAte)} — não segura mais
+                                  </Badge>
+                                )
+                              )}
+                            </span>
                           )}
                           {/* Etapa do funil (o que a Agenda não mostra) + vestido como chip */}
                           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">

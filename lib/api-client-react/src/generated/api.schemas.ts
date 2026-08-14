@@ -1207,6 +1207,8 @@ export interface BloqueioVestido {
   /** @nullable */
   ocupacaoFim?: string | null;
   /** @nullable */
+  orfaoSeguraAte?: string | null;
+  /** @nullable */
   donoLeadId?: string | null;
   vestido?: Vestido;
   lead?: Lead | null;

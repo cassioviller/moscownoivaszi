@@ -1,10 +1,11 @@
 import { db, bloqueioVestidosTable, vestidosTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, lt } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { reancorarDataDeNegocio } from "@workspace/financeiro-core";
 import {
   verificarDisponibilidade,
   ocupacaoFisica,
+  VALIDADE_DO_BLOQUEIO_ORFAO_DIAS,
   type BloqueioJanelasInput,
   type ConflitoDetalhe,
 } from "./disponibilidade";
@@ -62,6 +63,31 @@ export async function criarReservaDeVestido(params: CriarReservaParams): Promise
     await tx.select({ id: vestidosTable.id }).from(vestidosTable)
       .where(eq(vestidosTable.id, params.vestidoId))
       .for("update");
+    /**
+     * E228/S-C60 — a solta do órfão vencido vira FATO aqui, no momento em que
+     * alguém precisa da peça. A régua de disponibilidade já o ignora, mas o
+     * EXCLUDE do banco só enxerga `canceladoEm`: sem esta escrita, o INSERT
+     * da noiva B morreria em 23P01 contra um bloqueio que ninguém defende
+     * mais — medido no vermelho deste épico (`CONFLITO_DE_DISPONIBILIDADE`
+     * sobre órfão de 8 dias). Dentro da MESMA transação e depois do
+     * `FOR UPDATE`, pela disciplina S-M22. `retiradaDataReal IS NULL` porque
+     * física ganha de prazo: o órfão que já saiu não expira (E225).
+     */
+    await tx.update(bloqueioVestidosTable)
+      .set({ canceladoEm: new Date(), updatedAt: new Date() })
+      .where(and(
+        eq(bloqueioVestidosTable.lojaId, params.lojaId),
+        eq(bloqueioVestidosTable.vestidoId, params.vestidoId),
+        eq(bloqueioVestidosTable.tipo, "RESERVA_CASAMENTO"),
+        isNull(bloqueioVestidosTable.leadId),
+        isNull(bloqueioVestidosTable.reservaId),
+        isNull(bloqueioVestidosTable.canceladoEm),
+        isNull(bloqueioVestidosTable.retiradaDataReal),
+        lt(
+          bloqueioVestidosTable.createdAt,
+          new Date(Date.now() - VALIDADE_DO_BLOQUEIO_ORFAO_DIAS * 86_400_000),
+        ),
+      ));
     const resultado = await verificarDisponibilidade({
       lojaId: params.lojaId,
       vestidoId: params.vestidoId,
