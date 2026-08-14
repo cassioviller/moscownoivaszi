@@ -111,10 +111,16 @@ describe("S-C91 — a ficha da noiva mostra a locação, não só a reserva", ()
     expect(versionados).toContain(REGUA_DA_LOCACAO);
   });
 
-  it("a régua lê os dois campos do contrato", () => {
+  it("a régua lê as duas pontas do RECORTE — a fonte mudou no E229", () => {
+    // E229/S-C220: a régua deixou de derivar de `contratosDaNoiva` (que para a
+    // Recepção é `[]` desde o E172) e passou a ler o recorte estreito do
+    // `GET /leads/:id/locacao`. `dataRetirada`/`dataDevolucao` agora moram na
+    // PORTA (`routes/leads.ts`), pregadas pelo teste de API do E229; o que a
+    // régua de tela lê são as duas pontas do payload.
     const codigo = fonte(REGUA_DA_LOCACAO);
-    expect(codigo).toContain("dataRetirada");
-    expect(codigo).toContain("dataDevolucao");
+    expect(codigo).toContain("retirada");
+    expect(codigo).toContain("devolucao");
+    expect(codigo).toContain("LocacaoDoLead");
   });
 
   it("a ficha da noiva mostra a retirada e a devolução", () => {

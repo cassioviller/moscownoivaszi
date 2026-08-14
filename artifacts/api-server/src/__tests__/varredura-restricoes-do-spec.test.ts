@@ -231,17 +231,19 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
    * não grava 1970 (V12)"*. A dívida sobe, o caso é seguro, e agora há teste
    * dizendo por quê em vez de um comentário afirmando.
    */
-  it("910 datas coercidas — as datas coercidas estão contadas — `null` vira 1970 e o zod aprova", () => {
+  it("912 datas coercidas — as datas coercidas estão contadas — `null` vira 1970 e o zod aprova", () => {
     // E228: 892 → 910. O `orfaoSeguraAte` (S-C60) entrou no `BloqueioVestido`,
     // que viaja em 18 respostas — uma coluna nova num schema compartilhado
     // multiplica pelo número de portas que o serializam. Todas são SAÍDA
     // (resposta), onde o 1970 não nasce: o servidor escreve o campo, o cliente
     // só lê.
+    // E229: 910 → 912 — `retirada` e `devolucao` da `LocacaoDoLead`, o recorte
+    // estreito da Recepção. Também SAÍDA, e de uma rota só.
     const coeridas = (zod.match(/coerce\.date\(\)/g) ?? []).length;
     expect(
       coeridas,
       "mudou o número de datas coercidas? A guarda do V12 (`reservas.ts`) é campo a campo, não global",
-    ).toBe(910);
+    ).toBe(912);
   });
 
   /**

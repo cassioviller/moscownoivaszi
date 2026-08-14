@@ -5,6 +5,8 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   useGetLead,
   getGetLeadQueryKey,
+  useGetLocacaoDoLead,
+  getGetLocacaoDoLeadQueryKey,
   useUpdateLead,
   getListLeadsQueryKey,
   useListOrcamentos,
@@ -162,6 +164,20 @@ export default function NoivaDetalhe() {
     query: {
       queryKey: getListContratosQueryKey(activeLojaId!, { leadId: leadId! }),
       enabled: !!activeLojaId && !!leadId && podeVerContratos,
+    },
+  });
+  /**
+   * E229/S-C220 — a locação vem da LEITURA ESTREITA, não da lista de
+   * contratos: quem atende o telefone é a Recepção, que tem `contratos: NADA`
+   * desde o E172 — e era a única pessoa sem acesso ao que a S-C91 entregou em
+   * nome dela. A porta vive sob `leads` (o módulo dela) e devolve as duas
+   * datas sem um campo de dinheiro. UMA fonte para todos os perfis: a
+   * vendedora lê daqui também, senão seriam duas grafias da mesma linha (E187).
+   */
+  const locacaoLida = useGetLocacaoDoLead(activeLojaId!, leadId!, {
+    query: {
+      queryKey: getGetLocacaoDoLeadQueryKey(activeLojaId!, leadId!),
+      enabled: !!activeLojaId && !!leadId,
     },
   });
   /**
@@ -432,16 +448,14 @@ export default function NoivaDetalhe() {
   // fica na régua e não na consulta.
   const contratoAtivo = contratoAtivoDaNoiva(contratosDaNoiva);
   /**
-   * **S-C91 — a ficha mostrava a RESERVA e não mostrava a LOCAÇÃO.**
-   *
-   * O E224 pôs o gesto na tela e as duas datas ficaram na ficha do CONTRATO.
-   * Quem atende o telefone abre esta: *"que dia eu busco o vestido?"* custava
-   * abrir o contrato para responder. A régua é pura (`lib/locacao-da-noiva.ts`)
-   * e devolve `null` quando não há contrato ativo ou quando ele não tem
-   * nenhuma das duas datas — que é o caso de 310 das 311 fichas de hoje, e por
-   * isso a ausência tem de ser SILÊNCIO e não uma linha vazia.
+   * **S-C91 — a ficha mostrava a RESERVA e não mostrava a LOCAÇÃO** — e o
+   * **E229** trocou a fonte: o recorte estreito (`GET /leads/:id/locacao`),
+   * que a Recepção alcança. A régua de tela é a mesma
+   * (`lib/locacao-da-noiva.ts`): `null` sem contrato ativo ou sem nenhuma das
+   * duas datas — o caso de 310 das 311 fichas — e a ausência é SILÊNCIO, não
+   * linha vazia.
    */
-  const locacao = locacaoDaNoiva(contratosDaNoiva);
+  const locacao = locacaoDaNoiva(locacaoLida.data ?? null);
   // E125/D3: a visita marcada cala a sugestão de agendar. Enquanto a agenda
   // conta, o banner espera (E121: sugerir "Agendar" e trocar de ideia um
   // segundo depois é afirmar o que não se sabe); se ela falhou, o banner cai

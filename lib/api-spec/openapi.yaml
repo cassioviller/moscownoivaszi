@@ -1548,6 +1548,31 @@ paths:
       responses:
         "204":
           description: Deleted
+  /lojas/{lojaId}/leads/{leadId}/locacao:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: leadId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      # E229/S-C220 (decisão da dona, 14/08/2026) — a LEITURA ESTREITA da
+      # locação: as duas datas do contrato ativo, e NADA de dinheiro. Vive sob
+      # o módulo `leads` de propósito: a Recepção — para quem a S-C91 nomeou a
+      # entrega e que era a única sem acesso a ela — responde "quando retiro?"
+      # sem que o fechamento do E172 (`contratos: NADA`) se reabra. É o idioma
+      # do `VestidoDaNoiva` do portal: cada papel vê o recorte do trabalho dele.
+      operationId: getLocacaoDoLead
+      tags: [leads]
+      responses:
+        "200":
+          description: As datas da locação do contrato ativo, ou null sem contrato
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/LocacaoDoLead"
+                  - type: "null"
   /lojas/{lojaId}/leads/{leadId}/exportar:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -5678,6 +5703,18 @@ components:
             $ref: "#/components/schemas/VestidoAtributo"
 
     # ── Leads ──
+    LocacaoDoLead:
+      type: object
+      description: >-
+        E229/S-C220 — o recorte estreito da locação: as duas datas do contrato
+        ATIVO da noiva, sem um campo de dinheiro. A fronteira é pregada por
+        teste (as chaves são enumeradas): campo novo aqui é decisão, não
+        deriva.
+      required: [contratoId, retirada, devolucao]
+      properties:
+        contratoId: { type: string }
+        retirada: { type: ["string", "null"], format: date-time }
+        devolucao: { type: ["string", "null"], format: date-time }
     Lead:
       type: object
       required: [id, lojaId, etapa, noivaNome, origem, createdAt]

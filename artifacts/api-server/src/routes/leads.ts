@@ -9,6 +9,7 @@ import {
   CreateLeadBody,
   CreateLeadResponse,
   GetLeadResponse,
+  GetLocacaoDoLeadResponse,
   UpdateLeadBody,
   UpdateLeadResponse,
   SetLeadInteresseBody,
@@ -565,6 +566,56 @@ router.get("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => {
     ultimoContatoEm: contatos.get(lead.id) ?? null,
     interesse: lead.interesse ?? undefined,
   }));
+});
+
+/**
+ * **E229/S-C220 — a leitura ESTREITA da locação** (decisão da dona,
+ * 14/08/2026, na recomendação).
+ *
+ * A S-C91 pôs retirada e devolução na ficha *"para quem atende o telefone"* —
+ * derivadas de `contratosDaNoiva`, que para a Recepção é `[]` desde o E172. A
+ * única pessoa cujo trabalho a sobra nomeava era a única sem acesso à entrega.
+ *
+ * Esta porta vive sob o módulo `leads` (o dela) e devolve as duas datas do
+ * contrato ATIVO e **nada de dinheiro** — nem valor, nem parcelas, nem status
+ * de pagamento. O fechamento do E172 continua de pé: quem decide o que a
+ * Recepção vê do contrato continua sendo o recorte deste payload, e o teste
+ * enumera as chaves para campo novo aqui ser decisão, não deriva. É o idioma
+ * do `VestidoDaNoiva` do portal: cada papel vê o recorte do trabalho dele.
+ */
+router.get("/lojas/:lojaId/leads/:leadId/locacao", async (req, res): Promise<void> => {
+  const { lojaId, leadId } = req.params;
+  const [lead] = await db
+    .select({ id: leadsTable.id })
+    .from(leadsTable)
+    .where(and(eq(leadsTable.id, leadId as string), eq(leadsTable.lojaId, lojaId as string)));
+  if (!lead) {
+    res.status(404).json({ error: "LEAD_NAO_ENCONTRADO", detalhe: "Esta noiva não existe nesta loja." });
+    return;
+  }
+  const [contrato] = await db
+    .select({
+      id: contratosTable.id,
+      dataRetirada: contratosTable.dataRetirada,
+      dataDevolucao: contratosTable.dataDevolucao,
+    })
+    .from(contratosTable)
+    .where(and(
+      eq(contratosTable.leadId, leadId as string),
+      eq(contratosTable.lojaId, lojaId as string),
+      eq(contratosTable.status, "ATIVO"),
+    ));
+  res.json(
+    GetLocacaoDoLeadResponse.parse(
+      contrato
+        ? {
+            contratoId: contrato.id,
+            retirada: contrato.dataRetirada ?? null,
+            devolucao: contrato.dataDevolucao ?? null,
+          }
+        : null,
+    ),
+  );
 });
 
 router.patch("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => {

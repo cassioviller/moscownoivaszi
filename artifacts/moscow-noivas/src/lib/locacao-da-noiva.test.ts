@@ -2,72 +2,51 @@ import { describe, expect, it } from "vitest";
 import { locacaoDaNoiva } from "./locacao-da-noiva";
 
 /**
- * S-C91 — o que a ficha da noiva mostra da locação, e o que ela cala.
+ * S-C91/E229 — o que a ficha da noiva mostra da locação, e o que ela cala.
  *
- * Os três casos que decidem: o contrato cancelado que ainda tem as datas (a
- * peça já voltou ao mercado), o ativo sem nenhuma das duas (a esmagadora
- * maioria — 733 contratos e 1 com retirada, medido no `heliumdb`) e o ativo
- * pela metade, em que a ficha tem de dizer que falta a outra.
+ * A fonte mudou no E229 (decisão da dona, 14/08/2026): a régua deixou de
+ * derivar de `contratosDaNoiva` — que para a Recepção é `[]` desde o E172 — e
+ * passou a ler o RECORTE do `GET /leads/:id/locacao`. Escolher o contrato
+ * ATIVO e cortar o CANCELADO virou responsabilidade do SERVIDOR, pregada em
+ * `e229-a-leitura-estreita-da-recepcao-api.test.ts`. O que resta aqui é a
+ * decisão de TELA: campo vazio não vira linha vazia, e a metade que falta é
+ * dita quando a outra existe.
  */
 
 const RETIRADA = "2027-05-12T13:30:00.000Z"; // 12/05/2027 10:30 em São Paulo
 const DEVOLUCAO = "2027-05-18T21:00:00.000Z"; // 18/05/2027 18:00 em São Paulo
 
-const ATIVO = {
-  id: "c-ativo",
-  status: "ATIVO",
-  fechadoEm: "2026-07-01T12:00:00.000Z",
-  dataRetirada: RETIRADA,
-  dataDevolucao: DEVOLUCAO,
-};
-const CANCELADO_COM_DATAS = {
-  id: "c-cancelado",
-  status: "CANCELADO",
-  fechadoEm: "2026-08-01T12:00:00.000Z",
-  dataRetirada: RETIRADA,
-  dataDevolucao: DEVOLUCAO,
-};
+const RECORTE = { contratoId: "c-ativo", retirada: RETIRADA, devolucao: DEVOLUCAO };
 
-describe("S-C91 — a locação que a ficha da noiva mostra", () => {
-  it("é a do contrato ATIVO, com os dois instantes", () => {
-    expect(locacaoDaNoiva([CANCELADO_COM_DATAS, ATIVO])).toEqual({
+describe("S-C91/E229 — a locação que a ficha da noiva mostra", () => {
+  it("com o recorte inteiro, os dois instantes", () => {
+    expect(locacaoDaNoiva(RECORTE)).toEqual({
       contratoId: "c-ativo",
       retirada: RETIRADA,
       devolucao: DEVOLUCAO,
     });
   });
 
-  it("contrato CANCELADO não empresta data nenhuma — a peça voltou ao mercado", () => {
-    expect(locacaoDaNoiva([CANCELADO_COM_DATAS])).toBeNull();
-  });
-
-  it("sem contrato nenhum, não há locação", () => {
-    expect(locacaoDaNoiva([])).toBeNull();
+  it("sem contrato ativo o servidor manda null, e não há locação", () => {
+    expect(locacaoDaNoiva(null)).toBeNull();
+    // A consulta ainda carregando também é silêncio, nunca moldura.
     expect(locacaoDaNoiva(undefined)).toBeNull();
   });
 
-  it("ativo sem NENHUMA das duas datas cala — campo vazio não vira linha vazia", () => {
-    expect(locacaoDaNoiva([{ ...ATIVO, dataRetirada: null, dataDevolucao: null }])).toBeNull();
-    // O contrato antigo, de antes do E222, nem sequer traz as chaves.
-    expect(locacaoDaNoiva([{ id: "c", status: "ATIVO", fechadoEm: null }])).toBeNull();
+  it("recorte sem NENHUMA das duas datas cala — campo vazio não vira linha vazia", () => {
+    expect(locacaoDaNoiva({ contratoId: "c", retirada: null, devolucao: null })).toBeNull();
   });
 
-  it("ativo PELA METADE mostra o que tem e diz que falta a outra ponta", () => {
-    expect(locacaoDaNoiva([{ ...ATIVO, dataDevolucao: null }])).toEqual({
+  it("pela METADE mostra o que tem e diz que falta a outra ponta", () => {
+    expect(locacaoDaNoiva({ ...RECORTE, devolucao: null })).toEqual({
       contratoId: "c-ativo",
       retirada: RETIRADA,
       devolucao: null,
     });
-    expect(locacaoDaNoiva([{ ...ATIVO, dataRetirada: null }])).toEqual({
+    expect(locacaoDaNoiva({ ...RECORTE, retirada: null })).toEqual({
       contratoId: "c-ativo",
       retirada: null,
       devolucao: DEVOLUCAO,
     });
-  });
-
-  it("com dois ativos — o que o índice do E158 proíbe — vale o MAIS RECENTE", () => {
-    const novo = { ...ATIVO, id: "c-novo", fechadoEm: "2026-08-10T12:00:00.000Z", dataRetirada: null };
-    expect(locacaoDaNoiva([ATIVO, novo])?.contratoId).toBe("c-novo");
-    expect(locacaoDaNoiva([novo, ATIVO])?.retirada).toBeNull();
   });
 });

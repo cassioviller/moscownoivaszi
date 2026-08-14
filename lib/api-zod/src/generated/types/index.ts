@@ -245,6 +245,7 @@ export * from './listPortais200Item';
 export * from './listRecibos200';
 export * from './listReservasFuturas';
 export * from './listReservasParams';
+export * from './locacaoDoLead';
 export * from './loginInput';
 export * from './loja';
 export * from './lojaComPerfil';

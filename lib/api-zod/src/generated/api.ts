@@ -1803,6 +1803,18 @@ export const DeleteLeadParams = zod.object({
 export const DeleteLeadResponse = zod.void()
 
 
+export const GetLocacaoDoLeadParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "leadId": zod.coerce.string()
+})
+
+export const GetLocacaoDoLeadResponse = zod.union([zod.object({
+  "contratoId": zod.string(),
+  "retirada": zod.coerce.date().nullable(),
+  "devolucao": zod.coerce.date().nullable()
+}).describe('E229\/S-C220 — o recorte estreito da locação: as duas datas do contrato ATIVO da noiva, sem um campo de dinheiro. A fronteira é pregada por teste (as chaves são enumeradas): campo novo aqui é decisão, não deriva.'),zod.null()])
+
+
 /**
  * E77: o direito de acesso — a noiva pede, a loja entrega. Lead, interesses, contatos registrados, orçamentos, contratos e parcelas dela, num arquivo só, como download.
  * @summary Tudo que o sistema sabe sobre a noiva, num JSON (LGPD)

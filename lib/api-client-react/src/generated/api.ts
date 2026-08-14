@@ -156,6 +156,7 @@ import type {
   ListPortais200Item,
   ListRecibos200,
   ListReservasParams,
+  LocacaoDoLead,
   LoginInput,
   Loja,
   LojaInput,
@@ -5663,6 +5664,82 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getDeleteLeadMutationOptions(options));
     }
+
+export const getGetLocacaoDoLeadUrl = (lojaId: string,
+    leadId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/leads/${leadId}/locacao`
+}
+
+export const getLocacaoDoLead = async (lojaId: string,
+    leadId: string, options?: RequestInit): Promise<LocacaoDoLead | null> => {
+
+  return customFetch<LocacaoDoLead | null>(getGetLocacaoDoLeadUrl(lojaId,leadId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLocacaoDoLeadQueryKey = (lojaId: string,
+    leadId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/leads/${leadId}/locacao`
+    ] as const;
+    }
+
+
+export const getGetLocacaoDoLeadQueryOptions = <TData = Awaited<ReturnType<typeof getLocacaoDoLead>>, TError = ErrorType<unknown>>(lojaId: string,
+    leadId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLocacaoDoLead>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLocacaoDoLeadQueryKey(lojaId,leadId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLocacaoDoLead>>> = ({ signal }) => getLocacaoDoLead(lojaId,leadId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined && leadId !== null && leadId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLocacaoDoLead>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLocacaoDoLeadQueryResult = NonNullable<Awaited<ReturnType<typeof getLocacaoDoLead>>>
+export type GetLocacaoDoLeadQueryError = ErrorType<unknown>
+
+
+
+export function useGetLocacaoDoLead<TData = Awaited<ReturnType<typeof getLocacaoDoLead>>, TError = ErrorType<unknown>>(
+ lojaId: string,
+    leadId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLocacaoDoLead>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLocacaoDoLeadQueryOptions(lojaId,leadId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getExportarDadosLeadUrl = (lojaId: string,
     leadId: string,) => {

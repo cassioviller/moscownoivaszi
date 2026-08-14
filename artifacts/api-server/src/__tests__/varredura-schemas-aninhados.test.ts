@@ -102,7 +102,14 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
      * linhas é `cobrancaDoAtraso`, função pura do `financeiro-core`, e não um
      * `with` que possa esquecer um filho.
      */
-    expect(c.operacoes, "operação nova no spec: confira quem monta a resposta dela e atualize esta contagem").toBe(209);
+    /**
+     * E229: 209 → 210. O `getLocacaoDoLead` — o recorte estreito da Recepção.
+     * A resposta é RASA de propósito (`LocacaoDoLead` não aninha nada: duas
+     * datas e um id, montadas por extenso no handler), então nenhum par novo
+     * entra na fronteira; a fronteira dele é pregada pelo teste do próprio
+     * épico, que ENUMERA as chaves do payload.
+     */
+    expect(c.operacoes, "operação nova no spec: confira quem monta a resposta dela e atualize esta contagem").toBe(210);
     // E221: 143 → 144. Só o `listRecibos` entra — as outras duas devolvem PDF.
     // E212: 144 → 146. As duas novas são a prévia e a cobrança do atraso da
     // cláusula 16ª, e as duas devolvem o MESMO `CobrancaDeAtraso` — de
@@ -117,7 +124,10 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // S-C32: 149 → 150. A fila devolve `FilaDeAtrasos`, schema próprio: ela não
     // é a prévia repetida N vezes — carrega quem é a noiva e por qual ficha se
     // cobra, que é o que a fila precisa dizer e a prévia não.
-    expect(c.comSchemaDeResposta).toBe(150);
+    // E229: 150 → 151. O `getLocacaoDoLead` devolve `LocacaoDoLead | null` —
+    // schema RASO de propósito: o recorte da Recepção não pode carregar o que
+    // o E172 fechou, e o teste do épico enumera as chaves.
+    expect(c.comSchemaDeResposta).toBe(151);
     // E212: 70 → 72. `CobrancaDeAtraso` aninha `CobrancaDeAtrasoLinha` — a conta
     // é uma linha POR PEÇA, que é o §2º da cláusula 16ª ("aplicados
     // proporcionalmente a trajes e/ou acessórios avulsos") virando forma.

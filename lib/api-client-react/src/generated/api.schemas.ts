@@ -550,6 +550,17 @@ export interface VestidoUpdate {
   atributos?: VestidoAtributo[];
 }
 
+/**
+ * E229/S-C220 — o recorte estreito da locação: as duas datas do contrato ATIVO da noiva, sem um campo de dinheiro. A fronteira é pregada por teste (as chaves são enumeradas): campo novo aqui é decisão, não deriva.
+ */
+export interface LocacaoDoLead {
+  contratoId: string;
+  /** @nullable */
+  retirada: string | null;
+  /** @nullable */
+  devolucao: string | null;
+}
+
 export type LeadEtapa = typeof LeadEtapa[keyof typeof LeadEtapa];
 
 
