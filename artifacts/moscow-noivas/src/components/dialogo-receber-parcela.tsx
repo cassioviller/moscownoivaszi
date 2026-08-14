@@ -25,7 +25,8 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { diaParaISO } from "@/lib/formatos";
-import { ROTULO_FORMA, FORMAS, saldoAberto } from "@/lib/financeiro/forma";
+import { ROTULO_FORMA, FORMAS } from "@/lib/financeiro/forma";
+import { sugestaoDeRecebimento } from "@/lib/financeiro/mora-na-tela";
 import { hojeLocal } from "@/lib/financeiro/datas";
 import { parseValor } from "@/lib/financeiro/dinheiro";
 import { invalidarCaixa } from "@/pages/financeiro/helpers";
@@ -43,9 +44,11 @@ import { mensagemApi } from "@/lib/erro-api";
  * Saiu inteiro para cá, com as três coisas que o tornam correto e que uma
  * segunda cópia perderia:
  *
- * 1. **O valor sugerido é o SALDO, não o previsto.** Numa parcela meio recebida,
- *    repetir o valor cheio faz a vendedora cobrar de novo o que já entrou — o
- *    erro que a noiva percebe primeiro.
+ * 1. **O valor sugerido é o SALDO, não o previsto** — e desde o E226, o saldo
+ *    COM a mora da 9ª quando ela incide. Numa parcela meio recebida, repetir o
+ *    valor cheio faz a vendedora cobrar de novo o que já entrou — o erro que a
+ *    noiva percebe primeiro. E numa vencida, sugerir o saldo sem a multa deixa
+ *    os R$ 15,00 da cláusula no chão a cada lançamento.
  * 2. **`recebidoEm` é um INSTANTE.** Para hoje vale o agora real; para um dia
  *    passado, meio-dia de São Paulo mantém o dia local correto.
  * 3. **`PARCELA_MUDOU` tem frase própria** (B6/E94): a rota recusa o
@@ -98,9 +101,15 @@ export function DialogoReceberParcela({
   // tela, quem abria isso era a função que também setava a parcela; aqui a
   // parcela é prop, então o preenchimento segue a prop — senão o valor da
   // parcela anterior ficaria no campo, que é a pior forma de errar num lançamento.
+  //
+  // E226/S-C190 — a sugestão era `saldoAberto`, o saldo SEM a cláusula 9ª: numa
+  // parcela de R$ 500,00 vencida há 30 dias, o portal dizia R$ 515,00, a porta
+  // aceitava R$ 515,00, e este campo abria com R$ 500,00 — os R$ 15,00 ficavam
+  // no chão a cada lançamento. `sugestaoDeRecebimento` devolve o total com a
+  // mora quando ela incide, e o saldo de sempre quando não.
   useEffect(() => {
     if (!parcela) return;
-    setValorRecebido(saldoAberto(parcela).toFixed(2).replace(".", ","));
+    setValorRecebido(sugestaoDeRecebimento(parcela).toFixed(2).replace(".", ","));
     setDataRecebimento(hojeLocal());
     setFormaRecebimento("");
   }, [parcela?.id]);

@@ -70,7 +70,28 @@ test.describe("Recebimento parcial (E49)", () => {
     if (leadId) await db.delete(leadsTable).where(eq(leadsTable.id, leadId));
   });
 
-  test("receber metade deixa a parcela PARCIAL, dizendo quanto falta", async ({ page }) => {
+  /**
+   * E226: a parcela desta fixture é VENCIDA (5 dias), então a 9ª incide — e a
+   * sugestão do diálogo passou a ser o TOTAL devido hoje, não o saldo seco. O
+   * número esperado é LIDO da fila de cobrança em vez de escrito literal: a
+   * mora é derivada e cresce com os dias, e um literal aqui reprovaria na
+   * madrugada em que a conta virasse (a lição da S-O119). O que este teste
+   * prega é a IGUALDADE entre as duas leituras — o campo abre com o mesmo
+   * número que a porta aceita.
+   */
+  const totalDaFila = async (request: import("@playwright/test").APIRequestContext) => {
+    await request.post(`${API_URL}/api/auth/login`, {
+      data: { email: estado.adminEmail, senha: estado.senha },
+    });
+    await request.post(`${API_URL}/api/auth/selecionar-loja`, { data: { lojaId: estado.lojaId } });
+    const res = await request.get(`${API_URL}/api/lojas/${estado.lojaId}/financeiro/parcelas`);
+    const p = (await res.json()).find((x: { id: string }) => x.id === parcelaId);
+    return p.mora.total as number;
+  };
+
+  test("receber metade deixa a parcela PARCIAL, dizendo quanto falta", async ({ page, request }) => {
+    const totalHoje = await totalDaFila(request);
+
     await page.goto(`/contratos/${contratoId}`);
 
     const linha = page.locator("li").filter({ hasText: "Entrada" }).first();
@@ -78,29 +99,33 @@ test.describe("Recebimento parcial (E49)", () => {
 
     // S-M20: a ficha do contrato usa o diálogo COMPARTILHADO (o mesmo de
     // /receber e /cobranca) — id e botão são os dele.
-    // O diálogo sugere o saldo (1000, nada recebido ainda); recebemos 400.
+    // O diálogo sugere o total com a mora (nada recebido ainda); recebemos 400.
     const valor = page.locator("#valorRecebido");
-    await expect(valor).toHaveValue(/1000|1\.000/);
+    await expect(valor).toHaveValue(totalHoje.toFixed(2).replace(".", ","));
     await valor.fill("400,00");
     await page.getByTestId("confirmar-recebimento").click();
 
-    // A parcela vira PARCIAL e diz o que falta — não some, nem finge inteira.
+    // A parcela vira PARCIAL e diz o que ainda é cobrado — não some, nem finge
+    // inteira. Com a mora em aberto, a linha "faltam" sai de cena: o número em
+    // negrito já É o que falta, e a explicação da 9ª aparece por extenso
+    // (E226), a mesma frase que a noiva lê no portal.
     await expect(linha.getByText("Parcial", { exact: false })).toBeVisible();
-    // `\s` e não " ": desde o E92 o dinheiro sai de `brl()`, e o `Intl` do
-    // pt-BR separa "R$" do número com espaço RÍGIDO (U+00A0). Playwright
-    // normaliza espaço quando o seletor é string, mas NÃO quando é regex — foi
-    // exatamente aqui que a troca deixou três testes vermelhos sem que uma
-    // linha de comportamento mudasse.
-    await expect(linha.getByText(/faltam R\$\s600,00/)).toBeVisible();
+    await expect(linha.getByTestId("mora-parcela-0")).toBeVisible();
   });
 
-  test("o botão passa a oferecer exatamente o restante", async ({ page }) => {
+  test("o botão passa a oferecer exatamente o restante", async ({ page, request }) => {
+    // O saldo agora é 600, e a mora incide sobre ELE — não sobre o previsto
+    // cheio. A fila e o diálogo derivam da mesma conta, e é isso que se prega.
+    const totalDoResto = await totalDaFila(request);
+
     await page.goto(`/contratos/${contratoId}`);
     const linha = page.locator("li").filter({ hasText: "Entrada" }).first();
 
     await linha.getByRole("button", { name: "Receber o restante" }).click();
-    // Sugerir 1000 de novo cobraria outra vez o que já entrou.
-    await expect(page.locator("#valorRecebido")).toHaveValue(/600/);
+    // Sugerir os 1000 de novo cobraria outra vez o que já entrou.
+    await expect(page.locator("#valorRecebido")).toHaveValue(
+      totalDoResto.toFixed(2).replace(".", ","),
+    );
   });
 
   test("o resto continua no a receber e no atraso", async ({ request }) => {

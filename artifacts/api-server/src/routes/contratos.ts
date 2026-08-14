@@ -1288,6 +1288,30 @@ router.get("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<voi
   res.json(
     GetContratoResponse.parse({
       ...contrato,
+      /**
+       * **S-C190 — o carnê é a QUARTA porta que devolve parcela, e era a única
+       * que não passava pela conta da 9ª.**
+       *
+       * A nota do `lib/mora-da-parcela.ts` nomeia quatro leituras que mostram o
+       * mesmo número — a fila de cobrança, **o carnê do contrato**, o extrato do
+       * portal e a resposta do recebimento — e treze épicos depois só três
+       * escreviam `mora: moraDe(p)`. Aqui as parcelas vinham cruas do
+       * `with: { parcelas: true }` e eram espalhadas pelo `...contrato` acima;
+       * `Parcela.mora` é `optional` no spec, então nada reprovava.
+       *
+       * O custo era da Vendedora, que tem `financeiro: NADA` e por isso não
+       * abre a fila de cobrança: **esta é a única tela de dinheiro dela**, e
+       * numa parcela de R$ 500,00 vencida há 30 dias ela lia R$ 500,00 enquanto
+       * a noiva lia R$ 515,00 no portal e a porta de receber aceitava R$ 515,00.
+       * É o **E213 invertido** — lá a porta recusava o que as leituras
+       * mostravam; aqui a leitura escondia o que a porta aceita.
+       *
+       * Escrito por extenso e não num `.map(comMora)` pela razão declarada no
+       * fim daquele módulo: a `varredura-schemas-aninhados` lê TEXTO e não
+       * atravessa import, e com o helper a aresta `Parcela.mora` voltaria a
+       * aparecer como promessa que ninguém entrega.
+       */
+      parcelas: contrato.parcelas.map((p) => ({ ...p, mora: moraDe(p) })),
       bloqueioVestidoIds: vinculos.map((v) => v.bloqueioId),
       rescisao: rescisaoNoPayload(),
     }),

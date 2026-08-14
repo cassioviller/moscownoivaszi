@@ -16,6 +16,11 @@ import {
   useUpdateContrato,
   useGetDisponibilidade,
   getGetDisponibilidadeQueryKey,
+  // E226 — o gesto da 9ª: as rotas existiam desde o E213 com ZERO usos no
+  // frontend, e o selo do perdão já era desenhado no portal. A tela sabia
+  // mostrar o resultado de um gesto que ninguém podia fazer.
+  usePerdoarMora,
+  useRestabelecerMora,
   type Parcela,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -93,6 +98,13 @@ import {
 // E218 — a reserva de 40% da cláusula 8ª §1º: a tela sugere e avisa, e quem
 // decide continua sendo a loja.
 import { avisoDeEntradaAbaixoDaReserva, entradaDaReserva } from "@/lib/financeiro/reserva";
+// E226 — a mora da 9ª, do lado de quem lê: o número em negrito, a sugestão do
+// diálogo e a régua do gesto de perdoar, numa grafia só (lição do E187).
+import {
+  moraEmAberto,
+  podePerdoarMora,
+  valorDaParcelaNaTela,
+} from "@/lib/financeiro/mora-na-tela";
 // S-C140 — a mesma régua que o servidor grava na trilha, para as duas pontas
 // não divergirem sobre o que a cláusula manda reter (é o gesto do E187).
 import { estornoContraARescisao } from "@workspace/financeiro-core";
@@ -115,6 +127,9 @@ const MENSAGENS_ERRO: Record<string, string> = {
   // B6/E94 — ver o comentário em financeiro/receber.tsx: as duas telas recebem
   // pela mesma rota, então as duas precisam saber traduzir o 409.
   PARCELA_MUDOU: "Alguém acabou de receber nesta parcela — confira o valor e lance de novo.",
+  // E226 — a recusa da porta de perdoar: perdoar o que não é devido gravaria o
+  // selo de uma dívida que nunca existiu.
+  SEM_MORA: "Esta parcela não tem multa nem juros a perdoar.",
 };
 
 // E96: aqui vivia uma CÓPIA LOCAL do `mensagemApi`, e ela era a única tela que
@@ -152,6 +167,11 @@ export default function ContratoDetail() {
   // Receber parcela
   const [parcelaReceber, setParcelaReceber] = useState<Parcela | null>(null);
 
+  // E226 — perdoar a mora da 9ª. O motivo é obrigatório (grava NA parcela, e é
+  // dele que o portal desenha o selo), então o gesto pede diálogo, não clique.
+  const [parcelaPerdoar, setParcelaPerdoar] = useState<Parcela | null>(null);
+  const [motivoPerdao, setMotivoPerdao] = useState("");
+
   // Confirmação de remover/estornar
   const [confirmacao, setConfirmacao] = useState<{ tipo: "remover" | "estornar"; parcela: Parcela } | null>(null);
 
@@ -172,6 +192,8 @@ export default function ContratoDetail() {
   const gerarPlano = useGerarPlanoParcelas();
   const estornar = useEstornarParcela();
   const remover = useRemoveParcela();
+  const perdoarMora = usePerdoarMora();
+  const restabelecerMora = useRestabelecerMora();
   // E172: o módulo é `contratos`, não mais `leads` — contrato e parcela saíram
   // da carteira de noivas e ganharam módulo próprio (`lib/permissoes.ts:21`).
   const podeEditar = podeNoModulo(acessosModulos, "contratos", "editar");
@@ -507,6 +529,61 @@ export default function ContratoDetail() {
    */
   const abrirReceber = (parcela: Parcela) => setParcelaReceber(parcela);
 
+  /**
+   * E226/S-C210 — o único gesto notável da 9ª é abrir mão dela.
+   *
+   * Cobrar é automático (decisão da dona, 13/08/2026: o contrato diz "deverá
+   * incidir"); o que pede decisão é o contrário — quem decidiu não cobrar
+   * R$ 15,00 de uma noiva, quando e por quê. As rotas existem desde o E213 e
+   * estavam com ZERO usos no frontend, enquanto o portal já desenhava o selo do
+   * perdão: a tela sabia mostrar o resultado de um gesto que ninguém podia
+   * fazer.
+   */
+  const abrirPerdao = (parcela: Parcela) => {
+    setMotivoPerdao("");
+    setParcelaPerdoar(parcela);
+  };
+
+  const onPerdoarMora = async () => {
+    if (!parcelaPerdoar) return;
+    if (!motivoPerdao.trim()) {
+      toast({ title: "Informe o motivo do perdão", variant: "destructive" });
+      return;
+    }
+    try {
+      await perdoarMora.mutateAsync({
+        lojaId: activeLojaId!,
+        parcelaId: parcelaPerdoar.id,
+        data: { motivo: motivoPerdao.trim() },
+      });
+      await invalidarParcelas();
+      toast({ title: "Multa e juros perdoados" });
+      setParcelaPerdoar(null);
+    } catch (err) {
+      toast({
+        title: "Não deu para perdoar",
+        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Desfazer não recalcula nada: a conta é derivada, então ela volta sozinha ao
+  // valor de HOJE — que é maior que o do dia do perdão (nota da própria rota).
+  const onRestabelecerMora = async (parcela: Parcela) => {
+    try {
+      await restabelecerMora.mutateAsync({ lojaId: activeLojaId!, parcelaId: parcela.id });
+      await invalidarParcelas();
+      toast({ title: "Cobrança da multa restabelecida" });
+    } catch (err) {
+      toast({
+        title: "Não deu para restabelecer",
+        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
+        variant: "destructive",
+      });
+    }
+  };
+
   const onConfirmarAcaoParcela = async () => {
     if (!confirmacao) return;
     const { tipo, parcela } = confirmacao;
@@ -743,12 +820,30 @@ export default function ContratoDetail() {
                             <p className={`text-xs ${atrasada(parcela) ? "text-destructive font-medium" : "text-muted-foreground"}`}>
                               Venc: {diaMesAno(parcela.vencimento)}
                             </p>
+                            {/* E226/S-C190 — a conta da 9ª por extenso, a mesma
+                                frase que a noiva lê no portal. Um número maior
+                                sem explicação ao lado é o que gera a ligação
+                                para a loja — e aqui, a vendedora cobrando um
+                                valor que ela não sabe justificar. */}
+                            {parcela.mora && (
+                              <p
+                                className={`text-xs ${parcela.mora.perdoada ? "text-muted-foreground" : "text-destructive"}`}
+                                data-testid={`mora-parcela-${parcela.numero}`}
+                              >
+                                {parcela.mora.explicacao}
+                              </p>
+                            )}
                           </div>
                           <div className="text-right">
+                            {/* S-C190 — era `valorPrevisto`: numa parcela de
+                                R$ 500,00 vencida há 30 dias o portal dizia
+                                R$ 515,00, a porta aceitava R$ 515,00, e esta
+                                tela — a única de dinheiro da Vendedora, que tem
+                                `financeiro: NADA` — oferecia R$ 500,00. */}
                             <p className={`font-semibold text-sm ${atrasada(parcela) ? "text-destructive" : ""}`}>
-                              {brl(parcela.valorPrevisto)}
+                              {brl(valorDaParcelaNaTela(parcela))}
                             </p>
-                            {parcela.status === "PARCIAL" && (
+                            {parcela.status === "PARCIAL" && !moraEmAberto(parcela) && (
                               <p className="text-[10px] text-muted-foreground tabular-nums">
                                 faltam {brl(saldoAberto(parcela))}
                               </p>
@@ -783,6 +878,31 @@ export default function ContratoDetail() {
                               <span className="text-xs text-muted-foreground" data-testid="motivo-nao-remove">
                                 {motivoNaoRemove(parcela)}
                               </span>
+                            )}
+                            {/* E226 — o gesto da 9ª, na régua do P6: o botão só
+                                existe onde há o que perdoar, em vez de existir
+                                levando ao 422 SEM_MORA. Já perdoada, o gesto é
+                                o inverso. */}
+                            {podePerdoarMora(parcela) && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => abrirPerdao(parcela)}
+                                data-testid={`button-perdoar-mora-${parcela.numero}`}
+                              >
+                                Perdoar multa
+                              </Button>
+                            )}
+                            {parcela.mora?.perdoada && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => void onRestabelecerMora(parcela)}
+                                disabled={restabelecerMora.isPending}
+                                data-testid={`button-restabelecer-mora-${parcela.numero}`}
+                              >
+                                Restabelecer cobrança
+                              </Button>
                             )}
                           </div>
                         )}
@@ -1030,6 +1150,55 @@ export default function ContratoDetail() {
               </Button>
               <Button type="submit" disabled={atualizarContrato.isPending}>
                 {atualizarContrato.isPending ? "Salvando…" : "Salvar"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* E226 — perdoar a mora da 9ª. O motivo é obrigatório porque ele é o que
+          fica: gravado NA parcela (`mora_perdoada_motivo`), é dele que o portal
+          da noiva e este carnê desenham o selo — uma parcela vencida sem
+          acréscimo e sem explicação ao lado é o que o E213 existiu para evitar. */}
+      <Dialog open={parcelaPerdoar !== null} onOpenChange={(aberto) => !aberto && setParcelaPerdoar(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Perdoar multa e juros</DialogTitle>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void onPerdoarMora();
+            }}
+          >
+            {parcelaPerdoar?.mora && (
+              <p className="text-sm text-muted-foreground">
+                {rotuloParcela(parcelaPerdoar)} — {parcelaPerdoar.mora.explicacao} A noiva passa a
+                dever <strong className="text-foreground">{brl(saldoAberto(parcelaPerdoar))}</strong>{" "}
+                em vez de {brl(parcelaPerdoar.mora.total)}.
+              </p>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="motivo-perdao">Por que a loja abre mão da cláusula 9ª?</Label>
+              <Textarea
+                id="motivo-perdao"
+                placeholder="Ex.: a noiva avisou do atraso com antecedência"
+                value={motivoPerdao}
+                onChange={(e) => setMotivoPerdao(e.target.value)}
+                maxLength={300}
+                data-testid="input-motivo-perdao"
+              />
+              <p className="text-xs text-muted-foreground">
+                O motivo fica gravado na parcela e aparece no portal da noiva.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setParcelaPerdoar(null)}>
+                Voltar
+              </Button>
+              <Button type="submit" disabled={perdoarMora.isPending}>
+                {perdoarMora.isPending ? "Perdoando…" : "Perdoar"}
               </Button>
             </DialogFooter>
           </form>

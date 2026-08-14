@@ -55,6 +55,8 @@ import { ResumoCard, invalidarCaixa } from "./helpers";
 import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
 import { mensagemApi } from "@/lib/erro-api";
 import { DialogoReceberParcela, rotuloParcela } from "@/components/dialogo-receber-parcela";
+// E226 — a mora da 9ª na leitura, na mesma grafia do carnê e do portal.
+import { moraEmAberto, valorDaParcelaNaTela } from "@/lib/financeiro/mora-na-tela";
 
 const MENSAGENS_ERRO: Record<string, string> = {
   PARCELA_NAO_PAGA: "Este recebimento não está pago — nada a estornar.",
@@ -424,13 +426,25 @@ export default function Receber() {
                     <div className="flex shrink-0 items-center gap-2">
                       <Badge variant={status.variante}>{status.rotulo}</Badge>
                       <div className="flex flex-col items-end">
+                        {/* E226/S-C190 — era `valorPrevisto` com o payload já
+                            trazendo a mora desde o E213: a linha dizia
+                            R$ 500,00 e o diálogo de receber abre com R$ 515,00.
+                            O número em negrito é o que se deve HOJE, na mesma
+                            grafia do carnê e do portal. */}
                         <span className={`font-serif tabular-nums ${atrasada ? "text-destructive" : ""}`}>
-                          {brl(p.valorPrevisto)}
+                          {brl(valorDaParcelaNaTela(p))}
                         </span>
+                        {moraEmAberto(p) && (
+                          <span className="text-xs text-destructive" data-testid={`mora-carteira-${p.id}`}>
+                            {moraEmAberto(p)!.explicacao}
+                          </span>
+                        )}
                         {/* Mostra a conta, não só o resultado: numa parcela
                             meio recebida o valor da parcela sozinho não diz o
-                            que ainda falta — e é o que falta que se cobra. */}
-                        {p.status === "PARCIAL" && (
+                            que ainda falta — e é o que falta que se cobra. Com
+                            mora em aberto o negrito já É o que falta, e as duas
+                            linhas juntas se contradiriam. */}
+                        {p.status === "PARCIAL" && !moraEmAberto(p) && (
                           <span className="text-xs text-muted-foreground tabular-nums">
                             {brl(p.valorRecebido ?? 0)} recebido · faltam{" "}
                             {brl(saldoAberto(p))}

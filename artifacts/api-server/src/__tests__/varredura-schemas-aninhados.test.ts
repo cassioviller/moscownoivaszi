@@ -195,7 +195,11 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // custou uma medição:** escrito como ternário dentro do `res.json`, a
     // varredura o media como NÃO entregue — o motor só desce para as chaves de
     // um literal cujo valor começa em `{`. Ele está num `return` por isso.
-    expect(c.pares.filter((p) => p.entregue).length).toBe(181);
+    // E226: 181 → 182 — o `GET /contratos/{contratoId}` passou a entregar
+    // `Parcela.mora` (o carnê era a quarta leitura que a nota do E213 dava por
+    // coberta, e eram três). Este vermelho é a régua VENDO o conserto da
+    // S-C190: a porta que não entregava passou a entregar.
+    expect(c.pares.filter((p) => p.entregue).length).toBe(182);
     // E213: 89 → 99, e desta vez a coluna do NÃO cresce com razão. `Parcela` é
     // schema COMPARTILHADO: ela viaja em muitas respostas e só três montam a
     // `mora` (a fila de cobrança, o recebimento/perdão e o portal). É o mesmo
@@ -211,7 +215,10 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // aconteceria) e três que não: `createContrato` (contrato que nasce não tem
     // o que rescindir), `updateContrato` e `listContratos` (a lista não é onde
     // se decide).
-    expect(c.pares.filter((p) => !p.entregue).length).toBe(102);
+    // E226: 102 → 101 — o par `Parcela.mora` do `GET /contratos/{contratoId}`
+    // atravessou para a coluna de cima. A parcela do carnê era a única que a
+    // vendedora lia SEM a conta da 9ª.
+    expect(c.pares.filter((p) => !p.entregue).length).toBe(101);
   });
 
   /**

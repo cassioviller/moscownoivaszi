@@ -50,7 +50,7 @@ import { erroDeValidacao } from "../lib/erros";
 // E213 — a multa e os juros da cláusula 9ª, derivados no mesmo lugar que a
 // fila de cobrança e o carnê usam.
 import { moraDe } from "../lib/mora-da-parcela";
-import { abertoEmCentavos, brutoEmCentavos, estaAberta, reais, saldoAberto } from "@workspace/financeiro-core";
+import { brutoEmCentavos, centavos, estaAberta, reais, saldoAberto } from "@workspace/financeiro-core";
 
 /**
  * E78 — o portal da noiva: UM link para tudo dela. A noiva recebia até três
@@ -199,10 +199,12 @@ router.get("/portal", async (req, res): Promise<void> => {
    * portal não responde volta como mensagem de WhatsApp para a vendedora, que é
    * exatamente o custo que o E78 existia para reduzir.
    *
-   * Em centavos, pelo mesmo motor do resto do sistema: `abertoEmCentavos`
-   * desconta o que já entrou numa parcela PARCIAL — mostrar o previsto cheio
-   * cobraria de novo o que ela já pagou, na tela dela. Desde o E125 a soma é a
-   * MESMA função que a tela do contrato e a ficha usam para "falta receber".
+   * Em centavos, e sobre o SALDO: mostrar o previsto cheio cobraria de novo o
+   * que ela já pagou, na tela dela. A soma era `abertoEmCentavos` desde o E125 —
+   * a mesma função que a tela do contrato e a ficha usam para "falta receber" —
+   * e a S-C200 a trocou pela conta com a mora da 9ª, escrita logo abaixo:
+   * enquanto a linha da parcela mostrava R$ 515,00 e o resumo R$ 500,00, a
+   * régua compartilhada não era virtude, era o defeito repetido em dois lugares.
    */
   /**
    * E221 — os recibos DELA, na mesma resposta do extrato.
@@ -224,10 +226,30 @@ router.get("/portal", async (req, res): Promise<void> => {
     : [];
 
   const abertas = parcelas.filter((p) => estaAberta(p));
-  const faltaPagarC = abertoEmCentavos(parcelas);
   const proxima = [...abertas].sort(
     (a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime(),
   )[0];
+
+  /**
+   * **S-C200 — o resumo somava o principal e a linha mostrava o total.**
+   *
+   * O extrato abaixo já entrega `mora: moraDe(p)` desde o E213, e a tela imprime
+   * `mora.total` na linha da parcela (`noiva-portal.tsx:703`). O resumo em cima
+   * dela vinha de `abertoEmCentavos(parcelas)`, que é o saldo SEM a cláusula 9ª
+   * — então numa parcela de R$ 500,00 vencida há 30 dias o portal dizia
+   * **"Falta pagar R$ 500,00"** no alto e **R$ 515,00** três linhas abaixo,
+   * para a mesma dívida, na mesma tela. É a noiva conferindo dois números da
+   * loja e escolhendo em qual acreditar — e o de cima é o que ela leva para o
+   * PIX, porque é o que responde à pergunta que ela veio fazer.
+   *
+   * `mora.total` já é o saldo COM o acréscimo (nunca só o acréscimo), e é
+   * `null` tanto na parcela em dia quanto na perdoada — por isso o `??` cai no
+   * `saldoAberto` e o resumo volta sozinho aos R$ 500,00 quando a dona perdoa,
+   * sem uma segunda régua que pudesse divergir da primeira.
+   */
+  const devidoC = (p: (typeof parcelas)[number]) =>
+    centavos(moraDe(p)?.total ?? saldoAberto(p));
+  const faltaPagarC = abertas.reduce((s, p) => s + devidoC(p), 0);
 
   // As duas montagens são independentes e eram `await`adas em sequência DENTRO
   // do literal — uma esperava a outra sem precisar. O portal é a tela que a
@@ -249,7 +271,10 @@ router.get("/portal", async (req, res): Promise<void> => {
         ? {
             faltaPagar: reais(faltaPagarC),
             proximaEm: proxima?.vencimento ?? null,
-            proximaValor: proxima ? saldoAberto(proxima) : null,
+            // A mesma régua da soma acima: o que a noiva paga NESTA parcela se
+            // pagar hoje. Deixar só o principal aqui seria manter metade do
+            // defeito — é este o número que ela digita no PIX.
+            proximaValor: proxima ? reais(devidoC(proxima)) : null,
           }
         : null,
       orcamento: visaoOrcamento,
