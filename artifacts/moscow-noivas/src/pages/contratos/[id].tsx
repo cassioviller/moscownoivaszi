@@ -153,6 +153,10 @@ export default function ContratoDetail() {
   const [cancelarOpen, setCancelarOpen] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [destinoPago, setDestinoPago] = useState<"manter" | "estornar">("manter");
+  // E227/S-C151 — quem rescinde (13ª). O campo existia na API desde o E217 e
+  // nenhuma tela o oferecia: todo cancelamento saía como rescisão da NOIVA,
+  // retendo o que a 13ª manda a loja devolver.
+  const [iniciativa, setIniciativa] = useState<"LOCATARIA" | "LOJA">("LOCATARIA");
 
   // Gerar plano
   const [entrada, setEntrada] = useState("");
@@ -163,6 +167,10 @@ export default function ContratoDetail() {
   const [locacaoOpen, setLocacaoOpen] = useState(false);
   const [retiradaEditada, setRetiradaEditada] = useState("");
   const [devolucaoEditada, setDevolucaoEditada] = useState("");
+  // E227/S-C211 — o prazo da 18ª (D3: pactuado por contrato). Sem ele
+  // preenchido a cláusula não dispara — e estava em 0 de 743 contratos, por
+  // falta de campo, não por decisão.
+  const [prazoEditado, setPrazoEditado] = useState("");
 
   // Receber parcela
   const [parcelaReceber, setParcelaReceber] = useState<Parcela | null>(null);
@@ -267,7 +275,10 @@ export default function ContratoDetail() {
    * INTEIRO — a linha mais cara da conta.
    */
   const rescisao = contrato?.rescisao ?? null;
-  const avisoDoEstorno = rescisao ? estornoContraARescisao(rescisao, destinoPago) : null;
+  // S-C151: o aviso acusa estorno CONTRA a cláusula, e pela 13ª devolver é o
+  // que a cláusula manda — rescisão pela loja não pode ser acusada de obedecer.
+  const avisoDoEstorno =
+    rescisao && iniciativa === "LOCATARIA" ? estornoContraARescisao(rescisao, destinoPago) : null;
 
   /**
    * P8/E169 — o "Total do plano" e o alerta que ele acende falam do CARNÊ.
@@ -409,7 +420,9 @@ export default function ContratoDetail() {
       await cancelar.mutateAsync({
         lojaId: activeLojaId!,
         contratoId: id!,
-        data: { motivo: motivo.trim(), destinoPago },
+        // S-C151: a iniciativa VIAJA — o servidor calcula a rescisão com ela
+        // (13ª: pela loja, devolve tudo) e a grava na trilha.
+        data: { motivo: motivo.trim(), destinoPago, iniciativa },
       });
       await Promise.all([
         invalidarParcelas(),
@@ -447,6 +460,9 @@ export default function ContratoDetail() {
   const abrirLocacao = () => {
     setRetiradaEditada(isoParaLocal(contrato.dataRetirada));
     setDevolucaoEditada(isoParaLocal(contrato.dataDevolucao));
+    setPrazoEditado(
+      contrato.prazoDevolucaoReservaDias != null ? String(contrato.prazoDevolucaoReservaDias) : "",
+    );
     setLocacaoOpen(true);
   };
 
@@ -458,6 +474,12 @@ export default function ContratoDetail() {
         data: {
           dataRetirada: localParaISO(retiradaEditada) ?? undefined,
           dataDevolucao: localParaISO(devolucaoEditada) ?? undefined,
+          // S-C211: só manda quando preenchido — o `ContratoUpdate` do spec não
+          // aceita `null`, então o campo vazio deixa o gravado como está (ver
+          // "Visto de passagem" do E227: apagar o prazo pede spec).
+          ...(prazoEditado.trim() !== "" && !Number.isNaN(Number(prazoEditado))
+            ? { prazoDevolucaoReservaDias: Number(prazoEditado) }
+            : {}),
         },
       });
       await queryClient.invalidateQueries({
@@ -662,7 +684,17 @@ export default function ContratoDetail() {
             ? [{ rotulo: "Ver orçamento de origem", para: `/orcamentos/${contrato.orcamentoId}` }]
             : []),
           ...(podeMexer
-            ? [{ rotulo: "Cancelar contrato", onClick: () => setCancelarOpen(true), destrutiva: true }]
+            ? [{
+                rotulo: "Cancelar contrato",
+                // S-C151: o diálogo abre sempre no padrão — a rescisão da noiva.
+                // Herdar a escolha de uma abertura anterior gravaria "LOJA" num
+                // cancelamento em que ninguém escolheu isso.
+                onClick: () => {
+                  setIniciativa("LOCATARIA");
+                  setCancelarOpen(true);
+                },
+                destrutiva: true,
+              }]
             : []),
         ]}
       />
@@ -744,6 +776,14 @@ export default function ContratoDetail() {
                 {contrato.dataDevolucao
                   ? instanteCurto(contrato.dataDevolucao)
                   : "devolução não informada"}
+                {/* S-C211: o prazo pactuado é lido aqui — campo que só aparece
+                    dentro do diálogo é campo que ninguém confere. */}
+                {contrato.prazoDevolucaoReservaDias != null && (
+                  <span data-testid="prazo-da-18a">
+                    {" · "}18ª: {contrato.prazoDevolucaoReservaDias}{" "}
+                    {contrato.prazoDevolucaoReservaDias === 1 ? "dia" : "dias"} de antecedência
+                  </span>
+                )}
               </p>
             </div>
             {/* S-O66/E187: `itens` sai da consulta para uma CONST antes do
@@ -1129,6 +1169,29 @@ export default function ContratoDetail() {
               A loja retira e devolve {expedienteEmFrase(regraDaLoja.data)} (cláusula 4ª). Os dois
               campos são opcionais — deixe em branco o que ainda não foi combinado.
             </p>
+            {/* E227/S-C211 — a antecedência da 18ª: quitado o carnê e devolvida
+                a reserva com esta antecedência (dias antes da retirada), a
+                rescisão da noiva devolve a fração comum inteira. Sem o número
+                pactuado a cláusula não dispara — e não havia onde escrevê-lo. */}
+            <div className="space-y-2">
+              <Label htmlFor="prazo-devolucao-reserva">
+                Prazo de devolução antecipada da reserva (cláusula 18ª)
+              </Label>
+              <Input
+                id="prazo-devolucao-reserva"
+                type="number"
+                min={0}
+                inputMode="numeric"
+                placeholder="dias antes da retirada"
+                value={prazoEditado}
+                onChange={(e) => setPrazoEditado(e.target.value)}
+                data-testid="input-prazo-devolucao-reserva"
+              />
+              <p className="text-xs text-muted-foreground">
+                Pactuado no contrato: cancelando com o carnê quitado e com essa antecedência, a
+                noiva recebe de volta também a dedução da 11ª. Em branco, a cláusula não se aplica.
+              </p>
+            </div>
             {/* A recusa da 4ª antes do clique, com a mesma frase do servidor. */}
             {(recusaDoExpediente(retiradaEditada, regraDaLoja.data) ||
               recusaDoExpediente(devolucaoEditada, regraDaLoja.data)) && (
@@ -1249,13 +1312,57 @@ export default function ContratoDetail() {
               </div>
             )}
 
+            {/* E227/S-C151 — quem rescinde decide qual cláusula responde: a
+                noiva (8ª §2º/11ª/12ª/18ª, a conta do painel abaixo) ou a loja
+                (13ª — devolve tudo). O campo existia na API desde o E217 e não
+                tinha como ser dito. */}
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Quem está rescindindo?</p>
+              <RadioGroup
+                value={iniciativa}
+                onValueChange={(v) => setIniciativa(v as "LOCATARIA" | "LOJA")}
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="LOCATARIA" id="iniciativa-locataria" data-testid="iniciativa-locataria" />
+                  <Label htmlFor="iniciativa-locataria" className="font-normal">
+                    A noiva desistiu (locatária)
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="LOJA" id="iniciativa-loja" data-testid="iniciativa-loja" />
+                  <Label htmlFor="iniciativa-loja" className="font-normal">
+                    A loja está cancelando (locadora)
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* S-C151 — a 13ª por extenso quando é a LOJA: nada de painel de
+                retenção, porque não há o que reter. A conta não se refaz aqui:
+                devolver TUDO é a cláusula inteira, e o número já está no bloco
+                "Já recebido" acima. */}
+            {iniciativa === "LOJA" && (
+              <div className="rounded-md border p-3 space-y-2" data-testid="cancelar-rescisao-loja">
+                <p className="text-sm font-medium">O que o contrato manda, rescindindo pela loja</p>
+                <p className="text-sm text-muted-foreground">
+                  Cláusula 13ª: a loja devolve o que foi pago
+                  {oQueSeraDesfeito.recebido > 0 ? <> — {brl(oQueSeraDesfeito.recebido)}</> : null}.
+                  {oQueSeraDesfeito.recebido > 0 && (
+                    <> A devolução nasce como conta a pagar da loja, vencendo em 30 dias (13ª §3º).</>
+                  )}
+                </p>
+              </div>
+            )}
+
             {/* S-C140: o que o INSTRUMENTO manda, antes do clique — molde do
                 E211/E216/E218. A conta vem PRONTA do servidor (`rescisao` no
                 GET), e não é recalculada aqui de propósito: o predicado da 12ª
                 cruza `vestidos.exclusiva` com a contagem de saídas, e o
                 `ContratoItem` não carrega nenhuma das duas metades. Refazer a
-                conta na tela seria adivinhar justamente a linha mais cara. */}
-            {rescisao && (
+                conta na tela seria adivinhar justamente a linha mais cara.
+                E227: o painel responde "se a NOIVA rescindir" — com a 13ª
+                escolhida acima, quem responde é o bloco da loja. */}
+            {iniciativa === "LOCATARIA" && rescisao && (
               <div className="rounded-md border p-3 space-y-2" data-testid="cancelar-rescisao">
                 <p className="text-sm font-medium">O que o contrato manda, se a noiva rescindir</p>
                 <ul className="text-sm space-y-1">
