@@ -321,3 +321,80 @@ describe("S-C130 — a peneira prova que enxerga, e que não vê o que não é c
     expect(doFormulario.sort()).not.toEqual(Object.values(OrcamentoItemTipo).sort());
   });
 });
+
+/**
+ * S-C180 — **a paridade prega o `z.enum` e é a lista RENDERIZADA que decide o
+ * que a vendedora escolhe.**
+ *
+ * O caso medido: `atendimentos/novo.tsx` tinha o `z.enum` na linha 82 e uma
+ * SEGUNDA cópia literal dos mesmos dois valores **406 linhas abaixo** —
+ * `(["ATENDIMENTO", "PROVA"] as const).map` desenhando os botões — mais uma
+ * terceira na guarda do prefill. Divergência hoje: zero nas três. No dia em que
+ * `AtendimentoTipo` ganhasse um terceiro valor, a paridade cobraria a linha 82,
+ * ela seria corrigida, **e os botões continuariam dois, verdes** — o preço que
+ * a S-C130 descreve (a noiva DIVORCIADA que não fecha contrato) mora do lado
+ * que ninguém pregava.
+ *
+ * O conserto tem as duas metades de sempre: a tela passou a DERIVAR a lista do
+ * próprio schema (`agendarSchema.innerType().shape.tipo.options` — uma grafia
+ * só), e esta varredura passou a reprovar a segunda cópia: **num arquivo que
+ * declara `campo: z.enum([...])`, nenhuma lista literal `as const` pode
+ * repetir o mesmo conjunto de valores.** A cópia idêntica de hoje é a
+ * divergência de amanhã, e só a idêntica é detectável — depois de divergir,
+ * ela é indistinguível de uma lista qualquer.
+ */
+
+/** As listas literais `["A", "B"] as const` de um texto — a grafia da oferta copiada. */
+export function listasConstNoTexto(texto: string): string[][] {
+  const grafia = /\[\s*((?:"[^"]*"|'[^']*')(?:\s*,\s*(?:"[^"]*"|'[^']*'))*)\s*,?\s*\]\s*as\s+const/g;
+  const achados: string[][] = [];
+  for (const m of texto.matchAll(grafia)) {
+    achados.push(
+      m[1]!.split(",").map((s) => s.trim().replace(/^(["'])(.*)\1$/, "$2")).filter(Boolean),
+    );
+  }
+  return achados;
+}
+
+describe("S-C180 — a oferta da tela não é segunda cópia do z.enum", () => {
+  it("nenhum arquivo com z.enum carrega uma lista literal `as const` com os mesmos valores", () => {
+    const denuncias: string[] = [];
+    for (const arquivo of new Set(SITIOS.map((s) => s.arquivo))) {
+      const texto = readFileSync(join(SRC, arquivo), "utf8");
+      const listas = listasConstNoTexto(texto);
+      for (const sitio of SITIOS.filter((s) => s.arquivo === arquivo)) {
+        const conjunto = sitio.valores.slice().sort().join("|");
+        for (const lista of listas) {
+          if (lista.slice().sort().join("|") === conjunto) {
+            denuncias.push(
+              `${arquivo}: lista literal \`as const\` repete os valores de \`${sitio.campo}\` — ` +
+                `derive-a do schema (\`.innerType().shape.${sitio.campo}.options\`), senão o ` +
+                `valor novo chega ao z.enum e não chega aos botões.`,
+            );
+          }
+        }
+      }
+    }
+    expect(denuncias).toEqual([]);
+  });
+
+  it("a peneira da oferta enxerga — o exemplo plantado é achado", () => {
+    // S-C55: peneira derivada e cega devolve `[]`, que é o mesmo `[]` de fonte
+    // limpo. O exemplo é SINTÉTICO e mora num literal deste teste — o arquivo
+    // está fora da população da varredura de cima por ser `.test.ts`.
+    expect(listasConstNoTexto(`{(["ATENDIMENTO", "PROVA"] as const).map((t) => (`)).toEqual([
+      ["ATENDIMENTO", "PROVA"],
+    ]);
+    expect(listasConstNoTexto(`const CANAIS = ['ZAP', 'FONE'] as const;`)).toEqual([
+      ["ZAP", "FONE"],
+    ]);
+  });
+
+  it("e NÃO conta o que não é lista literal de strings", () => {
+    // `as const` sobre objeto, array de identificadores, array sem `as const`:
+    // nenhum é a grafia da oferta copiada.
+    expect(listasConstNoTexto(`const x = { a: 1 } as const;`)).toEqual([]);
+    expect(listasConstNoTexto(`const y = [TIPO_A, TIPO_B] as const;`)).toEqual([]);
+    expect(listasConstNoTexto(`const z = ["solta"];`)).toEqual([]);
+  });
+});

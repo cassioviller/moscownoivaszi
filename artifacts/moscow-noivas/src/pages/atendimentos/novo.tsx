@@ -80,6 +80,12 @@ import { mensagemApi } from "@/lib/erro-api";
 const agendarSchema = z
   .object({
     tipo: z.enum(["ATENDIMENTO", "PROVA"]),
+    /* S-C180: este `z.enum` é a ÚNICA grafia dos tipos neste arquivo — os
+       botões (a lista que a tela OFERECE) e a guarda do prefill derivam de
+       `TIPOS_DE_AGENDAMENTO` abaixo. Antes eram três cópias, e a régua da
+       paridade (`enums-do-contrato.test.ts`) só pregava esta: um terceiro
+       valor no contrato cobraria a linha de cima e os dois botões de baixo
+       continuariam dois, verdes. */
     leadId: z.string().min(1, "Escolha a noiva"),
     bloqueioId: z.string().optional(),
     cabineId: z.string().min(1, "Escolha a cabine"),
@@ -99,6 +105,9 @@ const agendarSchema = z
   });
 
 type AgendarValues = z.infer<typeof agendarSchema>;
+
+// A lista que a tela oferece SAI do schema — não é segunda cópia.
+const TIPOS_DE_AGENDAMENTO = agendarSchema.innerType().shape.tipo.options;
 
 
 /**
@@ -123,7 +132,9 @@ export default function NovoAtendimento() {
   const tipoParam = searchParams.get("tipo");
   const diaParam = searchParams.get("dia") ?? "";
   const prefill = {
-    tipo: tipoParam === "PROVA" || tipoParam === "ATENDIMENTO" ? tipoParam : "ATENDIMENTO",
+    // S-C180: a guarda deriva do MESMO enum do schema — era a terceira cópia
+    // literal dos dois valores neste arquivo.
+    tipo: TIPOS_DE_AGENDAMENTO.find((t) => t === tipoParam) ?? "ATENDIMENTO",
     leadId: searchParams.get("noiva") ?? "",
     bloqueioId: searchParams.get("reserva") ?? "",
     data: /^\d{4}-\d{2}-\d{2}$/.test(diaParam) ? diaParam : "",
@@ -485,7 +496,7 @@ export default function NovoAtendimento() {
                     <FormItem>
                       <FormLabel>Tipo</FormLabel>
                       <div className="flex gap-2">
-                        {(["ATENDIMENTO", "PROVA"] as const).map((t) => (
+                        {TIPOS_DE_AGENDAMENTO.map((t) => (
                           <Button
                             key={t}
                             type="button"
