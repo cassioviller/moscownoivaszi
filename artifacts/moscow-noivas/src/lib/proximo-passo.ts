@@ -24,8 +24,20 @@ export type ProximoPasso = {
 export type EntradaProximoPasso = {
   etapa: string;
   leadId: string;
-  /** Tem contrato ATIVO? A etapa sozinha não responde depois do fechamento. */
-  temContratoAtivo: boolean;
+  /**
+   * Tem contrato ATIVO? A etapa sozinha não responde depois do fechamento.
+   *
+   * **S-C120 — `undefined` é "não se sabe", e a ficha passou a saber a
+   * diferença.** Quem não vê o módulo `contratos` (a Recepção, desde o E172)
+   * não dispara a consulta, e a lista dela chegava aqui como `[]`: o mesmo
+   * `false` de "não tem contrato". O banner então mandava **fechar o contrato**
+   * que já estava fechado, para quem não pode fechá-lo — a versão mais alta do
+   * defeito que os dois cards da ficha cometiam em voz baixa.
+   *
+   * A ausência segue o idioma que os dois campos abaixo já usavam: quando não se
+   * sabe, o passo que DEPENDE de saber cala.
+   */
+  temContratoAtivo?: boolean;
   contratoAtivoId?: string | null;
   /** Já existe orçamento em qualquer status? */
   temOrcamento: boolean;
@@ -66,6 +78,15 @@ export function proximoPasso(e: EntradaProximoPasso): ProximoPasso | null {
     };
   }
 
+  /**
+   * S-C120 — daqui para baixo, todo passo que fala de PROPOSTA afirma, no meio
+   * da frase, que não existe contrato ativo: *"o vestido só fica dela quando o
+   * contrato fechar"*. Sem saber, o passo honesto é nenhum — e os três primeiros
+   * (agendar, preencher interesses) seguem, porque não dependem do contrato e
+   * são justamente os da Recepção, que é quem não o vê.
+   */
+  const seiDoContrato = e.temContratoAtivo !== undefined;
+
   switch (e.etapa) {
     case "NOVO":
       // E125: com visita já marcada, sugerir "Agendar" é mandar marcar de
@@ -102,6 +123,7 @@ export function proximoPasso(e: EntradaProximoPasso): ProximoPasso | null {
         rotuloAcao: "Preencher",
       };
     case "EM_ATENDIMENTO":
+      if (!seiDoContrato) return null;
       return e.temOrcamento
         ? {
             titulo: "Fechar o orçamento",
@@ -124,6 +146,7 @@ export function proximoPasso(e: EntradaProximoPasso): ProximoPasso | null {
        * já tinha dito SIM: o passo cumprido de volta, no lugar do que falta. E
        * o que falta é o contrato — é ele que tira o vestido do mercado.
        */
+      if (!seiDoContrato) return null;
       return e.temAceiteSemContrato
         ? {
             titulo: "Fechar o contrato",

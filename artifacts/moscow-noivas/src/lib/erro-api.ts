@@ -90,6 +90,27 @@ export function ehNaoEncontrado(err: unknown): boolean {
 }
 
 /**
+ * S-C120 — 403 não é "não há", e é a diferença que a ficha precisa dizer.
+ *
+ * Irmã do `ehNaoEncontrado`, pelo mesmo motivo: o status decide o QUE a tela
+ * afirma, e afirmar errado aqui é pior que no 404. Uma listagem recusada por
+ * permissão chega com `data` indefinido, e todo `?? []` a transforma numa lista
+ * vazia — que a tela desenha como *"Nenhum contrato ainda."* A Recepção tem
+ * `contratos: NADA` desde o E172 e é quem atende o telefone: a noiva liga
+ * perguntando do contrato dela e a ficha responde que ele não existe.
+ *
+ * **Um 403 de perfil e um 403 de loja errada são indistinguíveis pelo status**,
+ * e não precisam ser distinguidos: nos dois casos a frase honesta é a mesma —
+ * *você não pode ver isto* —, e nos dois casos ela é melhor que *não há*. Quem
+ * separa o caso do PERFIL é o gate do cliente (`podeNoModulo`), antes da
+ * chamada; este predicado é a segunda perna, para quando o servidor recusa o
+ * que o espelho do cliente achava que passava.
+ */
+export function ehSemPermissao(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 403;
+}
+
+/**
  * D6/E96 — o erro do servidor chega ao CAMPO que o causou.
  *
  * Antes, todo 400/422 virava toast destrutivo: a mensagem aparecia no canto da

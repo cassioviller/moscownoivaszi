@@ -110,3 +110,62 @@ describe("proximoPasso — a ficha diz o que falta, em vez de oito cards vazios"
     expect(p.titulo).toBe("Acompanhar o pagamento");
   });
 });
+
+/**
+ * S-C120 — **a terceira voz da ficha, e a mais alta.**
+ *
+ * A Recepção tem `contratos: NADA` desde o E172: a consulta de contratos não sai
+ * do navegador dela, e a lista chegava aqui como `[]` — o mesmo `false` de "não
+ * tem contrato". O banner então mandava, em botão, **"Fechar o contrato — ela já
+ * disse sim"** para quem não pode fechá-lo, sobre um contrato já fechado.
+ *
+ * Ausente = não se sabe, o mesmo idioma que `temVisitaFutura` (E125) e
+ * `temAceiteSemContrato` (S-O12) já falavam neste módulo. O que cala é só o
+ * passo que DEPENDE de saber; os três primeiros seguem, e são justamente os da
+ * Recepção, que agenda o dia inteiro.
+ */
+describe("S-C120 — sem saber do contrato, o passo que o pressupõe cala", () => {
+  const semSaber = { leadId: "L1", temOrcamento: true };
+
+  it("ORCAMENTO_ABERTO com aceite não manda mais fechar o contrato", () => {
+    /**
+     * VERMELHO ANTES (com `temContratoAtivo: boolean` e a ficha mandando
+     * `!!contratoAtivo` sobre a lista silenciada):
+     *
+     *     AssertionError: expected { titulo: 'Fechar o contrato', … } to be null
+     */
+    expect(
+      proximoPasso({ ...semSaber, etapa: "ORCAMENTO_ABERTO", temAceiteSemContrato: true }),
+    ).toBeNull();
+  });
+
+  it("ORCAMENTO_ABERTO sem aceite também cala — 'enviar a proposta' afirma o mesmo", () => {
+    expect(proximoPasso({ ...semSaber, etapa: "ORCAMENTO_ABERTO" })).toBeNull();
+  });
+
+  it("EM_ATENDIMENTO cala — 'montar o orçamento' pressupõe que não há contrato", () => {
+    expect(proximoPasso({ ...semSaber, etapa: "EM_ATENDIMENTO" })).toBeNull();
+  });
+
+  it("os três primeiros passos SOBREVIVEM — a Recepção é quem agenda", () => {
+    expect(proximoPasso({ ...semSaber, etapa: "NOVO" })!.titulo).toBe(
+      "Agendar o primeiro atendimento",
+    );
+    expect(proximoPasso({ ...semSaber, etapa: "INTERESSES_PREENCHIDOS" })!.titulo).toBe(
+      "Agendar o atendimento",
+    );
+    expect(proximoPasso({ ...semSaber, etapa: "ATENDIMENTO_AGENDADO" })!.titulo).toBe(
+      "Registrar os interesses dela",
+    );
+  });
+
+  it("saber que NÃO há contrato continua sendo saber — o passo volta", () => {
+    const p = proximoPasso({
+      ...semSaber,
+      etapa: "ORCAMENTO_ABERTO",
+      temContratoAtivo: false,
+      temAceiteSemContrato: true,
+    })!;
+    expect(p.titulo).toBe("Fechar o contrato");
+  });
+});

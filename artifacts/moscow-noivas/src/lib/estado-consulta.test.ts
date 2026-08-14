@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { conciliarExtrato, type TransacaoExtrato } from "@workspace/financeiro-core";
-import { estadoDasConsultas } from "./estado-consulta";
+import { estadoDasConsultas, estadoDoCard } from "./estado-consulta";
 
 /**
  * E121 — a tela para de afirmar zero enquanto não sabe.
@@ -47,6 +47,38 @@ describe("estadoDasConsultas — a regra de quando a tela pode afirmar", () => {
     const desligada = { isLoading: false, isError: false };
     expect(estadoDasConsultas(desligada)).toBe("pronto");
     expect(estadoDasConsultas()).toBe("pronto");
+  });
+});
+
+/**
+ * S-C120 — e o "pronto" da linha acima era o buraco.
+ *
+ * `estadoDasConsultas` diz, com razão, que consulta desligada não prende a tela
+ * em carregando. O que ninguém tinha dito é que ela também não LIBERA a tela
+ * para afirmar: a ficha da noiva lia "pronto" para uma consulta que nunca saiu
+ * do navegador e desenhava *"Nenhum contrato ainda."* — para a Recepção, que tem
+ * `contratos: NADA` desde o E172 e é quem atende o telefone.
+ */
+describe("estadoDoCard — 'não há' e 'você não pode ver' deixam de ser a mesma frase", () => {
+  const pronta = { isLoading: false, isError: false };
+  const voando = { isLoading: true, isError: false };
+
+  it("sem permissão ganha de tudo — não há o que esperar nem o que repetir", () => {
+    expect(estadoDoCard(false, pronta)).toBe("sem-permissao");
+    expect(estadoDoCard(false, voando)).toBe("sem-permissao");
+    expect(estadoDoCard(false, { isLoading: false, isError: true })).toBe("sem-permissao");
+  });
+
+  it("com permissão, as duas regras do E121 seguem intactas", () => {
+    expect(estadoDoCard(true, voando)).toBe("carregando");
+    expect(estadoDoCard(true, pronta)).toBe("pronto");
+    expect(estadoDoCard(true, { isLoading: true, isError: true })).toBe("erro");
+  });
+
+  it("erro sem status conhecido é erro, não permissão", () => {
+    expect(estadoDoCard(true, { isLoading: false, isError: true, error: new Error("rede") })).toBe(
+      "erro",
+    );
   });
 });
 

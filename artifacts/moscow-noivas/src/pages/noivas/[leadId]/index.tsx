@@ -25,6 +25,7 @@ import { Erro, NaoEncontrado } from "@/components/estado";
 import { CabecalhoDetalhe } from "@/components/cabecalho-detalhe";
 import { LookbookNoiva } from "./lookbook";
 import { PortalNoiva } from "./portal";
+import { SemLista } from "./sem-lista";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,7 +60,7 @@ import { proximoPasso } from "@/lib/proximo-passo";
 import { contratoAtivoDaNoiva } from "@/lib/contrato-ativo-da-noiva";
 import { locacaoDaNoiva } from "@/lib/locacao-da-noiva";
 import { proximaVisita } from "@/lib/proxima-visita";
-import { estadoDasConsultas } from "@/lib/estado-consulta";
+import { estadoDasConsultas, estadoDoCard } from "@/lib/estado-consulta";
 import { abertoEmCentavos } from "@/lib/financeiro/forma";
 import { reais } from "@/lib/financeiro/dinheiro";
 import { hojeLocal, diaLocal, diaDeNegocio } from "@/lib/financeiro/datas";
@@ -138,16 +139,29 @@ export default function NoivaDetalhe() {
   }, [hash, lead]);
   // E62: o recorte por noiva acontece no banco (`?leadId=`) — o perfil parou
   // de baixar os orçamentos e contratos da loja inteira para filtrar aqui.
+  /**
+   * **S-C120 — os dois gates que faltavam, e o servidor já os exigia.**
+   *
+   * `/orcamentos` e `/contratos` saíram de dentro de `leads` no E172
+   * (`orcamentos.ts:250`, `contratos.ts:102`), e esta ficha continuou pedindo os
+   * dois a todo mundo. Para a Recepção — `contratos: NADA` — a chamada nasce
+   * condenada ao 403, e a resposta recusada virava lista vazia no `?? []` de
+   * `:208-209`. É a mesma forma da agenda e das reservas logo abaixo: quem não
+   * vê o módulo não dispara a consulta, e o card diz por quê em vez de afirmar
+   * um fato que ninguém apurou.
+   */
+  const podeVerOrcamentos = podeNoModulo(acessosModulos, "orcamentos", "ver");
+  const podeVerContratos = podeNoModulo(acessosModulos, "contratos", "ver");
   const orcamentos = useListOrcamentos(activeLojaId!, { leadId: leadId! }, {
     query: {
       queryKey: getListOrcamentosQueryKey(activeLojaId!, { leadId: leadId! }),
-      enabled: !!activeLojaId && !!leadId,
+      enabled: !!activeLojaId && !!leadId && podeVerOrcamentos,
     },
   });
   const contratos = useListContratos(activeLojaId!, { leadId: leadId! }, {
     query: {
       queryKey: getListContratosQueryKey(activeLojaId!, { leadId: leadId! }),
-      enabled: !!activeLojaId && !!leadId,
+      enabled: !!activeLojaId && !!leadId && podeVerContratos,
     },
   });
   /**
@@ -207,6 +221,16 @@ export default function NoivaDetalhe() {
 
   const orcamentosDaNoiva = orcamentos.data?.itens ?? [];
   const contratosDaNoiva = contratos.data?.itens ?? [];
+  /**
+   * S-C120 — o que cada card tem o direito de AFIRMAR, antes de desenhar.
+   *
+   * As duas listas acima continuam com o `?? []`, e continuam certas: elas são o
+   * que se desenha quando a consulta respondeu. O que estava faltando era a
+   * pergunta anterior — *ela respondeu?* —, e é isto aqui. Sem ela o vazio
+   * fabricado pelo `??` chegava à tela como fato apurado.
+   */
+  const estadoOrcamentos = estadoDoCard(podeVerOrcamentos, orcamentos);
+  const estadoContratos = estadoDoCard(podeVerContratos, contratos);
 
   const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
   // F1: agendar é do módulo AGENDA — quem só edita a ficha não marca horário.
@@ -429,7 +453,17 @@ export default function NoivaDetalhe() {
     : proximoPasso({
         etapa: lead.etapa,
         leadId: leadId!,
-        temContratoAtivo: !!contratoAtivo,
+        /**
+         * S-C120 — a terceira voz da ficha, e a mais alta das três.
+         *
+         * Os dois cards diziam "Nenhum contrato ainda" em cinza; o banner
+         * mandava **"Fechar o contrato — ela já disse sim"** em botão, para a
+         * Recepção, sobre um contrato que já estava fechado e que ela não pode
+         * fechar. A causa era a mesma lista silenciada, e por isso o conserto é
+         * o mesmo: quando a consulta não respondeu, o campo não vai — e o
+         * `proximoPasso` cala o passo que dependia dele.
+         */
+        ...(estadoContratos === "pronto" ? { temContratoAtivo: !!contratoAtivo } : {}),
         contratoAtivoId: contratoAtivo?.id,
         temOrcamento: orcamentosDaNoiva.length > 0,
         // S-O12: o aceite dela já está nesta lista — faltava chegar à régua.
@@ -857,10 +891,14 @@ export default function NoivaDetalhe() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {orcamentos.isLoading ? (
-              <div className="h-10 animate-pulse rounded bg-muted" />
-            ) : orcamentosDaNoiva.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhum orçamento ainda.</p>
+            {estadoOrcamentos !== "pronto" || orcamentosDaNoiva.length === 0 ? (
+              <SemLista
+                estado={estadoOrcamentos}
+                oQue="os orçamentos"
+                vazio="Nenhum orçamento ainda."
+                erro={orcamentos.error}
+                testid="orcamentos-da-ficha"
+              />
             ) : (
               <ul className="divide-y">
                 {orcamentosDaNoiva.map((o) => (
@@ -888,10 +926,14 @@ export default function NoivaDetalhe() {
             <CardTitle>Contratos</CardTitle>
           </CardHeader>
           <CardContent>
-            {contratos.isLoading ? (
-              <div className="h-10 animate-pulse rounded bg-muted" />
-            ) : contratosDaNoiva.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhum contrato ainda.</p>
+            {estadoContratos !== "pronto" || contratosDaNoiva.length === 0 ? (
+              <SemLista
+                estado={estadoContratos}
+                oQue="os contratos"
+                vazio="Nenhum contrato ainda."
+                erro={contratos.error}
+                testid="contratos-da-ficha"
+              />
             ) : (
               <ul className="divide-y">
                 {contratosDaNoiva.map((c) => (
