@@ -19,15 +19,16 @@ para o documento que manda.
    compararam cláusula por cláusula com o que o sistema faz, e o plano
    (`docs/propostas/2026-08-13-o-contrato-vira-regra-plano.md`) fechou **12
    épicos, E211–E222, em quatro ondas** — ordenadas não por cláusula nem por
-   valor, mas por **de onde vem o dado**. **As Ondas A e B estão EXECUTADAS**,
+   valor, mas por **de onde vem o dado**. **As Ondas A, B e C estão EXECUTADAS**,
    menos o E219: E211 (`0c8874a`), E212 (`a88d7ead`), E213 (`fa7d838`), E214
-   (`0c15cda`), E216 (`eaa4e90`), E218 (`f8ab561`), E221 (`fcc24e9`) e E222
-   (`31422db`) — **8 de 12**, mais o **E224** (`75fa2cbf`), que a medição fez
-   nascer, e o **E215** (`c3adcf93`), que **abre a Onda C** — a ficha passou a
-   guardar quem assina, e o contrato não fecha sem saber quem é. **10 de 12.**
-   A tabela do `EXECUCAO.md` é a fila; **conte, não deduza** — hoje são
-   **47 sobras** (**ZERO 🟠**, 8 🟡, 39 🔵) e **4 pendências que não são
-   software**.
+   (`0c15cda`), E215 (`c3adcf93`), E216 (`eaa4e90`), E217 (`a2ada8aa`), E218
+   (`f8ab561`), E221 (`fcc24e9`) e E222 (`31422db`) — **10 de 12**, mais o
+   **E224** (`75fa2cbf`), que a medição fez nascer. **O E217 fechou a Onda C** —
+   a rescisão calcula, e com ela **a regra do E196 destravou**: manual se
+   reescreve depois da onda, e a onda acabou.
+   A tabela do `EXECUCAO.md` é a fila; **conte, não deduza** — depois do lote
+   das amarelas em paralelo (14/08) são **55 sobras** (**ZERO 🟠**, 7 🟡, 48 🔵)
+   e **4 pendências que não são software**.
 
    **O E215 é o primeiro épico da trilha em que a medição mudou o tamanho nos
    DOIS sentidos**, e as duas metades valem para os que faltam. Encareceu: o
@@ -37,18 +38,64 @@ para o documento que manda.
    um helper que faz `db.insert` direto e não passam pela porta**, então a
    primeira contagem (84+20) media a coisa errada; os que a guarda atinge eram
    43, e o conserto coube em **um lugar**. **Antes de estimar o custo de apertar
-   uma porta, conte quem passa POR ELA, não quem escreve na tabela.** **O número CRESCEU de novo, e a COMPOSIÇÃO é que é o resultado:**
-   o terceiro lote fez o que foi mandado fazer — **as 🟠 e 🟡 de dinheiro
-   fecharam** (S-C70, S-C71, S-C80, S-C85, S-C86, S-C90, S-C91, em `e0eb9136`,
-   `b1a21d00` e `68047846`), e a 🟠 acabou. Das 7 🟡 de hoje, **quatro nasceram
-   nesse mesmo lote** e três não se fecham escrevendo código: **S-C60** (produto)
-   e **S-C51** (modelagem) esperam decisão, e **S-C96** (os manuais não conhecem
-   o contrato: 0 "avaria", 0 "multa", 0 "juros" nos cinco) espera a onda C
-   acabar, pela regra do E196 — manual se reescreve **depois** da onda. A mais
-   grave em aberto é a **S-C101**, irmã da S-C70 pelo lado que ela não fechou:
-   estornar a própria linha de MORA a devolve a PREVISTA, e ela passa a render
-   **multa e juros de si mesma** — R$ 15,00 viram R$ 15,45 e crescem todo dia. O
-   que resta tem plano próprio:
+   uma porta, conte quem passa POR ELA, não quem escreve na tabela.**
+
+   **O QUARTO lote foi o primeiro escrito em paralelo por agentes que não se
+   falaram, e o resultado é que ELES corrigiram o plano de volta.** Quatro
+   amarelas fecharam em `36a71b67` (S-C130), `33b54bdc` (S-C100), `f516b29f`
+   (S-C140) e `202d4816` (S-C120), com **zero conflito de `cherry-pick`** —
+   porque os arquivos foram cruzados antes de disparar. **O plano dizia que
+   sete das oito sobras estavam erradas sobre si mesmas; os agentes acharam que
+   o plano também estava, em três pontos, e cada correção é de MEDIÇÃO:**
+
+   - **O vermelho que o plano prometeu não existia.** Ele afirmava que tirar o
+     `.slice(0, 200)` reprovaria o `e212-...test.ts:182`. **Não reprova**: a
+     fixture de lá é de UMA peça, a frase dá **147 caracteres**, e cortar 147 em
+     200 é inócuo. O assert pregava o defeito **na letra e não no efeito**, e
+     passava nas duas versões do código — o vermelho teve de ser CONSTRUÍDO com
+     três peças. **Régua que prega a implementação em vez do efeito é verde nos
+     dois lados do conserto.**
+   - **O recorte do plano era estreito.** Ele mandava varrer `pages/**` atrás dos
+     `z.enum`; isso descreve **onde os cinco estão, não onde o sexto pode
+     nascer**. A varredura entregue cobre `src/` inteiro — 193 arquivos contra 73
+     — e achou os mesmos cinco, o que é um fato NOVO: não há `z.enum` de
+     formulário fora de `pages/` hoje.
+   - **O plano viu duas telas e eram três vozes.** A mesma lista silenciada por
+     `?? []` alimentava o banner do próximo passo, que mandava a Recepção
+     **"Fechar o contrato — ela já disse sim"**, em botão, sobre contrato já
+     fechado que ela não pode fechar.
+
+   **E o paralelo cobrou um degrau novo, do lado da ferramenta: worktree de
+   agente NÃO nasce na ponta.** Três dos quatro nasceram em `cbcd8b30`, **7 e 8
+   commits atrás** da base que a tarefa mandou usar — e no worktree do E215 o
+   `estadoCivil` ainda não estava em `PARES`, então medir ali teria descrito a
+   sobra com 4 pares em vez de 5. Os três perceberam e se reposicionaram.
+   **O primeiro gesto de todo agente é conferir a própria base**
+   (`git merge-base --is-ancestor <base> HEAD`), e o do integrador é conferir a
+   dos quatro antes de acreditar em qualquer medição que eles reportem. É a
+   regra 29 pelo outro lado: lá o custo era o agente ATRASADO em relação ao
+   `origin`; aqui é o agente atrasado em relação ao que a sessão acabou de
+   commitar.
+
+   **E o lote achou um 🟠 que sobra nenhuma mencionava, dentro do épico do dia
+   anterior:** a **S-C150** — o E217 pôs `DEVOLUCAO` no enum do spec e **não
+   re-rodou o codegen**, então a conta a pagar que a própria 13ª §3º cria fazia
+   o `GET /financeiro/contas-pagar` responder **500** (`RESPOSTA_FORA_DO_CONTRATO`)
+   — a tela inteira, não a linha nova. Conferido no `main` antes do conserto, com
+   **1254 linhas em `contas_pagar` e ZERO `DEVOLUCAO`**: estava **armado, não
+   disparado**. O `_cobreTodosOsTipos` do `dre.ts` existe para pegar isso e não
+   pegou, e a frase é a lição: **guarda que depende do codegen só protege depois
+   de o codegen rodar.**
+
+   Das 7 🟡 de hoje, três não se fecham escrevendo código: **S-C60** (produto) e
+   **S-C51** (modelagem) esperam decisão, e **S-C96** (os manuais) **destravou
+   com o E217** e é a próxima da fila. As outras quatro são a **S-C110** e três
+   que nasceram do lote — **S-C151** (a 13ª existe na API e `iniciativa` aparece
+   0 vezes em `pages/` e 0 em `e2e/`), **S-C170** (o PDF manda 240 e 294
+   caracteres para uma linha de 92 e **já sai da página no `main`**) e
+   **S-C180**. O que resta tem plano próprio:
+   [`2026-08-14-as-oito-amarelas-plano.md`](docs/propostas/2026-08-14-as-oito-amarelas-plano.md),
+   e o anterior segue em
    [`2026-08-13-fechar-o-contrato-plano.md`](docs/propostas/2026-08-13-fechar-o-contrato-plano.md).
 
    **O E219 está BLOQUEADO, e o motivo é o achado que ordena o resto:** a porta
@@ -93,9 +140,20 @@ para o documento que manda.
    (reverter a linha do conserto, rodar, desfazer). O `PROGRESSO.md` da trilha
    anterior já dizia: **o arquivo é o registro, o resto é conveniência.**
 
-   O próximo da fila é o **E222** — o ateliê tem **dois expedientes** e o sistema
-   conhece um. É a única cláusula em que ele hoje **deixa acontecer** o que o
-   contrato proíbe: aceita retirada num domingo às 23h.
+   **O próximo da fila são os MANUAIS** — a S-C96 🟡 e as cinco 🔵 irmãs (S-C20,
+   S-C45, S-C88, S-C97, S-C113). Eles esperavam a onda C acabar pela regra do
+   E196, **e ela acabou no E217**. A dívida está medida por documento: nos cinco
+   são **0 "avaria", 0 "multa", 0 "juros", 0 "rescisão", 0 "exclusiva"** — e
+   "cláusula" aparece 6 vezes, todas em `vendedora.html` (5) e `noiva.html` (1),
+   escritas pelo E224 e pelo E221 ao fechar. **`proprietario.html` não cita nem
+   "retirada".** Depois deles vem a **S-C110** (o épico **E225**: a peça que saiu
+   e não voltou some da disponibilidade quando o contrato cai), que é o único
+   item cujo relógio já está andando — população zero hoje, e o gesto que a
+   produz nasceu no E224.
+
+   Esta linha já apontou para o **E222** depois de ele estar executado, que é a
+   **S-A5 acontecendo de novo**: quem abre a sessão lê o estado velho como se
+   fosse o de hoje. Se a fila mudar, é aqui que muda.
 
 3. **A trilha anterior, e a que ainda tem sobras abertas** —
    `docs/revisao/2026-08-11-otica-dos-papeis/`,
@@ -386,24 +444,27 @@ para o documento que manda.
    ainda está em dia — esta linha envelhece a cada commit, e já envelheceu
    cinco vezes.
 
-   Hoje a régua é **API 1616 (221 arquivos) · frontend 879 (96 arquivos) ·
+   Hoje a régua é **API 1637 (226 arquivos) · frontend 920 (98 arquivos) ·
    E2E 171 · typecheck verde em 5 projetos** — as **quatro medidas em série** em
-   2026-08-13, depois do **E215**. **E o E2E foi a régua que pagou o épico
-   inteiro:** as outras três ficaram verdes e ele derrubou **11 specs de uma
-   vez**, todas com a mesma recusa nomeando doze campos — noiva montada com
-   `{ noivaNome, origem }` num spec que fecha contrato. Nenhuma das outras
-   régua enxergava isso, porque as fixtures de API não passam pela porta.
-   Antes dele a régua dizia *1599 · 874*, depois de integrar o TERCEIRO lote
-   (as 🟠 e 🟡 de dinheiro). **O
-   E2E era a régua obrigatória e a única que os três agentes não podiam rodar**:
-   os três relatórios abrem dizendo *"E2E obrigatório e NÃO rodado"*, porque
+   2026-08-14, depois de integrar o **lote das quatro amarelas em paralelo**. **E este parágrafo é a
+   prova viva do que ele manda fazer: os QUATRO agentes acharam, cada um por
+   conta própria, que ele estava três épicos atrás** — ele dizia *1616 (221) ·
+   879 (96)* e a base `c2b8a274` já media *1624 (223) · 887 (97)*, antes de
+   qualquer um deles tocar em nada. Quatro medições independentes do mesmo
+   número errado é o formato da duplicata que cabe ao integrador fundir.
+   Antes do lote a régua dizia *1599 · 874* (terceiro lote) e *1389 · 704* (seis
+   épicos do contrato somando 78 testes de API e 99 de frontend sem que ninguém
+   refizesse a conta). **Meça antes de citar** — e a régua do `heliumdb` mede
+   **10,4 min** de API.
+   **O E2E é a régua obrigatória e a única que agente nenhum pode rodar**: todo
+   relatório de worktree abre dizendo *"E2E obrigatório e NÃO rodado"*, porque
    worktree isola arquivo e banco e **não isola PORTA** — rodá-lo é trabalho do
-   integrador, e ele leva **6,6 min**; a API leva **10,7 min**, e as duas juntas
-   deadlocam no banco compartilhado. Ela é MEDIDA a cada
-   onda, e envelhece depressa: este parágrafo já disse *1389 · 704* enquanto seis
-   épicos do contrato somavam 78 testes de API e 99 de frontend sem que ninguém
-   refizesse a conta — e antes disso dizia *1349 · 683* com o `main` em
-   *1369 · 692*. **Meça antes de citar.** E **o
+   integrador, e ele leva **6,6 min**; as duas suítes juntas deadlocam no banco
+   compartilhado. Ele já foi a régua que pagou um épico inteiro: no **E215** as
+   outras três ficaram verdes e ele derrubou **11 specs de uma vez**, todas com a
+   mesma recusa nomeando doze campos — noiva montada com `{ noivaNome, origem }`
+   num spec que fecha contrato. Nenhuma das outras enxergava isso, porque as
+   fixtures de API não passam pela porta. E **o
    frontend pode não estar verde**, pela S-O119 — o helper `emDiasISO` fabrica a data
    como instante e o código a lê como dia, então o arquivo `ajustes-prazo`
    reprova entre 00:00 e 03:00 UTC e passa nas outras 21 horas. **Régua que
