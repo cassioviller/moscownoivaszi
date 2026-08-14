@@ -17,7 +17,7 @@
  *   `casamentoData` é data de NEGÓCIO — o dia dela é o dia UTC do que foi
  *   gravado, `diaDeNegocio`, a mesma régua de `financeiro-core/datas.ts`.
  */
-import { and, eq, isNull, ne, or, type SQL } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, ne, or, type SQL } from "drizzle-orm";
 import { diaDeNegocio } from "@workspace/financeiro-core";
 import {
   db,
@@ -86,7 +86,15 @@ export type BloqueioJanelasInput = Pick<
   | "lavagemConcluidaEm"
   | "inicio"
   | "fim"
->;
+> & {
+  /**
+   * E225 — presente quando o bloqueio vem do banco; os CANDIDATOS montados à
+   * mão não o carregam (candidato cancelado não existe). Cancelado, só a
+   * ocupação FÍSICA sobrevive: a janela de PROVA de um contrato morto não
+   * agenda nada.
+   */
+  canceladoEm?: BloqueioVestido["canceladoEm"];
+};
 
 /** Item de conflito no shape do payload 409 / endpoint batch. */
 export interface ConflitoDetalhe {
@@ -197,6 +205,23 @@ export function janelaDeProvaPrevista(
 }
 
 export function janelasDoBloqueio(
+  b: BloqueioJanelasInput,
+  regra: RegraJanelas,
+  hojeDia: string,
+): Janela[] {
+  const janelas = janelasSemOlharCancelamento(b, regra, hojeDia);
+  /**
+   * E225 — bloqueio CANCELADO só ocupa o que ocupa FISICAMENTE.
+   *
+   * Quem o deixa entrar aqui é o predicado de `buscarBloqueiosAtivos` (a peça
+   * saiu e não voltou); o que este filtro tira é o resto: a janela de PROVA de
+   * um contrato morto não agenda nada, e sem ela a noiva B seria barrada num
+   * dia em que a peça está — fisicamente — livre para provar.
+   */
+  return b.canceladoEm ? janelas.filter((j) => j.classe === "FISICA") : janelas;
+}
+
+function janelasSemOlharCancelamento(
   b: BloqueioJanelasInput,
   regra: RegraJanelas,
   hojeDia: string,
@@ -420,9 +445,21 @@ export interface BloqueioAtivoComContexto {
 }
 
 /**
- * Bloqueios ATIVOS (cancelado_em IS NULL e reserva vinculada, se houver,
- * com status <> CANCELADA), com noivaNome do lead para mensagens.
+ * Bloqueios que OCUPAM a peça, com noivaNome do lead para mensagens.
  * `vestidoId` opcional: ausente = todos os vestidos da loja (endpoint batch).
+ *
+ * Ocupar tem duas formas, e a segunda é o E225 (S-C110):
+ *
+ * 1. **Vivo** — `cancelado_em IS NULL` e reserva vinculada, se houver, com
+ *    status <> CANCELADA. Era a definição inteira até o E225.
+ * 2. **Na rua** — retirada real sem devolução real, **cancelado ou não**.
+ *    Cancelar o contrato soft-cancela o bloqueio, e com a definição antiga a
+ *    peça voltava ao acervo enquanto estava NA CASA DA NOIVA: outra noiva a
+ *    reservava para a mesma data, e a dupla promessa só aparecia na retirada
+ *    (classe da S-M7/S-M24, pelo caminho do cancelamento de contrato). É o
+ *    predicado da S-C85 aplicado à disponibilidade: **quem discrimina é
+ *    `retiradaDataReal`** — cancelar é gesto administrativo e não traz o
+ *    vestido de volta. Registrada a devolução, o braço 2 solta sozinho.
  */
 export async function buscarBloqueiosAtivos(
   params: {
@@ -432,21 +469,23 @@ export async function buscarBloqueiosAtivos(
   },
   executor: DbExecutor = db,
 ): Promise<BloqueioAtivoComContexto[]> {
-  const filtros: SQL[] = [
-    eq(bloqueioVestidosTable.lojaId, params.lojaId),
-    isNull(bloqueioVestidosTable.canceladoEm),
-  ];
+  const filtros: SQL[] = [eq(bloqueioVestidosTable.lojaId, params.lojaId)];
   if (params.vestidoId) {
     filtros.push(eq(bloqueioVestidosTable.vestidoId, params.vestidoId));
   }
   if (params.ignorarBloqueioId) {
     filtros.push(ne(bloqueioVestidosTable.id, params.ignorarBloqueioId));
   }
-  const reservaAtiva = or(
-    isNull(bloqueioVestidosTable.reservaId),
-    ne(reservasTable.status, "CANCELADA"),
+  const vivo = and(
+    isNull(bloqueioVestidosTable.canceladoEm),
+    or(isNull(bloqueioVestidosTable.reservaId), ne(reservasTable.status, "CANCELADA")),
   );
-  if (reservaAtiva) filtros.push(reservaAtiva);
+  const naRua = and(
+    isNotNull(bloqueioVestidosTable.retiradaDataReal),
+    isNull(bloqueioVestidosTable.devolucaoDataReal),
+  );
+  const ocupa = or(vivo, naRua);
+  if (ocupa) filtros.push(ocupa);
 
   const linhas = await executor
     .select({
