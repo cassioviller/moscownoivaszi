@@ -241,7 +241,7 @@
     <div class="contexto">
       <span>Perfil: <b>Proprietária</b> (o nome na tela)</span>
       <span>Nada fica escondido de você</span>
-      <span>Atualizado em <b>12/08/2026</b></span>
+      <span>Atualizado em <b>14/08/2026</b></span>
     </div>
   </header>
 
@@ -252,13 +252,14 @@
       <li><a href="#outros"><span class="num">—</span>O que os outros cobrem</a></li>
       <li><a href="#dia"><span class="num">1</span>Seu dia</a></li>
       <li><a href="#mapa"><span class="num">2</span>O mapa do financeiro</a></li>
-      <li><a href="#acao"><span class="num">3</span>Receber e pagar</a></li>
-      <li><a href="#cobranca"><span class="num">4</span>Cobrança</a></li>
-      <li><a href="#conferir"><span class="num">5</span>Conferir o banco</a></li>
-      <li><a href="#mes"><span class="num">6</span>Fechar o mês</a></li>
-      <li><a href="#comissoes"><span class="num">7</span>Comissões</a></li>
-      <li><a href="#equipe"><span class="num">8</span>Equipe e permissões</a></li>
-      <li><a href="#loja"><span class="num">9</span>A loja e os dados</a></li>
+      <li><a href="#contrato"><span class="num">3</span>O que o contrato cobra</a></li>
+      <li><a href="#acao"><span class="num">4</span>Receber e pagar</a></li>
+      <li><a href="#cobranca"><span class="num">5</span>Cobrança</a></li>
+      <li><a href="#conferir"><span class="num">6</span>Conferir o banco</a></li>
+      <li><a href="#mes"><span class="num">7</span>Fechar o mês</a></li>
+      <li><a href="#comissoes"><span class="num">8</span>Comissões</a></li>
+      <li><a href="#equipe"><span class="num">9</span>Equipe e permissões</a></li>
+      <li><a href="#loja"><span class="num">10</span>A loja e os dados</a></li>
       <li><a href="#nao"><span class="num">—</span>Quando o sistema diz não</a></li>
       <li><a href="#decisoes"><span class="num">—</span>O que espera você</a></li>
     </ol>
@@ -377,8 +378,151 @@
       <p><em>“Toda ação que mexe em dinheiro deixa linha aqui: quem fez, o quê e quando.”</em> Filtre e clique em <span class="btn">Exportar CSV</span> — o arquivo leva o <strong>período inteiro do filtro</strong>, sem o corte de 200 linhas da tela.</p>
     </section>
 
+    <section id="contrato">
+      <h2><span class="passo">3</span>O que o contrato cobra</h2>
+      <p class="resumo">O instrumento de locação que a noiva assina tem <strong>21 cláusulas</strong>, e <strong>oito delas são dinheiro</strong>. Desde 13/08/2026 essas oito têm conta no sistema. Esta seção é a lista do que ele cobra sem lhe perguntar — e do que ele deliberadamente não cobra.</p>
+
+      <p>Antes, o contrato era papel e o sistema era outra coisa. A peça voltava rasgada, a noiva atrasava a parcela, a data do casamento mudava — e a conta era feita de cabeça, quando era feita. <strong>Hoje cada uma dessas oito cláusulas tem um número que sai do contrato</strong>, e não do bom senso de quem está atendendo naquele dia.</p>
+
+      <div class="fala">
+        <span class="rotulo">A regra que organiza as oito</span>
+        <p><strong>A cobrança nasce de um fato datado, e a conta é refeita toda vez que alguém abre a tela.</strong> O que o sistema guarda é o fato — que dia a peça voltou, que dia a parcela venceu, que dia a troca de data foi pedida. O valor ele calcula na hora.</p>
+        <p>É de propósito: os juros da 9ª crescem todo dia, e um valor gravado ontem estaria errado a partir da meia-noite seguinte.</p>
+      </div>
+
+      <h3>Os números, cláusula por cláusula</h3>
+      <p>Nenhum número desta tabela foi digitado aqui à mão: cada um sai do código, e uma régua reprova esta página no dia em que um deles mudar sem o manual mudar junto.</p>
+
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>Cláusula</th><th>O que ela cobra</th><th>Quanto</th></tr></thead>
+          <tbody>
+            <tr><td><strong>8ª §1º</strong></td><td>Entrada sugerida para reservar a peça</td><td class="prazo" data-regua="RESERVA_PCT">40% do total</td></tr>
+            <tr><td><strong>§ único</strong></td><td>O carnê tem de terminar antes da retirada</td><td class="prazo" data-regua="PRAZO_ANTES_DA_RETIRADA_DIAS">20 dias antes</td></tr>
+            <tr><td><strong>9ª</strong></td><td>Multa da parcela vencida, uma vez</td><td class="prazo" data-regua="MULTA_DE_MORA_PCT">2% da parcela</td></tr>
+            <tr><td><strong>9ª</strong></td><td>Juros da parcela vencida, dia a dia</td><td class="prazo" data-regua="JUROS_DE_MORA_MENSAL_PCT">1% ao mês</td></tr>
+            <tr><td><strong>11ª</strong></td><td>Dedução quando a noiva rescinde</td><td class="prazo" data-regua="DEDUCAO_DA_RESCISAO_PCT">60% do que ela pagou</td></tr>
+            <tr><td><strong>12ª</strong></td><td>Peça exclusiva de primeiro aluguel, rescindida</td><td class="prazo" data-regua="MULTA_DA_PECA_EXCLUSIVA_PERCENTUAL">100% do aluguel dela</td></tr>
+            <tr><td><strong>13ª §3º</strong></td><td>Prazo de a loja devolver o que deve</td><td class="prazo" data-regua="PRAZO_DEVOLUCAO_DA_LOJA_DIAS">30 dias</td></tr>
+            <tr><td><strong>14ª</strong></td><td>Taxa de limpeza — o piso</td><td class="prazo" data-regua="TAXA_LIMPEZA_MINIMA">R$ 350,00</td></tr>
+            <tr><td><strong>14ª</strong></td><td>Taxa de limpeza — o teto</td><td class="prazo" data-regua="TAXA_LIMPEZA_MAXIMA">R$ 2.500,00</td></tr>
+            <tr><td><strong>15ª</strong></td><td>Teto do reparo, por peça danificada</td><td class="prazo" data-regua="TETO_DO_DANO_EM_ALUGUEIS">5× o aluguel dela</td></tr>
+            <tr><td><strong>16ª §1º</strong></td><td>Multa fixa do atraso, uma por devolução</td><td class="prazo" data-regua="MULTA_DE_ATRASO">R$ 250,00</td></tr>
+            <tr><td><strong>16ª</strong></td><td>A partir daqui não é atraso, é extravio</td><td class="prazo" data-regua="DIAS_PARA_EXTRAVIO">10 dias</td></tr>
+            <tr><td><strong>16ª</strong></td><td>Peça extraviada</td><td class="prazo" data-regua="MULTIPLICADOR_DE_EXTRAVIO">4× o aluguel dela</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="nota">A <b>17ª</b> não está na tabela porque não é um número só: mudar o casamento para o ano seguinte reajusta o contrato em <b>10%</b>, a segunda troca em <b>20%</b> e a terceira em diante em <b>30%</b>. A escada não sobe além disso — escalar por conta própria seria inventar cláusula que o papel não tem.</p>
+
+      <h3>O que dispara cada cobrança, e onde o dinheiro aparece</h3>
+      <p>Nenhuma delas cobra sozinha no escuro: <strong>o valor é dito antes do clique</strong>, na tela de quem está atendendo, e só vira dinheiro quando alguém decide.</p>
+
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>Cláusula</th><th>O gesto que cobra</th><th>Onde você confere</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>9ª</strong> mora</td>
+              <td><strong>Nenhum.</strong> A multa e os juros aparecem sozinhos assim que a parcela vence</td>
+              <td><span class="btn">Cobrança</span>, o carnê na tela do contrato e o <strong>portal da noiva</strong> — as três leem a mesma conta</td>
+            </tr>
+            <tr>
+              <td><strong>14ª / 15ª</strong> limpeza e reparo</td>
+              <td><span class="btn">Cobrar reparo</span>, na ficha da reserva, depois de registrar a avaria</td>
+              <td>Vira <strong>parcela no carnê</strong> da noiva</td>
+            </tr>
+            <tr>
+              <td><strong>16ª</strong> atraso e extravio</td>
+              <td><span class="btn">Cobrar o atraso</span>, na ficha da reserva</td>
+              <td>Vira <strong>uma parcela no carnê</strong> — uma só, para todas as peças atrasadas</td>
+            </tr>
+            <tr>
+              <td><strong>17ª</strong> troca de data</td>
+              <td><span class="btn">Mover</span>, na ficha da noiva — o aviso do reajuste vem <strong>antes</strong> do botão</td>
+              <td>Vira <strong>parcela nova</strong>, numerada depois da última. O valor total do contrato não muda</td>
+            </tr>
+            <tr>
+              <td><strong>11ª / 12ª / 13ª / 18ª</strong> rescisão</td>
+              <td><span class="btn">Cancelar contrato</span> — o diálogo mostra linha a linha o que a loja retém e o que devolve, <strong>antes</strong> de confirmar</td>
+              <td>Se a loja fica devendo, nasce <strong>conta a pagar</strong> do tipo <span class="btn">Devolução</span>, em <span class="btn">Contas a pagar</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="fala aviso">
+        <span class="rotulo">A única conta que encarece enquanto ninguém clica</span>
+        <p>O atraso da 16ª é <strong>diária</strong>, e a diária corre. Num vestido de R$ 3.000,00: <strong>1 dia custa R$ 750,00</strong>, 5 dias custam R$ 2.750,00, 9 dias custam R$ 4.750,00 — e no <strong>décimo</strong> deixa de ser atraso e vira extravio, <strong>R$ 12.000,00</strong>, que é o quádruplo do aluguel.</p>
+        <p>Quer dizer que <strong>o dia em que alguém clica muda o valor</strong>. É a única cobrança do sistema em que isso acontece, e é o motivo de a fila de atrasos aparecer na lista de contratos em vez de esperar alguém abrir a reserva.</p>
+      </div>
+
+      <div class="fala aviso">
+        <span class="rotulo">Duas coisas o sistema sabe fazer e nenhuma tela oferece</span>
+        <p><strong>Perdoar a multa da 9ª.</strong> A decisão de 13/08/2026 foi <em>cobrar por padrão, perdoar por gesto</em> — o contrato diz “deverá incidir”, então o notável não é cobrar, é abrir mão. O sistema grava quem perdoou, quando, quanto dispensou e <strong>por quê</strong>, e a parcela passa a exibir o selo. <strong>Só que o gesto não existe em tela nenhuma</strong>: hoje ninguém consegue perdoar uma multa pela interface.</p>
+        <p><strong>Pactuar a antecedência da 18ª.</strong> É o campo que faz a noiva que pagou tudo e avisou a tempo receber de volta sem dedução. Ele existe no contrato, e <strong>nenhuma tela o preenche</strong> — então a 18ª nunca dispara.</p>
+        <p>As duas estão anotadas como trabalho. Enquanto não forem feitas, <strong>perdoar uma multa é decisão que o sistema não registra</strong>, e a 18ª é cláusula que o papel tem e o sistema não alcança.</p>
+      </div>
+
+      <p>Os outros dois exemplos, para calibrar a ordem de grandeza:</p>
+      <ul>
+        <li><strong>Mora da 9ª</strong> — uma parcela de R$ 500,00 vencida há 30 dias fecha em <strong>R$ 515,00</strong>: R$ 10,00 de multa e R$ 5,00 de juros.</li>
+        <li><strong>Rescisão da 11ª</strong> — a noiva desiste tendo pago R$ 1.000,00 além da reserva: a loja retém R$ 600,00 e <strong>devolve R$ 400,00</strong>. A reserva não volta, por cláusula. Se a peça for exclusiva de primeiro aluguel, a 12ª retém o aluguel dela <strong>inteiro</strong>, e não a dedução da 11ª.</li>
+      </ul>
+
+      <h3>A régua que não vira parede</h3>
+      <p>As faixas da 14ª e da 15ª são o único lugar em que o sistema tinha como travar você — e não trava.</p>
+
+      <div class="fala">
+        <span class="rotulo">Na tela de quem registra a avaria</span>
+        <p>A tela repete a faixa da tabela acima, nomeia a cláusula e emenda, em vermelho: <strong>“A régua não impede — escreva por que este valor sai dela.”</strong></p>
+        <p>Aí aparece um campo: <em>“Por que esta taxa sai da faixa do contrato?”</em> Sem ele preenchido, o sistema recusa. Com ele preenchido, o valor entra — e a ficha passa a mostrar, ao lado do número, <strong>“Fora da faixa do contrato — …”</strong> com a razão escrita.</p>
+      </div>
+
+      <p><strong>Essa é a escolha de desenho que mais lhe interessa</strong>, e vale para tudo que vier depois: quem manda no preço é a loja, não a régua. O que o sistema exige é que a decisão <strong>tenha nome</strong>. A razão fica gravada na própria avaria e vai para a <a href="#mapa">Auditoria</a>, com a cláusula, o valor, o piso, o teto e quem escreveu.</p>
+      <p class="nota">A conferência acontece em <b>três lugares</b>, e o terceiro é o que importa: além de registrar e de editar, ela roda de novo <b>na hora de cobrar</b> — porque é ali que nasce o dinheiro, e é ali que se escolhe em qual contrato ele entra.</p>
+
+      <div class="fala aviso">
+        <span class="rotulo">E um caso em que ele avisa que não conferiu</span>
+        <p>“Esta peça não está em contrato nenhum, então não há aluguel de onde tirar o teto […] da cláusula 15ª — <strong>o valor entra SEM ser conferido</strong>.”</p>
+        <p>A 15ª limita o reparo a um múltiplo do aluguel <em>da peça danificada</em>, e o múltiplo está na tabela acima. Onde não há aluguel, a cláusula é silente — e o sistema prefere <strong>dizer que não conferiu</strong> a inventar um teto. Um reparo de R$ 9.000,00 cabe no teto de um vestido de R$ 3.000,00 e não cabe no de um véu de R$ 400,00; numa peça fora de contrato, não cabe nem deixa de caber.</p>
+      </div>
+
+      <h3>O que avisa, e o que recusa</h3>
+      <p>Duas cláusulas do mesmo contrato recebem tratamentos opostos, e a diferença foi medida antes de ser escrita:</p>
+      <ul>
+        <li>A <strong>entrada sugerida</strong> da 8ª §1º <strong>avisa e deixa passar</strong>. O motivo é a sua própria loja: dos <strong>311 contratos ativos</strong>, <strong>101 têm entrada abaixo do que a cláusula sugere</strong> — quase metade —, e a entrada média é de 67,6% do total. Uma régua que recusasse tornaria metade do que a loja já fez impossível de repetir pela tela. A entrada é onde se negocia, e quem negocia é você.</li>
+        <li>O <strong>prazo do parágrafo único</strong> <strong>recusa</strong>: <em>“O contrato pede o restante pago até […] dias antes da retirada”</em>. Ele é o que garante o dinheiro <strong>antes de a peça sair pela porta</strong>, e por isso trava — inclusive quando alguém tenta <strong>adiantar a retirada</strong> deixando o carnê para trás.</li>
+      </ul>
+      <p class="nota">Esse prazo vale só para o <b>carnê do aluguel</b>. Avaria, atraso e mora nascem depois da retirada por definição, e passam.</p>
+
+      <h3>O que o sistema não faz, e por quê</h3>
+      <p>Três omissões são deliberadas. Nenhuma é esquecimento, e as três estão declaradas na tela em vez de caladas — porque régua que esconde o que não faz é a que autoriza o erro.</p>
+
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>O que ele não faz</th><th>Por quê</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Não corrige monetariamente a parcela vencida</strong> (9ª). A noiva lê, no portal, <em>“Sem correção monetária — o contrato não nomeia índice.”</em></td>
+              <td>A cláusula manda corrigir e <strong>não diz por qual índice</strong>. IPCA, IGP-M e INPC dão três números diferentes para a mesma dívida, e escolher um por conta própria seria inventar cláusula. <strong>É a pendência que espera você</strong> — a última desta seção</td>
+            </tr>
+            <tr>
+              <td><strong>Quando a loja cancela, devolve tudo</strong> — a reserva incluída (13ª)</td>
+              <td>O sistema não sabe medir “serviço já prestado”: nada nele é granular o bastante para dizer quanto de um atendimento foi consumido antes da retirada. Reter o sinal de uma noiva que não causou a rescisão seria o oposto do espírito da cláusula. <strong>É leitura declarada, e se corrige numa linha</strong> se a sua intenção for outra</td>
+            </tr>
+            <tr>
+              <td><strong>A 18ª não dispara sem prazo preenchido</strong> naquele contrato — a rescisão cai na 11ª, com a dedução dela</td>
+              <td>A 18ª devolve sem dedução quem pagou tudo e avisou com a antecedência <em>pactuada</em>. Essa antecedência é negociada contrato a contrato, como a data e o valor. <strong>Sem ela escrita, o sistema não inventa um número que ninguém acordou</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <section id="acao">
-      <h2><span class="passo">3</span>Receber e pagar</h2>
+      <h2><span class="passo">4</span>Receber e pagar</h2>
       <p class="resumo">As duas telas de ação. As duas exportam CSV da janela em vista — a contadora importa sem redigitar.</p>
 
       <h3>Contas a receber</h3>
@@ -393,7 +537,7 @@
     </section>
 
     <section id="cobranca">
-      <h2><span class="passo">4</span>Cobrança</h2>
+      <h2><span class="passo">5</span>Cobrança</h2>
       <p class="resumo"><em>“Acompanhe com delicadeza as parcelas em aberto. A mais atrasada vem primeiro.”</em></p>
       <p>Três cartões dividem o atraso, e cada um filtra a lista ao ser clicado:</p>
       <div class="rolagem">
@@ -412,7 +556,7 @@
     </section>
 
     <section id="conferir">
-      <h2><span class="passo">5</span>Conferir o banco</h2>
+      <h2><span class="passo">6</span>Conferir o banco</h2>
       <p class="resumo">A tela que responde se o que está no sistema é o que está na conta.</p>
       <div class="fala">
         <span class="rotulo">Conciliação</span>
@@ -422,7 +566,7 @@
     </section>
 
     <section id="mes">
-      <h2><span class="passo">6</span>Fechar o mês</h2>
+      <h2><span class="passo">7</span>Fechar o mês</h2>
       <p class="resumo">Menu → <span class="btn">Folha do mês</span>. Esta é a tela mais importante deste manual, e a que o sistema desenhou como <strong>roteiro</strong> — não como formulário.</p>
 
       <p>No topo, escolha a <strong>Competência</strong> (mês/ano). O quadro <strong>“Fechar agosto de 2026”</strong> lista os três passos, cada um com o estado e o link para resolvê-lo:</p>
@@ -463,7 +607,7 @@
     </section>
 
     <section id="comissoes">
-      <h2><span class="passo">7</span>Comissões</h2>
+      <h2><span class="passo">8</span>Comissões</h2>
       <p class="resumo"><em>“A faixa que a vendedora alcançar no fim do mês vale para tudo que ela vendeu — bater o próximo degrau compensa até o último dia.”</em></p>
 
       <p>Essa frase é a regra inteira, e é o que faz a escada funcionar como incentivo: não é faixa por venda, é <strong>a faixa do mês aplicada ao mês todo</strong>.</p>
@@ -485,7 +629,7 @@
     </section>
 
     <section id="equipe">
-      <h2><span class="passo">8</span>Equipe e permissões</h2>
+      <h2><span class="passo">9</span>Equipe e permissões</h2>
       <p class="resumo">Duas telas: quem trabalha aqui, e o que cada perfil pode.</p>
 
       <h3>Equipe</h3>
@@ -521,12 +665,18 @@
     </section>
 
     <section id="loja">
-      <h2><span class="passo">9</span>A loja e os dados</h2>
+      <h2><span class="passo">10</span>A loja e os dados</h2>
       <p class="resumo">Menu → <span class="btn">Configurações</span> — <em>“O que está valendo na loja — e onde se muda.”</em> A aba é uma: <strong>Loja atual</strong>.</p>
       <p class="nota">Existe uma segunda aba, <b>Administração</b>, e ela é do <b>superadministrador da rede</b> — quem cuida de várias lojas. Ela não aparece para você, e é de propósito: o que ela abre é o console de todas as lojas, não o da sua.</p>
 
       <h3>Dados da loja</h3>
-      <p>Nome, endereço e telefone. <strong>Não é cadastro burocrático:</strong> é o que aparece no rodapé do portal da noiva e no botão “Falar no WhatsApp” que ela usa para chegar até você. Loja sem telefone e sem endereço deixa a noiva sem caminho de volta.</p>
+      <p>Quatro campos: <strong>Nome</strong>, <strong>CNPJ</strong>, <strong>Endereço</strong> e <strong>Telefone</strong>. <strong>Não é cadastro burocrático:</strong> é o que aparece no rodapé do portal da noiva e no botão “Falar no WhatsApp” que ela usa para chegar até você. Loja sem telefone e sem endereço deixa a noiva sem caminho de volta.</p>
+
+      <div class="fala aviso">
+        <span class="rotulo">E hoje eles ainda são o exemplo</span>
+        <p>O banco tem <strong>“12.345.678/0001-99”</strong> e <strong>“Rua das Noivas, 123”</strong> — o exemplo que veio na instalação. O endereço de verdade está no contrato de papel: <strong>Rua Luis Jacinto 297, Centro, São José dos Campos, CEP 12243-260</strong>.</p>
+        <p><strong>O lugar de corrigir é esta tela, não o código.</strong> Cinco minutos, e é o que falta para o portal da noiva parar de exibir uma loja que não existe. É a pendência <strong>P3</strong> da lista no fim deste manual.</p>
+      </div>
 
       <h3>Backup</h3>
       <p><em>“Cópia do banco inteiro. A rotina agendada roda sozinha; aqui você vê a última e pode disparar uma na hora.”</em></p>
@@ -553,6 +703,10 @@
             <tr><td>“A soma das parcelas não fecha com o total.”</td><td>Entrada e número de parcelas não batem com o contrato</td></tr>
             <tr><td>“Este lead já possui um contrato ativo”</td><td>A noiva já tem contrato vivo. Cancele o anterior ou revise</td></tr>
             <tr><td>“Nenhuma cabine ativa — a grade do dia precisa de ao menos uma.”</td><td>Ative uma cabine em Cabines &amp; horário</td></tr>
+            <tr><td>O recado do <strong>carnê depois do prazo</strong> — ele cita o parágrafo único, diz até que dia o carnê teria de vencer e quantos dias passou</td><td>O carnê termina perto demais da retirada. Ou o carnê encurta, ou a retirada anda. <strong>Este é o único “não” do contrato que trava a porta sem saída negociada</strong></td></tr>
+            <tr><td>“A régua não impede — escreva por que este valor sai dela.”</td><td>A taxa de limpeza ou o reparo saiu da faixa da 14ª/15ª. <strong>Não é parede:</strong> escreva a razão no campo que aparece, e o valor entra com a razão gravada na auditoria</td></tr>
+            <tr><td>A peça <strong>atrasou e não está no rol de itens</strong> do contrato</td><td>A 16ª cobra sobre o aluguel de cada peça, e essa peça não tem aluguel de onde tirá-lo. O sistema nomeia a peça e diz que não conferiu, em vez de calar</td></tr>
+            <tr><td>“Esta parcela mudou enquanto você digitava — confira o valor e tente de novo.”</td><td>Duas pessoas mexeram na mesma parcela ao mesmo tempo. <strong>Nada foi gravado em dobro</strong> — o valor na sua tela é o antigo</td></tr>
             <tr><td>“Não consegui falar com o sistema. Tente de novo em um instante.”</td><td>O sistema não respondeu. <strong>Nada foi gravado pela metade</strong></td></tr>
           </tbody>
         </table>
@@ -562,7 +716,87 @@
 
     <section id="decisoes">
       <h2>O que espera uma decisão sua</h2>
-      <p class="resumo">Eram quatro, e <strong>você decidiu as quatro em 12/08/2026</strong> — todas já estão no sistema. Uma nova entrou no lugar delas, no fim desta seção.</p>
+      <p class="resumo">São <strong>oito</strong>, e <strong>nenhuma se resolve escrevendo código</strong>. Quatro vieram da leitura do contrato de papel, duas travam o mesmo trabalho, e duas são escolhas de produto. As quatro que estavam nesta lista em 12/08/2026 você já decidiu — estão no fim, para conferência.</p>
+
+      <h3>O contrato de papel — quatro pendências</h3>
+      <p>Em 13/08/2026 as 21 cláusulas do instrumento foram lidas uma a uma contra o que o sistema faz. Oito viraram código. <strong>Quatro coisas sobraram, e as quatro são suas.</strong></p>
+
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>#</th><th>O que espera</th><th>O que muda em cada resposta</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="prazo">P1</td>
+              <td><strong>A página 6 do molde do contrato traz o CNPJ de outra empresa.</strong> Sai o <strong>31.897.111/0001-76</strong>; entra o <strong>37.771.644/0001-93</strong></td>
+              <td><strong>Não é erro de digitação, e é isso que o torna sério:</strong> os dois números são CNPJs válidos, com dígito verificador certo. Nenhuma conferência automática pegaria — o molde simplesmente qualifica a locadora errada. <strong>Corrigir é trocar a página do modelo</strong></td>
+            </tr>
+            <tr>
+              <td class="prazo">P2</td>
+              <td><strong>Os contratos que já foram assinados com aquela página 6.</strong> Quantos são, e o que fazer com eles</td>
+              <td><strong>É decisão jurídica, não de sistema.</strong> Eles carregam a inscrição errada e já estão assinados. O sistema não sabe quais são — o molde é papel. A pergunta é se vale aditivo, recontratação ou nada</td>
+            </tr>
+            <tr>
+              <td class="prazo">P3</td>
+              <td><strong>Os dados reais da loja ainda não foram preenchidos.</strong> O banco tem o exemplo da instalação</td>
+              <td><strong>Esta é a única das oito que você resolve sozinho em cinco minutos</strong>, e o lugar é a tela: <a href="#loja">Configurações → Dados da loja</a>. Enquanto não for, o portal da noiva mostra “Rua das Noivas, 123”. <strong>Não peça para mexerem no código:</strong> ele é parametrizado de propósito, e o valor certo é o que você digitar</td>
+            </tr>
+            <tr>
+              <td class="prazo">P4</td>
+              <td><strong>Qual índice corrige a parcela vencida</strong> (cláusula 9ª)</td>
+              <td>A cláusula manda corrigir e <strong>não nomeia o índice</strong>. IPCA, IGP-M e INPC dão três respostas diferentes para a mesma dívida. Enquanto você não escolher, o sistema cobra a multa e os juros e <strong>declara</strong> o que não faz — a noiva lê <em>“Sem correção monetária — o contrato não nomeia índice”</em>. <strong>Escolhido o índice, a correção entra nas quatro telas de uma vez</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="nota">Sobre a <b>P1</b> e a <b>P3</b>, uma coisa que o sistema hoje <b>não</b> faz: <b>não existe validação de CNPJ em lugar nenhum dele</b>. O campo em Dados da loja aceita o que for digitado. Ela nasce junto com o PDF novo — que é a decisão logo abaixo.</p>
+
+      <h3>O PDF do contrato — duas decisões, um trabalho só</h3>
+      <p>As duas travam a mesma coisa, e por isso andam juntas: <strong>hoje o PDF que o sistema gera não é o instrumento.</strong> Ele imprime o resumo do negócio; as 21 cláusulas continuam no molde de papel, com a página 6 da P1.</p>
+
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>#</th><th>A pergunta</th><th>O que muda em cada resposta</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="prazo">D4</td>
+              <td><strong>O PDF do sistema deve virar o instrumento, com as 21 cláusulas dentro?</strong></td>
+              <td><strong>Sim:</strong> os números das cláusulas passam a sair do código — a mesma faixa da 14ª que a tela confere é a que o papel promete, e as duas não podem mais divergir. A qualificação da noiva já está guardada desde 13/08, e a P1 deixa de existir, porque não há mais página 6 para errar. <strong>Não:</strong> o molde de papel continua sendo a verdade, e cada mudança de número tem de ser feita duas vezes</td>
+            </tr>
+            <tr>
+              <td class="prazo">D7</td>
+              <td><strong>O representante legal e a chave PIX entram no cadastro da loja?</strong> (Renato como representante; o CPF da Karina como chave)</td>
+              <td><strong>Sim:</strong> o contrato sai com quem assina pela loja e com a chave de pagamento impressa, sem ninguém redigitar. <strong>Não:</strong> os dois continuam sendo escritos à mão em cada contrato, que é onde nascem as divergências. É a mesma pergunta da P3, um degrau adiante: <strong>o que é da loja mora no cadastro da loja</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Duas escolhas de produto</h3>
+      <p>Estas duas não são do contrato: são de como a loja trabalha. Nenhuma é urgente, e as duas ficam piores com o tempo.</p>
+
+      <div class="fala aviso">
+        <span class="rotulo">A loja segura uma peça antes de saber de qual noiva ela é?</span>
+        <p>Hoje <strong>sim</strong>: dá para bloquear um vestido sem dizer para quem, e ele fica sem dona para sempre. Era proposital — quando isso foi olhado pela última vez, quase toda reserva do banco estava assim, e exigir a noiva teria virado uma parede diária.</p>
+        <p><strong>O argumento caiu quando foi remedido:</strong> das <strong>116</strong> reservas da loja, <strong>zero</strong> estão sem dona. A parede tem largura nenhuma. O lado do dinheiro já foi fechado — cobrar o reparo de uma peça sem dona no carnê de uma noiva qualquer <strong>não é mais possível</strong>. O que sobrou é a pergunta de produto.</p>
+        <p><strong>Se a resposta for “não”</strong>, o campo passa a ser obrigatório e o sistema recusa a reserva anônima. <strong>Se for “sim”</strong>, fica como está e a resposta vira registro — para ninguém remedir isso de novo daqui a três meses.</p>
+      </div>
+
+      <div class="fala aviso">
+        <span class="rotulo">A conciliação precisa enxergar cada pagamento, ou basta a parcela?</span>
+        <p>A <a href="#conferir">Conciliação</a> monta <strong>um movimento por parcela</strong>. Quando a noiva paga uma parcela de R$ 1.000,00 em duas vezes — R$ 300,00 em 01/03 e R$ 700,00 em 15/03 —, o extrato do banco traz duas linhas e o sistema traz uma. <strong>A tela acusa três divergências de um pagamento perfeitamente correto</strong>, e você vai conferir à mão o que já estava certo.</p>
+        <p><strong>Resolver custa modelagem</strong>, não uma linha: o carimbo de “conciliado” hoje é por parcela, e marcar um pedaço marcaria o outro — o que <em>esconderia</em> divergência, que é o oposto do que a conciliação existe para fazer. Carimbo por pagamento pede uma tabela nova, que já foi recusada uma vez por escrito.</p>
+        <p><strong>O custo de não resolver</strong> cresce com o parcelamento: quanto mais noivas pagam em pedaços, mais falso alarme por mês.</p>
+      </div>
+
+      <h3>As duas menores, ainda de pé</h3>
+      <ul>
+        <li><strong>A confecção não tem prazo próprio.</strong> O prazo dela é sempre o casamento da noiva, e a costureira não tem como dizer <em>“esta eu preciso pronta no dia 10”</em> quando o casamento é em março. Resolver é coluna nova no banco — pede migração, não ajuste de tela. O custo de não resolver: o prazo real é combinado por fora, e a fila mostra uma data que ninguém segue.</li>
+        <li><strong>O perfil “Proprietária” está no gênero errado.</strong> O nome está gravado no cadastro inicial e ecoa em mais quatro lugares; corrigir pede um script para quem já instalou.</li>
+      </ul>
+
+      <h3>As quatro que você já decidiu</h3>
+      <p>Em <strong>12/08/2026</strong>, e todas já estão no sistema:</p>
 
       <div class="rolagem">
         <table>
@@ -587,22 +821,12 @@
           </tbody>
         </table>
       </div>
-
-      <h3>A que entrou no lugar delas</h3>
-      <div class="fala aviso">
-        <span class="rotulo">Espera você</span>
-        <p><strong>A confecção não tem prazo próprio.</strong> O prazo dela é sempre o casamento da noiva. A costureira não tem como dizer <em>“esta eu preciso pronta no dia 10”</em> quando o casamento é em março — e é justamente na confecção que isso costuma acontecer, porque a peça é feita do zero e tem etapas.</p>
-        <p><strong>O custo de resolver:</strong> é coluna nova no banco, então pede migração — não é ajuste de tela. Por isso não foi feito junto com o resto: seria decidir por você.</p>
-        <p><strong>O custo de não resolver:</strong> a costureira combina o prazo real por fora, no WhatsApp ou no papel, e a fila mostra uma data que ninguém segue. É o começo de toda régua paralela.</p>
-      </div>
-
-      <p>E há a menor, já dita e ainda de pé: <strong>o perfil “Proprietária” está no gênero errado.</strong></p>
     </section>
 
   </main>
 
   <footer>
-    <p>Este manual descreve o sistema como ele está em <strong>13/08/2026</strong>. Os nomes de botão e os recados de erro são citados literalmente da tela — se algum não bater com o que você vê, o manual envelheceu, e vale avisar.</p>
+    <p>Este manual descreve o sistema como ele está em <strong>14/08/2026</strong>. Os nomes de botão e os recados de erro são citados literalmente da tela — se algum não bater com o que você vê, o manual envelheceu, e vale avisar.</p>
     <p>Com ele, os <strong>cinco manuais</strong> estão escritos: vendedora, recepção, costureira, noiva e proprietário.</p>
   </footer>
 
