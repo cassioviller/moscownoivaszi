@@ -1,4 +1,5 @@
 import { pgTable, text, timestamp, boolean, integer, unique, index, date, decimal } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable, cabinesTable } from "./loja";
@@ -75,6 +76,13 @@ export const bloqueioVestidosTable = pgTable("bloqueio_vestidos", {
   // (`buscarBloqueiosAtivos`: lojaId + canceladoEm nulo, disparada a cada
   // data escolhida no acervo) e varria os bloqueios de TODAS as lojas.
   lojaCanceladoIdx: index("bloqueio_vestidos_loja_cancelado_idx").on(t.lojaId, t.canceladoEm),
+  // E231/S-C111 — a varredura das órfãs (`pecasForaSemContrato`) e o braço
+  // "na rua" do E225 leem POR LOJA quem tem retirada real; numa loja com
+  // legado importado (as 132 peças de `moscow_base`) isso é a minoria das
+  // linhas, e o índice parcial serve exatamente o predicado que as duas usam.
+  lojaNaRuaIdx: index("bloqueio_vestidos_loja_na_rua_idx")
+    .on(t.lojaId)
+    .where(sql`retirada_data_real is not null`),
 }));
 
 export const insertBloqueioVestidoSchema = createInsertSchema(bloqueioVestidosTable).omit({ createdAt: true, updatedAt: true });

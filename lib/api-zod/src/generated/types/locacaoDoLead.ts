@@ -15,4 +15,8 @@ export interface LocacaoDoLead {
   retirada: Date | null;
   /** @nullable */
   devolucao: Date | null;
+  /** @nullable */
+  retiradaFeitaEm: Date | null;
+  /** @nullable */
+  devolucaoFeitaEm: Date | null;
 }

@@ -559,6 +559,10 @@ export interface LocacaoDoLead {
   retirada: string | null;
   /** @nullable */
   devolucao: string | null;
+  /** @nullable */
+  retiradaFeitaEm: string | null;
+  /** @nullable */
+  devolucaoFeitaEm: string | null;
 }
 
 export type LeadEtapa = typeof LeadEtapa[keyof typeof LeadEtapa];
@@ -1702,6 +1706,8 @@ export interface PecaForaSemContrato {
   /** @nullable */
   noivaNome?: string | null;
   dias: number;
+  /** @nullable */
+  contratoCanceladoId: string | null;
 }
 
 export interface FilaDeAtrasos {

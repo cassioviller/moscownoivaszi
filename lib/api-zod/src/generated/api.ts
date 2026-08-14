@@ -1811,7 +1811,9 @@ export const GetLocacaoDoLeadParams = zod.object({
 export const GetLocacaoDoLeadResponse = zod.union([zod.object({
   "contratoId": zod.string(),
   "retirada": zod.coerce.date().nullable(),
-  "devolucao": zod.coerce.date().nullable()
+  "devolucao": zod.coerce.date().nullable(),
+  "retiradaFeitaEm": zod.coerce.date().nullable(),
+  "devolucaoFeitaEm": zod.coerce.date().nullable()
 }).describe('E229\/S-C220 — o recorte estreito da locação: as duas datas do contrato ATIVO da noiva, sem um campo de dinheiro. A fronteira é pregada por teste (as chaves são enumeradas): campo novo aqui é decisão, não deriva.'),zod.null()])
 
 
@@ -5241,7 +5243,8 @@ export const ListContratosComAtrasoResponse = zod.object({
   "vestidoNome": zod.string(),
   "leadId": zod.string().nullish(),
   "noivaNome": zod.string().nullish(),
-  "dias": zod.number()
+  "dias": zod.number(),
+  "contratoCanceladoId": zod.string().nullable()
 })),
   "pecas": zod.number(),
   "valor": zod.number()

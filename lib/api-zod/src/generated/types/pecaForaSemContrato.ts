@@ -14,4 +14,6 @@ export interface PecaForaSemContrato {
   /** @nullable */
   noivaNome?: string | null;
   dias: number;
+  /** @nullable */
+  contratoCanceladoId: string | null;
 }

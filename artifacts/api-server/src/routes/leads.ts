@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, leadsTable, leadInteressesTable, leadInteresseAtributosTable, registrosCobrancaTable, usuariosTable, atendimentosTable, contratosTable, orcamentosTable, bloqueioVestidosTable } from "@workspace/db";
-import { eq, and, desc, or, ilike, sql, count, inArray, gte, lt } from "drizzle-orm";
+import { eq, and, asc, desc, or, ilike, sql, count, inArray, gte, lt } from "drizzle-orm";
 import { atributosDaLoja } from "../lib/escopo-loja";
 import { padraoDeBusca } from "../lib/busca-lead";
 import {
@@ -32,6 +32,9 @@ import { randomUUID } from "node:crypto";
 import { transicaoLeadValida, converteu, ETAPAS_CONVERTIDA, type LeadEtapa } from "../lib/estados";
 import { registrarAuditoria } from "../lib/auditoria";
 import { ultimoContatoPorLead } from "../lib/ultimo-contato";
+// E231/S-C121 — a união N:N+legado dos bloqueios do contrato, a mesma da
+// visão da noiva (regra 26: uma grafia).
+import { bloqueioIdsDoContrato } from "../lib/visao-noiva";
 import {
   leadParado,
   ETAPAS_EM_NEGOCIACAO,
@@ -596,6 +599,7 @@ router.get("/lojas/:lojaId/leads/:leadId/locacao", async (req, res): Promise<voi
   const [contrato] = await db
     .select({
       id: contratosTable.id,
+      bloqueioVestidoId: contratosTable.bloqueioVestidoId,
       dataRetirada: contratosTable.dataRetirada,
       dataDevolucao: contratosTable.dataDevolucao,
     })
@@ -605,6 +609,40 @@ router.get("/lojas/:lojaId/leads/:leadId/locacao", async (req, res): Promise<voi
       eq(contratosTable.lojaId, lojaId as string),
       eq(contratosTable.status, "ATIVO"),
     ));
+  /**
+   * E231/S-C121 — as datas REAIS, do bloqueio do contrato: sem elas a ficha
+   * prometia *"Retirada 12/05 10:30"* depois de o vestido ter saído pela
+   * porta. A união N:N+legado é a MESMA da visão da noiva
+   * (`bloqueioIdsDoContrato` — regra 26, uma grafia), e com mais de uma peça
+   * vale a mais antiga, o mesmo desempate de lá.
+   */
+  let reais: { retiradaFeitaEm: Date | null; devolucaoFeitaEm: Date | null } = {
+    retiradaFeitaEm: null,
+    devolucaoFeitaEm: null,
+  };
+  if (contrato) {
+    const bloqueioIds = await bloqueioIdsDoContrato(contrato);
+    if (bloqueioIds.length > 0) {
+      const [bloqueio] = await db
+        .select({
+          retiradaDataReal: bloqueioVestidosTable.retiradaDataReal,
+          devolucaoDataReal: bloqueioVestidosTable.devolucaoDataReal,
+        })
+        .from(bloqueioVestidosTable)
+        .where(and(
+          inArray(bloqueioVestidosTable.id, bloqueioIds),
+          eq(bloqueioVestidosTable.lojaId, lojaId as string),
+        ))
+        .orderBy(asc(bloqueioVestidosTable.createdAt))
+        .limit(1);
+      if (bloqueio) {
+        reais = {
+          retiradaFeitaEm: bloqueio.retiradaDataReal,
+          devolucaoFeitaEm: bloqueio.devolucaoDataReal,
+        };
+      }
+    }
+  }
   res.json(
     GetLocacaoDoLeadResponse.parse(
       contrato
@@ -612,6 +650,8 @@ router.get("/lojas/:lojaId/leads/:leadId/locacao", async (req, res): Promise<voi
             contratoId: contrato.id,
             retirada: contrato.dataRetirada ?? null,
             devolucao: contrato.dataDevolucao ?? null,
+            retiradaFeitaEm: reais.retiradaFeitaEm,
+            devolucaoFeitaEm: reais.devolucaoFeitaEm,
           }
         : null,
     ),

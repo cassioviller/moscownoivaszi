@@ -35,6 +35,12 @@ export interface LocacaoDaNoiva {
   /** Instantes ISO, para o relógio da LOJA formatar (`instanteCurto`). */
   retirada: string | null;
   devolucao: string | null;
+  /**
+   * E231/S-C121 — as datas REAIS: com elas preenchidas, a linha diz "feita em"
+   * em vez de prometer o combinado de uma retirada que já aconteceu.
+   */
+  retiradaFeitaEm: string | null;
+  devolucaoFeitaEm: string | null;
 }
 
 export function locacaoDaNoiva(
@@ -43,6 +49,10 @@ export function locacaoDaNoiva(
   if (!recorte) return null;
   const retirada = recorte.retirada ?? null;
   const devolucao = recorte.devolucao ?? null;
-  if (!retirada && !devolucao) return null;
-  return { contratoId: recorte.contratoId, retirada, devolucao };
+  const retiradaFeitaEm = recorte.retiradaFeitaEm ?? null;
+  const devolucaoFeitaEm = recorte.devolucaoFeitaEm ?? null;
+  // O silêncio considera as QUATRO: peça que saiu sem data combinada ainda é
+  // fato que quem atende precisa ver.
+  if (!retirada && !devolucao && !retiradaFeitaEm && !devolucaoFeitaEm) return null;
+  return { contratoId: recorte.contratoId, retirada, devolucao, retiradaFeitaEm, devolucaoFeitaEm };
 }

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, reservasTable, bloqueioVestidosTable, vestidosTable, atendimentosTable, contratoBloqueiosTable } from "@workspace/db";
-import { eq, and, isNull, isNotNull, gte, lt, asc, desc, sql, inArray, notExists } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, gte, lt, asc, desc, or, sql, inArray, notExists } from "drizzle-orm";
 // S-C86: a peça fora que nenhum contrato ATIVO cobre precisa do nome da noiva
 // pelas DUAS pontas do dono (a própria e a da reserva-mãe), e são a mesma
 // tabela duas vezes no mesmo SELECT.
@@ -1209,6 +1209,43 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
       campos: [{ campo: "devolucaoDataReal", motivo: "Há volta da lavanderia registrada" }],
     });
     return;
+  }
+  /**
+   * **E231/S-C115 — desfazer a retirada não deixa o atraso COBRADO órfão.**
+   *
+   * A mesma família das duas guardas acima, um passo à frente: com o atraso já
+   * virado parcela (E212), desfazer a retirada fazia
+   * `pecasAtrasadasDoContrato` parar de contar, a prévia responder
+   * `devida: false` E `jaCobrada: true`, e a ficha mostrar "Cobrado" sobre uma
+   * conta que ela mesma diz não existir — com o dinheiro vivo no carnê. A
+   * régua da vida da cobrança é a MESMA da recobrança (`cobrancaViva`):
+   * parcela CANCELADA não cobra ninguém, e aí desfazer volta a ser legítimo.
+   */
+  if (dados.retiradaDataReal === null && existente.retiradaDataReal) {
+    const cobrados = await db
+      .select({ atrasoParcelaId: contratosTable.atrasoParcelaId })
+      .from(contratosTable)
+      .leftJoin(contratoBloqueiosTable, eq(contratoBloqueiosTable.contratoId, contratosTable.id))
+      .where(and(
+        eq(contratosTable.lojaId, lojaId),
+        isNotNull(contratosTable.atrasoParcelaId),
+        or(
+          eq(contratoBloqueiosTable.bloqueioId, bloqueioId),
+          eq(contratosTable.bloqueioVestidoId, bloqueioId),
+        ),
+      ));
+    for (const c of cobrados) {
+      if (c.atrasoParcelaId && (await cobrancaViva(c.atrasoParcelaId))) {
+        res.status(422).json({
+          error: "ATRASO_JA_COBRADO",
+          detalhe:
+            "O atraso desta peça já virou parcela no carnê — estorne ou cancele a parcela do " +
+            "atraso primeiro, senão a cobrança fica órfã de retirada.",
+          campos: [{ campo: "retiradaDataReal", motivo: "Há atraso cobrado sobre esta retirada" }],
+        });
+        return;
+      }
+    }
   }
 
   const mudouJanelas =
@@ -2521,6 +2558,22 @@ async function pecasForaSemContrato(
       maeNoivaNome: leadDaMae.noivaNome,
       casamentoData: bloqueioVestidosTable.casamentoData,
       devolucaoDataReal: bloqueioVestidosTable.devolucaoDataReal,
+      /**
+       * E231/S-C114 — o discriminador: "nunca teve contrato" (gesto de balcão
+       * que não virou venda) e "o contrato caiu com a peça na rua" (venda
+       * desfeita, possivelmente com atraso já cobrado num carnê morto) pedem
+       * ações diferentes, e a fila dizia a mesma frase para as duas. O mais
+       * recente dos cancelados, porque é o que conta a história desta saída.
+       */
+      contratoCanceladoId: sql<string | null>`(
+        select cb.contrato_id
+          from contrato_bloqueios cb
+          join contratos c on c.id = cb.contrato_id
+         where cb.bloqueio_id = ${bloqueioVestidosTable.id}
+           and c.status = 'CANCELADO'
+         order by c.cancelado_em desc nulls last
+         limit 1
+      )`,
     })
     .from(bloqueioVestidosTable)
     .innerJoin(vestidosTable, eq(vestidosTable.id, bloqueioVestidosTable.vestidoId))
@@ -2545,7 +2598,18 @@ async function pecasForaSemContrato(
             eq(contratosTable.status, "ATIVO"),
           )),
       ),
-    ));
+    ))
+    /**
+     * E231/S-C111 — o TETO, dito: sem ele, um legado importado (as 132 peças
+     * de `moscow_base`, toda peça já retirada e nunca devolvida) entraria de
+     * uma vez e o sino refaria a lista inteira a cada 5 min em toda tela.
+     * Casamento mais antigo primeiro = mais dias de atraso primeiro, então o
+     * corte deixa de fora as MENOS graves — e 200 órfãs simultâneas é além de
+     * qualquer operação real: se este limite cortar, o problema da loja não é
+     * a fila.
+     */
+    .orderBy(asc(bloqueioVestidosTable.casamentoData))
+    .limit(200);
 
   const linhas = [];
   for (const o of orfas) {
@@ -2564,6 +2628,7 @@ async function pecasForaSemContrato(
       leadId: donoLeadId,
       noivaNome: o.noivaNome ?? o.maeNoivaNome ?? null,
       dias,
+      contratoCanceladoId: o.contratoCanceladoId,
     });
   }
   return linhas;

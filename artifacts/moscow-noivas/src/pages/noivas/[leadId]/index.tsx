@@ -772,14 +772,30 @@ export default function NoivaDetalhe() {
                   `<Dado>` para todo campo ausente desta ficha. */}
               {locacao && (
                 <>
+                  {/* E231/S-C121 — a REAL vence o combinado: a ficha prometia
+                      "Retirada 12/05 10:30" depois de o vestido ter saído pela
+                      porta. Feita, a promessa vira registro — a mesma frase do
+                      portal da noiva. */}
                   <Dado
                     rotulo="Retirada"
-                    valor={locacao.retirada ? instanteCurto(locacao.retirada) : "A informar"}
+                    valor={
+                      locacao.retiradaFeitaEm
+                        ? `feita em ${instanteCurto(locacao.retiradaFeitaEm)}`
+                        : locacao.retirada
+                          ? instanteCurto(locacao.retirada)
+                          : "A informar"
+                    }
                     testid="dado-retirada-da-noiva"
                   />
                   <Dado
                     rotulo="Devolução"
-                    valor={locacao.devolucao ? instanteCurto(locacao.devolucao) : "A informar"}
+                    valor={
+                      locacao.devolucaoFeitaEm
+                        ? `feita em ${instanteCurto(locacao.devolucaoFeitaEm)}`
+                        : locacao.devolucao
+                          ? instanteCurto(locacao.devolucao)
+                          : "A informar"
+                    }
                     testid="dado-devolucao-da-noiva"
                   />
                 </>

@@ -197,6 +197,31 @@ export type VestidoDaNoiva = {
   ajustes: { descricao: string; pronto: boolean }[];
 };
 
+/**
+ * A UNIÃO dos bloqueios de um contrato — o N:N `contrato_bloqueios` (E72) mais
+ * a coluna singular legada `bloqueio_vestido_id` ("lida, nunca mais escrita").
+ *
+ * Extraída no E231 porque ganhou um SEGUNDO leitor (o recorte da locação, que
+ * precisa das datas REAIS do bloqueio): duas grafias da união divergiriam no
+ * dia em que o vínculo mudasse — a regra 26, a mesma da
+ * `janelaDeProvaPrevista`.
+ */
+export async function bloqueioIdsDoContrato(contrato: {
+  id: string;
+  bloqueioVestidoId: string | null;
+}): Promise<string[]> {
+  const vinculos = await db
+    .select({ bloqueioId: contratoBloqueiosTable.bloqueioId })
+    .from(contratoBloqueiosTable)
+    .where(eq(contratoBloqueiosTable.contratoId, contrato.id));
+  return [
+    ...new Set([
+      ...(contrato.bloqueioVestidoId ? [contrato.bloqueioVestidoId] : []),
+      ...vinculos.map((v) => v.bloqueioId),
+    ]),
+  ];
+}
+
 export async function montarVestidoDaNoiva(contrato: {
   id: string;
   lojaId: string;
@@ -218,16 +243,7 @@ export async function montarVestidoDaNoiva(contrato: {
    * ajustes —, e o teste só passava porque preenchia a coluna com um `update`
    * à mão, sem passar pela rota.
    */
-  const vinculos = await db
-    .select({ bloqueioId: contratoBloqueiosTable.bloqueioId })
-    .from(contratoBloqueiosTable)
-    .where(eq(contratoBloqueiosTable.contratoId, contrato.id));
-  const bloqueioIds = [
-    ...new Set([
-      ...(contrato.bloqueioVestidoId ? [contrato.bloqueioVestidoId] : []),
-      ...vinculos.map((v) => v.bloqueioId),
-    ]),
-  ];
+  const bloqueioIds = await bloqueioIdsDoContrato(contrato);
   // Sem reserva física no contrato não há "o seu vestido" — o contrato pode ser
   // só de serviço, e inventar uma seção vazia é pior que não a ter.
   if (bloqueioIds.length === 0) return null;

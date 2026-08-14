@@ -5710,11 +5710,17 @@ components:
         ATIVO da noiva, sem um campo de dinheiro. A fronteira é pregada por
         teste (as chaves são enumeradas): campo novo aqui é decisão, não
         deriva.
-      required: [contratoId, retirada, devolucao]
+      required: [contratoId, retirada, devolucao, retiradaFeitaEm, devolucaoFeitaEm]
       properties:
         contratoId: { type: string }
         retirada: { type: ["string", "null"], format: date-time }
         devolucao: { type: ["string", "null"], format: date-time }
+        # E231/S-C121 — as datas REAIS, do bloqueio do contrato: a ficha
+        # prometia uma retirada que já aconteceu, porque só lia o combinado.
+        # Datas reais não são dinheiro — a fronteira do E229 continua de pé, e
+        # este é o registro da decisão que o teste de chaves enumeradas exige.
+        retiradaFeitaEm: { type: ["string", "null"], format: date-time }
+        devolucaoFeitaEm: { type: ["string", "null"], format: date-time }
     Lead:
       type: object
       required: [id, lojaId, etapa, noivaNome, origem, createdAt]
@@ -6625,7 +6631,7 @@ components:
     # `semAluguel` do E212.
     PecaForaSemContrato:
       type: object
-      required: [bloqueioId, vestidoNome, dias]
+      required: [bloqueioId, vestidoNome, dias, contratoCanceladoId]
       properties:
         # A ficha da reserva, que é por onde se registra a devolução — o único
         # gesto que faz o contador parar.
@@ -6636,6 +6642,10 @@ components:
         leadId: { type: ["string", "null"] }
         noivaNome: { type: ["string", "null"] }
         dias: { type: integer }
+        # E231/S-C114 — nulo é "nunca teve contrato" (gesto de balcão); com id,
+        # é "a venda foi desfeita com a peça na rua", e este é o contrato que
+        # conta a história.
+        contratoCanceladoId: { type: ["string", "null"] }
 
     FilaDeAtrasos:
       type: object

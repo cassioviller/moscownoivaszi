@@ -247,6 +247,26 @@ export default function Contratos() {
                         <p className="text-xs text-muted-foreground">
                           {o.noivaNome ?? "sem noiva"} · fora do prazo há {o.dias}{" "}
                           {o.dias === 1 ? "dia" : "dias"}
+                          {/* E231/S-C114 — as duas histórias pedem ações
+                              diferentes, e a fila dizia a mesma frase: sem
+                              contrato NENHUM é gesto de balcão que não virou
+                              venda; com contrato CANCELADO é venda desfeita
+                              com a peça na rua — e o atraso pode estar cobrado
+                              num carnê morto. */}
+                          {o.contratoCanceladoId ? (
+                            <>
+                              {" · "}
+                              <Link
+                                to={`/loja/${lojaId}/contratos/${o.contratoCanceladoId}`}
+                                className="underline underline-offset-2"
+                                data-testid={`orfa-contrato-caiu-${o.bloqueioId}`}
+                              >
+                                a venda foi desfeita — ver o contrato
+                              </Link>
+                            </>
+                          ) : (
+                            <> · nunca virou contrato</>
+                          )}
                         </p>
                       </div>
                       <Button asChild variant="outline" size="sm">

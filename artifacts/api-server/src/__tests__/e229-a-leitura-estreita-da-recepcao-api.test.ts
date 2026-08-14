@@ -66,8 +66,16 @@ describe("E229 — a leitura estreita da locação", () => {
     expect(r.body.devolucao).toBeTruthy();
     // A fronteira é o teste inteiro: o payload não pode carregar o que o E172
     // fechou. Enumerar as chaves prega isso contra o futuro — campo novo aqui
-    // é decisão, não deriva.
-    expect(Object.keys(r.body).sort()).toEqual(["contratoId", "devolucao", "retirada"]);
+    // é decisão, não deriva. E231: as duas datas REAIS entraram POR decisão
+    // (S-C121 — data real não é dinheiro, e é o que impede a ficha de prometer
+    // uma retirada que já aconteceu); a régua mordeu e a razão está escrita.
+    expect(Object.keys(r.body).sort()).toEqual([
+      "contratoId",
+      "devolucao",
+      "devolucaoFeitaEm",
+      "retirada",
+      "retiradaFeitaEm",
+    ]);
   });
 
   it("sem contrato ativo, `null` — a ficha silencia em vez de inventar linha", async () => {
