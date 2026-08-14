@@ -14,5 +14,6 @@ export interface ContratoUpdate {
   dataCasamento?: Date;
   dataRetirada?: Date;
   dataDevolucao?: Date;
+  prazoDevolucaoReservaDias?: number;
   observacoes?: string;
 }

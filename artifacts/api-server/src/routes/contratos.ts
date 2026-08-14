@@ -13,6 +13,8 @@ import {
   contratoBloqueiosTable,
   reservasTable,
   usuariosTable,
+  vestidosTable,
+  contasPagarTable,
   type InsertContratoItem,
 } from "@workspace/db";
 import { eq, and, isNull, isNotNull, inArray, sql, desc, count } from "drizzle-orm";
@@ -52,15 +54,21 @@ import {
   RestabelecerMoraResponse
 } from "@workspace/api-zod";
 import {
+  addDias,
   ancoraDeNegocio,
   brutoEmCentavos,
+  // E217 — a rescisão calcula (8ª §2º, 11ª, 12ª, 13ª §3º, 18ª).
+  calcularRescisao,
   centavos,
   diaDeNegocio,
+  // E216 — o predicado da peça exclusiva de primeiro aluguel (cláusula 12ª).
+  ehExclusivaDePrimeiroAluguel,
   estaAberta,
   faltanteDoCarneCentavos,
   // E218 — o § único do objeto: o restante do valor entra até 20 dias antes da
   // retirada. Vale para o CARNÊ; avaria, atraso e mora nascem depois dela.
   foraDoPrazoDaRetirada,
+  inicioDoDia,
   liquidoEmCentavos,
   montarPlanoParcelas,
   reais,
@@ -945,6 +953,10 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
         : null,
       dataRetirada: contratoData.dataRetirada ?? null,
       dataDevolucao: contratoData.dataDevolucao ?? null,
+      // D3/E217 — cláusula 18ª: negociado a cada contrato, como a data e o
+      // valor. `null` é "não pactuado", e é o default — o sistema não inventa
+      // prazo que ninguém acordou.
+      prazoDevolucaoReservaDias: contratoData.prazoDevolucaoReservaDias ?? null,
       observacoes: contratoData.observacoes ?? null,
       fechadoEm: new Date(),
     }).returning();
@@ -1608,6 +1620,20 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
       ),
     );
 
+    /**
+     * E217 — o que a rescisão pede saber do que já entrou.
+     *
+     * O carnê (`origem: PLANO`) é a base das cláusulas 8ª §2º/11ª/12ª/18ª — a
+     * mesma régua que o E218 já usa para o § único do objeto: avaria, atraso
+     * e mora nascem DEPOIS da retirada e não são "o pagamento pelo serviço"
+     * que o instrumento rescinde.
+     */
+    const parcelasPlanoAntes = parcelasAntes.filter((p) => p.origem === "PLANO");
+    const totalPagoPlanoC = parcelasPlanoAntes.reduce((s, p) => s + centavos(p.valorRecebido ?? 0), 0);
+    const reservaPagaC = centavos(
+      parcelasPlanoAntes.find((p) => p.numero === 0)?.valorRecebido ?? 0,
+    );
+
     // `comissaoEstornadaEm` NÃO é gravado aqui: ele marca quando o estorno foi
     // RECONCILIADO num fechamento, e não quando o contrato caiu (isso é o
     // `canceladoEm`). Deixá-lo nulo é o que mantém o estorno §6.4 pendente para
@@ -1635,6 +1661,76 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
         eq(parcelasTable.contratoId, contrato.id),
         inArray(parcelasTable.status, [...STATUS_ABERTO]),
       ));
+
+    /**
+     * E217 — a rescisão. Lida DEPOIS do UPDATE de status acima, de propósito:
+     * a contagem de "locações anteriores" da 12ª (`ehExclusivaDePrimeiroAluguel`)
+     * lê `contratos.status = 'ATIVO'`, e este contrato já não é mais — a
+     * exclusão dele da própria contagem (que o E216 pede) sai de graça, sem
+     * um `- 1` separado que alguém pode esquecer de repetir.
+     */
+    const itensDoContrato = await tx
+      .select()
+      .from(contratoItensTable)
+      .where(eq(contratoItensTable.contratoId, contrato.id));
+
+    const vestidoIds = [...new Set(itensDoContrato.map((it) => it.vestidoId).filter((id): id is string => !!id))];
+    const [marcas, contagens] = vestidoIds.length > 0
+      ? await Promise.all([
+          tx.select({ id: vestidosTable.id, exclusiva: vestidosTable.exclusiva })
+            .from(vestidosTable)
+            .where(inArray(vestidosTable.id, vestidoIds)),
+          tx.select({ vestidoId: contratoItensTable.vestidoId, qtd: count() })
+            .from(contratoItensTable)
+            .innerJoin(contratosTable, eq(contratosTable.id, contratoItensTable.contratoId))
+            .where(and(
+              eq(contratoItensTable.lojaId, lojaId as string),
+              inArray(contratoItensTable.vestidoId, vestidoIds),
+              eq(contratosTable.status, "ATIVO"),
+            ))
+            .groupBy(contratoItensTable.vestidoId),
+        ])
+      : [[], []];
+    const exclusivaPorVestido = new Map(marcas.map((v) => [v.id, v.exclusiva === true]));
+    const locacoesPorVestido = new Map(contagens.map((c) => [c.vestidoId, c.qtd]));
+
+    const rescisao = calcularRescisao({
+      iniciativa: parsed.data.iniciativa ?? "LOCATARIA",
+      itens: itensDoContrato.map((it) => ({
+        descricao: it.descricao,
+        valor: reais(centavos(it.valorUnitario) * it.quantidade),
+        exclusivaDePrimeiroAluguel: it.vestidoId
+          ? ehExclusivaDePrimeiroAluguel(
+              { exclusiva: exclusivaPorVestido.get(it.vestidoId) ?? false },
+              locacoesPorVestido.get(it.vestidoId) ?? 0,
+            )
+          : false,
+      })),
+      valorTotalContrato: contrato.valorTotal,
+      totalPagoPlano: reais(totalPagoPlanoC),
+      reservaPaga: reais(reservaPagaC),
+      prazoDevolucaoReservaDias: contrato.prazoDevolucaoReservaDias,
+      dataRetirada: contrato.dataRetirada,
+      hoje: agora,
+    });
+
+    /**
+     * 13ª §3º — quando a loja fica devendo, o prazo é 30 dias. Nasce como
+     * `contas_pagar` (o mesmo lugar que já representa dívida da loja), não
+     * como ajuste em `parcelas`: a dívida é NOVA e é da LOJA, não uma parcela
+     * que a noiva deve.
+     */
+    if (rescisao.devolucaoTotal > 0) {
+      await tx.insert(contasPagarTable).values({
+        id: randomUUID(),
+        lojaId: lojaId as string,
+        tipo: "DEVOLUCAO",
+        descricao: `Devolução — rescisão do contrato de ${contrato.vestidoDescricao ?? "locação"} (${rescisao.explicacao})`,
+        valorPrevisto: rescisao.devolucaoTotal,
+        vencimento: inicioDoDia(addDias(diaLocal(agora), 30)),
+        origemContratoId: contrato.id,
+      });
+    }
 
     // Sobre o que JÁ ENTROU decide o destinoPago: "manter" (default — noiva
     // perdeu o sinal, valor fica no caixa) ou "estornar" (valor devolvido — os
@@ -1767,9 +1863,14 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
         // lê a trilha não sabe por que a noiva saiu da curva de sazonalidade.
         fechoDesfeito: desfezOFecho,
         etapaDesfeitaPara: etapaDesfeita,
+        // E217 — o que o CONTRATO manda reter/devolver, distinto do que o
+        // CAIXA fez com `destinoPago` acima.
+        iniciativa: parsed.data.iniciativa ?? "LOCATARIA",
+        rescisaoDevolucaoTotal: rescisao.devolucaoTotal,
+        rescisaoRetencaoTotal: rescisao.retencaoTotal,
       },
     });
-    return { ok: true as const };
+    return { ok: true as const, rescisao };
   });
 
   if ("sumiu" in desfecho) {
@@ -1785,7 +1886,21 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
     where: and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)),
     with: { lead: true, vendedora: true, parcelas: true, itens: true }
   });
-  res.json(CancelarContratoResponse.parse(fullContrato));
+  res.json(CancelarContratoResponse.parse({
+    ...fullContrato,
+    // Escrito por extenso (e não `rescisao: desfecho.rescisao`) para a
+    // `varredura-schemas-aninhados` (E192) enxergar: o motor lê o handler por
+    // TEXTO e não atravessa import de outro pacote — `calcularRescisao` mora
+    // no `financeiro-core` — então sem as chaves aqui `Rescisao.linhas`
+    // aparecia como aresta ÓRFÃ, a mesma classe que o E213 pagou com `mora`.
+    rescisao: {
+      linhas: desfecho.rescisao.linhas,
+      devolucaoTotal: desfecho.rescisao.devolucaoTotal,
+      retencaoTotal: desfecho.rescisao.retencaoTotal,
+      aplicou18a: desfecho.rescisao.aplicou18a,
+      explicacao: desfecho.rescisao.explicacao,
+    },
+  }));
 });
 
 // Parcelas

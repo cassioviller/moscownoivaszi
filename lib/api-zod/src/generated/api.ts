@@ -6569,8 +6569,21 @@ export const ListContratosResponse = zod.object({
   "reajustesDeData": zod.number().optional(),
   "dataRetirada": zod.coerce.date().nullish(),
   "dataDevolucao": zod.coerce.date().nullish(),
+  "prazoDevolucaoReservaDias": zod.number().nullish(),
   "observacoes": zod.string().nullish(),
   "fechadoEm": zod.coerce.date(),
+  "rescisao": zod.union([zod.object({
+  "linhas": zod.array(zod.object({
+  "descricao": zod.string(),
+  "clausula": zod.string(),
+  "retido": zod.number(),
+  "devolvido": zod.number()
+})),
+  "devolucaoTotal": zod.number(),
+  "retencaoTotal": zod.number(),
+  "aplicou18a": zod.boolean(),
+  "explicacao": zod.string()
+}),zod.null()]).optional(),
   "parcelas": zod.array(zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
@@ -6701,6 +6714,7 @@ export const CreateContratoBody = zod.object({
   "dataCasamento": zod.coerce.date().optional(),
   "dataRetirada": zod.coerce.date().optional(),
   "dataDevolucao": zod.coerce.date().optional(),
+  "prazoDevolucaoReservaDias": zod.number().optional(),
   "observacoes": zod.string().optional(),
   "parcelas": zod.array(zod.object({
   "numero": zod.number().min(createContratoBodyParcelasItemNumeroMin),
@@ -6746,8 +6760,21 @@ export const CreateContratoResponse = zod.object({
   "reajustesDeData": zod.number().optional(),
   "dataRetirada": zod.coerce.date().nullish(),
   "dataDevolucao": zod.coerce.date().nullish(),
+  "prazoDevolucaoReservaDias": zod.number().nullish(),
   "observacoes": zod.string().nullish(),
   "fechadoEm": zod.coerce.date(),
+  "rescisao": zod.union([zod.object({
+  "linhas": zod.array(zod.object({
+  "descricao": zod.string(),
+  "clausula": zod.string(),
+  "retido": zod.number(),
+  "devolvido": zod.number()
+})),
+  "devolucaoTotal": zod.number(),
+  "retencaoTotal": zod.number(),
+  "aplicou18a": zod.boolean(),
+  "explicacao": zod.string()
+}),zod.null()]).optional(),
   "parcelas": zod.array(zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
@@ -6890,8 +6917,21 @@ export const GetContratoResponse = zod.object({
   "reajustesDeData": zod.number().optional(),
   "dataRetirada": zod.coerce.date().nullish(),
   "dataDevolucao": zod.coerce.date().nullish(),
+  "prazoDevolucaoReservaDias": zod.number().nullish(),
   "observacoes": zod.string().nullish(),
   "fechadoEm": zod.coerce.date(),
+  "rescisao": zod.union([zod.object({
+  "linhas": zod.array(zod.object({
+  "descricao": zod.string(),
+  "clausula": zod.string(),
+  "retido": zod.number(),
+  "devolvido": zod.number()
+})),
+  "devolucaoTotal": zod.number(),
+  "retencaoTotal": zod.number(),
+  "aplicou18a": zod.boolean(),
+  "explicacao": zod.string()
+}),zod.null()]).optional(),
   "parcelas": zod.array(zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
@@ -7005,6 +7045,7 @@ export const UpdateContratoBody = zod.object({
   "dataCasamento": zod.coerce.date().optional(),
   "dataRetirada": zod.coerce.date().optional(),
   "dataDevolucao": zod.coerce.date().optional(),
+  "prazoDevolucaoReservaDias": zod.number().optional(),
   "observacoes": zod.string().optional()
 })
 
@@ -7044,8 +7085,21 @@ export const UpdateContratoResponse = zod.object({
   "reajustesDeData": zod.number().optional(),
   "dataRetirada": zod.coerce.date().nullish(),
   "dataDevolucao": zod.coerce.date().nullish(),
+  "prazoDevolucaoReservaDias": zod.number().nullish(),
   "observacoes": zod.string().nullish(),
   "fechadoEm": zod.coerce.date(),
+  "rescisao": zod.union([zod.object({
+  "linhas": zod.array(zod.object({
+  "descricao": zod.string(),
+  "clausula": zod.string(),
+  "retido": zod.number(),
+  "devolvido": zod.number()
+})),
+  "devolucaoTotal": zod.number(),
+  "retencaoTotal": zod.number(),
+  "aplicou18a": zod.boolean(),
+  "explicacao": zod.string()
+}),zod.null()]).optional(),
   "parcelas": zod.array(zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
@@ -7205,7 +7259,8 @@ export const CancelarContratoParams = zod.object({
 
 export const CancelarContratoBody = zod.object({
   "motivo": zod.string().min(1),
-  "destinoPago": zod.enum(['manter', 'estornar']).optional()
+  "destinoPago": zod.enum(['manter', 'estornar']).optional(),
+  "iniciativa": zod.enum(['LOCATARIA', 'LOJA']).optional()
 })
 
 
@@ -7244,8 +7299,21 @@ export const CancelarContratoResponse = zod.object({
   "reajustesDeData": zod.number().optional(),
   "dataRetirada": zod.coerce.date().nullish(),
   "dataDevolucao": zod.coerce.date().nullish(),
+  "prazoDevolucaoReservaDias": zod.number().nullish(),
   "observacoes": zod.string().nullish(),
   "fechadoEm": zod.coerce.date(),
+  "rescisao": zod.union([zod.object({
+  "linhas": zod.array(zod.object({
+  "descricao": zod.string(),
+  "clausula": zod.string(),
+  "retido": zod.number(),
+  "devolvido": zod.number()
+})),
+  "devolucaoTotal": zod.number(),
+  "retencaoTotal": zod.number(),
+  "aplicou18a": zod.boolean(),
+  "explicacao": zod.string()
+}),zod.null()]).optional(),
   "parcelas": zod.array(zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),

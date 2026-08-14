@@ -12,6 +12,7 @@ import type { ContratoItem } from './contratoItem';
 import type { ContratoStatus } from './contratoStatus';
 import type { Lead } from './lead';
 import type { Parcela } from './parcela';
+import type { Rescisao } from './rescisao';
 import type { Usuario } from './usuario';
 
 export interface Contrato {
@@ -72,8 +73,11 @@ export interface Contrato {
   /** @nullable */
   dataDevolucao?: Date | null;
   /** @nullable */
+  prazoDevolucaoReservaDias?: number | null;
+  /** @nullable */
   observacoes?: string | null;
   fechadoEm: Date;
+  rescisao?: Rescisao | null;
   parcelas?: Parcela[];
   itens?: ContratoItem[];
   lead?: Lead;

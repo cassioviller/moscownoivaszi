@@ -36,3 +36,6 @@ export * from "./reserva";
 // S-O52/E186: os nomes das ações da trilha — o CSV da contadora e a coluna
 // "Ação" da tela deixam de ser duas listas que divergiam em três rótulos.
 export * from "./auditoria";
+// E217 — a rescisão (8ª §2º, 11ª, 12ª, 13ª e §3º, 18ª). Consome o predicado do
+// E216 (exclusividade.ts) e o prazo do E218 (reserva.ts) sem reescrever nenhum.
+export * from "./rescisao";

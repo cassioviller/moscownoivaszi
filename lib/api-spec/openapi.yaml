@@ -3710,7 +3710,7 @@ paths:
               $ref: "#/components/schemas/CancelarContratoInput"
       responses:
         "200":
-          description: Cancelado
+          description: Cancelado — `rescisao` (E217) diz o que a cláusula reteve/devolveu
           content:
             application/json:
               schema:
@@ -7278,8 +7278,22 @@ components:
         reajustesDeData: { type: integer }
         dataRetirada: { type: ["string", "null"], format: date-time }
         dataDevolucao: { type: ["string", "null"], format: date-time }
+        # D3/E217 — cláusula 18ª: dias de antecedência da retirada que a
+        # rescisão ainda devolve o excedente sem a dedução de 60%. Negociado
+        # por contrato; `null` é "não pactuado", e a 18ª não dispara.
+        prazoDevolucaoReservaDias: { type: ["integer", "null"] }
         observacoes: { type: ["string", "null"] }
         fechadoEm: { type: string, format: date-time }
+        # E217 — o que a cláusula manda reter/devolver nesta rescisão. Molde do
+        # `Parcela.mora` (E213): campo computado no schema COMPARTILHADO,
+        # ausente onde ninguém o preenche — só o POST /cancelar o povoa. Uma
+        # `allOf` chegou a existir aqui e foi descartada: o motor da
+        # `varredura-schemas-aninhados` (E192) não resolve `allOf`, e a conta
+        # da fronteira caía sem avisar por quê.
+        rescisao:
+          anyOf:
+            - $ref: "#/components/schemas/Rescisao"
+            - type: "null"
         parcelas:
           type: array
           items:
@@ -7341,6 +7355,7 @@ components:
         dataCasamento: { type: string, format: date-time }
         dataRetirada: { type: string, format: date-time }
         dataDevolucao: { type: string, format: date-time }
+        prazoDevolucaoReservaDias: { type: integer }
         observacoes: { type: string }
         parcelas:
           type: array
@@ -7361,6 +7376,7 @@ components:
         dataCasamento: { type: string, format: date-time }
         dataRetirada: { type: string, format: date-time }
         dataDevolucao: { type: string, format: date-time }
+        prazoDevolucaoReservaDias: { type: integer }
         observacoes: { type: string }
     CancelarContratoInput:
       type: object
@@ -7369,8 +7385,36 @@ components:
         motivo: { type: string, minLength: 1 }
         # O que fazer com parcelas já PAGAS: "manter" (noiva perdeu o sinal —
         # ficam PAGAS no caixa, default) ou "estornar" (valor devolvido —
-        # viram CANCELADA com campos de recebimento zerados).
+        # viram CANCELADA com campos de recebimento zerados). Independe da
+        # rescisão calculada (E217): esta chave continua controlando o CAIXA;
+        # a rescisão é o que o CONTRATO manda devolver, e vira `contas_pagar`.
         destinoPago: { type: string, enum: [manter, estornar] }
+        # E217 — quem pede a rescisão. LOCATARIA (default, o caminho de
+        # sempre) aplica 8ª §2º/11ª/12ª/18ª; LOJA aplica a 13ª.
+        iniciativa: { type: string, enum: [LOCATARIA, LOJA] }
+    # E217 — o que a cláusula manda reter/devolver, linha a linha. A tela usa
+    # para avisar ANTES do clique (molde do E211/E216); a resposta do próprio
+    # POST /cancelar usa para dizer o que aconteceu.
+    RescisaoLinha:
+      type: object
+      required: [descricao, clausula, retido, devolvido]
+      properties:
+        descricao: { type: string }
+        clausula: { type: string }
+        retido: { type: number }
+        devolvido: { type: number }
+    Rescisao:
+      type: object
+      required: [linhas, devolucaoTotal, retencaoTotal, aplicou18a, explicacao]
+      properties:
+        linhas:
+          type: array
+          items:
+            $ref: "#/components/schemas/RescisaoLinha"
+        devolucaoTotal: { type: number }
+        retencaoTotal: { type: number }
+        aplicou18a: { type: boolean }
+        explicacao: { type: string }
     # E95: o carnê é MENSAL POR DIA FIXO, com o grampo de fim de mês (dia 31
     # vira 28/02 e volta a 31/03). `periodicidadeDias` saiu: ela permitia
     # espaçar por N dias corridos, o que fazia o dia do vencimento andar todo
@@ -7525,7 +7569,7 @@ components:
       properties:
         id: { type: string }
         lojaId: { type: string }
-        tipo: { type: string, enum: [DESPESA, FORNECEDOR, SALARIO, COMISSAO] }
+        tipo: { type: string, enum: [DESPESA, FORNECEDOR, SALARIO, COMISSAO, DEVOLUCAO] }
         colaboradorId: { type: ["string", "null"] }
         competencia: { type: ["string", "null"] }
         descricao: { type: string }
@@ -7556,7 +7600,7 @@ components:
       type: object
       required: [tipo, descricao, valorPrevisto, vencimento]
       properties:
-        tipo: { type: string, enum: [DESPESA, FORNECEDOR, SALARIO, COMISSAO] }
+        tipo: { type: string, enum: [DESPESA, FORNECEDOR, SALARIO, COMISSAO, DEVOLUCAO] }
         colaboradorId: { type: string }
         competencia: { type: string }
         descricao: { type: string, minLength: 1 }

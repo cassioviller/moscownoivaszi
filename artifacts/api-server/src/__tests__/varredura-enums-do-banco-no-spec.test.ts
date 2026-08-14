@@ -208,10 +208,14 @@ describe("varredura — o enum do banco cabe no enum do spec (S-C34)", () => {
     // aqui prometeria um caminho que a geração não tem". A varredura casa por
     // valor e não tem como ver que a coluna é de outro tipo.
     "conta_pagar_tipo: COMISSAO": "recorrencias.tipo é text, e não gera COMISSAO",
+    // E217 — mesma razão, mesma lista: a recorrência é o que se repete todo
+    // mês por um combinado (E48); DEVOLUCAO nasce do `POST /cancelar`, de uma
+    // rescisão, nunca de uma recorrência.
+    "conta_pagar_tipo: DEVOLUCAO": "recorrencias.tipo é text, e não gera DEVOLUCAO",
   };
 
-  it("os recortes declarados são 2 — a lista não cresce em silêncio", () => {
-    expect(Object.keys(RECORTES)).toHaveLength(2);
+  it("os recortes declarados são 3 — a lista não cresce em silêncio", () => {
+    expect(Object.keys(RECORTES)).toHaveLength(3);
   });
 
   it("toda lista do spec que descreve um enum do banco prevê os valores DELE", () => {

@@ -109,6 +109,15 @@ export const contratosTable = pgTable("contratos", {
   atrasoParcelaId: text("atraso_parcela_id"),
   dataRetirada: timestamp("data_retirada", { withTimezone: true }),
   dataDevolucao: timestamp("data_devolucao", { withTimezone: true }),
+  /**
+   * D3/E217 — cláusula 18ª: "receberá o valor excedente à reserva se
+   * comunicar o cancelamento até ___ dias antes da retirada". O molde nunca
+   * preencheu o número — é negociado a cada contrato, não constante do
+   * código. `null` é "não pactuado": a 18ª não dispara, e a rescisão cai na
+   * regra geral da 11ª (dedução de 60%). O sistema não inventa prazo que
+   * ninguém acordou.
+   */
+  prazoDevolucaoReservaDias: integer("prazo_devolucao_reserva_dias"),
   observacoes: text("observacoes"),
   fechadoEm: timestamp("fechado_em", { withTimezone: true }).notNull().defaultNow(),
   comissaoEstornadaEm: timestamp("comissao_estornada_em", { withTimezone: true }),

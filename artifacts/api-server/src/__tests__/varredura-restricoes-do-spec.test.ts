@@ -150,7 +150,17 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
       // `AtrasoNaFila.maiorAtraso` do lado que não tem preço, e é de RESPOSTA
       // pela mesma razão: `diasDeAtraso` a calcula do fim do uso previsto até
       // hoje, e nenhuma borda a manda.
-    ).toBe(131);
+      //
+      // E217: 131 → 133, e os dois são de ENTRADA — a régua guarda os dois.
+      // `ContratoInput.prazoDevolucaoReservaDias` e
+      // `ContratoUpdate.prazoDevolucaoReservaDias` (D3, cláusula 18ª): o
+      // `POST /contratos` grava explicitamente
+      // (`prazoDevolucaoReservaDias: contratoData.prazoDevolucaoReservaDias ??
+      // null`) e o `PATCH` grava por `...parsed.data` — os dois viram coluna.
+      // O terceiro sítio, `Contrato.prazoDevolucaoReservaDias` na RESPOSTA, é
+      // `type: ["integer", "null"]` — a forma em array não casa com este
+      // regex (`type: integer` literal), e por isso não conta aqui.
+    ).toBe(133);
 
     // A outra ponta: se um dia o gerador aprender `.int()`, este número deixa
     // de ser zero e a régua acima vira ruído — é o sinal de trocar a varredura

@@ -150,7 +150,12 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // é `pecasForaSemContrato`, uma consulta plana seguida de uma conta pura —
     // não há `with` que possa esquecer um filho, e não há caminho em que o pai
     // chegue e a lista falte (vazia é `[]`, e `[]` é resposta).
-    expect(c.pares.length, "a fronteira mudou — um objeto aninhado nasceu, ou um pai passou a ser entregue").toBe(276);
+    // E217: 276 → 282. `Contrato.rescisao` (molde do `Parcela.mora`, E213) é
+    // NOVO PAR em toda operação que devolve `Contrato` — 5 delas
+    // (getContrato, createContrato, updateContrato, cancelarContrato e
+    // listContratos, que aninha em `itens`) — e o degrau de baixo,
+    // `Rescisao.linhas`, é um sexto par, só na fronteira de quem chega lá.
+    expect(c.pares.length, "a fronteira mudou — um objeto aninhado nasceu, ou um pai passou a ser entregue").toBe(282);
     /**
      * **E199/S-O114 — 147 → 165 entregues, e é o maior salto que esta conta já
      * deu.** Não entrou uma linha de porta: o motor deixou de parar na borda da
@@ -176,13 +181,21 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // `pecasForaSemContrato` porque as duas moram no mesmo arquivo, que é o que
     // o E199 ensinou a régua a fazer. Fosse o helper noutro módulo, ele
     // apareceria como aresta órfã — foi o vermelho que o E213 tomou.
-    expect(c.pares.filter((p) => p.entregue).length).toBe(177);
+    // E217: 177 → 179. Só o `POST /cancelar` povoa `rescisao` — o par
+    // `Contrato.rescisao` dele e o degrau `Rescisao.linhas` (escrito por
+    // extenso no handler, pela mesma razão do `mora: moraDe(p)` do E213)
+    // nascem ENTREGUES; os outros quatro `Contrato.rescisao` não (abaixo).
+    expect(c.pares.filter((p) => p.entregue).length).toBe(179);
     // E213: 89 → 99, e desta vez a coluna do NÃO cresce com razão. `Parcela` é
     // schema COMPARTILHADO: ela viaja em muitas respostas e só três montam a
     // `mora` (a fila de cobrança, o recebimento/perdão e o portal). É o mesmo
     // caso do `Lead.interesse`, que viaja em 27 respostas e 4 o carregam — o
     // par não entregue aqui é o schema fazendo o papel dele, não porta muda.
-    expect(c.pares.filter((p) => !p.entregue).length).toBe(99);
+    // E217: 99 → 103. `Contrato` é schema COMPARTILHADO como `Parcela`: viaja
+    // em cinco respostas e só o cancelamento entrega a rescisão — as outras
+    // quatro (`Contrato.rescisao` em getContrato/createContrato/
+    // updateContrato/listContratos) somam a coluna do NÃO, e é o esperado.
+    expect(c.pares.filter((p) => !p.entregue).length).toBe(103);
   });
 
   /**
@@ -269,6 +282,10 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     "BloqueioVestido.vestido",
     "Contrato.lead",
     "Contrato.parcelas",
+    // E217: `rescisao` é o molde do `Parcela.mora` — só o POST /cancelar a
+    // povoa; as outras quatro portas que devolvem Contrato não têm o que
+    // reter/devolver ainda, porque não houve rescisão.
+    "Contrato.rescisao",
     "Contrato.vendedora",
     "Lead.interesse",
     "LeadInteresse.atributos",

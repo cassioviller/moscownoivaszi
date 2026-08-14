@@ -111,6 +111,10 @@ export const contasPagarTable = pgTable("contas_pagar", {
   status: contaPagarStatusEnum("status").notNull().default("PREVISTA"),
   recorrenciaId: text("recorrencia_id"), // rastro da geração recorrente (será ref dps se necessário)
   origemComissaoFechamentoId: text("origem_comissao_fechamento_id"), // rastro da comissão (será ref dps)
+  // E217 (tipo DEVOLUCAO): qual contrato rescindido gerou esta dívida da loja.
+  // `set null` porque a conta é o rastro financeiro — apagar o contrato não
+  // pode apagar uma dívida já lançada.
+  origemContratoId: text("origem_contrato_id").references(() => contratosTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   // A idempotência da geração não pode depender só do check-then-insert da rota:

@@ -254,6 +254,9 @@ export const contaPagarTipoEnum = pgEnum("conta_pagar_tipo", [
   "FORNECEDOR",
   "SALARIO",
   "COMISSAO",
+  // E217/13ª §3º: o que a loja deve devolver numa rescisão (11ª, 12ª, 13ª,
+  // 18ª) — prazo de 30 dias, a mesma tabela que já representa dívida da loja.
+  "DEVOLUCAO",
 ]);
 
 export const contaPagarStatusEnum = pgEnum("conta_pagar_status", [

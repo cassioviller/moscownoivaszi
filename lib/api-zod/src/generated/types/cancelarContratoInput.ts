@@ -6,9 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CancelarContratoInputDestinoPago } from './cancelarContratoInputDestinoPago';
+import type { CancelarContratoInputIniciativa } from './cancelarContratoInputIniciativa';
 
 export interface CancelarContratoInput {
   /** @minLength 1 */
   motivo: string;
   destinoPago?: CancelarContratoInputDestinoPago;
+  iniciativa?: CancelarContratoInputIniciativa;
 }

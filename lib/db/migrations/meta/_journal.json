@@ -190,6 +190,13 @@
       "when": 1786651602819,
       "tag": "0026_broad_rockslide",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1786684074545,
+      "tag": "0027_red_the_order",
+      "breakpoints": true
     }
   ]
 }

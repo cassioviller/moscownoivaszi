@@ -2372,6 +2372,21 @@ export const ContratoFormaPagamento = {
   OUTRO: 'OUTRO',
 } as const;
 
+export interface RescisaoLinha {
+  descricao: string;
+  clausula: string;
+  retido: number;
+  devolvido: number;
+}
+
+export interface Rescisao {
+  linhas: RescisaoLinha[];
+  devolucaoTotal: number;
+  retencaoTotal: number;
+  aplicou18a: boolean;
+  explicacao: string;
+}
+
 export type ParcelaOrigem = typeof ParcelaOrigem[keyof typeof ParcelaOrigem];
 
 
@@ -2536,8 +2551,11 @@ export interface Contrato {
   /** @nullable */
   dataDevolucao?: string | null;
   /** @nullable */
+  prazoDevolucaoReservaDias?: number | null;
+  /** @nullable */
   observacoes?: string | null;
   fechadoEm: string;
+  rescisao?: Rescisao | null;
   parcelas?: Parcela[];
   itens?: ContratoItem[];
   lead?: Lead;
@@ -2585,6 +2603,7 @@ export interface ContratoInput {
   dataCasamento?: string;
   dataRetirada?: string;
   dataDevolucao?: string;
+  prazoDevolucaoReservaDias?: number;
   observacoes?: string;
   parcelas?: ContratoInputParcelasItem[];
 }
@@ -2609,6 +2628,7 @@ export interface ContratoUpdate {
   dataCasamento?: string;
   dataRetirada?: string;
   dataDevolucao?: string;
+  prazoDevolucaoReservaDias?: number;
   observacoes?: string;
 }
 
@@ -2620,10 +2640,19 @@ export const CancelarContratoInputDestinoPago = {
   estornar: 'estornar',
 } as const;
 
+export type CancelarContratoInputIniciativa = typeof CancelarContratoInputIniciativa[keyof typeof CancelarContratoInputIniciativa];
+
+
+export const CancelarContratoInputIniciativa = {
+  LOCATARIA: 'LOCATARIA',
+  LOJA: 'LOJA',
+} as const;
+
 export interface CancelarContratoInput {
   /** @minLength 1 */
   motivo: string;
   destinoPago?: CancelarContratoInputDestinoPago;
+  iniciativa?: CancelarContratoInputIniciativa;
 }
 
 export interface GerarPlanoInput {
