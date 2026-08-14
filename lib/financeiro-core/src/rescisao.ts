@@ -69,6 +69,24 @@ import { addDias, diaLocal } from "./datas";
  * não desconta o uso já ocorrido — fica contável, não é o caso comum.
  */
 
+/**
+ * 11ª — a dedução da multa de rescisão, em pontos percentuais do que sobrou
+ * depois da reserva (8ª §2º) e das peças exclusivas (12ª).
+ *
+ * **Nasceu como o literal `0.4` dentro da conta** (E217), e sair de lá não é
+ * enfeite: a `varredura-manuais-prazos` prega o manual contra a fonte lendo
+ * `const NOME = <expr>;` — **número sem nome é invisível para ela**, e o manual
+ * pode escrever 50% com a suíte verde. É a S-C95 pela raiz, e a mesma razão do
+ * `MULTA_DE_ATRASO` ao lado.
+ */
+export const DEDUCAO_DA_RESCISAO_PCT = 60;
+
+/**
+ * 13ª §3º — o prazo para a LOCADORA devolver o que deve, quando é ela quem
+ * rescinde. Mesma história: era um `30` solto em `routes/contratos.ts`.
+ */
+export const PRAZO_DEVOLUCAO_DA_LOJA_DIAS = 30;
+
 /** Um item do contrato, com o que a conta da rescisão precisa saber dele. */
 export type ItemDaRescisao = {
   descricao: string;
@@ -188,7 +206,9 @@ export function calcularRescisao(e: EntradaDaRescisao): Rescisao {
       : false;
   const aplicou18a = pagouIntegral && dentroDoPrazo18a;
 
-  const devolucaoComumC = aplicou18a ? restanteComumC : Math.round(restanteComumC * 0.4);
+  const devolucaoComumC = aplicou18a
+    ? restanteComumC
+    : Math.round((restanteComumC * (100 - DEDUCAO_DA_RESCISAO_PCT)) / 100);
   const multaComumC = restanteComumC - devolucaoComumC;
 
   const linhas: LinhaDaRescisao[] = [];
@@ -210,7 +230,9 @@ export function calcularRescisao(e: EntradaDaRescisao): Rescisao {
   }
   if (restanteComumC > 0) {
     linhas.push({
-      descricao: aplicou18a ? "Demais peças (18ª — sem dedução)" : "Demais peças (multa de 60%)",
+      descricao: aplicou18a
+        ? "Demais peças (18ª — sem dedução)"
+        : `Demais peças (multa de ${DEDUCAO_DA_RESCISAO_PCT}%)`,
       clausula: aplicou18a ? "18ª" : "11ª",
       retido: reais(multaComumC),
       devolvido: reais(devolucaoComumC),

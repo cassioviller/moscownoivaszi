@@ -73,6 +73,9 @@ import {
   inicioDoDia,
   liquidoEmCentavos,
   montarPlanoParcelas,
+  // 13ª §3º — o prazo da devolução quando é a LOJA que rescinde. Era um `30`
+  // solto aqui; virou constante para a régua dos manuais poder pregá-lo (S-C95).
+  PRAZO_DEVOLUCAO_DA_LOJA_DIAS,
   reais,
   reancorarDataDeNegocio,
   STATUS_ABERTO,
@@ -1844,7 +1847,7 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
         tipo: "DEVOLUCAO",
         descricao: `Devolução — rescisão do contrato de ${contrato.vestidoDescricao ?? "locação"} (${rescisao.explicacao})`,
         valorPrevisto: rescisao.devolucaoTotal,
-        vencimento: inicioDoDia(addDias(diaLocal(agora), 30)),
+        vencimento: inicioDoDia(addDias(diaLocal(agora), PRAZO_DEVOLUCAO_DA_LOJA_DIAS)),
         origemContratoId: contrato.id,
       });
     }
