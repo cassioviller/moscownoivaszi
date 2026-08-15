@@ -198,8 +198,16 @@ const sitio = (p: Porta): string => `${p.arquivo}:${p.linha} ${p.verbo}(${p.tabe
  * transação porque dizem coisas diferentes — uma carimba o `updatedAt` sempre,
  * a outra só apaga o vínculo legado **quando ele aponta a reserva que está
  * saindo** (o `and` com o valor antigo é o que a mantém honesta).
+ *
+ * **E235 (2026-08-15): 62 portas · 37 TRANCA · 12 CAS · 13 ABERTA.** A porta a
+ * mais é o **carimbo DERIVADO da parcela** em `conciliacao/marcar`: quando o
+ * último ato de recebimento de uma parcela dividida é carimbado, um `update`
+ * de `parcelas` grava o `conciliado_em` dela — com `isNull(conciliadoEm)` no
+ * `where`, que é a mesma CAS do carimbo direto ao lado. O `insert` em
+ * `conciliacao_de_recebimentos` (`onConflictDoNothing`) não é porta: a tabela
+ * não é quente.
  */
-const RETRATO = { TRANCA: 37, CAS: 11, ABERTA: 13 } as const;
+const RETRATO = { TRANCA: 37, CAS: 12, ABERTA: 13 } as const;
 
 /**
  * O retrato da ORDEM, travado pelo mesmo critério — e é ele que estava 1 e 2
@@ -460,7 +468,7 @@ describe("varredura — a enumeração das portas de escrita", () => {
    * (`contratos.ts`), e o vermelho `expected 57 to be 56` foi o que cobrou este
    * parágrafo.
    */
-  it("acha as portas — são 61, e o total é o retrato somado", () => {
+  it("acha as portas — são 62, e o total é o retrato somado", () => {
     expect(portas.length).toBe(RETRATO.TRANCA + RETRATO.CAS + RETRATO.ABERTA);
   });
 

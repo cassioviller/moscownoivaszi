@@ -9,4 +9,6 @@
 export interface MarcarConciliadoInput {
   parcelaIds?: string[];
   pagamentoIds?: string[];
+  /** E235 — ids de ATO de recebimento (a linha PARCELA_RECEBIDA da trilha), o que a tela recebe como recibo:<atoId> */
+  reciboIds?: string[];
 }

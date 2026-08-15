@@ -4,11 +4,9 @@ import { comFiltros } from "@/lib/filtro-url";
 import { useAuth } from "@/hooks/use-auth";
 import { podeNoModulo } from "@/lib/permissoes";
 import {
-  useListParcelas,
-  getListParcelasQueryKey,
-  useListPagamentos,
-  getListPagamentosQueryKey,
   useMarcarConciliado,
+  useListMovimentosConciliacao,
+  getListMovimentosConciliacaoQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   parseExtrato,
   conciliarExtrato,
-  diaLocal,
+
   addDias,
   type TransacaoExtrato,
   type MovimentoSistema,
@@ -87,23 +85,17 @@ export default function Conciliacao() {
   }, [transacoes]);
 
   /**
-   * ATENÇÃO ao parâmetro: `de`/`ate` de `listParcelas` recortam por
-   * VENCIMENTO, e esta tela compara por `recebidoEm`. Usá-los aqui apagaria da
-   * conciliação toda parcela recebida num mês diferente do de vencimento — ou
-   * seja, exatamente as pagas em atraso, que são as que dão trabalho de
-   * conferir. O recorte certo é `recebidasDe` (E79), que filtra pelo dia do
-   * RECEBIMENTO; o teto fica com o filtro do cliente, logo abaixo.
+   * E235 (S-C51, respondida em 15/08/2026: por PAGAMENTO) — os movimentos do
+   * sistema nascem no SERVIDOR, pela mesma leitura do caixa realizado, um por
+   * ato de recebimento. Esta tela montava um movimento por PARCELA a partir de
+   * `listParcelas` + `listPagamentos`, datado pelo último pedaço, e uma
+   * parcela paga em dois PIX contra as duas linhas do banco dava TRÊS
+   * divergências falsas. A janela é a do extrato; o recorte por dia LOCAL é
+   * do servidor (antes era `recebidasDe` mais um teto no cliente).
    */
-  const paramsRecebidas = janela ? { recebidasDe: janela.de } : undefined;
-  const parcelas = useListParcelas(activeLojaId!, paramsRecebidas, {
+  const movimentosQuery = useListMovimentosConciliacao(activeLojaId!, janela ?? { de: "", ate: "" }, {
     query: {
-      queryKey: getListParcelasQueryKey(activeLojaId!, paramsRecebidas),
-      enabled: !!activeLojaId && !!paramsRecebidas,
-    },
-  });
-  const pagamentos = useListPagamentos(activeLojaId!, janela, {
-    query: {
-      queryKey: getListPagamentosQueryKey(activeLojaId!, janela),
+      queryKey: getListMovimentosConciliacaoQueryKey(activeLojaId!, janela ?? { de: "", ate: "" }),
       enabled: !!activeLojaId && !!janela,
     },
   });
@@ -135,40 +127,23 @@ export default function Conciliacao() {
    * contar o mesmo dinheiro duas vezes no caixa. E se uma query falhasse, o
    * veredito errado ficava PARA SEMPRE, sem uma linha de erro.
    */
-  const consultas = estadoDasConsultas(parcelas, pagamentos);
+  const consultas = estadoDasConsultas(movimentosQuery);
 
   const conciliacao = useMemo(() => {
     if (!transacoes || transacoes.length === 0 || !janela) return null;
-    // C2: sem as duas respostas não existe veredito — nem para computar.
-    if (!parcelas.data || !pagamentos.data) return null;
-    const { de: inicio, ate: fim } = janela;
-
-    const movimentos: MovimentoSistema[] = [];
-    for (const p of parcelas.data ?? []) {
-      if (!p.recebidoEm || !p.valorRecebido) continue;
-      const dia = diaLocal(p.recebidoEm);
-      if (dia < inicio || dia > fim) continue;
-      movimentos.push({
-        id: `parcela:${p.id}`,
-        data: dia,
-        valor: p.valorRecebido,
-        tipo: "recebimento",
-        descricao: `${p.numero === 0 ? "Entrada" : `Parcela ${p.numero}`}${p.descricao ? ` · ${p.descricao}` : ""}`,
-      });
-    }
-    for (const pg of pagamentos.data ?? []) {
-      const dia = diaLocal(pg.data);
-      if (dia < inicio || dia > fim) continue;
-      movimentos.push({
-        id: `pagamento:${pg.id}`,
-        data: dia,
-        valor: pg.valorPago,
-        tipo: "pagamento",
-        descricao: pg.colaborador?.nome ?? pg.observacoes ?? "Pagamento",
-      });
-    }
+    // C2: sem a resposta não existe veredito — nem para computar.
+    if (!movimentosQuery.data) return null;
+    // O motor de casamento (E70) recebe só o que compara — o carimbo fica de
+    // fora dele de propósito (ver `carimboPorMovimento`).
+    const movimentos: MovimentoSistema[] = movimentosQuery.data.map((m) => ({
+      id: m.id,
+      data: m.data,
+      valor: m.valor,
+      tipo: m.tipo,
+      descricao: m.descricao,
+    }));
     return conciliarExtrato(transacoes, movimentos);
-  }, [transacoes, janela, parcelas.data, pagamentos.data]);
+  }, [transacoes, janela, movimentosQuery.data]);
 
   /**
    * F32/E103 — o carimbo por id SINTÉTICO, num mapa ao lado.
@@ -176,14 +151,14 @@ export default function Conciliacao() {
    * Ele não entra no `MovimentoSistema` de propósito: aquele tipo é do motor de
    * CASAMENTO (`conciliarExtrato`), que compara valor e data e não tem por que
    * saber o que é conciliação. Misturar as duas coisas faria o núcleo do E70
-   * carregar um conceito do E103.
+   * carregar um conceito do E103. Desde o E235 o carimbo vem com o movimento
+   * (`recibo:` por ato, `parcela:` e `pagamento:` como antes).
    */
   const carimboPorMovimento = useMemo(() => {
     const mapa = new Map<string, string | null>();
-    for (const p of parcelas.data ?? []) mapa.set(`parcela:${p.id}`, p.conciliadoEm ?? null);
-    for (const pg of pagamentos.data ?? []) mapa.set(`pagamento:${pg.id}`, pg.conciliadoEm ?? null);
+    for (const m of movimentosQuery.data ?? []) mapa.set(m.id, m.conciliadoEm ?? null);
     return mapa;
-  }, [parcelas.data, pagamentos.data]);
+  }, [movimentosQuery.data]);
 
   const marcar = useMarcarConciliado();
   const queryClient = useQueryClient();
@@ -215,26 +190,24 @@ export default function Conciliacao() {
       ),
     [conciliacao, carimboPorMovimento, soNaoConciliado],
   );
-
   async function onMarcarConciliadas() {
     const parcelaIds: string[] = [];
     const pagamentoIds: string[] = [];
+    const reciboIds: string[] = [];
     for (const { movimento } of casadasNovas) {
       const [tipo, id] = movimento.id.split(":");
       if (tipo === "parcela") parcelaIds.push(id);
+      else if (tipo === "recibo") reciboIds.push(id);
       else pagamentoIds.push(id);
     }
     try {
       const r = await marcar.mutateAsync({
         lojaId: activeLojaId!,
-        data: { parcelaIds, pagamentoIds },
+        data: { parcelaIds, pagamentoIds, reciboIds },
       });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getListParcelasQueryKey(activeLojaId!) }),
-        queryClient.invalidateQueries({ queryKey: getListPagamentosQueryKey(activeLojaId!) }),
-      ]);
+      await queryClient.invalidateQueries({ queryKey: getListMovimentosConciliacaoQueryKey(activeLojaId!) });
       toast({
-        title: `${r.parcelas + r.pagamentos} movimento(s) conferido(s)`,
+        title: `${r.parcelas + r.pagamentos + r.recibos} movimento(s) conferido(s)`,
         description: "Na próxima conciliação eles não voltam como novidade.",
       });
     } catch (err) {
@@ -301,10 +274,9 @@ export default function Conciliacao() {
       {transacoes && transacoes.length > 0 && consultas === "erro" && (
         <Erro
           titulo="Não deu para comparar com o sistema"
-          erro={parcelas.error ?? pagamentos.error}
+          erro={movimentosQuery.error}
           onTentarNovamente={() => {
-            void parcelas.refetch();
-            void pagamentos.refetch();
+            void movimentosQuery.refetch();
           }}
         />
       )}

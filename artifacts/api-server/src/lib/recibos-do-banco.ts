@@ -1,6 +1,8 @@
-import { auditLogTable, db } from "@workspace/db";
-import { and, eq, inArray, or, sql } from "drizzle-orm";
+import { auditLogTable, db, parcelasTable } from "@workspace/db";
+import { and, eq, gte, inArray, isNotNull, lt, or, sql } from "drizzle-orm";
+import { addDias, inicioDoDia } from "@workspace/financeiro-core";
 import type { LinhaDaTrilha } from "./recibo-do-papel";
+import { porRecebimento, type ParcelaDoCaixa } from "./recebimentos-do-caixa";
 
 /**
  * E221 — as linhas de trilha que o recibo lê, num tiro só.
@@ -104,4 +106,49 @@ export async function parcelasComRecebimentoNaJanela(
       ),
     );
   return linhas.map((l) => l.entidadeId);
+}
+
+/**
+ * S-C31 — as parcelas do caixa REALIZADO da janela, uma linha por recebimento.
+ *
+ * As três leituras do realizado (fluxo, CSV do fluxo e DRE) recortavam por
+ * `parcelas.recebido_em`, que guarda **só o último pedaço**: R$ 300,00 que
+ * entraram em 01/03 eram contados no dia 15/03, quando os R$ 700,00 quitaram a
+ * parcela. Aqui a mesma janela é respondida em dois passos, e os dois são
+ * necessários:
+ *
+ * 1. **quem entra na consulta** — o `recebido_em` da janela (o de sempre) MAIS
+ *    as parcelas com um ato dentro dela e o `recebido_em` fora (sem isso, o mês
+ *    do pedaço antigo continuaria vazio);
+ * 2. **como cada linha é datada** — `porRecebimento` divide o que a trilha
+ *    fecha e deixa intacto o que ela não fecha.
+ *
+ * O total do período NÃO muda por isso: o que muda é o dia (e a forma) de cada
+ * pedaço. Quem recorta a janela continua sendo o motor do `financeiro-core`,
+ * sobre o superconjunto que o SQL entrega.
+ *
+ * **E235**: saíram de `routes/financeiro.ts` para cá porque a conciliação passou
+ * a montar os movimentos do sistema pela mesma leitura — quatro leituras, uma
+ * régua.
+ */
+export async function realizadoPorRecebimento<T extends ParcelaDoCaixa>(
+  lojaId: string,
+  parcelas: readonly T[],
+): Promise<T[]> {
+  const alvos = parcelas.flatMap((p) => [p.id, p.contratoId]);
+  return porRecebimento(parcelas, await trilhaDosRecebimentos(lojaId, alvos));
+}
+
+/** O `WHERE` do passo 1: o `recebido_em` da janela ou um ato dentro dela. */
+export async function recebidasNaJanela(lojaId: string, iniYMD: string, fimYMD: string) {
+  const de = inicioDoDia(iniYMD);
+  const ate = inicioDoDia(addDias(fimYMD, 1));
+  const comAto = await parcelasComRecebimentoNaJanela(lojaId, de, ate);
+  return and(
+    eq(parcelasTable.lojaId, lojaId),
+    or(
+      and(isNotNull(parcelasTable.recebidoEm), gte(parcelasTable.recebidoEm, de), lt(parcelasTable.recebidoEm, ate)),
+      ...(comAto.length > 0 ? [inArray(parcelasTable.id, comAto)] : []),
+    ),
+  );
 }

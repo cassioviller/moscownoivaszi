@@ -67,7 +67,9 @@ test.describe("Configurações — Dados da loja (E234)", () => {
     await page.locator("#loja-pix-chave").fill("23723482805");
     await page.locator("#loja-pix-titular").fill("Karina Shabalina");
     await page.getByRole("button", { name: /Salvar dados/ }).click();
-    await expect(page.getByText("Dados da loja salvos")).toBeVisible();
+    // `.first()`: o toast e a região viva do leitor de tela trazem a mesma frase
+    // (medido: "resolved to 2 elements" no terceiro E2E do dia, e não nos dois antes).
+    await expect(page.getByText("Dados da loja salvos").first()).toBeVisible();
 
     await page.reload();
     await page.waitForLoadState("networkidle");

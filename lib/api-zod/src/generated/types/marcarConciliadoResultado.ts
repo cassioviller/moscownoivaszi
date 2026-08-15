@@ -10,4 +10,6 @@ export interface MarcarConciliadoResultado {
   /** Quantas parcelas passaram de nao-conciliadas a conciliadas */
   parcelas: number;
   pagamentos: number;
+  /** E235 — quantos ATOS de recebimento passaram a carimbados */
+  recibos: number;
 }

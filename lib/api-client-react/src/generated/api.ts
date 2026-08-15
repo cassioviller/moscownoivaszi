@@ -150,6 +150,7 @@ import type {
   ListContratosParams,
   ListLeadsParams,
   ListLookbooksParams,
+  ListMovimentosConciliacaoParams,
   ListOrcamentosParams,
   ListPagamentosParams,
   ListParcelasParams,
@@ -170,6 +171,7 @@ import type {
   MembroEquipeInput,
   MembroEquipeUpdate,
   MinhaComissao,
+  MovimentoDoSistema,
   Orcamento,
   OrcamentoAceitoSemContrato,
   OrcamentoInput,
@@ -14684,6 +14686,96 @@ export const useEnviarContabilidade = <TError = ErrorType<void>,
       return useMutation(getEnviarContabilidadeMutationOptions(options));
     }
 
+export const getListMovimentosConciliacaoUrl = (lojaId: string,
+    params: ListMovimentosConciliacaoParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/financeiro/conciliacao/movimentos?${stringifiedParams}` : `/api/lojas/${lojaId}/financeiro/conciliacao/movimentos`
+}
+
+/**
+ * E235 (S-C51, respondida em 15/08/2026: por pagamento) — a tela montava um movimento por PARCELA, datado pelo último pedaço, e uma parcela paga em dois PIX (R$ 300,00 em 01/03 e R$ 700,00 em 15/03) contra as duas linhas do banco dava TRÊS divergências falsas. Aqui os movimentos nascem no servidor, pela MESMA leitura do caixa realizado (S-C31): a parcela cuja trilha fecha vira um movimento por ato (`recibo:<atoId>`, o id da linha da trilha que o recibo cita); a que não se divide (um ato, sem ato, trilha que não fecha) continua `parcela:<id>`; a saída é `pagamento:<id>`. Cada um traz o SEU carimbo `conciliadoEm` (por ato na `conciliacao_de_recebimentos`; a parcela inteira carimbada antes do E235 cobre os pedaços dela). A janela é por dia LOCAL do movimento, inclusiva nas duas pontas.
+ * @summary Os movimentos do sistema que a conciliação compara com o extrato — um por PAGAMENTO
+ */
+export const listMovimentosConciliacao = async (lojaId: string,
+    params: ListMovimentosConciliacaoParams, options?: RequestInit): Promise<MovimentoDoSistema[]> => {
+
+  return customFetch<MovimentoDoSistema[]>(getListMovimentosConciliacaoUrl(lojaId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMovimentosConciliacaoQueryKey = (lojaId: string,
+    params?: ListMovimentosConciliacaoParams,) => {
+    return [
+    `/api/lojas/${lojaId}/financeiro/conciliacao/movimentos`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListMovimentosConciliacaoQueryOptions = <TData = Awaited<ReturnType<typeof listMovimentosConciliacao>>, TError = ErrorType<void>>(lojaId: string,
+    params: ListMovimentosConciliacaoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMovimentosConciliacao>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMovimentosConciliacaoQueryKey(lojaId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMovimentosConciliacao>>> = ({ signal }) => listMovimentosConciliacao(lojaId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMovimentosConciliacao>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMovimentosConciliacaoQueryResult = NonNullable<Awaited<ReturnType<typeof listMovimentosConciliacao>>>
+export type ListMovimentosConciliacaoQueryError = ErrorType<void>
+
+
+/**
+ * @summary Os movimentos do sistema que a conciliação compara com o extrato — um por PAGAMENTO
+ */
+
+export function useListMovimentosConciliacao<TData = Awaited<ReturnType<typeof listMovimentosConciliacao>>, TError = ErrorType<void>>(
+ lojaId: string,
+    params: ListMovimentosConciliacaoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMovimentosConciliacao>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMovimentosConciliacaoQueryOptions(lojaId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getMarcarConciliadoUrl = (lojaId: string,) => {
 
 
@@ -14693,7 +14785,7 @@ export const getMarcarConciliadoUrl = (lojaId: string,) => {
 }
 
 /**
- * F32/E103 — a conciliação passa a ter memória. O corpo traz DUAS listas de ids, e não uma: o que a tela chama de "movimento do sistema" é montado de `parcelas` e de `pagamentos`, com ids sintéticos (`parcela:<id>` e `pagamento:<id>`). Não existe entidade "movimento" para receber um PATCH, e inventá-la seria criar um recurso para caber num verbo.
+ * F32/E103 — a conciliação passa a ter memória. E235: o corpo traz TRÊS listas de ids, e não uma: o que a tela chama de "movimento do sistema" é montado de `parcelas` e de `pagamentos`, com ids sintéticos (`parcela:<id>` e `pagamento:<id>`) e, desde o E235, dos ATOS de recebimento (`recibo:<atoId>`, carimbados por ato em `conciliacao_de_recebimentos`; quando todos os atos de uma parcela estão carimbados, o `conciliado_em` dela é DERIVADO — a coluna fica, para o filtro e para a parcela sem ato). Não existe entidade "movimento" para receber um PATCH, e inventá-la seria criar um recurso para caber num verbo.
  * Idempotente por construção: o WHERE exige `conciliado_em IS NULL`, então remarcar o mesmo lote devolve zero sem tocar no carimbo antigo — a mesma forma de `enviarContabilidade`. Id de outra loja não é erro: o WHERE filtra por `loja_id` e ele simplesmente não é marcado.
  * @summary Carimba conciliadoEm nos movimentos que casaram com o extrato
  */

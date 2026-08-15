@@ -117,11 +117,14 @@ describe("E121 — as cinco telas leem o estado de cada consulta que disparam", 
   const pagina = (relativo: string) =>
     readFileSync(path.resolve(import.meta.dirname, "..", "pages", relativo), "utf-8");
 
-  it("a conciliação gateia o veredito pelas DUAS consultas", () => {
+  it("a conciliação gateia o veredito pela consulta dos movimentos (E235: uma só, no servidor)", () => {
     const fonte = pagina("financeiro/conciliacao.tsx");
-    expect(fonte).toContain("estadoDasConsultas(parcelas, pagamentos)");
-    // O useMemo do veredito exige as duas respostas — sem elas, null.
-    expect(fonte).toMatch(/!parcelas\.data\s*\|\|\s*!pagamentos\.data/);
+    // Até o E235 eram DUAS (`parcelas`, `pagamentos`) montadas na tela; desde
+    // ele os movimentos nascem no servidor, um por pagamento, e a tela lê UMA
+    // consulta — o gate continua sendo o mesmo: sem resposta, sem veredito.
+    expect(fonte).toContain("estadoDasConsultas(movimentosQuery)");
+    // O useMemo do veredito exige a resposta — sem ela, null.
+    expect(fonte).toMatch(/if \(!movimentosQuery\.data\) return null/);
   });
 
   it("a fila do dia lê as três consultas das seções e cada seção tem o próprio erro", () => {

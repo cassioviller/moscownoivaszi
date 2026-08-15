@@ -177,3 +177,58 @@ test.describe("Conciliação por extrato (E70)", () => {
     await expect(page.getByText(/Nenhuma transação reconhecida/).first()).toBeVisible();
   });
 });
+
+/**
+ * E235 (S-C51, respondida em 15/08/2026: por PAGAMENTO) — a parcela paga em
+ * DOIS PIX casa as duas linhas do banco, na tela. Antes deste épico a tela
+ * montava um movimento por parcela, datado pelo último pedaço, e o mesmo
+ * extrato dava "Bateu 0 · Só no banco 2 · Só no sistema 1" — três divergências
+ * falsas de um pagamento certo. Os dois recebimentos entram pela PORTA (é ela
+ * que escreve a linha da trilha, E221); o extrato traz as duas linhas.
+ */
+test.describe("Conciliação por pagamento (E235)", () => {
+  const stamp = Date.now();
+  // Valores únicos por execução (a lição do VALOR acima), em dias fixos e futuros.
+  const P1 = Number((300 + (stamp % 10000) / 100).toFixed(2));
+  const P2 = Number((700 + (stamp % 7000) / 100).toFixed(2));
+  let leadId: string;
+
+  test.beforeAll(async ({ request }) => {
+    await request.post(`${API_URL}/api/auth/login`, { data: { email: estado.adminEmail, senha: estado.senha } });
+    await request.post(`${API_URL}/api/auth/selecionar-loja`, { data: { lojaId: estado.lojaId } });
+    const lead = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/leads`, { data: { noivaNome: `E2E Dois PIX ${stamp}` } });
+    leadId = (await lead.json()).id;
+    const admin = await db.query.usuariosTable.findFirst({ where: (u, { eq: eq_ }) => eq_(u.email, estado.adminEmail) });
+    const contratoId = randomUUID();
+    await db.insert(contratosTable).values({ id: contratoId, lojaId: estado.lojaId, leadId, vendedoraId: admin!.id, status: "ATIVO", valorTotal: P1 + P2, fechadoEm: new Date() });
+    const parcelaId = randomUUID();
+    await db.insert(parcelasTable).values({ id: parcelaId, lojaId: estado.lojaId, contratoId, numero: 1, valorPrevisto: P1 + P2, vencimento: new Date("2027-06-20T12:00:00-03:00") });
+    for (const [valor, dia] of [[P1, "2027-06-01"], [P2, "2027-06-15"]] as const) {
+      const r = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/parcelas/${parcelaId}/receber`, {
+        data: { valorRecebido: valor, recebidoEm: `${dia}T12:00:00-03:00`, formaRecebimento: "PIX" },
+      });
+      expect(r.ok()).toBe(true);
+    }
+  });
+
+  test.afterAll(async () => {
+    if (!leadId) return;
+    const contratos = await db.select({ id: contratosTable.id }).from(contratosTable).where(eq(contratosTable.leadId, leadId));
+    for (const c of contratos) {
+      await db.delete(parcelasTable).where(eq(parcelasTable.contratoId, c.id));
+      await db.delete(contratosTable).where(eq(contratosTable.id, c.id));
+    }
+    await db.delete(leadsTable).where(eq(leadsTable.id, leadId));
+  });
+
+  test("os dois PIX de uma parcela casam as duas linhas do banco — zero divergência", async ({ page }) => {
+    await page.goto(`/loja/${estado.lojaId}/financeiro/conciliacao`);
+    const csv = [`Data,Descrição,Valor`, `01/06/2027,PIX noiva primeiro,${P1}`, `15/06/2027,PIX noiva segundo,${P2}`].join("\n");
+    await page.getByTestId("input-extrato").setInputFiles({ name: "extrato-dois-pix.csv", mimeType: "text/csv", buffer: Buffer.from(csv, "utf-8") });
+    await expect(page.getByText("Bateu", { exact: true })).toBeVisible();
+    // Nenhuma das duas linhas do banco sobra como pendência.
+    await expect(page.getByText("No banco, mas não no sistema")).not.toBeVisible();
+    await expect(page.getByText("PIX noiva primeiro")).not.toBeVisible();
+    await expect(page.getByText("PIX noiva segundo")).not.toBeVisible();
+  });
+});

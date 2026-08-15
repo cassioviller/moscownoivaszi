@@ -101,7 +101,7 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
    * perguntar se aquele campo precisa mesmo ser inteiro na borda. Se precisar,
    * a rota guarda (como P5) e o número aqui sobe junto, com a decisão escrita.
    */
-  it("120 `type: integer` no spec, e o zod gerado não traduz nenhum", () => {
+  it("133 `type: integer` no spec, e o zod gerado não traduz nenhum", () => {
     const inteiros = inteirosDoSpec();
     expect(
       inteiros.length,
@@ -166,7 +166,11 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
       // `null` passou a APAGAR), então ele saiu deste regex pelo MESMO motivo
       // do parágrafo acima. A guarda de entrada não mudou: o `PATCH` continua
       // gravando por `...parsed.data`, agora inclusive o `null`.
-    ).toBe(132);
+      //
+      // E235: 132 → 133. `MarcarConciliadoResultado.recibos` — quantos ATOS o
+      // carimbo marcou. É RESPOSTA, montada por extenso no handler (`atos.length`);
+      // nenhuma entrada nova de inteiro.
+    ).toBe(133);
 
     // A outra ponta: se um dia o gerador aprender `.int()`, este número deixa
     // de ser zero e a régua acima vira ruído — é o sinal de trocar a varredura
@@ -262,7 +266,7 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
    * as chamadas peneiradas; a garantia de que nenhuma escapou é da
    * `varredura-datas-nao-aceitam-nulo`, que mede por EFEITO.
    */
-  it("926 datas coercidas — todas peneiradas pelo `dataDoCorpo()`, que recusa o `null`", () => {
+  it("927 datas coercidas — todas peneiradas pelo `dataDoCorpo()`, que recusa o `null`", () => {
     // E228: 892 → 910. O `orfaoSeguraAte` (S-C60) entrou no `BloqueioVestido`,
     // que viaja em 18 respostas — uma coluna nova num schema compartilhado
     // multiplica pelo número de portas que o serializam. Todas são SAÍDA
@@ -285,7 +289,10 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
     expect(
       coeridas,
       "mudou o número de datas coercidas? A guarda do V12 (`reservas.ts`) é campo a campo, não global",
-    ).toBe(926);
+      // E235: 926 → 927. `MovimentoDoSistema.conciliadoEm` (`date-time`, nullable) na
+      // RESPOSTA do `listMovimentosConciliacao` — `dataDoCorpo().nullable()`, e o `null`
+      // é o valor legítimo ("ainda não conferido"); a guarda do V12 não muda.
+    ).toBe(927);
 
     // S-C281 — e nenhuma sobrou crua. O hook do `orval.config.ts` é um gesto
     // que se pode desligar; se alguém o desligar, o número acima continua 916

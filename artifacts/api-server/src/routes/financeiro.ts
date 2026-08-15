@@ -8,6 +8,7 @@ import {
   recorrenciasTable,
   saldosReferenciaTable,
   auditLogTable,
+  conciliacaoDeRecebimentosTable,
 } from "@workspace/db";
 import { eq, and, or, inArray, gte, lt, lte, desc, isNull, isNotNull, count, sql } from "drizzle-orm";
 import {
@@ -34,6 +35,8 @@ import {
   ListAuditoriaResponse,
   MarcarConciliadoBody,
   MarcarConciliadoResponse,
+  ListMovimentosConciliacaoQueryParams,
+  ListMovimentosConciliacaoResponse,
   ListAuditoriaQueryParams,
   ListAutoresAuditoriaResponse,
   ExportarAuditoriaQueryParams,
@@ -91,8 +94,10 @@ import { movimentosDoFluxo, linhasCsvFluxo } from "../lib/fluxo";
 // S-C31 — o caixa realizado data cada recebimento pelo dia dele, e o dia de
 // cada ato mora na trilha desde o E221. A régua está em
 // `lib/recebimentos-do-caixa.ts`; a leitura é a mesma do recibo da cláusula 7ª.
-import { porRecebimento, type ParcelaDoCaixa } from "../lib/recebimentos-do-caixa";
-import { parcelasComRecebimentoNaJanela, trilhaDosRecebimentos } from "../lib/recibos-do-banco";
+// (o `porRecebimento` é chamado por `realizadoPorRecebimento`, na lib)
+import { realizadoPorRecebimento, recebidasNaJanela, trilhaDosRecebimentos } from "../lib/recibos-do-banco";
+import { movimentosDoSistema } from "../lib/conciliacao-do-sistema";
+import { recibosDaParcela } from "../lib/recibo-do-papel";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
 
@@ -583,21 +588,47 @@ router.post("/lojas/:lojaId/financeiro/pagamentos/:pagamentoId/estornar", async 
 });
 
 /**
+ * E235 (S-C51) — os movimentos do sistema, um por PAGAMENTO, montados no
+ * servidor pela mesma leitura do caixa. A tela comparava por PARCELA e produzia
+ * três divergências falsas de um pagamento em dois PIX; ver
+ * `lib/conciliacao-do-sistema.ts`.
+ */
+router.get("/lojas/:lojaId/financeiro/conciliacao/movimentos", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const query = ListMovimentosConciliacaoQueryParams.safeParse(req.query);
+  if (!query.success || query.data.de > query.data.ate) {
+    res.status(400).json({ error: "FILTRO_INVALIDO" });
+    return;
+  }
+  const movimentos = await movimentosDoSistema(lojaId, query.data.de, query.data.ate);
+  res.json(ListMovimentosConciliacaoResponse.parse(movimentos));
+});
+
+/**
  * F32/E103 — a conciliação passa a ter memória.
  *
  * Ela era uma FOTOGRAFIA: a tela não tinha uma única mutation, o resultado
  * morria com a aba, e todo mês se refazia o mesmo trabalho — com as divergências
  * já olhadas e perdoadas voltando indistinguíveis das novas.
  *
- * **Duas listas, e não uma.** O que a tela chama de "movimento do sistema" é
- * montado de `parcelas` e de `pagamentos`, com ids sintéticos
- * (`parcela:<id>`, `pagamento:<id>`). Não existe entidade "movimento" para
- * receber um PATCH; inventá-la seria criar um recurso para caber num verbo.
+ * **Três listas, e não uma.** O que a tela chama de "movimento do sistema" é
+ * montado de `parcelas`, de `pagamentos` e — desde o E235 — dos ATOS de
+ * recebimento, com ids sintéticos (`parcela:<id>`, `pagamento:<id>`,
+ * `recibo:<atoId>`). Não existe entidade "movimento" para receber um PATCH;
+ * inventá-la seria criar um recurso para caber num verbo.
  *
- * **Idempotente por construção:** o `WHERE` exige `conciliadoEm IS NULL`, então
- * remarcar o mesmo lote devolve zero e não mexe no carimbo antigo — a mesma
- * forma do `enviarContabilidade`. E o `lojaId` vai no WHERE, não numa
- * conferência posterior: id de outra loja simplesmente não é marcado (E91).
+ * **Idempotente por construção:** o `WHERE` exige `conciliadoEm IS NULL` (e o
+ * `INSERT` do ato é `onConflictDoNothing`), então remarcar o mesmo lote devolve
+ * zero e não mexe no carimbo antigo — a mesma forma do `enviarContabilidade`.
+ * E o `lojaId` vai no WHERE, não numa conferência posterior: id de outra loja
+ * simplesmente não é marcado (E91). Para o ato, a prova de loja é a própria
+ * trilha: só existe carimbo para uma linha `PARCELA_RECEBIDA` desta loja.
+ *
+ * **O carimbo da parcela é DERIVADO do carimbo dos atos (E235):** quando o
+ * último ato válido de uma parcela dividida é carimbado, `parcelas.conciliado_em`
+ * recebe o mesmo instante — a coluna fica, para o filtro "só o não conciliado"
+ * (o índice parcial) e para a parcela sem ato, que continua sendo carimbada
+ * direto. Carimbar UM pedaço não carimba a parcela: é isso que a S-C51 pedia.
  */
 router.post(
   "/lojas/:lojaId/financeiro/conciliacao/marcar",
@@ -608,10 +639,10 @@ router.post(
       res.status(400).json(erroDeValidacao(parsed.error));
       return;
     }
-    const { parcelaIds = [], pagamentoIds = [] } = parsed.data;
+    const { parcelaIds = [], pagamentoIds = [], reciboIds = [] } = parsed.data;
     const agora = new Date();
 
-    const { pcs, pgs } = await db.transaction(async (tx) => {
+    const { pcs, pgs, atos, derivadas } = await db.transaction(async (tx) => {
       const pcs = parcelaIds.length
         ? await tx.update(parcelasTable)
             .set({ conciliadoEm: agora })
@@ -637,11 +668,64 @@ router.post(
             .returning({ id: pagamentosTable.id })
         : [];
 
+      // E235 — o ato só é carimbável se for uma linha PARCELA_RECEBIDA DESTA
+      // loja: a trilha é a prova de loja e o `entidadeId` é a parcela dona.
+      const linhasDoAto = reciboIds.length
+        ? await tx
+            .select({ id: auditLogTable.id, parcelaId: auditLogTable.entidadeId })
+            .from(auditLogTable)
+            .where(and(
+              eq(auditLogTable.lojaId, lojaId),
+              eq(auditLogTable.acao, "PARCELA_RECEBIDA"),
+              inArray(auditLogTable.id, reciboIds),
+            ))
+        : [];
+      const atos = linhasDoAto.length
+        ? await tx
+            .insert(conciliacaoDeRecebimentosTable)
+            .values(linhasDoAto.map((l) => ({
+              atoId: l.id,
+              lojaId,
+              parcelaId: l.parcelaId,
+              conciliadoEm: agora,
+              conciliadoPor: req.usuario!.nome ?? null,
+            })))
+            .onConflictDoNothing()
+            .returning({ atoId: conciliacaoDeRecebimentosTable.atoId, parcelaId: conciliacaoDeRecebimentosTable.parcelaId })
+        : [];
+
+      // A derivação: para cada parcela tocada, todos os atos VÁLIDOS (depois do
+      // corte do estorno — a mesma leitura do recibo) estão carimbados?
+      const derivadas: string[] = [];
+      const parcelasTocadas = [...new Set(atos.map((a) => a.parcelaId))];
+      if (parcelasTocadas.length > 0) {
+        const parcelas = await tx.query.parcelasTable.findMany({
+          where: and(eq(parcelasTable.lojaId, lojaId), inArray(parcelasTable.id, parcelasTocadas), isNull(parcelasTable.conciliadoEm)),
+        });
+        if (parcelas.length > 0) {
+          const trilha = await trilhaDosRecebimentos(lojaId, parcelas.flatMap((p) => [p.id, p.contratoId]));
+          const carimbados = await tx
+            .select({ atoId: conciliacaoDeRecebimentosTable.atoId })
+            .from(conciliacaoDeRecebimentosTable)
+            .where(and(eq(conciliacaoDeRecebimentosTable.lojaId, lojaId), inArray(conciliacaoDeRecebimentosTable.parcelaId, parcelas.map((p) => p.id))));
+          const temCarimbo = new Set(carimbados.map((c) => c.atoId));
+          for (const p of parcelas) {
+            const { recibos } = recibosDaParcela(p, trilha);
+            if (recibos.length > 0 && recibos.every((r) => temCarimbo.has(r.id))) derivadas.push(p.id);
+          }
+          if (derivadas.length > 0) {
+            await tx.update(parcelasTable)
+              .set({ conciliadoEm: agora })
+              .where(and(eq(parcelasTable.lojaId, lojaId), inArray(parcelasTable.id, derivadas), isNull(parcelasTable.conciliadoEm)));
+          }
+        }
+      }
+
       // E115 — o carimbo irmão (`contabilidade/enviar`, mesmo épico E103)
       // audita e este não auditava: dar um movimento por conferido é escrita
       // de mão única sem rota que desfaça, e "quem conferiu, e quando?" ficava
       // sem resposta. Clique que não carimbou nada não é um fato — não grava.
-      if (pcs.length + pgs.length > 0) {
+      if (pcs.length + pgs.length + atos.length > 0) {
         await registrarAuditoria(tx, {
           lojaId,
           usuario: req.usuario!,
@@ -651,15 +735,18 @@ router.post(
           detalhe: {
             parcelas: pcs.length,
             pagamentos: pgs.length,
+            recibos: atos.length,
             parcelaIds: pcs.map((p) => p.id),
             pagamentoIds: pgs.map((p) => p.id),
+            reciboIds: atos.map((a) => a.atoId),
+            parcelasDerivadas: derivadas,
           },
         });
       }
-      return { pcs, pgs };
+      return { pcs, pgs, atos, derivadas };
     });
 
-    res.json(MarcarConciliadoResponse.parse({ parcelas: pcs.length, pagamentos: pgs.length }));
+    res.json(MarcarConciliadoResponse.parse({ parcelas: pcs.length, pagamentos: pgs.length, recibos: atos.length }));
   },
 );
 
@@ -927,46 +1014,9 @@ const HORIZONTE_ALERTA = 30;
 // motores recortam com a régua exata (instante no fuso da loja).
 const MESES_TENDENCIA_FLUXO = 6;
 
-/**
- * S-C31 — as parcelas do caixa REALIZADO da janela, uma linha por recebimento.
- *
- * As três leituras do realizado (fluxo, CSV do fluxo e DRE) recortavam por
- * `parcelas.recebido_em`, que guarda **só o último pedaço**: R$ 300,00 que
- * entraram em 01/03 eram contados no dia 15/03, quando os R$ 700,00 quitaram a
- * parcela. Aqui a mesma janela é respondida em dois passos, e os dois são
- * necessários:
- *
- * 1. **quem entra na consulta** — o `recebido_em` da janela (o de sempre) MAIS
- *    as parcelas com um ato dentro dela e o `recebido_em` fora (sem isso, o mês
- *    do pedaço antigo continuaria vazio);
- * 2. **como cada linha é datada** — `porRecebimento` divide o que a trilha
- *    fecha e deixa intacto o que ela não fecha.
- *
- * O total do período NÃO muda por isso: o que muda é o dia (e a forma) de cada
- * pedaço. Quem recorta a janela continua sendo o motor do `financeiro-core`,
- * sobre o superconjunto que o SQL entrega.
- */
-async function realizadoPorRecebimento<T extends ParcelaDoCaixa>(
-  lojaId: string,
-  parcelas: readonly T[],
-): Promise<T[]> {
-  const alvos = parcelas.flatMap((p) => [p.id, p.contratoId]);
-  return porRecebimento(parcelas, await trilhaDosRecebimentos(lojaId, alvos));
-}
-
-/** O `WHERE` do passo 1: o `recebido_em` da janela ou um ato dentro dela. */
-async function recebidasNaJanela(lojaId: string, iniYMD: string, fimYMD: string) {
-  const de = inicioDoDia(iniYMD);
-  const ate = inicioDoDia(addDias(fimYMD, 1));
-  const comAto = await parcelasComRecebimentoNaJanela(lojaId, de, ate);
-  return and(
-    eq(parcelasTable.lojaId, lojaId),
-    or(
-      and(isNotNull(parcelasTable.recebidoEm), gte(parcelasTable.recebidoEm, de), lt(parcelasTable.recebidoEm, ate)),
-      ...(comAto.length > 0 ? [inArray(parcelasTable.id, comAto)] : []),
-    ),
-  );
-}
+// S-C31 / E235 — `recebidasNaJanela` e `realizadoPorRecebimento` moram em
+// `lib/recibos-do-banco.ts`: a conciliação (E235) passou a montar os movimentos
+// do sistema pela MESMA leitura do caixa, uma linha por recebimento.
 
 router.get("/lojas/:lojaId/financeiro/fluxo", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;

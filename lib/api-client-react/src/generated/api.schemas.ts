@@ -2921,12 +2921,42 @@ export interface PagamentoItem {
 export interface MarcarConciliadoInput {
   parcelaIds?: string[];
   pagamentoIds?: string[];
+  /** E235 — ids de ATO de recebimento (a linha PARCELA_RECEBIDA da trilha), o que a tela recebe como recibo:<atoId> */
+  reciboIds?: string[];
 }
 
 export interface MarcarConciliadoResultado {
   /** Quantas parcelas passaram de nao-conciliadas a conciliadas */
   parcelas: number;
   pagamentos: number;
+  /** E235 — quantos ATOS de recebimento passaram a carimbados */
+  recibos: number;
+}
+
+export type MovimentoDoSistemaTipo = typeof MovimentoDoSistemaTipo[keyof typeof MovimentoDoSistemaTipo];
+
+
+export const MovimentoDoSistemaTipo = {
+  recebimento: 'recebimento',
+  pagamento: 'pagamento',
+} as const;
+
+/**
+ * E235 — um movimento do sistema para a conciliação: recibo:<atoId> (pedaço de parcela dividida), parcela:<id> (parcela que não se divide) ou pagamento:<id>. O carimbo vem junto; o motor de casamento não o lê.
+ */
+export interface MovimentoDoSistema {
+  id: string;
+  /**
+     * dia LOCAL de São Paulo, YYYY-MM-DD
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  data: string;
+  descricao: string;
+  /** reais, sempre positivo */
+  valor: number;
+  tipo: MovimentoDoSistemaTipo;
+  /** @nullable */
+  conciliadoEm: string | null;
 }
 
 export interface Pagamento {
@@ -4067,6 +4097,17 @@ de?: string;
  * @pattern ^\d{4}-\d{2}-\d{2}$
  */
 ate?: string;
+};
+
+export type ListMovimentosConciliacaoParams = {
+/**
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de: string;
+/**
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate: string;
 };
 
 export type GetMinhaComissaoParams = {

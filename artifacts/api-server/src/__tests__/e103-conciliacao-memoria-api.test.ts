@@ -91,7 +91,7 @@ describe("E103/F32 — marcar conciliado", () => {
 
     const r = await marcar({ parcelaIds: [parcelaId], pagamentoIds: [pagamentoId] }).expect(200);
 
-    expect(r.body).toEqual({ parcelas: 1, pagamentos: 1 });
+    expect(r.body).toEqual({ parcelas: 1, pagamentos: 1, recibos: 0 });
     expect((await lerParcela(parcelaId)).conciliadoEm).not.toBeNull();
     expect((await lerPagamento(pagamentoId)).conciliadoEm).not.toBeNull();
   });
@@ -130,7 +130,7 @@ describe("E103/F32 — marcar conciliado", () => {
 
   it("corpo vazio é 200 com zero, não erro — a tela pode não ter casado nada", async () => {
     const r = await marcar({}).expect(200);
-    expect(r.body).toEqual({ parcelas: 0, pagamentos: 0 });
+    expect(r.body).toEqual({ parcelas: 0, pagamentos: 0, recibos: 0 });
   });
 
   /**

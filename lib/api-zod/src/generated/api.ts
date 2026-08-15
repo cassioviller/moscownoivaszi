@@ -8721,7 +8721,38 @@ export const EnviarContabilidadeResponse = zod.object({
 
 
 /**
- * F32/E103 — a conciliação passa a ter memória. O corpo traz DUAS listas de ids, e não uma: o que a tela chama de "movimento do sistema" é montado de `parcelas` e de `pagamentos`, com ids sintéticos (`parcela:<id>` e `pagamento:<id>`). Não existe entidade "movimento" para receber um PATCH, e inventá-la seria criar um recurso para caber num verbo.
+ * E235 (S-C51, respondida em 15/08/2026: por pagamento) — a tela montava um movimento por PARCELA, datado pelo último pedaço, e uma parcela paga em dois PIX (R$ 300,00 em 01/03 e R$ 700,00 em 15/03) contra as duas linhas do banco dava TRÊS divergências falsas. Aqui os movimentos nascem no servidor, pela MESMA leitura do caixa realizado (S-C31): a parcela cuja trilha fecha vira um movimento por ato (`recibo:<atoId>`, o id da linha da trilha que o recibo cita); a que não se divide (um ato, sem ato, trilha que não fecha) continua `parcela:<id>`; a saída é `pagamento:<id>`. Cada um traz o SEU carimbo `conciliadoEm` (por ato na `conciliacao_de_recebimentos`; a parcela inteira carimbada antes do E235 cobre os pedaços dela). A janela é por dia LOCAL do movimento, inclusiva nas duas pontas.
+ * @summary Os movimentos do sistema que a conciliação compara com o extrato — um por PAGAMENTO
+ */
+export const ListMovimentosConciliacaoParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const listMovimentosConciliacaoQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const listMovimentosConciliacaoQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ListMovimentosConciliacaoQueryParams = zod.object({
+  "de": zod.coerce.string().regex(listMovimentosConciliacaoQueryDeRegExp),
+  "ate": zod.coerce.string().regex(listMovimentosConciliacaoQueryAteRegExp)
+})
+
+export const listMovimentosConciliacaoResponseDataRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ListMovimentosConciliacaoResponseItem = zod.object({
+  "id": zod.string(),
+  "data": zod.string().regex(listMovimentosConciliacaoResponseDataRegExp).describe('dia LOCAL de São Paulo, YYYY-MM-DD'),
+  "descricao": zod.string(),
+  "valor": zod.number().describe('reais, sempre positivo'),
+  "tipo": zod.enum(['recebimento', 'pagamento']),
+  "conciliadoEm": dataDoCorpo().nullable()
+}).describe('E235 — um movimento do sistema para a conciliação: recibo:<atoId> (pedaço de parcela dividida), parcela:<id> (parcela que não se divide) ou pagamento:<id>. O carimbo vem junto; o motor de casamento não o lê.')
+export const ListMovimentosConciliacaoResponse = zod.array(ListMovimentosConciliacaoResponseItem)
+
+
+/**
+ * F32/E103 — a conciliação passa a ter memória. E235: o corpo traz TRÊS listas de ids, e não uma: o que a tela chama de "movimento do sistema" é montado de `parcelas` e de `pagamentos`, com ids sintéticos (`parcela:<id>` e `pagamento:<id>`) e, desde o E235, dos ATOS de recebimento (`recibo:<atoId>`, carimbados por ato em `conciliacao_de_recebimentos`; quando todos os atos de uma parcela estão carimbados, o `conciliado_em` dela é DERIVADO — a coluna fica, para o filtro e para a parcela sem ato). Não existe entidade "movimento" para receber um PATCH, e inventá-la seria criar um recurso para caber num verbo.
  * Idempotente por construção: o WHERE exige `conciliado_em IS NULL`, então remarcar o mesmo lote devolve zero sem tocar no carimbo antigo — a mesma forma de `enviarContabilidade`. Id de outra loja não é erro: o WHERE filtra por `loja_id` e ele simplesmente não é marcado.
  * @summary Carimba conciliadoEm nos movimentos que casaram com o extrato
  */
@@ -8731,12 +8762,14 @@ export const MarcarConciliadoParams = zod.object({
 
 export const MarcarConciliadoBody = zod.object({
   "parcelaIds": zod.array(zod.string()).optional(),
-  "pagamentoIds": zod.array(zod.string()).optional()
+  "pagamentoIds": zod.array(zod.string()).optional(),
+  "reciboIds": zod.array(zod.string()).optional().describe('E235 — ids de ATO de recebimento (a linha PARCELA_RECEBIDA da trilha), o que a tela recebe como recibo:<atoId>')
 })
 
 export const MarcarConciliadoResponse = zod.object({
   "parcelas": zod.number().describe('Quantas parcelas passaram de nao-conciliadas a conciliadas'),
-  "pagamentos": zod.number()
+  "pagamentos": zod.number(),
+  "recibos": zod.number().describe('E235 — quantos ATOS de recebimento passaram a carimbados')
 })
 
 

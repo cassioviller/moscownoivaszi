@@ -271,3 +271,40 @@ export const registrosCobrancaTable = pgTable("registros_cobranca", {
 export const insertRegistroCobrancaSchema = createInsertSchema(registrosCobrancaTable).omit({ createdAt: true });
 export type InsertRegistroCobranca = z.infer<typeof insertRegistroCobrancaSchema>;
 export type RegistroCobranca = typeof registrosCobrancaTable.$inferSelect;
+
+/**
+ * **E235 (S-C51, respondida em 15/08/2026: a conciliação enxerga cada PAGAMENTO)
+ * — o carimbo "casou com o extrato" por ATO de recebimento.**
+ *
+ * `parcelas.conciliado_em` é coluna por linha, e a parcela paga em dois PIX
+ * (R$ 300,00 em 01/03 e R$ 700,00 em 15/03) é UMA linha: marcar um pedaço
+ * marcaria o outro, e a conciliação existe para NÃO esconder divergência.
+ * Desde o E221 cada recebimento é uma linha `PARCELA_RECEBIDA` na trilha, e o
+ * caixa já data cada pedaço por ela (S-C31, `porRecebimento`). Esta tabela
+ * guarda a conferência de cada um desses atos: `ato_id` é o id da linha da
+ * trilha — o mesmo número que o recibo cita.
+ *
+ * O que ela NÃO é: a "terceira verdade sobre o mesmo dinheiro" que o E221
+ * recusou. Ela não tem valor, não soma nada e ninguém a concilia — é um fato
+ * sobre a CONFERÊNCIA, não sobre o dinheiro. `parcelas.conciliado_em` FICA e
+ * passa a ser DERIVADO para a parcela dividida ("todos os atos carimbados"),
+ * de modo que o índice parcial das não conciliadas continue barato e a
+ * parcela sem ato (o legado, o seed) continue sendo carimbada como sempre.
+ *
+ * A trilha não é apagada em lugar nenhum (medido: zero `delete(auditLogTable)`
+ * fora de teste), então `ato_id` não fica órfão. O ESTORNO corta a trilha da
+ * parcela (`recibosDaParcela` só conta atos depois do corte): o carimbo de um
+ * ato cortado deixa de ter movimento a que se referir e não é lido — o mesmo
+ * efeito de "o estorno limpa" que a coluna da parcela já tinha.
+ */
+export const conciliacaoDeRecebimentosTable = pgTable("conciliacao_de_recebimentos", {
+  /** O id da linha `PARCELA_RECEBIDA` da trilha (`audit_log.id`). */
+  atoId: text("ato_id").primaryKey(),
+  lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
+  parcelaId: text("parcela_id").notNull().references(() => parcelasTable.id, { onDelete: "cascade" }),
+  conciliadoEm: timestamp("conciliado_em", { withTimezone: true }).notNull().defaultNow(),
+  conciliadoPor: text("conciliado_por"),
+}, (t) => ({
+  lojaIdx: index("conciliacao_de_recebimentos_loja_idx").on(t.lojaId),
+  parcelaIdx: index("conciliacao_de_recebimentos_parcela_idx").on(t.parcelaId),
+}));

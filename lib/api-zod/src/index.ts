@@ -6,6 +6,7 @@ export * from "./generated/types";
 export {
   CheckDisponibilidadeVestidosParams,
   ListPagamentosParams,
+  ListMovimentosConciliacaoParams,
   ListParcelasParams,
   ListContasPagarParams,
   ExportarFolhaParams,
