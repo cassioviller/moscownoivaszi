@@ -39,12 +39,18 @@ para o documento que manda.
    — a tela lê a loja do `/auth/me`, e sem os sete no select ela abria vazia.
    A tabela do `EXECUCAO.md` é a fila; **conte, não deduza** — depois da
    segunda metade de 15/08, que pegou as 22 sobras abertas e executou tudo o
-   que era executável, resta **UMA sobra** (contada depois do E234): a
-   **S-C51** 🟡 (a conciliação por parcela — **respondida em 15/08: POR PAGAMENTO**, é o E235, código; a pergunta
-   pronta no plano). A S-C132 fechou no E220, a S-C301 no E233 e a S-C300 no
-   E234. **O plano das três está em
+   que era executável, resta **UMA sobra** (contada depois do E235): a
+   **S-C310** 🔵, que nasceu nele (o pedaço com mora vale para o banco o valor
+   PAGO; população zero — armada, não disparada). **A S-C51 fechou no E235
+   (`09cda1c0`)**: a contadora respondeu POR PAGAMENTO em 15/08 e o épico saiu
+   no mesmo dia — os movimentos da conciliação nascem no servidor pela leitura
+   do caixa (S-C31), um por ato, com carimbo por ato em
+   `conciliacao_de_recebimentos` e a parcela derivando; [0, 2, 1] → [2, 0, 0]
+   contra as duas linhas do banco. A S-C132 fechou no E220, a S-C301 no E233,
+   a S-C300 no E234 e a S-C51 no E235: **a trilha do contrato de papel não tem
+   sobra 🟡 nem 🟠 aberta.** **O plano das três está em
    [`2026-08-15-as-tres-ultimas-plano.md`](docs/propostas/2026-08-15-as-tres-ultimas-plano.md)**
-   — E233 **executado** (`8a8bfe5f`), E234 **executado** (`714192a6`), E235 (espera a contadora; a pergunta está no plano), cada uma medida. Mais **5 pendências que não são
+   — E233 (`8a8bfe5f`), E234 (`714192a6`) e E235 (`09cda1c0`), **os três executados em 15/08**, cada um medido. Mais **5 pendências que não são
    software** (a P5 nasceu no E219: confirmar que os 7 dias da 17ª contam do
    fecho). As duas sessões do dia estão contadas em
    `docs/revisao/2026-08-15-sessao-a-fila-do-que-restava.md` (a madrugada:
@@ -528,8 +534,8 @@ para o documento que manda.
    `git rev-list --count origin/main..main` antes de assumir que ainda está em
    dia — esta linha envelhece a cada commit, e já envelheceu seis vezes.
 
-   Hoje a régua é **API 1774 (255 arquivos) · frontend 998 (107 arquivos) ·
-   E2E 178 · typecheck verde** — as quatro medidas em série no fecho do E234, quarta sessão de 2026-08-15 (API 699 s, E2E 6,3 min, `banco-virgem` verde). O parágrafo anterior media 1755 (251) · 998 (108) · 177 no fecho da
+   Hoje a régua é **API 1779 (256 arquivos) · frontend 998 (107 arquivos) ·
+   E2E 179 · typecheck verde** — as quatro medidas em série no fecho do E235, quarta sessão de 2026-08-15 (a API rodou inteira três vezes na sessão; o E2E, quatro). O parágrafo anterior media 1774 (255) · 998 · 178 no E234, e 1755 (251) · 998 (108) · 177 no fecho da
    segunda metade de 2026-08-15 (a API rodou INTEIRA **seis vezes** na
    sessão; o E2E, **quatro**). O parágrafo anterior media 1726 · 974 na
    madrugada do mesmo dia. O parágrafo abaixo, dos números de

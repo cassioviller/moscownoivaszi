@@ -15,7 +15,7 @@ mostra que ele pode esperar sem custar nada.
 |---|---|---|---|---|
 | 1 | **S-C301** — validação de CNPJ | **E233** ✅ `8a8bfe5f` | nada | 3 portas de escrita, 1 seed, 1 tela; **1 documento inválido no banco inteiro**, e é o da loja |
 | 2 | **S-C300** — cidade, representante e PIX no cadastro da loja | **E234** ✅ `714192a6` | ~~**D7** (dona)~~ respondida SIM | 1 migração (7 colunas), 4 schemas do spec, 2 telas, 2 papéis, 1 seed |
-| 3 | **S-C51** — conciliação por ATO | **E235** | ~~**contadora**~~ respondida: por pagamento | 303 parcelas recebidas · **0 em pedaços** · 2 sem ato · **0 conciliadas, nunca** |
+| 3 | **S-C51** — conciliação por ATO | **E235** ✅ `09cda1c0` | ~~**contadora**~~ respondida: por pagamento | 303 parcelas recebidas · **0 em pedaços** · 2 sem ato · **0 conciliadas, nunca** |
 
 E um **passo 0 que não é código**: o `origin/main` está **3 commits atrás**
 (`git rev-list --count origin/main..main` = 3). Publicar pede a autorização da
@@ -250,7 +250,7 @@ sem quem vai usar é a que se reescreve.
    confere.
 3. **E234** — **executado (`714192a6`)**, no mesmo dia da resposta à D7. Fecha a S-C300 e o E220 inteiro
    (o papel deixa de ter lacuna que não seja da noiva).
-4. **Contadora → E235** — **respondida em 15/08: por pagamento (por ato)**; é um
+4. **Contadora → E235** — **respondida em 15/08: por pagamento (por ato), e EXECUTADO no mesmo dia (`09cda1c0`)**; era um
    dia; *por parcela*, a S-C51 vira decisão escrita e fecha sem código.
 
 Fechados os três, **a trilha do contrato de papel fica sem sobra aberta** —
