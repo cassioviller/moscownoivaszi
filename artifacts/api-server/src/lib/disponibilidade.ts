@@ -239,6 +239,33 @@ export function janelasDoBloqueio(
   return b.canceladoEm ? janelas.filter((j) => j.classe === "FISICA") : janelas;
 }
 
+/**
+ * S-C234 — a janela de PROVA PREVISTA de uma CANDIDATA não varre o passado.
+ *
+ * `janelaDeProvaPrevista` devolve `[D − provaDiasAntes, inícioDoUso − 1]` sem
+ * olhar o calendário: com a régua default, reservar para daqui a 3 dias criava
+ * uma prova `[hoje−11, hoje−1]` — inteira sobre dias em que nenhuma prova vai
+ * acontecer — e a lavagem já TERMINADA de uma peça devolvida barrava com 409 a
+ * reserva fisicamente possível (medido: 201 depois do corte, na cena do teste).
+ *
+ * O corte é cirúrgico de propósito:
+ * - só classe PROVA — janela FÍSICA ocupa o que ocupa, no passado inclusive
+ *   (a peça na rua continua barrando, e o teste prova);
+ * - só a PREVISTA — quem chama guarda o corte atrás de `provaDataReal == null`,
+ *   porque prova real é FATO e fato não se apara;
+ * - só a CANDIDATA — as janelas dos bloqueios EXISTENTES não passam por aqui:
+ *   aparar o outro lado mudaria contagem de conflito que ninguém pediu.
+ * - `hojeDia` fica: prova ainda pode acontecer hoje.
+ */
+export function aparaProvaPrevistaNoPassado(janelas: Janela[], hojeDia: string): Janela[] {
+  return janelas.flatMap((j) => {
+    if (j.classe !== "PROVA") return [j];
+    if (j.fim !== null && j.fim < hojeDia) return [];
+    if (j.inicio < hojeDia) return [{ ...j, inicio: hojeDia }];
+    return [j];
+  });
+}
+
 function janelasSemOlharCancelamento(
   b: BloqueioJanelasInput,
   regra: RegraJanelas,
@@ -431,7 +458,13 @@ export function proximaDataLivre(params: {
       inicio: null,
       fim: null,
     };
-    const novas = janelasDoBloqueio(candidato, params.regra, params.aPartirDe);
+    // S-C234 — a candidata da sugestão nunca tem prova real, e a prevista não
+    // varre o passado: sem o corte, uma lavagem terminada ontem empurrava a
+    // proposta 11 dias (medido: '2027-06-29' onde '2027-06-18' está livre).
+    const novas = aparaProvaPrevistaNoPassado(
+      janelasDoBloqueio(candidato, params.regra, params.aPartirDe),
+      params.aPartirDe,
+    );
     if (conflitos(novas, params.janelasExistentes).length === 0) return dia;
   }
   return null;
@@ -610,7 +643,13 @@ export async function verificarDisponibilidade(
     executor,
   );
 
-  const janelasCandidato = janelasDoBloqueio(params.candidato, regra, hojeDia);
+  // S-C234 — a prova PREVISTA da candidata é aparada em `hojeDia`; a real é
+  // fato e passa inteira (a guarda do `provaDataReal` é daqui de propósito:
+  // `aparaProvaPrevistaNoPassado` não sabe distinguir e não deve).
+  const janelasCandidatoCruas = janelasDoBloqueio(params.candidato, regra, hojeDia);
+  const janelasCandidato = params.candidato.provaDataReal
+    ? janelasCandidatoCruas
+    : aparaProvaPrevistaNoPassado(janelasCandidatoCruas, hojeDia);
   const janelasExistentes = ativos.flatMap(({ bloqueio }) =>
     janelasDoBloqueio(bloqueio, regra, hojeDia),
   );
