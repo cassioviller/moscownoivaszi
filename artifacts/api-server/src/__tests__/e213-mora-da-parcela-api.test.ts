@@ -189,7 +189,19 @@ describe("E213 — a parcela vencida tem multa e juros", () => {
     const [rastro] = await db.select().from(auditLogTable)
       .where(and(eq(auditLogTable.entidadeId, linhas[0]!.id), eq(auditLogTable.acao, "MORA_RECEBIDA")));
     expect(rastro).toBeDefined();
-    expect((rastro!.detalhe as { valor: number }).valor).toBe(15);
+    const detalhe = rastro!.detalhe as { valor: number; explicacao: string };
+    expect(detalhe.valor).toBe(15);
+    /**
+     * **S-C102 — a trilha guarda a FRASE, não só os números.** A descrição da
+     * parcela carrega a explicação inteira desde a S-C71, mas descrição é
+     * coluna EDITÁVEL e trilha é append-only — quem responde *"por que se
+     * cobrou isto?"* depois do fato é a trilha. A frase da trilha é a MESMA
+     * que o carnê guardou no dia (uma grafia só, `explicacaoDaMora`), com a
+     * linha que declara o alcance da régua dentro.
+     */
+    expect(detalhe.explicacao, "a trilha da mora não guarda a frase (S-C102)").toBeDefined();
+    expect(linhas[0]!.descricao).toBe(`Multa e juros (cláusula 9ª) — ${detalhe.explicacao}`);
+    expect(detalhe.explicacao).toContain("Sem correção monetária — o contrato não nomeia índice.");
   });
 
   it("receber em partes: o pedaço menor vai todo ao principal, sem criar linha de mora", async () => {

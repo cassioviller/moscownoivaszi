@@ -2532,6 +2532,13 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("contrat
           diasDeAtraso: mora?.dias ?? 0,
           multa: mora?.multa ?? 0,
           juros: mora?.juros ?? 0,
+          /**
+           * **S-C102 — a trilha guarda a frase, não só os números.** A mesma
+           * `explicacao` que a tela imprimiu e o carnê guardou na descrição —
+           * mas descrição é coluna EDITÁVEL e trilha é append-only, e é a
+           * trilha que responde *"por que se cobrou isto?"* depois do fato.
+           */
+          explicacao: mora?.explicacao ?? "",
         },
       });
     }
