@@ -109,7 +109,13 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
      * entra na fronteira; a fronteira dele é pregada pelo teste do próprio
      * épico, que ENUMERA as chaves do payload.
      */
-    expect(c.operacoes, "operação nova no spec: confira quem monta a resposta dela e atualize esta contagem").toBe(210);
+    /**
+     * E223: 210 → 211. O `trocarPecaDoContrato` — a porta da cláusula 17ª. A
+     * resposta é RASA de propósito (`TrocarPecaResponse`: dois ids, montados
+     * por extenso no handler), então nenhum par novo entra na fronteira; o
+     * estado que a troca muda é lido pelo `GET /contratos/:id` de sempre.
+     */
+    expect(c.operacoes, "operação nova no spec: confira quem monta a resposta dela e atualize esta contagem").toBe(211);
     // E221: 143 → 144. Só o `listRecibos` entra — as outras duas devolvem PDF.
     // E212: 144 → 146. As duas novas são a prévia e a cobrança do atraso da
     // cláusula 16ª, e as duas devolvem o MESMO `CobrancaDeAtraso` — de
@@ -127,7 +133,9 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // E229: 150 → 151. O `getLocacaoDoLead` devolve `LocacaoDoLead | null` —
     // schema RASO de propósito: o recorte da Recepção não pode carregar o que
     // o E172 fechou, e o teste do épico enumera as chaves.
-    expect(c.comSchemaDeResposta).toBe(151);
+    // E223: 151 → 152. O `trocarPecaDoContrato` devolve `TrocarPecaResponse`,
+    // raso — os dois ids da troca; o contrato mudado se lê pelo GET de sempre.
+    expect(c.comSchemaDeResposta).toBe(152);
     // E212: 70 → 72. `CobrancaDeAtraso` aninha `CobrancaDeAtrasoLinha` — a conta
     // é uma linha POR PEÇA, que é o §2º da cláusula 16ª ("aplicados
     // proporcionalmente a trajes e/ou acessórios avulsos") virando forma.

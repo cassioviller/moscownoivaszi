@@ -2696,6 +2696,18 @@ export interface CancelarContratoInput {
   iniciativa?: CancelarContratoInputIniciativa;
 }
 
+export interface TrocarPecaInput {
+  /** @minLength 1 */
+  bloqueioId: string;
+  /** @minLength 1 */
+  vestidoNovoId: string;
+}
+
+export interface TrocarPecaResponse {
+  bloqueioNovoId: string;
+  vestidoNovoId: string;
+}
+
 export interface GerarPlanoInput {
   /** @minimum 0 */
   entrada?: number;

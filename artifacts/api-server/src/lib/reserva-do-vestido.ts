@@ -8,6 +8,7 @@ import {
   VALIDADE_DO_BLOQUEIO_ORFAO_DIAS,
   type BloqueioJanelasInput,
   type ConflitoDetalhe,
+  type DbExecutor,
 } from "./disponibilidade";
 
 /**
@@ -37,7 +38,20 @@ export type DesfechoCriarReserva =
   | { bloqueio: typeof bloqueioVestidosTable.$inferSelect }
   | { conflitos: ConflitoDetalhe[] };
 
-export async function criarReservaDeVestido(params: CriarReservaParams): Promise<DesfechoCriarReserva> {
+/**
+ * E223 — a TERCEIRA porta é a troca de peça do contrato, e ela chega com a
+ * transação já aberta (a dela tranca contrato → bloqueio antigo antes desta
+ * régua rodar, pela ordem do módulo). Com `executor`, o corpo roda como
+ * transação ANINHADA (savepoint) da de quem chamou — atômico com ela; sem,
+ * abre a própria, como sempre. A forma `(executor ?? db).transaction(cb)` com
+ * o callback LITERAL não é estilo: a varredura de trancas lê o corpo de
+ * `.transaction(...)` no texto, e esconder o corpo numa variável faria a
+ * porta desta lib contar como ABERTA (medido no E223).
+ */
+export async function criarReservaDeVestido(
+  params: CriarReservaParams,
+  executor?: DbExecutor,
+): Promise<DesfechoCriarReserva> {
   const id = randomUUID();
   /**
    * S-O117 — a porta obriga. As duas portas recebem a data já coagida a `Date`
@@ -59,7 +73,7 @@ export async function criarReservaDeVestido(params: CriarReservaParams): Promise
     fim: params.fim ?? null,
   };
 
-  return await db.transaction(async (tx) => {
+  return await (executor ?? db).transaction(async (tx) => {
     await tx.select({ id: vestidosTable.id }).from(vestidosTable)
       .where(eq(vestidosTable.id, params.vestidoId))
       .for("update");

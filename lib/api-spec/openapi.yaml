@@ -3747,6 +3747,40 @@ paths:
               schema:
                 $ref: "#/components/schemas/Contrato"
 
+  /lojas/{lojaId}/contratos/{contratoId}/trocar-peca:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: contratoId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: trocarPecaDoContrato
+      tags: [contratos]
+      summary: E223 — troca uma peça do contrato sem cancelar o contrato
+      description: >
+        A porta da cláusula 17ª. Antes dela, trocar de traje era cancelar o
+        contrato e fazer outro — o que apagava a trilha financeira junto.
+        Liberta a reserva antiga (soft-cancel), prende a nova com a MESMA
+        régua de disponibilidade do fecho e refaz o snapshot do item (peça e
+        descrição). O dinheiro não se mexe: o `valorUnitario` contratado fica
+        — diferença de preço negociada entra pelos gestos financeiros que já
+        existem, e a trilha grava os dois preços para a loja decidir.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrocarPecaInput"
+      responses:
+        "200":
+          description: Peça trocada — a reserva nova responde pelo contrato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrocarPecaResponse"
+
   # ───────────────────────── Financeiro ─────────────────────────
   /lojas/{lojaId}/financeiro/parcelas:
     parameters:
@@ -7496,6 +7530,21 @@ components:
         retencaoTotal: { type: number }
         aplicou18a: { type: boolean }
         explicacao: { type: string }
+    # E223 — a porta de trocar peça do contrato (cláusula 17ª).
+    TrocarPecaInput:
+      type: object
+      required: [bloqueioId, vestidoNovoId]
+      properties:
+        # A reserva física presa pelo contrato cuja peça sai.
+        bloqueioId: { type: string, minLength: 1 }
+        # A peça que entra no lugar dela.
+        vestidoNovoId: { type: string, minLength: 1 }
+    TrocarPecaResponse:
+      type: object
+      required: [bloqueioNovoId, vestidoNovoId]
+      properties:
+        bloqueioNovoId: { type: string }
+        vestidoNovoId: { type: string }
     # E95: o carnê é MENSAL POR DIA FIXO, com o grampo de fim de mês (dia 31
     # vira 28/02 e volta a 31/03). `periodicidadeDias` saiu: ela permitia
     # espaçar por N dias corridos, o que fazia o dia do vencimento andar todo

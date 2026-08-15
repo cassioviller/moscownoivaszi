@@ -363,6 +363,8 @@ export * from './sessaoAcessosModulos';
 export * from './simulacaoComissao';
 export * from './simulacaoComissaoLinha';
 export * from './simularComissaoInput';
+export * from './trocarPecaInput';
+export * from './trocarPecaResponse';
 export * from './trocarSenhaInput';
 export * from './usuario';
 export * from './usuarioComLojas';

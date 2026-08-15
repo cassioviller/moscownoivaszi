@@ -204,10 +204,17 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   `returning()` do próprio DELETE. **O E191 não criou tranca nenhuma**: as 28
   transações, as 38 trancas, as 7 via helper e os 6 laços não se mexeram; o que
   mudou é que as trancas passaram a decidir alguma coisa. **Os dois números
-  acima são história: hoje são 29 transações e 40 trancas** — a S-C11
-  (`9fa70a5`) abriu a transação do `PATCH /avarias/:id`, que tranca a avaria e
-  depois a parcela, e os pisos `>= 20`/`>= 25` deixaram a prosa 1 e 2 atrás até
-  a S-C46 travá-los. As 7 via helper e os 6 laços continuam onde estavam.
+  acima são história: hoje são 30 transações e 42 trancas** — a S-C11
+  (`9fa70a5`) abriu a transação do `PATCH /avarias/:id` (29/40), e o **E223**
+  abriu a da troca de peça do contrato, que tranca o contrato (degrau 5) e o
+  bloqueio antigo (degrau 7) e delega o vestido novo à transação ANINHADA de
+  `criarReservaDeVestido` — que agora aceita `executor` e roda como savepoint,
+  a régua única das TRÊS portas que criam reserva. O retrato corrente
+  (2026-08-14, E223): **60 portas · 36 TRANCA · 11 CAS · 13 ABERTA**. E uma
+  lição de FORMA que o E223 pagou: extrair o corpo de `db.transaction` para
+  uma variável (`db.transaction(corpo)`) cega o motor, que lê o callback
+  LITERAL — a porta da lib caiu para ABERTA até a forma voltar. As 7 via
+  helper e os 6 laços continuam onde estavam.
   **Quando ela fica
   vermelha**, ou nasceu porta sem
   disciplina, ou uma porta fechada reabriu, ou uma porta da dívida foi FECHADA —
@@ -231,9 +238,9 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   (`__tests__/schemas-aninhados.ts`) cruza as **operações do spec**, com `$ref`
   transitivo, contra o **`with` da consulta relacional** que monta a resposta,
   e só pergunta pela FRONTEIRA — o filho de um pai que chegou. Hoje, **medido em
-  2026-08-13 (S-C11): 208 operações · 149 com schema de resposta · 74 com
-  relação · 273 pares (operação, caminho) · 174 entregues · 99 não · 30
-  operações montadas fora do `with`**. (Este parágrafo dizia *200 · 143 · 70 ·
+  2026-08-14 (E223): 211 operações · 152 com schema de resposta · 75 com
+  relação** (o resto das contas não se mexeu com o E223 — `TrocarPecaResponse`
+  é raso de propósito e não põe par na fronteira). (Este parágrafo dizia *200 · 143 · 70 ·
   250 · 144 · 106 · 31*, de antes do E199 — as contas do TESTE estão travadas em
   igualdade e cobraram a cada épico; a prosa daqui não tem quem a cobre.) Os 99
   não são 99 defeitos, e as duas tabelas separam o que é o

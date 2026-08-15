@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ComboboxNoiva } from "@/components/combobox-noiva";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -27,6 +27,13 @@ import {
   useDeleteAvaria,
   useListContratos,
   getListContratosQueryKey,
+  // E223 — a troca de peça do contrato (cláusula 17ª): o vínculo vem do GET
+  // do contrato, a oferta do acervo, e a porta é a do servidor.
+  useGetContrato,
+  getGetContratoQueryKey,
+  useListVestidos,
+  getListVestidosQueryKey,
+  useTrocarPecaDoContrato,
   useCobrarAvaria,
   // E212 — a conta do atraso na devolução (cláusula 16ª): a prévia que a tela
   // mostra antes do clique, e a porta que a cobra.
@@ -118,6 +125,7 @@ export default function ReservaDetalhe() {
   const podeCobrarAtraso = podeNoModulo(acessosModulos, "contratos", "editar");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // E79: a ficha pede UM bloqueio e as provas DELE — os recortes rodam no
   // banco; a tela parou de baixar a loja inteira para achar um id.
@@ -214,6 +222,29 @@ export default function ReservaDetalhe() {
     },
   });
   const contratoAtivo = contratoAtivoDaNoiva(contratosDaNoiva.data?.itens);
+  /**
+   * E223 — esta peça está PRESA pelo contrato ativo? A lista não carrega os
+   * vínculos (só o GET único os traz, E72), então a ficha pergunta pelo
+   * contrato inteiro — e é a mesma leitura que a troca invalida depois.
+   * Sob `contratos.ver`, como toda leitura de contrato desta tela.
+   */
+  const podeVerContrato = podeNoModulo(acessosModulos, "contratos", "ver");
+  const podeTrocarPeca = podeNoModulo(acessosModulos, "contratos", "editar");
+  const contratoDetalhe = useGetContrato(activeLojaId!, contratoAtivo?.id ?? "", {
+    query: {
+      queryKey: getGetContratoQueryKey(activeLojaId!, contratoAtivo?.id ?? ""),
+      enabled: !!activeLojaId && !!contratoAtivo?.id && podeVerContrato,
+    },
+  });
+  const presoPorEsteContrato =
+    !!bloqueioId && (contratoDetalhe.data?.bloqueioVestidoIds ?? []).includes(bloqueioId);
+  const [trocandoPeca, setTrocandoPeca] = useState(false);
+  const [pecaEscolhida, setPecaEscolhida] = useState<string | null>(null);
+  // O acervo só desce quando o diálogo abre — a ficha não paga a lista à toa.
+  const vestidos = useListVestidos(activeLojaId!, {
+    query: { queryKey: getListVestidosQueryKey(activeLojaId!), enabled: !!activeLojaId && trocandoPeca },
+  });
+  const trocarPecaDoContrato = useTrocarPecaDoContrato();
   const createAvaria = useCreateAvaria();
   const updateAvaria = useUpdateAvaria();
   const deleteAvaria = useDeleteAvaria();
@@ -602,6 +633,37 @@ export default function ReservaDetalhe() {
       "Não deu para trocar a noiva desta reserva",
     );
 
+  /**
+   * E223 — trocar a peça do contrato (cláusula 17ª). O servidor faz as quatro
+   * coisas numa transação: liberta esta reserva, prende a nova pela régua do
+   * fecho, refaz o snapshot do item e grava a trilha. A ficha só navega para a
+   * reserva nova — esta vira registro morto (cancelada) no ato.
+   */
+  const confirmarTrocaDePeca = async () => {
+    if (!contratoAtivo || !pecaEscolhida || !bloqueioId) return;
+    try {
+      const r = await trocarPecaDoContrato.mutateAsync({
+        lojaId: activeLojaId!,
+        contratoId: contratoAtivo.id,
+        data: { bloqueioId, vestidoNovoId: pecaEscolhida },
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getGetBloqueioQueryKey(activeLojaId!, bloqueioId) }),
+        queryClient.invalidateQueries({ queryKey: getListBloqueiosQueryKey(activeLojaId!) }),
+        queryClient.invalidateQueries({ queryKey: getGetContratoQueryKey(activeLojaId!, contratoAtivo.id) }),
+        queryClient.invalidateQueries({ queryKey: getListContratosQueryKey(activeLojaId!, filtroDoContrato) }),
+      ]);
+      toast({ title: "Peça trocada — a reserva nova responde pelo contrato" });
+      navigate(`/loja/${lojaId}/reservas/${r.bloqueioNovoId}`);
+    } catch (err) {
+      toast({
+        title: "Não deu para trocar a peça",
+        description: mensagemApi(err, "Tente novamente."),
+        variant: "destructive",
+      });
+    }
+  };
+
   const registrarMovimentacao = (campo: "retiradaDataReal" | "devolucaoDataReal" | "lavagemConcluidaEm") =>
     comToast(
       async () => {
@@ -903,6 +965,76 @@ export default function ReservaDetalhe() {
                     data-testid="trocar-noiva-da-reserva"
                   >
                     Trocar a noiva
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
+      {/* E223 — a troca de peça do contrato (cláusula 17ª). Só aparece quando
+          ESTA reserva está presa pelo contrato ativo da noiva (o vínculo vem do
+          GET do contrato) e a peça ainda não saiu — depois da retirada o
+          servidor recusa, e a tela não oferece o que a porta vai negar. */}
+      {podeTrocarPeca && presoPorEsteContrato && !reserva.retiradaDataReal && (
+        <section className="space-y-3">
+          <h2 className="text-xs uppercase tracking-wider text-muted-foreground">Peça do contrato</h2>
+          <Card>
+            <CardContent className="pt-6 space-y-3">
+              {trocandoPeca ? (
+                <>
+                  <p className="text-sm">
+                    A troca liberta esta reserva, prende a peça nova com a mesma régua de
+                    disponibilidade do fecho e atualiza o contrato — sem cancelar nada. O valor
+                    contratado não muda: diferença de preço, se negociada, entra como parcela.
+                  </p>
+                  <Select value={pecaEscolhida ?? undefined} onValueChange={setPecaEscolhida}>
+                    <SelectTrigger aria-label="Peça nova" data-testid="peca-nova-da-troca">
+                      <SelectValue placeholder="Escolha a peça nova" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(vestidos.data ?? [])
+                        .filter((v) => v.id !== reserva.vestidoId && v.status === "ativo")
+                        .map((v) => (
+                          <SelectItem key={v.id} value={v.id}>
+                            {v.codigo} · {v.nome}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      disabled={!pecaEscolhida || trocarPecaDoContrato.isPending}
+                      onClick={confirmarTrocaDePeca}
+                      data-testid="confirmar-troca-de-peca"
+                    >
+                      Trocar para esta peça
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setTrocandoPeca(false);
+                        setPecaEscolhida(null);
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm">
+                    Esta peça está presa pelo <strong>contrato ativo</strong> da noiva. Trocar de
+                    modelo acontece por aqui — sem cancelar o contrato.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTrocandoPeca(true)}
+                    data-testid="trocar-peca-do-contrato"
+                  >
+                    Trocar a peça
                   </Button>
                 </div>
               )}

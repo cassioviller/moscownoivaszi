@@ -181,8 +181,14 @@ const sitio = (p: Porta): string => `${p.arquivo}:${p.linha} ${p.verbo}(${p.tabe
  * E228: TRANCA 33 → 34 — a solta do órfão vencido (S-C60) é um UPDATE dentro
  * da transação de `criarReservaDeVestido`, atrás do MESMO `FOR UPDATE` do
  * vestido que serializa os criadores (S-M22). Porta nova, disciplina velha.
+ *
+ * E223: TRANCA 34 → 36 — a troca de peça do contrato abre transação própria
+ * (contrato → bloqueio antigo, e o vestido novo é trancado pela transação
+ * ANINHADA de `criarReservaDeVestido`, que agora aceita executor): o
+ * soft-cancel do bloqueio antigo e o `updatedAt` do contrato são as duas
+ * escritas novas, as duas atrás do `FOR UPDATE` da própria linha.
  */
-const RETRATO = { TRANCA: 34, CAS: 11, ABERTA: 13 } as const;
+const RETRATO = { TRANCA: 36, CAS: 11, ABERTA: 13 } as const;
 
 /**
  * O retrato da ORDEM, travado pelo mesmo critério — e é ele que estava 1 e 2
@@ -196,8 +202,14 @@ const RETRATO = { TRANCA: 34, CAS: 11, ABERTA: 13 } as const;
  * a parcela (degrau 6) — `git show 9fa70a59` sobre as quatro pastas varridas dá
  * exatamente `+1 db.transaction` e `+2 .for("update")`. Nenhuma outra
  * transação nasceu ou morreu no intervalo.
+ *
+ * **29 → 30 e 40 → 42 (E223)**: a troca de peça tranca o contrato (degrau 5)
+ * e o bloqueio antigo (degrau 7), na ordem. A tranca do vestido novo não
+ * aparece aqui como terceira porque vive na transação ANINHADA de
+ * `criarReservaDeVestido` (savepoint), que já era contada como transação
+ * própria — o degrau 8 continua sendo tomado por ela, depois dos dois de cá.
  */
-const RETRATO_DA_ORDEM = { transacoes: 29, trancas: 40 } as const;
+const RETRATO_DA_ORDEM = { transacoes: 30, trancas: 42 } as const;
 
 /**
  * A dívida reconhecida: as portas que hoje não são TRANCA nem CAS.
@@ -396,7 +408,7 @@ describe("varredura — a enumeração das portas de escrita", () => {
    * (`contratos.ts`), e o vermelho `expected 57 to be 56` foi o que cobrou este
    * parágrafo.
    */
-  it("acha as portas — são 57, e o total é o retrato somado", () => {
+  it("acha as portas — são 60, e o total é o retrato somado", () => {
     expect(portas.length).toBe(RETRATO.TRANCA + RETRATO.CAS + RETRATO.ABERTA);
   });
 
@@ -802,7 +814,7 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
    * - **8 → 11 por CAS** é drift ANTERIOR, medido pela S-C11 e não causado por
    *   ela: os pisos eram `>=` e ninguém os subiu depois do E212 e do E213.
    */
-  it("e o censo das disciplinas é o retrato — 33 TRANCA · 11 CAS · 13 ABERTA", () => {
+  it("e o censo das disciplinas é o retrato — 36 TRANCA · 11 CAS · 13 ABERTA", () => {
     const conta = { TRANCA: 0, CAS: 0, ABERTA: 0 };
     for (const p of portas) conta[p.disciplina] += 1;
     expect(conta).toEqual(RETRATO);
@@ -845,7 +857,7 @@ describe("varredura — as trancas sobem a cadeia, e nunca descem", () => {
    * commit sobre as quatro pastas varridas. É o caso vivo da S-C46: *piso não
    * obriga a remedir, e a prosa envelhece calada.*
    */
-  it("olha para as transações de verdade — 29 transações trancam, e são 40 trancas", () => {
+  it("olha para as transações de verdade — 30 transações trancam, e são 42 trancas", () => {
     const porTransacao = trancasPorTransacao();
     expect({
       transacoes: porTransacao.size,

@@ -7456,6 +7456,30 @@ export const CancelarContratoResponse = zod.object({
 
 
 /**
+ * A porta da cláusula 17ª. Antes dela, trocar de traje era cancelar o contrato e fazer outro — o que apagava a trilha financeira junto. Liberta a reserva antiga (soft-cancel), prende a nova com a MESMA régua de disponibilidade do fecho e refaz o snapshot do item (peça e descrição). O dinheiro não se mexe: o `valorUnitario` contratado fica — diferença de preço negociada entra pelos gestos financeiros que já existem, e a trilha grava os dois preços para a loja decidir.
+ * @summary E223 — troca uma peça do contrato sem cancelar o contrato
+ */
+export const TrocarPecaDoContratoParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "contratoId": zod.coerce.string()
+})
+
+
+
+
+
+export const TrocarPecaDoContratoBody = zod.object({
+  "bloqueioId": zod.string().min(1),
+  "vestidoNovoId": zod.string().min(1)
+})
+
+export const TrocarPecaDoContratoResponse = zod.object({
+  "bloqueioNovoId": zod.string(),
+  "vestidoNovoId": zod.string()
+})
+
+
+/**
  * E79: os recortes que cobrança e projeção usam no lugar da lista completa. `status=abertas` devolve só PREVISTA/PARCIAL (a régua única do estaAberta); `recebidasDe` devolve as com dinheiro recebido a partir do dia (para o realizado desde a âncora do saldo conferido).
  * @summary Parcelas da loja — opcionalmente recortadas por vencimento, status ou recebimento
  */

@@ -217,6 +217,8 @@ import type {
   Sessao,
   SimulacaoComissao,
   SimularComissaoInput,
+  TrocarPecaInput,
+  TrocarPecaResponse,
   TrocarSenhaInput,
   Usuario,
   UsuarioComLojas,
@@ -12123,6 +12125,80 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getCancelarContratoMutationOptions(options));
+    }
+
+export const getTrocarPecaDoContratoUrl = (lojaId: string,
+    contratoId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/contratos/${contratoId}/trocar-peca`
+}
+
+/**
+ * A porta da cláusula 17ª. Antes dela, trocar de traje era cancelar o contrato e fazer outro — o que apagava a trilha financeira junto. Liberta a reserva antiga (soft-cancel), prende a nova com a MESMA régua de disponibilidade do fecho e refaz o snapshot do item (peça e descrição). O dinheiro não se mexe: o `valorUnitario` contratado fica — diferença de preço negociada entra pelos gestos financeiros que já existem, e a trilha grava os dois preços para a loja decidir.
+ * @summary E223 — troca uma peça do contrato sem cancelar o contrato
+ */
+export const trocarPecaDoContrato = async (lojaId: string,
+    contratoId: string,
+    trocarPecaInput: TrocarPecaInput, options?: RequestInit): Promise<TrocarPecaResponse> => {
+
+  return customFetch<TrocarPecaResponse>(getTrocarPecaDoContratoUrl(lojaId,contratoId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(trocarPecaInput)
+  }
+);}
+
+
+
+
+export const getTrocarPecaDoContratoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof trocarPecaDoContrato>>, TError,{lojaId: string;contratoId: string;data: BodyType<TrocarPecaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof trocarPecaDoContrato>>, TError,{lojaId: string;contratoId: string;data: BodyType<TrocarPecaInput>}, TContext> => {
+
+const mutationKey = ['trocarPecaDoContrato'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof trocarPecaDoContrato>>, {lojaId: string;contratoId: string;data: BodyType<TrocarPecaInput>}> = (props) => {
+          const {lojaId,contratoId,data} = props ?? {};
+
+          return  trocarPecaDoContrato(lojaId,contratoId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TrocarPecaDoContratoMutationResult = NonNullable<Awaited<ReturnType<typeof trocarPecaDoContrato>>>
+    export type TrocarPecaDoContratoMutationBody = BodyType<TrocarPecaInput>
+    export type TrocarPecaDoContratoMutationError = ErrorType<unknown>
+
+    /**
+ * @summary E223 — troca uma peça do contrato sem cancelar o contrato
+ */
+export const useTrocarPecaDoContrato = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof trocarPecaDoContrato>>, TError,{lojaId: string;contratoId: string;data: BodyType<TrocarPecaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof trocarPecaDoContrato>>,
+        TError,
+        {lojaId: string;contratoId: string;data: BodyType<TrocarPecaInput>},
+        TContext
+      > => {
+      return useMutation(getTrocarPecaDoContratoMutationOptions(options));
     }
 
 export const getListParcelasUrl = (lojaId: string,

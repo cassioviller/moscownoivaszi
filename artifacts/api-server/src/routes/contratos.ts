@@ -51,7 +51,10 @@ import {
   // E213 — o perdão da multa e dos juros da cláusula 9ª.
   PerdoarMoraBody,
   PerdoarMoraResponse,
-  RestabelecerMoraResponse
+  RestabelecerMoraResponse,
+  // E223 — a troca de peça do contrato (cláusula 17ª).
+  TrocarPecaDoContratoBody,
+  TrocarPecaDoContratoResponse,
 } from "@workspace/api-zod";
 import {
   addDias,
@@ -92,6 +95,9 @@ import { moraDe } from "../lib/mora-da-parcela";
 // E222 — o expediente de RETIRADA e DEVOLUÇÃO (cláusula 4ª), que não é o de
 // atendimento. As duas portas que gravam as datas passam pela mesma guarda.
 import { recusaDeExpedienteDeRetirada } from "../lib/expediente-de-retirada";
+// E223 — a troca de peça prende a reserva nova pela MESMA régua do fecho.
+import { criarReservaDeVestido } from "../lib/reserva-do-vestido";
+import { relogio } from "../lib/relogio";
 
 const router: IRouter = Router();
 
@@ -2059,6 +2065,233 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
       aplicou18a: desfecho.rescisao.aplicou18a,
       explicacao: desfecho.rescisao.explicacao,
     },
+  }));
+});
+
+/**
+ * E223 — a porta de trocar peça do contrato (cláusula 17ª).
+ *
+ * Até aqui `contrato_itens` e `contrato_bloqueios` recebiam escrita num sítio
+ * só — o INSERT do `POST /contratos` — e trocar de traje era CANCELAR o
+ * contrato e fazer outro, o que apagava a trilha financeira junto. Esta porta
+ * faz as quatro coisas de uma vez, na mesma transação: liberta a reserva
+ * antiga (soft-cancel — a EXCLUDE e a disponibilidade param de vê-la), prende
+ * a nova com a MESMA régua do fecho (`criarReservaDeVestido`, agora com três
+ * portas), refaz o snapshot do item (peça e descrição) e deixa rastro.
+ *
+ * **O dinheiro NÃO se mexe, e a decisão é declarada**: a 17ª só põe preço na
+ * troca de DATA (§2º/§3º, que é o E211) — sobre a troca de modelo ela diz
+ * prazo e dias vedados (o E219, a guarda que mora nesta porta). O
+ * `valorUnitario` contratado fica; diferença de preço negociada entra pelos
+ * gestos financeiros que já existem (parcela avulsa), e a trilha grava os
+ * DOIS preços para a loja decidir com o número na mão. Mexer no
+ * `valorTotal` aqui quebraria o invariante que o fecho prova (parcelas
+ * somam o total, em centavos exatos).
+ *
+ * A reserva antiga pode chegar MORTA (cancelada por outro caminho, contrato
+ * vivo apontando para ela): a troca é justamente o conserto — religa o
+ * contrato numa reserva viva. Só a peça JÁ RETIRADA recusa: trocar de modelo
+ * depois de a peça sair não existe.
+ *
+ * O `bloqueioVestidoId` singular do contrato é legado lido, nunca mais
+ * escrito (E72) — o vínculo autoritativo é o N:N, e é ele que troca aqui.
+ */
+router.post("/lojas/:lojaId/contratos/:contratoId/trocar-peca", async (req, res): Promise<void> => {
+  const { lojaId, contratoId } = req.params as { lojaId: string; contratoId: string };
+  const parsed = TrocarPecaDoContratoBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json(erroDeValidacao(parsed.error));
+    return;
+  }
+  const { bloqueioId, vestidoNovoId } = parsed.data;
+
+  const contrato = await db.query.contratosTable.findFirst({
+    where: and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)),
+  });
+  if (!contrato) {
+    res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
+    return;
+  }
+  if (contrato.status !== "ATIVO") {
+    res.status(422).json({
+      error: "CONTRATO_NAO_ATIVO",
+      detalhe: "Contrato não está ativo — a troca de peça é gesto de contrato vivo.",
+    });
+    return;
+  }
+
+  const [vinculo] = await db.select().from(contratoBloqueiosTable)
+    .where(and(
+      eq(contratoBloqueiosTable.contratoId, contratoId),
+      eq(contratoBloqueiosTable.bloqueioId, bloqueioId),
+    ));
+  if (!vinculo) {
+    res.status(422).json({
+      error: "RESERVA_NAO_E_DESTE_CONTRATO",
+      detalhe: "Esta reserva não está presa por este contrato — a troca parte de uma peça do próprio contrato.",
+      campos: [{ campo: "bloqueioId", motivo: "A reserva não pertence a este contrato" }],
+    });
+    return;
+  }
+  const [bloqueioAntigo] = await db.select().from(bloqueioVestidosTable)
+    .where(and(eq(bloqueioVestidosTable.id, bloqueioId), eq(bloqueioVestidosTable.lojaId, lojaId)));
+  if (!bloqueioAntigo) {
+    res.status(404).json({
+      error: "RESERVA_NAO_ENCONTRADA",
+      detalhe: "A reserva de vestido indicada não existe nesta loja.",
+    });
+    return;
+  }
+  if (bloqueioAntigo.retiradaDataReal) {
+    res.status(422).json({
+      error: "TROCA_APOS_RETIRADA",
+      detalhe: "A peça já foi retirada — a troca de modelo acontece antes de a peça sair da loja.",
+      campos: [{ campo: "bloqueioId", motivo: "A peça já saiu da loja" }],
+    });
+    return;
+  }
+
+  const [vestidoNovo] = await db.select().from(vestidosTable)
+    .where(and(eq(vestidosTable.id, vestidoNovoId), eq(vestidosTable.lojaId, lojaId)));
+  if (!vestidoNovo) {
+    res.status(404).json({ error: "VESTIDO_NAO_ENCONTRADO", detalhe: "Este vestido não existe nesta loja." });
+    return;
+  }
+  if (vestidoNovo.id === bloqueioAntigo.vestidoId) {
+    res.status(422).json({
+      error: "TROCA_PARA_A_MESMA_PECA",
+      detalhe: "A peça nova é a mesma que já está no contrato — não há o que trocar.",
+      campos: [{ campo: "vestidoNovoId", motivo: "É a mesma peça" }],
+    });
+    return;
+  }
+
+  const agora = relogio.agora();
+
+  const desfecho = await db.transaction(async (tx) => {
+    /**
+     * A ordem do módulo (E158): contrato → bloqueios → vestidos. O vestido
+     * novo é trancado DENTRO de `criarReservaDeVestido`, que é o último
+     * degrau — e a releitura de cada linha é statement novo, que em READ
+     * COMMITTED enxerga o que um cancelamento concorrente commitou (a forma
+     * do K2/K3 do fecho).
+     */
+    const [sobTranca] = await tx.select({ status: contratosTable.status }).from(contratosTable)
+      .where(and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)))
+      .for("update");
+    if (!sobTranca) return { sumiu: true as const };
+    if (sobTranca.status !== "ATIVO") return { naoAtivo: true as const };
+
+    const [antigoSobTranca] = await tx.select().from(bloqueioVestidosTable)
+      .where(and(eq(bloqueioVestidosTable.id, bloqueioId), eq(bloqueioVestidosTable.lojaId, lojaId)))
+      .for("update");
+    if (!antigoSobTranca) return { sumiu: true as const };
+    // A retirada pode ter sido registrada na janela entre a leitura do pool e
+    // a tranca — física ganha de gesto, como no E225.
+    if (antigoSobTranca.retiradaDataReal) return { jaSaiu: true as const };
+
+    /**
+     * A reserva nova nasce ANTES de a antiga morrer — de propósito: o desfecho
+     * `conflitos` é `return`, não `throw`, então a transação COMITA o que já
+     * foi escrito, e um conflito da peça nova não pode deixar a antiga
+     * soft-cancelada (medido no vermelho deste épico: a reserva antiga sumia
+     * da disponibilidade num 409 que dizia "nada se moveu"). As peças são
+     * diferentes, então a antiga viva não conflita com a candidata — e as
+     * trancas já foram tomadas acima, na ordem do módulo.
+     */
+    const criado = await criarReservaDeVestido({
+      lojaId,
+      vestidoId: vestidoNovoId,
+      // A reserva nova herda a dona e a reserva-mãe da antiga: o véu pendurado
+      // na mãe (S-O56/E185) continua pendurado — e sem dona própria, como era.
+      leadId: antigoSobTranca.leadId,
+      tipo: "RESERVA_CASAMENTO",
+      casamentoData: antigoSobTranca.casamentoData,
+      reservaId: antigoSobTranca.reservaId,
+    }, tx);
+    if ("conflitos" in criado) return { conflitos: criado.conflitos };
+
+    if (!antigoSobTranca.canceladoEm) {
+      await tx.update(bloqueioVestidosTable)
+        .set({ canceladoEm: agora, updatedAt: agora })
+        .where(eq(bloqueioVestidosTable.id, bloqueioId));
+    }
+
+    await tx.delete(contratoBloqueiosTable)
+      .where(and(
+        eq(contratoBloqueiosTable.contratoId, contratoId),
+        eq(contratoBloqueiosTable.bloqueioId, bloqueioId),
+      ));
+    await tx.insert(contratoBloqueiosTable)
+      .values({ contratoId, bloqueioId: criado.bloqueio.id });
+
+    // O snapshot do item passa a dizer a peça que a noiva vai vestir — e SÓ
+    // isso: o valorUnitario contratado fica (a decisão declarada no docblock).
+    const itensTrocados = await tx.update(contratoItensTable)
+      .set({ vestidoId: vestidoNovoId, descricao: vestidoNovo.nome })
+      .where(and(
+        eq(contratoItensTable.contratoId, contratoId),
+        eq(contratoItensTable.vestidoId, antigoSobTranca.vestidoId),
+      ))
+      .returning({ id: contratoItensTable.id, valorUnitario: contratoItensTable.valorUnitario });
+
+    await tx.update(contratosTable)
+      .set({ updatedAt: agora })
+      .where(eq(contratosTable.id, contratoId));
+
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario: req.usuario!,
+      acao: "CONTRATO_PECA_TROCADA",
+      entidade: "contrato",
+      entidadeId: contratoId,
+      detalhe: {
+        bloqueioAntigoId: bloqueioId,
+        bloqueioNovoId: criado.bloqueio.id,
+        vestidoAntigoId: antigoSobTranca.vestidoId,
+        vestidoNovoId,
+        descricaoNova: vestidoNovo.nome,
+        // Os DOIS preços, para a loja decidir a diferença com o número na mão.
+        valorUnitarioContratado: itensTrocados[0]?.valorUnitario ?? null,
+        precoBaseDaPecaNova: vestidoNovo.precoBase,
+        itensDoSnapshotTrocados: itensTrocados.length,
+      },
+    });
+    return { ok: true as const, bloqueioNovoId: criado.bloqueio.id };
+  });
+
+  if ("sumiu" in desfecho) {
+    res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
+    return;
+  }
+  if ("naoAtivo" in desfecho) {
+    res.status(422).json({
+      error: "CONTRATO_NAO_ATIVO",
+      detalhe: "Contrato não está ativo — a troca de peça é gesto de contrato vivo.",
+    });
+    return;
+  }
+  if ("jaSaiu" in desfecho) {
+    res.status(422).json({
+      error: "TROCA_APOS_RETIRADA",
+      detalhe: "A peça já foi retirada — a troca de modelo acontece antes de a peça sair da loja.",
+      campos: [{ campo: "bloqueioId", motivo: "A peça já saiu da loja" }],
+    });
+    return;
+  }
+  if ("conflitos" in desfecho) {
+    res.status(409).json({
+      error: "VESTIDO_INDISPONIVEL",
+      detalhe:
+        "A peça nova está indisponível no período — confira os conflitos e escolha outra peça ou outra data.",
+      conflitos: desfecho.conflitos,
+    });
+    return;
+  }
+
+  res.json(TrocarPecaDoContratoResponse.parse({
+    bloqueioNovoId: desfecho.bloqueioNovoId,
+    vestidoNovoId,
   }));
 });
 

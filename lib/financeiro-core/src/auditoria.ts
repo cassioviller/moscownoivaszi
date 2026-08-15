@@ -189,6 +189,13 @@ export const ACOES_AUDITORIA = [
   // mas é ela que decide de quem é a comissão, então deixa rastro: quem montou
   // o orçamento, em nome de quem o contrato nasceu, e quem clicou (a sessão).
   "CONTRATO_VENDEDORA_DIVERGENTE",
+  // E223: a troca de peça do contrato (cláusula 17ª). O papel assinado diz UMA
+  // peça e o snapshot passa a dizer outra — sem esta linha, "por que o
+  // contrato imprime um vestido que a noiva não provou?" não tem resposta. O
+  // detalhe carrega os dois bloqueios, as duas peças e os DOIS preços (o
+  // contratado, que fica, e o de tabela da peça nova, para a loja decidir a
+  // diferença com o número na mão).
+  "CONTRATO_PECA_TROCADA",
   // E123/B3: desfazer um registro de cobrança. O registro nasce do clique num
   // link que abre outra aba (a fila de /mensagens) — errar é barato, e o
   // desfazer devolve a verdade ao histórico. Depois do DELETE a trilha é o
@@ -269,6 +276,7 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   AJUSTE_REMOVIDO: "Trabalho de costura removido da fila",
   COMISSAO_REGRA_REMOVIDA: "Regra de comissão removida",
   CONTRATO_VENDEDORA_DIVERGENTE: "Contrato com a venda em nome de outra pessoa",
+  CONTRATO_PECA_TROCADA: "Peça do contrato trocada (cláusula 17ª)",
   REGISTRO_COBRANCA_DESFEITO: "Registro de cobrança desfeito",
   USUARIO_EXCLUIDO: "Pessoa excluída do cadastro (ato global)",
   LOJA_EXCLUIDA: "Loja excluída (ato global)",

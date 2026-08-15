@@ -151,7 +151,7 @@ export function acaoDoMetodo(metodo: string): Acao {
  * varredura do E101 não a ter visto: ela procurava `/:id/<palavra>`.
  */
 export const POST_QUE_MUTA =
-  /\/(cancelar|estornar|receber|pagar|cobrar|aprovar|recusar|reenviar|expurgo|contato|link|baixa|confirmar|remarcar|marcar|enviar|desfazer-aceite)$/;
+  /\/(cancelar|estornar|receber|pagar|cobrar|aprovar|recusar|reenviar|expurgo|contato|link|baixa|confirmar|remarcar|marcar|enviar|desfazer-aceite|trocar-peca)$/;
 
 /**
  * POSTs que mutam mas cujo caminho termina em SUBSTANTIVO, não em verbo — a
