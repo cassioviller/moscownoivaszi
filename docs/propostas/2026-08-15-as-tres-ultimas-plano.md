@@ -13,8 +13,8 @@ mostra que ele pode esperar sem custar nada.
 
 | # | Sobra | Épico | Depende de | Tamanho medido |
 |---|---|---|---|---|
-| 1 | **S-C301** — validação de CNPJ | **E233** | nada | 3 portas de escrita, 1 seed, 1 tela; **1 documento inválido no banco inteiro**, e é o da loja |
-| 2 | **S-C300** — cidade, representante e PIX no cadastro da loja | **E234** | **D7** (dona) | 1 migração (7 colunas), 4 schemas do spec, 2 telas, 2 papéis, 1 seed |
+| 1 | **S-C301** — validação de CNPJ | **E233** ✅ `8a8bfe5f` | nada | 3 portas de escrita, 1 seed, 1 tela; **1 documento inválido no banco inteiro**, e é o da loja |
+| 2 | **S-C300** — cidade, representante e PIX no cadastro da loja | **E234** ✅ `714192a6` | ~~**D7** (dona)~~ respondida SIM | 1 migração (7 colunas), 4 schemas do spec, 2 telas, 2 papéis, 1 seed |
 | 3 | **S-C51** — conciliação por ATO | **E235** | **contadora** | 303 parcelas recebidas · **0 em pedaços** · 2 sem ato · **0 conciliadas, nunca** |
 
 E um **passo 0 que não é código**: o `origin/main` está **3 commits atrás**
@@ -246,9 +246,9 @@ sem quem vai usar é a que se reescreve.
 ## A ordem, e o que ela custa em decisão
 
 1. **Passo 0** — publicar `main`, com a autorização da dona — **autorizado e feito em 15/08**.
-2. **E233** — hoje, sem perguntar nada. Fecha a S-C301 e dá à P3 uma tela que
+2. **E233** — **executado (`8a8bfe5f`)**, sem perguntar nada. Fecha a S-C301 e dá à P3 uma tela que
    confere.
-3. **E234** — a D7 já está respondida (sim); é um dia. Fecha a S-C300 e o E220 inteiro
+3. **E234** — **executado (`714192a6`)**, no mesmo dia da resposta à D7. Fecha a S-C300 e o E220 inteiro
    (o papel deixa de ter lacuna que não seja da noiva).
 4. **Contadora → E235** — a pergunta com o número; respondida *por ato*, é um
    dia; *por parcela*, a S-C51 vira decisão escrita e fecha sem código.

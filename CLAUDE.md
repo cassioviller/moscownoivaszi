@@ -31,16 +31,20 @@ para o documento que manda.
    réguas, a identificação das partes com a qualificação do E215, a régua de
    EFEITO `e220-instrumento`); a D4 ficou respondida pelo gesto. **A segunda fatia
    é o E233 (`8a8bfe5f`)**: CPF e CNPJ conferidos pelos dígitos nas SEIS portas
-   (S-C301 fechada). **O que resta dele é a S-C300** — a D7 foi respondida SIM
-   em 15/08 (sete campos no cadastro da loja) e virou o **E234**, código.
+   (S-C301 fechada). **A terceira e última fatia é o E234 (`714192a6`, quarta
+   sessão de 15/08)**: a D7 respondida SIM virou sete colunas em `lojas`
+   (`0029`), as três portas, a SESSÃO, os dois papéis e as duas telas — quem
+   assina pela loja, o foro e o PIX saem do cadastro, e **o E220 está INTEIRO**
+   (S-C300 fechada). O achado dele: o plano contava três lugares e eram QUATRO
+   — a tela lê a loja do `/auth/me`, e sem os sete no select ela abria vazia.
    A tabela do `EXECUCAO.md` é a fila; **conte, não deduza** — depois da
    segunda metade de 15/08, que pegou as 22 sobras abertas e executou tudo o
-   que era executável, restam **DUAS sobras** (contadas depois do E233): a
+   que era executável, resta **UMA sobra** (contada depois do E234): a
    **S-C51** 🟡 (a conciliação por parcela — espera a contadora, com a pergunta
-   pronta no plano) e a **S-C300** 🔵 (a D7, respondida SIM → E234, o próximo
-   código). A S-C132 fechou no E220 e a S-C301 no E233. **O plano das três está em
+   pronta no plano). A S-C132 fechou no E220, a S-C301 no E233 e a S-C300 no
+   E234. **O plano das três está em
    [`2026-08-15-as-tres-ultimas-plano.md`](docs/propostas/2026-08-15-as-tres-ultimas-plano.md)**
-   — E233 **executado** (`8a8bfe5f`), E234 (**a D7 foi respondida SIM em 15/08** — o próximo, código), E235 (espera a contadora; a pergunta está no plano), cada uma medida. Mais **5 pendências que não são
+   — E233 **executado** (`8a8bfe5f`), E234 **executado** (`714192a6`), E235 (espera a contadora; a pergunta está no plano), cada uma medida. Mais **5 pendências que não são
    software** (a P5 nasceu no E219: confirmar que os 7 dias da 17ª contam do
    fecho). As duas sessões do dia estão contadas em
    `docs/revisao/2026-08-15-sessao-a-fila-do-que-restava.md` (a madrugada:
@@ -524,8 +528,8 @@ para o documento que manda.
    `git rev-list --count origin/main..main` antes de assumir que ainda está em
    dia — esta linha envelhece a cada commit, e já envelheceu seis vezes.
 
-   Hoje a régua é **API 1755 (251 arquivos) · frontend 998 (108 arquivos) ·
-   E2E 177 · typecheck verde** — as quatro medidas em série no fecho da
+   Hoje a régua é **API 1774 (255 arquivos) · frontend 998 (107 arquivos) ·
+   E2E 178 · typecheck verde** — as quatro medidas em série no fecho do E234, quarta sessão de 2026-08-15 (API 699 s, E2E 6,3 min, `banco-virgem` verde). O parágrafo anterior media 1755 (251) · 998 (108) · 177 no fecho da
    segunda metade de 2026-08-15 (a API rodou INTEIRA **seis vezes** na
    sessão; o E2E, **quatro**). O parágrafo anterior media 1726 · 974 na
    madrugada do mesmo dia. O parágrafo abaixo, dos números de
