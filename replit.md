@@ -241,9 +241,22 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   fixas + 3 por contrato atrasado, +1 se cobrado, +1 pelas órfãs) a cada 5 min
   em TODA tela aberta. As **10 portas que mudam a fila** derrubam o cache da
   loja e estão enumeradas no próprio arquivo; a conta de consultas tem régua de
-  IGUALDADE (cache desligado de propósito: `expected 9 to be +0`). O cache é
-  por PROCESSO — com réplicas atrás de balanceador a invalidação não atravessa
-  (S-C282; teto de dano = o TTL).
+  IGUALDADE (cache desligado de propósito: `expected 7 to be +0`). O cache é
+  por PROCESSO, e isso é **decisão escrita no módulo** (S-C282): o teto de dano
+  é o TTL, que é o mesmo ciclo do poll do sino, e a fila é aviso e não decisão —
+  quem cobra passa pela porta que lê o banco. A conta caiu de 9 para 7 na
+  S-C280: `pecasAtrasadasDoContrato` rebuscava a regra da loja POR CONTRATO.
+- **Republicar um manual não exige subir o app** (15/08):
+  `node --experimental-strip-types scripts/prints-dos-manuais.ts vendedora --so-injetar`
+  reconstrói `docs/manuais/pdf/<qual>.html` (o arquivo que se publica, com as
+  imagens em base64) sobre as **capturas versionadas**, em ~1 s e sem
+  `BASE_URL`. É o caminho da reescrita de manual, que acontece ao fim de cada
+  onda; **quem mudou a TELA continua rodando o script inteiro**, porque print
+  velho é mentira do mesmo jeito que prosa velha. Sem essa bandeira, o custo de
+  republicar um parágrafo era semear a loja de demonstração e dirigir 24 telas —
+  e o custo fazia a página envelhecer: em 15/08 a publicada ainda era a de
+  11/08, quatro ondas atrás. **Só o manual da vendedora tem prints** (24); os
+  outros quatro publicam o `docs/manuais/*.html` direto.
 - **Três varreduras novas de 15/08**, todas com o par acha-o-plantado /
   ignora-o-que-não-é (molde S-C180): a do **vazio silenciado**
   (`moscow-noivas/src/lib/vazio-silenciado-varredura.test.ts` — frase de vazio

@@ -28,17 +28,41 @@ para o documento que manda.
    15/08). **O ÚNICO épico de código aberto na trilha é o E220**, travado em
    D4/D7.
    A tabela do `EXECUCAO.md` é a fila; **conte, não deduza** — depois da
-   madrugada de 15/08 (E223 → E219 → S-C234, o **lote paralelo dos blocos
-   5–8**: quatro agentes, 20 sobras fechadas de uma vez, 9 abertas pelos
-   próprios fechos, e a **S-C270 fechada em seguida** — os cinco manuais
-   reescritos contra a onda, com as quatro dívidas baixadas sob a régua de
-   contradição e os três números novos no registro de prazos) são **22
-   sobras** (**ZERO 🟠**, **1 🟡** — a S-C51, que espera a contadora —, 21
-   🔵) e **5 pendências que não são software** (a P5 nasceu no E219:
-   confirmar que os 7 dias da 17ª contam do fecho). A sessão está contada em
-   `docs/revisao/2026-08-15-sessao-a-fila-do-que-restava.md`. E a manhã de
-   14/08 provou a S-A5 dentro do próprio rastreador: a linha-resumo dizia 55
-   quando a tabela media 57.
+   segunda metade de 15/08, que pegou as 22 sobras abertas e executou tudo o
+   que era executável, restam **DUAS sobras, e nenhuma é código**: a **S-C51**
+   🟡 (a conciliação por parcela — espera a contadora, porque carimbo por ATO
+   pede a tabela que o E221 recusou por escrito) e a **S-C132** 🔵 (o PDF sem a
+   qualificação — é o E220, travado em D4/D7). Mais **5 pendências que não são
+   software** (a P5 nasceu no E219: confirmar que os 7 dias da 17ª contam do
+   fecho). As duas sessões do dia estão contadas em
+   `docs/revisao/2026-08-15-sessao-a-fila-do-que-restava.md` (a madrugada:
+   E223 → E219 → S-C234 e o lote paralelo dos blocos 5–8) e
+   `docs/revisao/2026-08-15-sessao-a-fila-inteira.md` (a segunda metade).
+
+   **A lição da segunda metade é de MEDIÇÃO, e ela tem número: SETE das nove
+   sobras estavam erradas sobre si mesmas, e todas para MENOS.** A S-C281 dizia
+   22 campos e eram **113** (a grafia `.optional()` era o grep, não a causa —
+   o `coerce.date()` **obrigatório** adoece igual, e os obrigatórios são os de
+   dinheiro); a S-C250 dizia 10 atribuições e eram 20; a S-C240 dizia "zero
+   ocorrências de reserva" e eram **nove**, nenhuma delas a peça; a S-C93
+   descrevia `min`/`max` que **não existem** em nenhum dos 7 `datetime-local`
+   do repositório; a S-C94 mediu o `moscow_base` de novo (**quarta vez** que
+   isso acontece). Não é coincidência: **a sobra é escrita no fim de um épico,
+   por quem acabou de olhar dois arquivos, e a medição olha o repositório.**
+
+   **E a cena de corrida que a S-C242 pedia ACHOU DEFEITO** — a sobra supunha
+   que a disciplina de tranca bastava. Bastava; faltava a transação **repetir a
+   condição lida no pool**, e duas trocas simultâneas do mesmo contrato
+   terminavam com **duas reservas vivas e dois vestidos presos**
+   (`expected 2 to be 1`). É a K8 do `PATCH` e a S-O31 do `POST /link`,
+   terceira vez nesta trilha. **O primeiro conserto dela foi longe demais** —
+   vetei também trocar a partir de reserva cancelada, por raciocínio e não por
+   medição, e o E223 tem cena dizendo o contrário, que reprovou no mesmo
+   minuto.
+
+   E a manhã de 14/08 provou a S-A5 dentro do próprio rastreador: a
+   linha-resumo dizia 55 quando a tabela media 57 — e em 15/08 ela dizia **4
+   pendências sobre uma tabela de cinco**, pela terceira vez.
 
    **O E215 é o primeiro épico da trilha em que a medição mudou o tamanho nos
    DOIS sentidos**, e as duas metades valem para os que faltam. Encareceu: o
@@ -288,7 +312,7 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | **Ótica dos papéis** | **`2026-08-11-otica-dos-papeis/`** | **EXECUTADA — 149 achados em 14 épicos (E158–E171), as quatro faixas fechadas, mais o **E172** que os manuais fizeram nascer, o **resto das sobras em E173–E188**, a **onda 1 (E189–E192)**, a **onda 2 (E193–E196)** e o **E197** (onda 3). O que resta dela são as sobras S-O da tabela do `EXECUCAO.md` — **27, e a única 🟡 entre elas nasceu no E197**; conte lá** |
+   | **Ótica dos papéis** | **`2026-08-11-otica-dos-papeis/`** | **EXECUTADA — 149 achados em 14 épicos (E158–E171), as quatro faixas fechadas, mais o **E172** que os manuais fizeram nascer, o **resto das sobras em E173–E188**, a **onda 1 (E189–E192)**, a **onda 2 (E193–E196)** e o **E197** (onda 3). O que resta dela são as sobras S-O da tabela do `EXECUCAO.md` — **25, TODAS 🔵** (contadas em 15/08; esta célula dizia 27, e a única 🟡 que ela citava já fechou); conte lá** |
    | Revisão max | `2026-08-10-revisao-max/` | fechada como fila — 18 sobras da rodada 1 (16 fechadas) + 53 da rodada 2 (10 épicos). **Resta 1 🟡**: a S-M17, que espera dados de banco real. A **S-M10 fechou no E169** (`fe8afdd`) |
    | Rodada 6 | `2026-07-25-rodada-6/` | fechada — **ZERO sobras abertas.** Era o backlog mais pesado do repositório |
    | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — **ZERO sobras abertas** |
@@ -299,7 +323,7 @@ para o documento que manda.
    S-A2 (as fotos que faltam do caderno) e S-A27 (classificar as peças com a
    dona; o acervo tem 132 peças do legado em `moscow_base`, todas sem "Tipo de
    peça"). Toda linha de código aberta hoje está na tabela de Sobras da trilha
-   da ótica dos papéis — **conte lá, são 27** (2026-08-12, depois da onda 2).
+   da ótica dos papéis — **conte lá, são 25, todas 🔵** (contadas em 15/08; a linha dizia 27 desde 2026-08-12, e é a S-A5 pela quarta vez).
 
    **O E197 (onda 3) fechou a S-O117, que era a única 🟡 aberta — e a que restou
    nasceu dele, pela mesma confusão do outro lado.** A sobra apontava a leitura;
@@ -478,24 +502,25 @@ para o documento que manda.
    (`2912526`). Antes da conferência a tabela também dizia zero 🟠 — a diferença
    é que agora é verdade.
 
-   **Tudo isso está no `main`, e o `main` está PUBLICADO.** Em 2026-08-11 o
-   `origin/main` foi de `8b4dd28` para a ponta da rodada 2 — **23 commits**
-   (a segunda varredura, a consolidação e os 10 épicos executados),
-   fast-forward puro, com autorização da dona no mesmo dia. Antes disso,
-   2026-08-10 publicou os 31 da revisão max. O costume vem de 2026-08-07,
-   quando o remoto destravou de 322 commits e o custo de deixá-lo para trás
-   ficou medido: **todo worktree de agente nasce em `origin/main`**, e cada
-   agente atrasado gastava o primeiro gesto se reposicionando (regra 29).
-   Confira com `git rev-list --count origin/main..main` antes de assumir que
-   ainda está em dia — esta linha envelhece a cada commit, e já envelheceu
-   cinco vezes.
+   **Tudo isso está no `main`, e o `main` está PUBLICADO.** Em 2026-08-15 o
+   `origin/main` foi de `cbcd8b30` para `0dfa8b95` — **69 commits**, a onda
+   inteira de 14 e 15/08 —, fast-forward puro, com autorização da dona no
+   mesmo dia. **E o hash de partida é a prova do custo**: `cbcd8b30` era
+   exatamente onde os worktrees dos quatro agentes do lote nasciam, que é por
+   que eles nasciam **48 commits atrás** da base que a tarefa mandava usar.
+   Antes disso, 2026-08-11 publicou os 23 da rodada 2 e 2026-08-10 os 31 da
+   revisão max. O costume vem de 2026-08-07, quando o remoto destravou de 322
+   commits e o custo de deixá-lo para trás ficou medido: **todo worktree de
+   agente nasce em `origin/main`**, e cada agente atrasado gastava o primeiro
+   gesto se reposicionando (regra 29). Confira com
+   `git rev-list --count origin/main..main` antes de assumir que ainda está em
+   dia — esta linha envelhece a cada commit, e já envelheceu seis vezes.
 
-   Hoje a régua é **API 1726 (242 arquivos) · frontend 974 (104 arquivos) ·
-   E2E 177 · typecheck verde** — as quatro medidas em série na madrugada de
-   2026-08-15, no fecho da integração dos blocos 5–8 (a API rodou INTEIRA
-   cinco vezes na sessão: 1697 no E223, 1700 no E219, 1707 na S-C234, 1726 na
-   integração — mais as quatro dos agentes em bancos próprios; o E2E, duas:
-   177 no lote E223+E219 e 177 no fecho). O parágrafo abaixo, dos números de
+   Hoje a régua é **API 1755 (251 arquivos) · frontend 998 (108 arquivos) ·
+   E2E 177 · typecheck verde** — as quatro medidas em série no fecho da
+   segunda metade de 2026-08-15 (a API rodou INTEIRA **seis vezes** na
+   sessão; o E2E, **quatro**). O parágrafo anterior media 1726 · 974 na
+   madrugada do mesmo dia. O parágrafo abaixo, dos números de
    14/08, fica como a prova viva de sempre: **E este parágrafo é a prova
    viva do que ele manda fazer: os QUATRO agentes do lote da manhã acharam,
    cada um por conta própria, que ele estava três épicos atrás** — ele dizia
