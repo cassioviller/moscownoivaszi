@@ -63,9 +63,11 @@ export const PRAZO_DA_TROCA_DIAS = 7;
  * então o sistema declara a leitura que usou): onde o papel é específico,
  * obedece-se à letra; onde é omisso, declara-se a convenção.
  */
-const DIAS_VEDADOS = new Set([5, 6]);
+export const DIAS_VEDADOS_DA_TROCA = [5, 6] as const;
+const DIAS_VEDADOS = new Set<number>(DIAS_VEDADOS_DA_TROCA);
 
-const NOME_DO_DIA = [
+/** E220 — o papel imprime o §1º pelo NOME dos dias, lido daqui e não copiado. */
+export const NOME_DO_DIA = [
   "domingo",
   "segunda-feira",
   "terça-feira",

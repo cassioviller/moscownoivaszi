@@ -100,7 +100,7 @@ import { derrubarFilaDeAtrasos } from "../lib/fila-de-atrasos-cache";
 import { moraDe } from "../lib/mora-da-parcela";
 // E222 — o expediente de RETIRADA e DEVOLUÇÃO (cláusula 4ª), que não é o de
 // atendimento. As duas portas que gravam as datas passam pela mesma guarda.
-import { recusaDeExpedienteDeRetirada } from "../lib/expediente-de-retirada";
+import { expedienteDeRetiradaPorExtenso, recusaDeExpedienteDeRetirada } from "../lib/expediente-de-retirada";
 // E223 — a troca de peça prende a reserva nova pela MESMA régua do fecho.
 import { criarReservaDeVestido } from "../lib/reserva-do-vestido";
 import { relogio } from "../lib/relogio";
@@ -1385,7 +1385,8 @@ router.get("/lojas/:lojaId/contratos/:contratoId/pdf", async (req, res): Promise
   res.status(200)
     .type("application/pdf")
     .setHeader("Content-Disposition", `inline; filename="${nomeDoArquivo(contrato)}"`);
-  res.send(Buffer.from(pdfDoContrato(contrato)));
+  // E220: a 4ª do instrumento imprime o expediente EFETIVO desta loja.
+  res.send(Buffer.from(pdfDoContrato(contrato, await expedienteDeRetiradaPorExtenso(lojaId))));
 });
 
 /**

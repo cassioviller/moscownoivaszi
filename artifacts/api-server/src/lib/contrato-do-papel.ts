@@ -1,5 +1,6 @@
 import { gerarContratoPdf } from "./contrato-pdf";
 import type { Contrato, ContratoItem, Parcela, Lead, Loja } from "@workspace/db";
+import { estadoCivilEnum } from "@workspace/db";
 import { brutoEmCentavos, linhaDeDesconto } from "@workspace/financeiro-core";
 
 /**
@@ -113,8 +114,28 @@ export type ContratoComPapel = Contrato & {
   itens: ContratoItem[];
 };
 
-/** O PDF do contrato, byte por byte igual dos dois lados. */
-export function pdfDoContrato(contrato: ContratoComPapel): Uint8Array {
+/**
+ * E220 — o rótulo do estado civil no papel. `satisfies` sobre os valores do enum:
+ * valor novo no banco reprova o typecheck aqui, e não sai como `UNIAO_ESTAVEL`
+ * cru no contrato que a noiva assina.
+ */
+const ROTULO_ESTADO_CIVIL = {
+  SOLTEIRA: "solteira",
+  CASADA: "casada",
+  DIVORCIADA: "divorciada",
+  VIUVA: "viúva",
+  SEPARADA: "separada",
+  UNIAO_ESTAVEL: "união estável",
+} satisfies Record<(typeof estadoCivilEnum.enumValues)[number], string>;
+
+/**
+ * O PDF do contrato, byte por byte igual dos dois lados.
+ *
+ * `expediente` é a 4ª por extenso (`expedienteDeRetiradaPorExtenso`), lida pela
+ * rota porque este módulo é síncrono e sem banco; ausente, o papel imprime o
+ * expediente do contrato (o padrão), que é o que uma loja sem regra pratica.
+ */
+export function pdfDoContrato(contrato: ContratoComPapel, expediente?: string): Uint8Array {
   const cancelado = contrato.status === "CANCELADO";
 
   /**
@@ -149,8 +170,22 @@ export function pdfDoContrato(contrato: ContratoComPapel): Uint8Array {
     .filter((p) => p.origem !== "PLANO" && p.status !== "CANCELADA")
     .reduce((s, p) => s + Math.round(p.valorPrevisto * 100), 0);
 
+  // E220 — a segunda tabela da 1ª: a ENTRADA é a parcela nº 0 do carnê (a mesma
+  // regra da tela e da linha "Entrada" do plano), e o RESTANTE é o total menos
+  // ela — em centavos, para o papel não somar 0,30000000000000004.
+  const entradaC = vivasOuTodas
+    .filter((p) => p.origem === "PLANO" && p.numero === 0 && p.status !== "CANCELADA")
+    .reduce((s, p) => s + Math.round(p.valorPrevisto * 100), 0);
+  const restanteC = Math.max(Math.round(contrato.valorTotal * 100) - entradaC, 0);
+
   return gerarContratoPdf({
     lojaNome: contrato.loja.nome,
+    lojaCnpj: contrato.loja.cnpj ?? undefined,
+    lojaEndereco: contrato.loja.endereco ?? undefined,
+    lojaTelefone: contrato.loja.telefone ?? undefined,
+    // D7 aberta: representante e cidade não existem no cadastro — o papel sai
+    // com a lacuna e a 21ª remete à sede. Quando a D7 fechar, é aqui que entram.
+    expediente,
     noivaNome: contrato.lead?.noivaNome ?? "",
     tarja:
       cancelado && contrato.canceladoEm
@@ -161,6 +196,22 @@ export function pdfDoContrato(contrato: ContratoComPapel): Uint8Array {
     // O CPF do contrato manda: é o que foi conferido no fechamento.
     cpf: contrato.cpf ?? undefined,
     whatsapp: contrato.lead?.whatsapp ?? undefined,
+    // E220 — os doze da qualificação congelada (E215), no papel que ela assina.
+    qualificacao: {
+      rg: contrato.rg ?? undefined,
+      estadoCivil: contrato.estadoCivil ? ROTULO_ESTADO_CIVIL[contrato.estadoCivil] : undefined,
+      profissao: contrato.profissao ?? undefined,
+      // Nascimento é dia civil gravado à meia-noite UTC, como o casamento.
+      nascimento: contrato.nascimento ? dataBR.format(contrato.nascimento) : undefined,
+      email: contrato.email ?? undefined,
+      logradouro: contrato.enderecoLogradouro ?? undefined,
+      numero: contrato.enderecoNumero ?? undefined,
+      complemento: contrato.enderecoComplemento ?? undefined,
+      bairro: contrato.enderecoBairro ?? undefined,
+      cep: contrato.enderecoCep ?? undefined,
+      cidade: contrato.enderecoCidade ?? undefined,
+      estado: contrato.enderecoEstado ?? undefined,
+    },
     vestido: contrato.vestidoDescricao ?? undefined,
     itens: contrato.itens.map((it) => ({
       descricao: `${it.quantidade}x ${it.descricao}`,
@@ -194,6 +245,9 @@ export function pdfDoContrato(contrato: ContratoComPapel): Uint8Array {
       };
     })(),
     valorTotal: brl(contrato.valorTotal),
+    entrada: entradaC > 0 ? brl(entradaC / 100) : undefined,
+    restante: brl(restanteC / 100),
+    prazoDevolucaoReservaDias: contrato.prazoDevolucaoReservaDias,
     formaPagamento: rotuloForma(contrato.formaPagamento),
     parcelas,
     cobrancasExtras: extras.length > 0 ? extras : undefined,

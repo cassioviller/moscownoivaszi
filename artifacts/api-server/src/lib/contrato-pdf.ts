@@ -13,15 +13,56 @@
 // a loja assinam. Com 24 parcelas sumia a seção de observações; `numParcelas`
 // aceita até 360. Agora nenhuma linha desce abaixo da margem: acabou a página,
 // nasce outra — e o bloco de assinaturas nunca se separa no meio.
+//
+// **E220 — o PDF vira o INSTRUMENTO.** Até aqui ele era um resumo financeiro
+// (dados da noiva, itens, valores, datas, observações, assinaturas) — útil, e
+// não o que a 6ª manda entregar: *"a cópia do presente instrumento, contendo
+// todas as especificidades da locação contratada"*. Agora o papel tem a forma
+// do molde de mão: identificação das partes (a locadora do cadastro, a
+// locatária da qualificação congelada no E215), a cláusula 1ª com a tabela do
+// objeto (onde o resumo financeiro continua morando, inteiro), as outras vinte
+// cláusulas com os números lidos das réguas (`contrato-clausulas.ts`), o fecho
+// e as assinaturas. O que era o PDF antigo está TODO dentro do novo — o que
+// mudou é que agora ele diz também a que a noiva se obrigou.
 
+import { EXPEDIENTE_DE_RETIRADA_PADRAO, descricaoDoExpedienteDeRetirada } from "@workspace/agenda-core";
+import {
+  FECHO_DO_INSTRUMENTO,
+  clausulasDoInstrumento,
+  type DadosDoInstrumento,
+} from "./contrato-clausulas";
 import { desenharPdf, montadorDeTokens, quebrarTexto, type Token } from "./pdf-desenhista";
 
 // O `quebrarTexto` continua endereçável por aqui: ele é a régua de quebra do
 // papel, e o teste do E165 (P13) o importa deste módulo desde então.
 export { quebrarTexto };
 
+/** A qualificação da LOCATÁRIA, como o papel a pede — já formatada, rótulos prontos. */
+export type QualificacaoNoPapel = {
+  rg?: string;
+  estadoCivil?: string;
+  profissao?: string;
+  nascimento?: string;
+  email?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cep?: string;
+  cidade?: string;
+  estado?: string;
+};
+
 export type DadosContrato = {
   lojaNome: string;
+  /** E220 — a LOCADORA como o cabeçalho a qualifica; tudo do cadastro da loja. */
+  lojaCnpj?: string;
+  lojaEndereco?: string;
+  lojaTelefone?: string;
+  /** D7 aberta: o cadastro ainda não guarda o representante; ausente = lacuna. */
+  lojaRepresentante?: string;
+  /** D7 aberta: o cadastro não tem cidade; ausente = a 21ª remete à sede. */
+  lojaCidade?: string;
   noivaNome: string;
   /**
    * P10: a tarja do contrato cancelado — desenhada GRANDE, logo abaixo do
@@ -30,6 +71,8 @@ export type DadosContrato = {
   tarja?: string;
   cpf?: string;
   whatsapp?: string;
+  /** E220 — os outros doze da qualificação (E215), na frase da identificação. */
+  qualificacao?: QualificacaoNoPapel;
   vestido?: string;
   // Snapshot dos itens contratados; o valor já vem formatado (a formatação de
   // moeda é responsabilidade de quem monta os dados, não do desenhista).
@@ -40,6 +83,9 @@ export type DadosContrato = {
   subtotal?: string;
   desconto?: string;
   valorTotal?: string;
+  /** E220 — a segunda tabela da 1ª: ENTRADA e RESTANTE A PAGAR, já formatados. */
+  entrada?: string;
+  restante?: string;
   formaPagamento?: string;
   // Plano de pagamento (entrada = parcela nº 0). Fonte única da entrada.
   // P12: aqui entram SÓ as parcelas do carnê (origem PLANO) — são elas que
@@ -60,88 +106,152 @@ export type DadosContrato = {
   dataDevolucao?: string;
   dataContrato?: string;
   observacao?: string;
+  /** E220 — a 4ª por extenso; ausente = o expediente do papel (o padrão do sistema). */
+  expediente?: string;
+  /** E220 — a 18ª: o prazo pactuado, ou nulo/ausente = "não pactuado". */
+  prazoDevolucaoReservaDias?: number | null;
 };
+
+/**
+ * O expediente que o PAPEL fixa (4ª) — o `EXPEDIENTE_DE_RETIRADA_PADRAO` do
+ * `agenda-core`, na frase que a guarda do E222 cita. O montador de dados manda
+ * o efetivo da loja; sem ele (o teste puro), sai o do contrato — LIDO, não copiado.
+ */
+const EXPEDIENTE_DO_PAPEL = descricaoDoExpedienteDeRetirada(EXPEDIENTE_DE_RETIRADA_PADRAO);
+
+const ou = (v: string | undefined, lacuna = "-") => (v && v.trim() ? v.trim() : lacuna);
 
 function montarTokens(d: DadosContrato): Token[] {
   const { tokens, add, vazio, dado, bloco } = montadorDeTokens();
 
-  add("CONTRATO DE LOCACAO DE VESTIDO", 16);
+  add(d.lojaNome.toUpperCase(), 16);
+  add("INSTRUMENTO PARTICULAR DE LOCAÇÃO DE VESTUÁRIO", 14);
   // P10: a tarja vem ANTES de qualquer dado — é a primeira coisa que o papel
   // de um contrato morto tem a dizer.
   if (d.tarja) {
     add(`*** ${d.tarja} ***`, 14);
   }
   vazio();
-  add(d.lojaNome, 12);
-  dado("Data do contrato", d.dataContrato);
+
+  // ── 1. As partes ───────────────────────────────────────────────────────────
+  add("1. IDENTIFICAÇÃO DAS PARTES", 12);
+  add(
+    `LOCADORA: ${d.lojaNome}, situada à ${ou(d.lojaEndereco, "________________")}, inscrita no CNPJ sob o ` +
+      `nº ${ou(d.lojaCnpj, "____________")}, telefone ${ou(d.lojaTelefone, "____________")}, neste ato ` +
+      `representada por ${ou(d.lojaRepresentante, "________________________________")}.`,
+    10,
+  );
+  vazio();
+  const q = d.qualificacao ?? {};
+  add(
+    `LOCATÁRIO: ${ou(d.noivaNome, "________________")}, estado civil ${ou(q.estadoCivil)}, profissão ` +
+      `${ou(q.profissao)}, Carteira de Identidade nº ${ou(q.rg)}, data de nascimento ${ou(q.nascimento)}, ` +
+      `CPF nº ${ou(d.cpf)}, telefone ${ou(d.whatsapp)}, residente e domiciliado na ${ou(q.logradouro)}, ` +
+      `nº ${ou(q.numero)}${q.complemento && q.complemento.trim() ? `, ${q.complemento.trim()}` : ""}, ` +
+      `bairro ${ou(q.bairro)}, CEP ${ou(q.cep)}, cidade ${ou(q.cidade)}, no Estado ${ou(q.estado)}, ` +
+      `e-mail ${ou(q.email)}.`,
+    10,
+  );
+  vazio();
+  add(
+    "As partes identificadas acima têm, entre si, justo e acertado o presente Contrato de Locação de Artigos " +
+      "de Vestuário, que se regerá pelas cláusulas seguintes e pelas condições de preço, forma e termo de " +
+      "pagamento descritas no presente.",
+    10,
+  );
   vazio();
 
-  add("DADOS DA NOIVA", 12);
-  dado("Nome", d.noivaNome);
-  dado("CPF", d.cpf);
-  dado("WhatsApp", d.whatsapp);
-  vazio();
-
-  add("VESTIDO", 12);
-  dado("Modelo", d.vestido);
-  if (d.itens && d.itens.length > 0) {
-    vazio();
-    add("Itens contratados:", 11);
-    for (const it of d.itens) {
-      add(`  ${it.descricao}: ${it.valor}`, 10);
+  // ── 2–9. As cláusulas, com a tabela do objeto dentro da 1ª ─────────────────
+  const dadosDoInstrumento: DadosDoInstrumento = {
+    lojaNome: d.lojaNome,
+    expediente: d.expediente ?? EXPEDIENTE_DO_PAPEL,
+    inicioDaLocacao: d.dataRetirada,
+    terminoDaLocacao: d.dataDevolucao,
+    valorTotal: d.valorTotal,
+    prazoDevolucaoReservaDias: d.prazoDevolucaoReservaDias,
+    foro: d.lojaCidade,
+  };
+  for (const secao of clausulasDoInstrumento(dadosDoInstrumento)) {
+    add(secao.titulo, 12);
+    for (const p of secao.paragrafos) {
+      add(`${p.rotulo} — ${p.texto}`, 10);
+      if (p.insercao === "OBJETO") objeto(d);
     }
-  }
-  vazio();
-
-  add("VALORES E PAGAMENTO", 12);
-  if (d.desconto) {
-    dado("Subtotal", d.subtotal);
-    dado("Desconto", d.desconto);
-  }
-  dado("Valor total", d.valorTotal);
-  dado("Forma de pagamento", d.formaPagamento);
-  if (d.parcelas && d.parcelas.length > 0) {
     vazio();
-    add("Plano de pagamento:", 11);
-    for (const p of d.parcelas) {
-      const venc = p.vencimento ? ` · vence ${p.vencimento}` : "";
-      const forma = p.forma ? ` · ${p.forma}` : "";
-      add(`  ${p.descricao}: ${p.valor}${venc}${forma}`, 10);
-    }
   }
-  // P12: o que não é carnê fica em seção própria — o plano soma o valor total,
-  // e as cobranças extras têm o subtotal delas.
-  if (d.cobrancasExtras && d.cobrancasExtras.length > 0) {
+
+  function objeto(d: DadosContrato) {
     vazio();
-    add("Cobrancas fora do valor total (avaria, multa, avulsa):", 11);
-    for (const p of d.cobrancasExtras) {
-      const venc = p.vencimento ? ` · vence ${p.vencimento}` : "";
-      const forma = p.forma ? ` · ${p.forma}` : "";
-      add(`  ${p.descricao}: ${p.valor}${venc}${forma}`, 10);
+    dado("Modelo", d.vestido);
+    if (d.itens && d.itens.length > 0) {
+      add("Itens contratados:", 11);
+      for (const it of d.itens) {
+        add(`  ${it.descricao}: ${it.valor}`, 10);
+      }
     }
-    if (d.totalExtras) add(`  Total das cobrancas extras: ${d.totalExtras}`, 10);
+    if (d.desconto) {
+      dado("Subtotal", d.subtotal);
+      dado("Desconto", d.desconto);
+    }
+    dado("TOTAL", d.valorTotal);
+    // A segunda tabela do molde: ENTRADA · RESTANTE A PAGAR · forma do restante.
+    dado("Entrada", d.entrada);
+    dado("Restante a pagar", d.restante);
+    dado("Forma de pagamento", d.formaPagamento);
+    if (d.parcelas && d.parcelas.length > 0) {
+      vazio();
+      add("Plano de pagamento:", 11);
+      for (const p of d.parcelas) {
+        const venc = p.vencimento ? ` · vence ${p.vencimento}` : "";
+        const forma = p.forma ? ` · ${p.forma}` : "";
+        add(`  ${p.descricao}: ${p.valor}${venc}${forma}`, 10);
+      }
+    }
+    // P12: o que não é carnê fica em seção própria — o plano soma o valor total,
+    // e as cobranças extras têm o subtotal delas.
+    if (d.cobrancasExtras && d.cobrancasExtras.length > 0) {
+      vazio();
+      add("Cobranças fora do valor total (avaria, multa, avulsa):", 11);
+      for (const p of d.cobrancasExtras) {
+        const venc = p.vencimento ? ` · vence ${p.vencimento}` : "";
+        const forma = p.forma ? ` · ${p.forma}` : "";
+        add(`  ${p.descricao}: ${p.valor}${venc}${forma}`, 10);
+      }
+      if (d.totalExtras) add(`  Total das cobranças extras: ${d.totalExtras}`, 10);
+    }
+    vazio();
+    dado("Data do casamento", d.dataCasamento);
+    dado("Retirada", d.dataRetirada);
+    dado("Devolução", d.dataDevolucao);
+    const obs = d.observacao && d.observacao.trim() ? d.observacao.trim() : "";
+    if (obs) {
+      add("Observações:", 11);
+      for (const linha of quebrarTexto(obs)) add(`  ${linha}` || " ", 10);
+    }
+    vazio();
   }
-  vazio();
 
-  add("DATAS", 12);
-  dado("Casamento", d.dataCasamento);
-  dado("Retirada", d.dataRetirada);
-  dado("Devolucao", d.dataDevolucao);
-  vazio();
-
-  add("OBSERVACOES", 12);
-  const obs = d.observacao && d.observacao.trim() ? d.observacao.trim() : "-";
-  for (const linha of quebrarTexto(obs)) add(linha || " ");
-
+  // ── Fecho e assinaturas ────────────────────────────────────────────────────
   // P11: as assinaturas são um BLOCO indivisível — ou cabem inteiras na página,
   // ou nascem na próxima. É o bloco que estava sendo desenhado em y negativo.
-  bloco([
-    { text: "__________________________________", size: 11 },
-    { text: d.noivaNome && d.noivaNome.trim() ? d.noivaNome.trim() : "Noiva", size: 11 },
-    { text: " ", size: 11 },
-    { text: "__________________________________", size: 11 },
-    { text: d.lojaNome, size: 11 },
-  ]);
+  bloco(
+    [
+      { text: FECHO_DO_INSTRUMENTO, size: 10 },
+      { text: " ", size: 11 },
+      { text: `${ou(d.lojaCidade, "____________________")}, ${ou(d.dataContrato, "____ de ____________ de ______")}.`, size: 10 },
+      { text: " ", size: 11 },
+      { text: " ", size: 11 },
+      { text: "__________________________________", size: 11 },
+      { text: `${d.lojaNome} — LOCADORA`, size: 11 },
+      { text: `CNPJ ${ou(d.lojaCnpj, "____________")}`, size: 10 },
+      { text: " ", size: 11 },
+      { text: " ", size: 11 },
+      { text: "__________________________________", size: 11 },
+      { text: `${ou(d.noivaNome, "Noiva")} — LOCATÁRIO`, size: 11 },
+      { text: `CPF: ${ou(d.cpf, "____________")}`, size: 10 },
+    ],
+    20,
+  );
 
   return tokens;
 }

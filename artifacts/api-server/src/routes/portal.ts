@@ -43,6 +43,7 @@ import {
   montarVestidoDaNoiva,
 } from "../lib/visao-noiva";
 import { pdfDoContrato, nomeDoArquivo } from "../lib/contrato-do-papel";
+import { expedienteDeRetiradaPorExtenso } from "../lib/expediente-de-retirada";
 import { nomeDoArquivoDoRecibo, pdfDoRecibo, recibosDoContrato } from "../lib/recibo-do-papel";
 import { trilhaDosRecibos } from "../lib/recibos-do-banco";
 import { randomUUID } from "node:crypto";
@@ -388,7 +389,9 @@ router.get("/portal/contrato-pdf", async (req, res): Promise<void> => {
   res.status(200)
     .type("application/pdf")
     .setHeader("Content-Disposition", `inline; filename="${nomeDoArquivo(contrato)}"`);
-  res.send(Buffer.from(pdfDoContrato(contrato)));
+  res.send(
+    Buffer.from(pdfDoContrato(contrato, await expedienteDeRetiradaPorExtenso(linha.portal.lojaId))),
+  );
 });
 
 /**

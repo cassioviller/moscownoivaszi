@@ -783,6 +783,19 @@ rode o codegen.
 - **Comercial** — orçamento → contrato (com snapshot dos itens) → plano de
   parcelas → PDF do contrato. A noiva vê a última versão ENVIADA (E75) e
   aceita pelo link com rastro (instante, versão, hash — E74).
+- **O PDF do contrato É o instrumento** (E220, 15/08): as 21 cláusulas do
+  molde de papel, a identificação das partes (a loja do cadastro; a locatária
+  da qualificação congelada no E215), a tabela do objeto e o fecho. Texto em
+  `lib/contrato-clausulas.ts` (puro), com **os números lidos das réguas** do
+  `financeiro-core` — a 14ª imprime `TAXA_LIMPEZA_MINIMA`, a 16ª
+  `DIAS_PARA_EXTRAVIO`, e por aí; mudou a constante, mudou o papel. A 4ª
+  imprime o expediente EFETIVO da loja (`expedienteDeRetiradaPorExtenso`, a
+  mesma leitura da guarda do E222). Onde o papel é omisso o texto declara: 5ª
+  sem instante sai com a lacuna do molde, 18ª sem prazo diz "NÃO PACTUADO",
+  21ª sem cidade remete à sede. `e220-instrumento.test.ts` é a régua de
+  EFEITO: mocka cada constante e cobra que o texto troque junto. **O que ainda
+  sai em branco é o que `lojas` não guarda** — representante, PIX, cidade
+  (D7). Para ver o papel: `pdftotext -layout <arquivo> -` lê o texto de volta.
 - **Financeiro** — `/financeiro` é o fluxo de caixa (realizado), com recortes
   (**DRE de CAIXA**, projeção de saldo) e telas de ação (receber, pagar com
   saída multi-conta, cobrança por faixa de atraso). Conciliação por extrato

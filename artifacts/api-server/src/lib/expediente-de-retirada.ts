@@ -71,3 +71,17 @@ export async function recusaDeExpedienteDeRetirada(
   }
   return null;
 }
+
+/**
+ * E220 — o expediente da loja POR EXTENSO, para a cláusula 4ª do instrumento
+ * impresso. A mesma leitura da guarda acima (a regra da loja, com o padrão do
+ * papel como piso), a mesma frase que a recusa cita — o papel e a porta dizem
+ * o mesmo horário porque leem a mesma linha.
+ */
+export async function expedienteDeRetiradaPorExtenso(lojaId: string): Promise<string> {
+  const [regra] = await db
+    .select()
+    .from(regraDisponibilidadeTable)
+    .where(eq(regraDisponibilidadeTable.lojaId, lojaId));
+  return descricaoDoExpedienteDeRetirada(expedienteDeRetirada(regra));
+}

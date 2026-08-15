@@ -81,9 +81,22 @@ describe("E165 — P11: a paginação, com as assinaturas SEMPRE na página", ()
     expect(txt).toContain("Multa de R$ 150,00");
   });
 
-  it("o contrato curto continua numa página só — paginar não é espalhar", () => {
-    const bytes = gerarContratoPdf({ lojaNome: "L", noivaNome: "Bia", valorTotal: "R$ 2.000,00" });
-    expect(contarPaginas(bytes)).toBe(1);
+  it("o contrato curto ocupa o mínimo que as 21 cláusulas pedem — paginar não é espalhar", () => {
+    /**
+     * Era "numa página só" até o E220: o resumo financeiro cabia numa. O
+     * INSTRUMENTO tem 21 cláusulas e o papel mais curto mede 4 páginas; o que
+     * a régua guarda é que o curto NÃO cresce quando não há o que crescer — o
+     * mesmo contrato com uma parcela a mais ocupa o mesmo número de páginas.
+     */
+    const curto = gerarContratoPdf({ lojaNome: "L", noivaNome: "Bia", valorTotal: "R$ 2.000,00" });
+    expect(contarPaginas(curto)).toBe(4);
+    const umaParcela = gerarContratoPdf({
+      lojaNome: "L",
+      noivaNome: "Bia",
+      valorTotal: "R$ 2.000,00",
+      parcelas: [{ descricao: "Entrada", valor: "R$ 800,00" }],
+    });
+    expect(contarPaginas(umaParcela)).toBe(4);
   });
 });
 
@@ -152,12 +165,12 @@ describe("E165 — P10/P12: o papel conta a história verdadeira", () => {
      */
     const txt = texto(pdfDoContrato(base));
     expect(txt).toContain("Plano de pagamento:");
-    expect(txt).toContain("Cobrancas fora do valor total");
+    expect(txt).toContain("Cobranças fora do valor total");
     expect(txt).toContain("Reparo de avaria - barra");
-    expect(txt).toContain("Total das cobrancas extras: R$ 350,00");
+    expect(txt).toContain("Total das cobranças extras: R$ 350,00");
 
     // O carnê impresso soma exatamente o valor total: 1000+2000+2000 = 5000.
-    const doPlano = txt.split("Cobrancas fora do valor total")[0];
+    const doPlano = txt.split("Cobranças fora do valor total")[0];
     expect(doPlano).toContain("Entrada: R$ 1.000,00");
     expect(doPlano).toContain("Parcela 1/2: R$ 2.000,00");
     expect(doPlano).not.toContain("Reparo de avaria");

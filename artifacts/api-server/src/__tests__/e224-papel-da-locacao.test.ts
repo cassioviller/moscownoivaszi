@@ -55,13 +55,13 @@ describe("S-C36 — as duas datas da locação no papel", () => {
   it("a retirada e a devolução saem com a HORA, no relógio da loja", () => {
     const txt = texto(pdfDoContrato(base));
     expect(txt).toContain("Retirada: 06/09/2028 às 10:30");
-    expect(txt).toContain("Devolucao: 12/09/2028 às 18:00");
+    expect(txt).toContain("Devolução: 12/09/2028 às 18:00");
   });
 
   it("o casamento continua sendo DIA de negócio, sem hora nenhuma", () => {
     const txt = texto(pdfDoContrato(base));
-    expect(txt).toContain("Casamento: 09/09/2028");
-    expect(txt).not.toContain("Casamento: 09/09/2028 às");
+    expect(txt).toContain("Data do casamento: 09/09/2028");
+    expect(txt).not.toContain("Data do casamento: 09/09/2028 às");
   });
 
   /**
@@ -93,6 +93,6 @@ describe("S-C36 — as duas datas da locação no papel", () => {
       } as unknown as ContratoComPapel),
     );
     expect(txt).toContain("Retirada: -");
-    expect(txt).toContain("Devolucao: -");
+    expect(txt).toContain("Devolução: -");
   });
 });

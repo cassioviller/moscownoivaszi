@@ -22,7 +22,9 @@ describe("gerarContratoPdf", () => {
 
   it("usa '-' quando o campo está vazio", () => {
     const txt = texto(gerarContratoPdf({ lojaNome: "L", noivaNome: "Bia" }));
-    expect(txt).toContain("CPF: -");
+    // E220: a qualificação virou frase — "CPF nº -" é o vazio dito, não escondido.
+    expect(txt).toContain("CPF nº -");
+    expect(txt).toContain("Carteira de Identidade nº -");
   });
 
   it("renderiza o plano de pagamento quando há parcelas", () => {
@@ -74,7 +76,12 @@ describe("gerarContratoPdf", () => {
     expect(txt.slice(xrefStart, xrefStart + 4)).toBe("xref");
 
     const offsets = [...txt.matchAll(/^(\d{10}) 00000 n $/gm)].map((m) => Number(m[1]));
-    expect(offsets).toHaveLength(5);
+    // 1 Catalog + 1 Pages + 1 Font + 2 por página. E220: o instrumento tem 21
+    // cláusulas e o papel mais curto já ocupa mais de uma página; o número de
+    // páginas é lido do /Count, não fixado aqui.
+    const paginas = Number(/\/Count (\d+)/.exec(txt)![1]);
+    expect(paginas).toBeGreaterThanOrEqual(1);
+    expect(offsets).toHaveLength(3 + 2 * paginas);
     offsets.forEach((off, i) => {
       expect(txt.slice(off, off + `${i + 1} 0 obj`.length)).toBe(`${i + 1} 0 obj`);
     });
