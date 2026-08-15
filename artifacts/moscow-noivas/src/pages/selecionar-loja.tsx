@@ -112,6 +112,10 @@ export default function SelecionarLoja() {
               key={loja.id}
               className={`hover-elevate cursor-pointer transition-colors border-2 ${activeLojaId === loja.id ? 'border-primary' : 'border-transparent'}`}
               onClick={() => handleSelect(loja.id)}
+              // S-O144: o card é encontrável pela CHAVE — duas lojas com o mesmo nome
+              // (a de dev e a de demonstração dos manuais, desde o seed real) fazem
+              // qualquer busca por texto clicar na errada.
+              data-testid={`loja-${loja.id}`}
             >
               <CardHeader className="flex flex-row items-center gap-4 space-y-0">
                 <div className="h-12 w-12 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">

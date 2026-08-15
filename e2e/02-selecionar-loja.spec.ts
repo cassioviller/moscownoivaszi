@@ -7,8 +7,12 @@ test.describe("Seleção de loja", () => {
   test("admin vê a loja disponível", async ({ page }) => {
     await loginViaUI(page, estado.adminEmail, estado.senha);
     await expect(page).toHaveURL(/selecionar-loja/);
-    // A loja de dev e a de demonstração dos manuais têm o mesmo nome desde o seed real (15/08) — a primeira basta.
-    await expect(page.getByText(estado.lojaNome).first()).toBeVisible();
+    // S-O144: a loja de dev e a de demonstração dos manuais têm o MESMO nome
+    // desde o seed real (15/08), e `getByText(nome).first()` clicava na que
+    // viesse primeiro — a demo, depois que ela renasceu. `loja_ativa_id` mora
+    // no USUÁRIO, então o clique errado trocava a loja de todos os specs
+    // seguintes (14 vermelhos em 04–13, todos na tela da demo). Pela chave.
+    await expect(page.getByTestId(`loja-${estado.lojaId}`)).toBeVisible();
   });
 
   // Era FALHA ESPERADA no main: clicar na loja gravava a sessão no servidor mas
@@ -20,7 +24,7 @@ test.describe("Seleção de loja", () => {
   test("selecionar a loja navega ao dashboard sem precisar de F5", async ({ page }) => {
     await loginViaUI(page, estado.adminEmail, estado.senha);
     await expect(page).toHaveURL(/selecionar-loja/);
-    await page.getByText(estado.lojaNome).first().click();
+    await page.getByTestId(`loja-${estado.lojaId}`).click();
     await expect(
       page,
       "Após selecionar a loja a SPA deveria chegar ao /dashboard (sessão stale: selecionar-loja.tsx + app-layout.tsx:27)",
