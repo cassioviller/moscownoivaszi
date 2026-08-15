@@ -243,7 +243,17 @@ export default function ConversaoLeads() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {(sazonalidade.data ?? []).length === 0 ? (
+              {/* S-C161 — o `q.isError` lá de cima guarda OUTRA consulta; esta
+                  tem estado próprio, e sem lê-lo um 500 virava "Nenhum
+                  casamento com data marcada" — a frase que manda esvaziar a
+                  arara num mês que está cheio. */}
+              {sazonalidade.isError ? (
+                <Erro
+                  titulo="Não deu para carregar os casamentos"
+                  erro={sazonalidade.error}
+                  onTentarNovamente={() => sazonalidade.refetch()}
+                />
+              ) : (sazonalidade.data ?? []).length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   Nenhum casamento com data marcada nos próximos meses.
                 </p>

@@ -1283,7 +1283,18 @@ export default function ReservaDetalhe() {
         <h2 className="text-xs uppercase tracking-wider text-muted-foreground">Avarias</h2>
         <Card>
           <CardContent className="pt-6 space-y-4">
-            {(avarias.data ?? []).length === 0 ? (
+            {/* S-C160 — a frase de vazio só depois de a consulta responder. Um
+                500 aqui virava "Nenhuma avaria registrada — o vestido voltou
+                como saiu.", a frase que a dona lê antes de decidir NÃO cobrar
+                a avaria. O `?? []` fica (é o fallback do map), mas o erro fala
+                antes — o idioma da S-C120. */}
+            {avarias.isError ? (
+              <Erro
+                titulo="Não deu para carregar as avarias"
+                erro={avarias.error}
+                onTentarNovamente={() => avarias.refetch()}
+              />
+            ) : (avarias.data ?? []).length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 Nenhuma avaria registrada — o vestido voltou como saiu.
               </p>
