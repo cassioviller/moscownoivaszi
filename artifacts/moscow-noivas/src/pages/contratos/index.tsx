@@ -23,6 +23,9 @@ import { brl, statusContratoLabel, instanteDia, diaMesAno } from "@/lib/formatos
 import { Vazio, Erro } from "@/components/estado";
 import { podeNoModulo } from "@/lib/permissoes";
 import { avisoDoAtraso, faixaDaLinha } from "@/lib/financeiro/fila-de-atrasos";
+// S-C87 — cobrar deixou de ser ida-e-volta: o registro de contato (o MESMO
+// widget da ficha e da Cobrança) abre de cada linha da fila.
+import { ContatoDaFila } from "./contato-da-fila";
 
 const FILTROS: { chave: string; rotulo: string; status?: ContratoStatus }[] = [
   { chave: "todos", rotulo: "Todos" },
@@ -219,6 +222,10 @@ export default function Contratos() {
                         <Link to={`/loja/${lojaId}/contratos/${i.contratoId}`}>Contrato</Link>
                       </Button>
                     </div>
+                    {/* S-C87 — o telefonema se registra AQUI: é o mesmo
+                        HistoricoContato da ficha (regra 26), e o carimbo dele
+                        zera o "parado há N dias" do funil. */}
+                    <ContatoDaFila leadId={i.leadId} />
                   </li>
                 );
               })}
@@ -272,6 +279,10 @@ export default function Contratos() {
                       <Button asChild variant="outline" size="sm">
                         <Link to={`/loja/${lojaId}/reservas/${o.bloqueioId}`}>Abrir a reserva</Link>
                       </Button>
+                      {/* S-C87 — a órfã COM dona também se cobra daqui; a sem
+                          dona (gesto de balcão, leadId nulo) não tem a quem
+                          ligar nem ficha onde carimbar. */}
+                      {o.leadId ? <ContatoDaFila leadId={o.leadId} /> : null}
                     </li>
                   ))}
                 </ul>

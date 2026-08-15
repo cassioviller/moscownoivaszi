@@ -269,11 +269,18 @@ export default function ConfigAtendimentos() {
     // E222 — "HH:MM" na tela, minutos desde a meia-noite no servidor.
     // S-C221: sem `contratos.editar` os campos da 4ª nem entram no corpo (o
     // servidor recusaria o PUT inteiro com 403), então as paredes deles só
-    // valem para quem pode mandá-los.
-    const rAbertura = minutosDoRelogio(retiradaAbertura);
-    const rFechamento = minutosDoRelogio(retiradaFechamento);
-    const rSabado = minutosDoRelogio(retiradaFechamentoSabado);
+    // valem para quem pode mandá-los — e o payload nasce DENTRO da guarda,
+    // onde o narrowing dispensa asserção (a varredura S-O66 conta cada `!`).
+    let camposDaClausula4a: {
+      retiradaAberturaMinutos?: number;
+      retiradaFechamentoMinutos?: number;
+      retiradaFechamentoSabadoMinutos?: number;
+      retiradaDias?: number[];
+    } = {};
     if (podeEditarClausula4a) {
+      const rAbertura = minutosDoRelogio(retiradaAbertura);
+      const rFechamento = minutosDoRelogio(retiradaFechamento);
+      const rSabado = minutosDoRelogio(retiradaFechamentoSabado);
       if (rAbertura === null || rFechamento === null || rSabado === null) {
         toast({
           title: "Horário de retirada inválido",
@@ -300,6 +307,12 @@ export default function ConfigAtendimentos() {
         });
         return;
       }
+      camposDaClausula4a = {
+        retiradaAberturaMinutos: rAbertura,
+        retiradaFechamentoMinutos: rFechamento,
+        retiradaFechamentoSabadoMinutos: rSabado,
+        retiradaDias: [...retiradaDias].sort((x, y) => x - y),
+      };
     }
     const a = Number(abertura);
     const f = Number(fechamento);
@@ -360,14 +373,7 @@ export default function ConfigAtendimentos() {
           // E222 — o segundo expediente (cláusula 4ª), salvo no mesmo gesto.
           // S-C221: só entra no corpo com `contratos.editar` — este PUT é
           // upsert parcial, e campo ausente preserva o gravado.
-          ...(podeEditarClausula4a
-            ? {
-                retiradaAberturaMinutos: rAbertura!,
-                retiradaFechamentoMinutos: rFechamento!,
-                retiradaFechamentoSabadoMinutos: rSabado!,
-                retiradaDias: [...retiradaDias].sort((x, y) => x - y),
-              }
-            : {}),
+          ...camposDaClausula4a,
         },
       });
       // Salvou: o que estava sujo virou o valor do servidor. Sem este reset o

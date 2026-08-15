@@ -223,3 +223,33 @@ não `1 + 2·atrasados`. E o `buscarRegra` duplicado (uma vez na fila, uma vez P
 dentro de `pecasAtrasadasDoContrato`) é 1 consulta evitável por contrato — fica como sobra
 proposta (S-C280), não como conserto daqui: mexer na assinatura de
 `pecasAtrasadasDoContrato` toca a prévia e o POST do E212, e o cache já paga o grosso.
+
+---
+
+## S-C87 — a fila age: o registro de contato abre de cada linha
+
+**Decisão da dona (14/08/2026): SIM, agir — é o MESMO diálogo da ficha, aberto da fila.**
+
+**Medição do componente certo:** o "registro de contato da ficha" já existe EXTRAÍDO —
+`components/historico-contato.tsx` (E27, extraído no E32 exatamente para a ficha e a
+Cobrança usarem o MESMO widget). O POST dele (`useCreateRegistroCobranca`, gate
+`leads.criar` no endpoint) é o que zera o relógio do "parado há N dias" do funil. Nenhuma
+segunda grafia nasceu (regra 26): o novo `pages/contratos/contato-da-fila.tsx` é um
+Collapsible de 50 linhas que MONTA o widget compartilhado, lazy como na Cobrança
+(`enabled: aberto` + montagem sob `jaAbriu` — a fila não paga uma request por linha).
+
+**Onde ele entra** (`contratos/index.tsx`): nas DUAS listas — cada linha cobrável
+(`i.leadId`, sempre presente) e a órfã COM dona (`o.leadId ? … : null`; a sem dona é gesto
+de balcão sem noiva — não há a quem ligar nem ficha onde carimbar). O gesto de COBRAR (a
+parcela da 16ª) continua na ficha da reserva, onde o E212 o pôs — o que a fila ganhou foi o
+telefonema, que era o ida-e-volta da sobra.
+
+**Vermelho (regra 34, literal):** o teste do componente sozinho é verde mesmo com a fila sem
+gesto — que é exatamente o defeito da sobra —, então o arquivo tem uma varredura de FIAÇÃO
+que lê `index.tsx` e cobra as duas âncoras. Com o `<ContatoDaFila>` removido de propósito
+das duas listas (e recolocado): `AssertionError: expected false to be true`. E o caso jsdom
+prova o lazy e o leadId entregue ao widget mockado. **contato-da-fila 2 passed**, typecheck
+verde.
+
+**O que o E2E cobraria e este worktree não pode rodar:** o clique real na fila com o
+formulário do histórico gravando — fica dito para o integrador.
