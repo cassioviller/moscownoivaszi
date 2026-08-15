@@ -49,6 +49,39 @@ describe("S-C152 — o codegen está em dia", () => {
   it(
     "re-rodar o orval não muda um byte de generated/ — spec e gerado dizem a mesma coisa",
     () => {
+      /**
+       * S-C260 — **o piso, que faltava.**
+       *
+       * Esta régua compara duas fotografias e nada mais. Se os dois
+       * `generated/` sumissem — pasta renomeada, `clean: true` apagando sem
+       * regravar, caminho mudado no config —, `antes` e `depois` seriam a
+       * MESMA string vazia e ela passaria verde, dizendo que o codegen está em
+       * dia sobre um `generated/` que não existe. É o formato exato que a
+       * S-C46 descreve, dentro da régua mais nova do repositório: **verde por
+       * não ter olhado.**
+       *
+       * O piso é sobre o que ela FOTOGRAFA, não sobre o que ela denuncia:
+       * os dois diretórios têm de conter arquivo versionado.
+       */
+      const porDiretorio = GERADOS.map((dir) => ({
+        dir,
+        n: execSync(`git ls-files -- ${dir}`, { cwd: RAIZ })
+          .toString("utf8")
+          .split("\n")
+          .filter(Boolean).length,
+      }));
+      for (const { dir, n } of porDiretorio) {
+        // Piso por diretório é 1, e não um número redondo: os dois têm formas
+        // MUITO diferentes — o `api-zod` sai em `mode: split` com 377 arquivos,
+        // e o `api-client-react` sai em 2. Um piso alto no segundo seria régua
+        // que reprova por desenho do gerador, não por defeito.
+        expect(n, `${dir} está vazio — a fotografia compararia nada com nada`).toBeGreaterThan(0);
+      }
+      expect(
+        porDiretorio.reduce((s, d) => s + d.n, 0),
+        "os dois generated/ somados encolheram demais — a fotografia perdeu o objeto",
+      ).toBeGreaterThan(100);
+
       const antes = fotografia();
 
       execSync("npx orval --config ./orval.config.ts", {

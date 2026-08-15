@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { lerDoRepo, manuaisVersionados, rotulosDosChips } from "./manuais-do-repositorio";
 
 /**
  * A régua (d) dos manuais — **nenhuma das três olhava para DENTRO** (S-C222).
@@ -55,16 +56,9 @@ import path from "node:path";
  * **Enumera com `git ls-files`** (regra da casa).
  */
 
-const RAIZ = path.resolve(__dirname, "../../../..");
-
-function porGit(padroes: string[]): string[] {
-  return execFileSync("git", ["ls-files", ...padroes], { cwd: RAIZ, encoding: "utf8" })
-    .split("\n")
-    .filter(Boolean);
-}
-
-const ler = (arquivo: string) => readFileSync(path.join(RAIZ, arquivo), "utf8");
-const manuais = () => porGit(["docs/manuais/*.html"]).filter((f) => f.endsWith(".html"));
+// S-C271 — o enumerador, a leitura e o piso vêm de um lugar só.
+const ler = lerDoRepo;
+const manuais = manuaisVersionados;
 
 /**
  * A negação de existência de UI. Verbos de existir/estar + até duas palavras
@@ -75,10 +69,14 @@ const manuais = () => porGit(["docs/manuais/*.html"]).filter((f) => f.endsWith("
 const NEGACAO_DE_UI =
   /\bnão\s+(?:tem|têm|há|existe|existem|está|estão)\s+(?:\p{L}+\s+){0,2}?(?:tela|telas|botão|botões|formulário|formulários)\b/iu;
 
-/** Os chips do documento, crus. */
-function chipsDe(html: string): string[] {
-  return [...html.matchAll(/<span class="btn"[^>]*>([^<]+)<\/span>/g)].map((m) => m[1]!.trim());
-}
+/**
+ * Os chips do documento, crus.
+ *
+ * S-C271 — a extração saiu daqui e da `varredura-manuais-textos` para
+ * `manuais-do-repositorio.ts`: eram DUAS cópias do mesmo regex escritas com
+ * captura diferente, e a diferença não era intencional.
+ */
+const chipsDe = rotulosDosChips;
 
 /**
  * A prosa AFIRMADA do documento, em frases.

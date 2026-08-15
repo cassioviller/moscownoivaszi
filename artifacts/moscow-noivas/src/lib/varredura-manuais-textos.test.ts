@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { chipsDe, lerDoRepo, manuaisVersionados } from "./manuais-do-repositorio";
 
 /**
  * A régua (c) dos manuais — **o manual promete citar a tela literalmente, e
@@ -55,9 +56,12 @@ function porGit(padroes: string[]): string[] {
     .filter(Boolean);
 }
 
-const ler = (arquivo: string) => readFileSync(path.join(RAIZ, arquivo), "utf8");
+// S-C271 — a leitura e o enumerador dos manuais vêm de um lugar só. O `porGit`
+// acima fica: esta varredura também enumera a TELA (`pages/**`, `routes/**`),
+// que não é assunto do módulo dos manuais.
+const ler = lerDoRepo;
 
-const manuais = () => porGit(["docs/manuais/*.html"]).filter((f) => f.endsWith(".html"));
+const manuais = manuaisVersionados;
 
 /**
  * A TELA, em uma corda só: o frontend (onde moram os rótulos de botão) e o
@@ -86,13 +90,18 @@ interface Citacao {
   molde: boolean;
 }
 
-/** Os chips `class="btn"`, com o `data-tela` quando o rótulo é montado. */
+/**
+ * Os chips `class="btn"`, com o `data-tela` quando o rótulo é montado.
+ *
+ * S-C271 — a extração do chip saiu daqui e da `varredura-manuais-contradicao`
+ * para `manuais-do-repositorio.ts`. Eram duas cópias do mesmo regex com captura
+ * diferente (uma pegava os atributos, a outra não), e a diferença não era
+ * decisão: era o segundo autor não ter visto o primeiro.
+ */
 function botoes(manual: string): Citacao[] {
   const html = ler(manual);
   const achados: Citacao[] = [];
-  for (const m of html.matchAll(/<span class="btn"([^>]*)>([^<]+)<\/span>/g)) {
-    const atributos = m[1] ?? "";
-    const exibido = m[2]!.trim();
+  for (const { atributos, rotulo: exibido } of chipsDe(html)) {
     const declarado = /data-tela="([^"]+)"/.exec(atributos)?.[1];
     achados.push({
       manual,

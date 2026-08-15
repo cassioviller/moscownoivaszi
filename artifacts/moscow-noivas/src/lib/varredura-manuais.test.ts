@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { lerDoRepo, manuaisVersionados } from "./manuais-do-repositorio";
 
 /**
  * A régua (a) do plano dos manuais — **um manual que mente é pior que nenhum**.
@@ -34,16 +35,11 @@ const RAIZ = path.resolve(__dirname, "../../../..");
 const SIDEBAR = "artifacts/moscow-noivas/src/components/layout/sidebar.tsx";
 const PERFIS = "artifacts/api-server/src/lib/configuracao-inicial.ts";
 
-function manuais(): string[] {
-  return execFileSync("git", ["ls-files", "docs/manuais/*.html"], {
-    cwd: RAIZ,
-    encoding: "utf8",
-  })
-    .split("\n")
-    .filter((f) => f.endsWith(".html"));
-}
+// S-C271 — o enumerador dos manuais vem de um lugar só, com o piso dentro.
+const manuais = manuaisVersionados;
 
-const ler = (arquivo: string) => readFileSync(path.join(RAIZ, arquivo), "utf8");
+// S-C271 — a leitura vem do módulo dos manuais.
+const ler = lerDoRepo;
 
 /**
  * Os itens do menu, na ordem em que a sidebar os declara: rótulo e os módulos

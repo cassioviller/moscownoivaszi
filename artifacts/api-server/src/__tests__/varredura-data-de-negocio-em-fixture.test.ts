@@ -64,6 +64,19 @@ describe("varredura — data de negócio escrita direto no banco (S-O119)", () =
 
   it("toda escrita direta de data de negócio passa por âncora", () => {
     const semAncora: string[] = [];
+    /**
+     * S-C260 — **o piso, que a guarda acima parecia dar e não dava.**
+     *
+     * A régua da régua confere que os dois arquivos EXISTEM; não confere que a
+     * varredura ache algo dentro deles. Renomeie `casamentoData` para
+     * `dataDoCasamento` nos dois e esta varredura passa a examinar zero
+     * sentenças, com `semAncora` vazio e verde — os arquivos estão lá, e ela
+     * não olhou para nada. É a S-C46 um degrau abaixo de onde a regra 34 olha:
+     * lá o risco é o arquivo sumir, aqui é o CAMPO sumir.
+     *
+     * O piso é sobre o que ela examinou, não sobre o que denunciou.
+     */
+    let sentencasExaminadas = 0;
 
     for (const rel of ESCRITORES_DIRETOS) {
       const todas = linhas(rel);
@@ -72,6 +85,7 @@ describe("varredura — data de negócio escrita direto no banco (S-O119)", () =
         if (!campo) continue;
         // Declaração de tipo (`casamentoData: Date`) não é escrita.
         if (/:\s*(Date|string)\b/.test(texto)) continue;
+        sentencasExaminadas++;
         /**
          * A SENTENÇA, não a linha. O valor pode ser um ternário quebrado em
          * quatro linhas — foi o que aconteceu ao abrir a saída
@@ -90,6 +104,13 @@ describe("varredura — data de negócio escrita direto no banco (S-O119)", () =
         if (!ancorado && !viaVariavelAncorada) semAncora.push(`${rel}:${n} — ${texto.trim()}`);
       }
     }
+
+    expect(
+      sentencasExaminadas,
+      "a varredura não achou uma única escrita de data de negócio nos escritores diretos — " +
+        "o campo foi renomeado, ou o recorte de `CAMPOS_DE_NEGOCIO` envelheceu. " +
+        "Verde aqui seria verde por não ter olhado (S-C46/S-C260).",
+    ).toBeGreaterThan(3);
 
     expect(semAncora, `escrita direta de data de NEGÓCIO sem âncora:\n${semAncora.join("\n")}`)
       .toEqual([]);

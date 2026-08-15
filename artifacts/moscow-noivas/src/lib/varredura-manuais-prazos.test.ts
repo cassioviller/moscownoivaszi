@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { lerDoRepo, manuaisVersionados } from "./manuais-do-repositorio";
 
 /**
  * E184 — **o manual promete um prazo; o código decide outro, e ninguém percebe.**
@@ -41,7 +42,8 @@ const versionados = (glob: string) =>
     .split("\n")
     .filter(Boolean);
 
-const ler = (arquivo: string) => readFileSync(path.join(RAIZ, arquivo), "utf8");
+// S-C271 — a leitura vem do módulo dos manuais.
+const ler = lerDoRepo;
 
 /**
  * Onde cada régua mora, e como ela se lê em português.
@@ -139,7 +141,7 @@ type Citacao = { manual: string; regua: NomeDaRegua; texto: string };
 
 function citacoes(): Citacao[] {
   const achadas: Citacao[] = [];
-  for (const manual of versionados("docs/manuais/*.html")) {
+  for (const manual of manuaisVersionados()) {
     const html = ler(manual);
     /**
      * **`<span>` entrou junto com o `<td>`, e não é conveniência.**
@@ -178,7 +180,7 @@ describe("varredura — o prazo que o manual promete é o que o código decide (
   it("olha para citações de verdade — não para um conjunto vazio", () => {
     // Piso de população: sem isto, apagar todos os `data-regua` deixaria a
     // varredura verde e muda. É a régua de sempre das varreduras daqui.
-    expect(versionados("docs/manuais/*.html").length, "os manuais sumiram do versionamento").toBe(5);
+    expect(manuaisVersionados().length, "os manuais sumiram do versionamento").toBe(5);
     // Medido em 2026-08-14, depois de os cinco manuais aprenderem o contrato:
     // eram **9** e são **69**. O piso subiu junto, porque piso que não sobe é a
     // S-C46 — *"trava a contagem, mas com folga"* — e um piso de 9 sobre 69
@@ -199,7 +201,7 @@ describe("varredura — o prazo que o manual promete é o que o código decide (
    * arquivo, em vez de sumir da conta.
    */
   it("toda anotação `data-regua` do disco é lida pela régua", () => {
-    const cruas = versionados("docs/manuais/*.html")
+    const cruas = manuaisVersionados()
       .map((m) => (ler(m).match(/data-regua="/g) ?? []).length)
       .reduce((a, b) => a + b, 0);
     expect(
@@ -273,7 +275,7 @@ describe("varredura — o prazo que o manual promete é o que o código decide (
    * fechado como se fosse comportamento.
    */
   it("nenhum manual ressuscita o link de 7 dias (S-O39, fechada no E176)", () => {
-    const reincidentes = versionados("docs/manuais/*.html").filter((m) =>
+    const reincidentes = manuaisVersionados().filter((m) =>
       /link da proposta morre em 7 dias|link morre em 7 dias/i.test(ler(m)),
     );
     expect(
