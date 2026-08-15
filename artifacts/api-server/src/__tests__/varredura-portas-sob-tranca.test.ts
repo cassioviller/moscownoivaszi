@@ -231,8 +231,14 @@ const sitio = (p: Porta): string => `${p.arquivo}:${p.linha} ${p.verbo}(${p.tabe
  * `status`) e o DELETE de conta de `financeiro.ts`. **As outras quatro são
  * `financeiro.ts`, e entram na dívida declarada abaixo** — duas de nascimento e
  * duas que são a S-O120.
+ *
+ * **S-O120 (2026-08-15, à noite): 72 portas · 43 TRANCA · 14 CAS · 15 ABERTA.**
+ * As duas de `financeiro.ts` que eram a S-O120 viraram CAS: `quitarContas`
+ * repete `status = PREVISTA` no `where` do UPDATE, o estorno repete
+ * `status = PAGA` — e o total é o mesmo 72, porque nenhuma porta nasceu:
+ * as duas mudaram de coluna.
  */
-const RETRATO = { TRANCA: 43, CAS: 12, ABERTA: 17 } as const;
+const RETRATO = { TRANCA: 43, CAS: 14, ABERTA: 15 } as const;
 
 /**
  * O retrato da ORDEM, travado pelo mesmo critério — e é ele que estava 1 e 2
@@ -434,12 +440,16 @@ const SEM_DISCIPLINA: Record<string, number> = {
    *   `PREVISTA`) e sem tranca — dois cliques em "pagar" no mesmo segundo leem
    *   a conta como aberta e registram DUAS saídas de caixa sobre a mesma
    *   conta; a UNIQUE de `pagamento_itens.conta_pagar_id` é o cinto que
-   *   segura o segundo, e é o índice que este arquivo não confere. Ficam
-   *   declaradas, não perdoadas: fechar é um CAS de uma linha cada, fora do
-   *   escopo do E238 (comissão), e a régua cobra a baixa aqui quando alguém o
-   *   fizer.
+   *   segura o segundo, e é o índice que este arquivo não confere. Ficaram
+   *   declaradas, não perdoadas — **e a S-O120 fechou no mesmo dia: 4 para 2,
+   *   CAS 12 para 14.** As duas repetem o status no `where` (`PREVISTA` para
+   *   pagar, `PAGA` para estornar), e o estorno apaga o pagamento PRIMEIRO,
+   *   com `returning()`: zero linhas é "outro estornou antes" (409). O
+   *   vermelho que a cena construída deu antes do conserto: a conta acabava
+   *   **PREVISTA presa ao pagamento novo** — aberta na lista, no caixa, e
+   *   impagável (`so120-corrida-estorno-pagamento-api.test.ts`).
    */
-  "artifacts/api-server/src/routes/financeiro.ts": 4,
+  "artifacts/api-server/src/routes/financeiro.ts": 2,
 };
 const TOTAL_SEM_DISCIPLINA = RETRATO.ABERTA;
 
@@ -1249,7 +1259,7 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
     expect(hoje).toEqual(SEM_DISCIPLINA);
   });
 
-  it("o total da dívida é 17 — 8 de nascimento/serialização implícita, 2 da S-O120 e 7 do gerador da demo", () => {
+  it("o total da dívida é 15 — 8 de nascimento/serialização implícita e 7 do gerador da demo (as 2 da S-O120 fecharam)", () => {
     expect(abertas.length).toBe(TOTAL_SEM_DISCIPLINA);
     expect(Object.values(SEM_DISCIPLINA).reduce((s, n) => s + n, 0)).toBe(TOTAL_SEM_DISCIPLINA);
   });
@@ -1277,7 +1287,7 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
    * - **8 → 11 por CAS** é drift ANTERIOR, medido pela S-C11 e não causado por
    *   ela: os pisos eram `>=` e ninguém os subiu depois do E212 e do E213.
    */
-  it("e o censo das disciplinas é o retrato — 43 TRANCA · 12 CAS · 17 ABERTA", () => {
+  it("e o censo das disciplinas é o retrato — 43 TRANCA · 14 CAS · 15 ABERTA", () => {
     const conta = { TRANCA: 0, CAS: 0, ABERTA: 0 };
     for (const p of portas) conta[p.disciplina] += 1;
     expect(conta).toEqual(RETRATO);

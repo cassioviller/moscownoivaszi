@@ -4510,6 +4510,11 @@ paths:
           description: Estornado
         "404":
           description: Pagamento não encontrado
+        "409":
+          description: >
+            PAGAMENTO_JA_ESTORNADO — outro clique estornou este pagamento entre a
+            leitura e a escrita (S-O120); as contas ficam como o estado novo as
+            deixou. Recarregue a lista.
   /lojas/{lojaId}/financeiro/auditoria:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"

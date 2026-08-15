@@ -94,6 +94,8 @@ const MENSAGENS_ERRO: Record<string, string> = {
   // apagá-la por aqui zerava o vínculo em silêncio e a vendedora não recebia.
   CONTA_DE_COMISSAO: "Esta conta veio de um fechamento de comissão — reabra o fechamento em Comissões para desfazê-la.",
   PAGAMENTO_NAO_ENCONTRADO: "Pagamento não encontrado.",
+  // S-O120: dois cliques em "estornar" no mesmo segundo — o segundo perde.
+  PAGAMENTO_JA_ESTORNADO: "Este pagamento já foi estornado por outro clique — recarregue a lista.",
   INTERVALO_INVALIDO: "Intervalo inválido.",
 };
 

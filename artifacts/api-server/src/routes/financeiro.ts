@@ -255,6 +255,24 @@ router.get("/lojas/:lojaId/financeiro/contas-pagar", async (req, res): Promise<v
 type ContaPagar = typeof contasPagarTable.$inferSelect;
 
 /**
+ * S-O120 — as duas portas que mudam `contas_pagar.status` repetem no `where`
+ * o status que leram (CAS), e quem perde a corrida sai por aqui, com o nome
+ * que a rota traduz em 409. Antes, `quitarContas` dependia da UNIQUE de
+ * `pagamento_itens.conta_pagar_id` para segurar o segundo clique, e o
+ * estorno não tinha rede nenhuma: dois estornos do mesmo pagamento passavam
+ * os dois, e o que perdia devolvia a conta a PREVISTA por cima do pagamento
+ * NOVO que outra pessoa acabara de gravar — conta aberta na lista, saída no
+ * caixa, e impagável (a UNIQUE recusa). Medido em
+ * `so120-corrida-estorno-pagamento-api.test.ts`.
+ */
+class ContaJaPagaError extends Error {
+  constructor(readonly contaIds: string[]) {
+    super("CONTA_JA_PAGA");
+  }
+}
+class PagamentoJaEstornadoError extends Error {}
+
+/**
  * A quitação de contas — o ÚNICO caminho pelo qual uma conta a pagar vira PAGA.
  *
  * A2/E94: existiam duas portas para o mesmo fato. A single-conta gravava
@@ -311,6 +329,22 @@ async function quitarContas(params: {
 
   const pagamentoId = randomUUID();
   await db.transaction(async (tx) => {
+    // S-O120 — CAS: só passa de PREVISTA a PAGA a conta que AINDA está
+    // PREVISTA quando esta transação chega à linha. Em READ COMMITTED, quem
+    // chega depois bloqueia na linha, re-avalia o `where` quando o primeiro
+    // commita, e não casa: o `returning()` volta menor que as contas pedidas,
+    // e a transação cai antes de gravar a saída.
+    const viradas = await tx.update(contasPagarTable)
+      .set({ status: "PAGA" })
+      .where(and(
+        inArray(contasPagarTable.id, contas.map((c) => c.id)),
+        eq(contasPagarTable.status, "PREVISTA"),
+      ))
+      .returning({ id: contasPagarTable.id });
+    if (viradas.length !== contas.length) {
+      const viradasIds = new Set(viradas.map((v) => v.id));
+      throw new ContaJaPagaError(contas.map((c) => c.id).filter((id) => !viradasIds.has(id)));
+    }
     await tx.insert(pagamentosTable).values({
       id: pagamentoId,
       lojaId,
@@ -329,9 +363,6 @@ async function quitarContas(params: {
         valor: rateioCentavos[i] / 100,
       })),
     );
-    await tx.update(contasPagarTable)
-      .set({ status: "PAGA" })
-      .where(inArray(contasPagarTable.id, contas.map((c) => c.id)));
     await registrarAuditoria(tx, {
       lojaId,
       usuario,
@@ -369,15 +400,24 @@ router.post("/lojas/:lojaId/contas-pagar/:contaId/pagar", requireModulo("finance
   }
 
   // A2/E94: uma porta só. Ver `quitarContas`.
-  await quitarContas({
-    lojaId,
-    contas: [conta],
-    usuario: req.usuario!,
-    data: parsed.data.data,
-    valorPago: parsed.data.valorPago,
-    forma: parsed.data.forma ?? null,
-    observacoes: parsed.data.observacoes ?? null,
-  });
+  try {
+    await quitarContas({
+      lojaId,
+      contas: [conta],
+      usuario: req.usuario!,
+      data: parsed.data.data,
+      valorPago: parsed.data.valorPago,
+      forma: parsed.data.forma ?? null,
+      observacoes: parsed.data.observacoes ?? null,
+    });
+  } catch (err) {
+    if (err instanceof ContaJaPagaError) {
+      // S-O120: perdeu a corrida para outro clique — a conta virou PAGA entre a leitura e a escrita.
+      res.status(409).json({ error: "CONTA_JA_PAGA", detalhe: "Esta conta já foi paga" });
+      return;
+    }
+    throw err;
+  }
 
   const [contaPaga] = await db.select().from(contasPagarTable)
     .where(eq(contasPagarTable.id, conta.id));
@@ -540,15 +580,29 @@ router.post("/lojas/:lojaId/financeiro/pagamentos", async (req, res): Promise<vo
 
   // A2/E94: o rateio, a saída e a trilha moram em `quitarContas` — esta rota e
   // a `/contas-pagar/:id/pagar` são a MESMA operação vista por duas portas.
-  const pagamentoId = await quitarContas({
-    lojaId,
-    contas,
-    usuario: req.usuario!,
-    data: parsed.data.data,
-    valorPago: parsed.data.valorPago,
-    forma: parsed.data.forma ?? null,
-    observacoes: parsed.data.observacoes ?? null,
-  });
+  let pagamentoId: string;
+  try {
+    pagamentoId = await quitarContas({
+      lojaId,
+      contas,
+      usuario: req.usuario!,
+      data: parsed.data.data,
+      valorPago: parsed.data.valorPago,
+      forma: parsed.data.forma ?? null,
+      observacoes: parsed.data.observacoes ?? null,
+    });
+  } catch (err) {
+    if (err instanceof ContaJaPagaError) {
+      // S-O120: perdeu a corrida — alguma das contas virou PAGA entre a leitura e a escrita.
+      const perdidas = contas.filter((c) => err.contaIds.includes(c.id));
+      res.status(409).json({
+        error: "CONTA_JA_PAGA",
+        detalhe: `Já paga(s): ${perdidas.map((c) => c.descricao).join(", ")}`,
+      });
+      return;
+    }
+    throw err;
+  }
 
   const criado = await db.query.pagamentosTable.findFirst({
     where: eq(pagamentosTable.id, pagamentoId),
@@ -573,23 +627,47 @@ router.post("/lojas/:lojaId/financeiro/pagamentos/:pagamentoId/estornar", async 
   }
 
   const contaIds = pagamento.itens.map((i) => i.contaPagarId);
-  await db.transaction(async (tx) => {
-    if (contaIds.length > 0) {
-      await tx.update(contasPagarTable)
-        .set({ status: "PREVISTA" })
-        .where(and(eq(contasPagarTable.lojaId, lojaId), inArray(contasPagarTable.id, contaIds)));
-    }
-    await tx.delete(pagamentosTable).where(eq(pagamentosTable.id, pagamento.id));
-    await registrarAuditoria(tx, {
+  try {
+    await db.transaction(async (tx) => {
+      // S-O120 — o DELETE do pagamento vai PRIMEIRO, e o `returning()` é quem
+      // responde: a linha que a transação removeu é a prova de que o estorno é
+      // deste clique. Quem chega depois bloqueia na linha, acorda com ela
+      // apagada, remove zero e sai — sem tocar as contas, que a esta altura
+      // podem já estar presas a um pagamento novo.
+      const apagados = await tx.delete(pagamentosTable)
+        .where(eq(pagamentosTable.id, pagamento.id))
+        .returning({ id: pagamentosTable.id });
+      if (apagados.length === 0) throw new PagamentoJaEstornadoError();
+      if (contaIds.length > 0) {
+        // CAS: só volta a PREVISTA a conta que ESTÁ paga — o status que a rota leu.
+        await tx.update(contasPagarTable)
+          .set({ status: "PREVISTA" })
+          .where(and(
+            eq(contasPagarTable.lojaId, lojaId),
+            inArray(contasPagarTable.id, contaIds),
+            eq(contasPagarTable.status, "PAGA"),
+          ));
+      }
+      await registrarAuditoria(tx, {
       lojaId,
       usuario: req.usuario!,
       acao: "PAGAMENTO_ESTORNADO",
       entidade: "pagamento",
       entidadeId: pagamento.id,
-      // O pagamento é DELETADO no estorno — a trilha vira o único rastro dele.
-      detalhe: { valorPago: pagamento.valorPago, data: pagamento.data, contaIds },
+        // O pagamento é DELETADO no estorno — a trilha vira o único rastro dele.
+        detalhe: { valorPago: pagamento.valorPago, data: pagamento.data, contaIds },
+      });
     });
-  });
+  } catch (err) {
+    if (err instanceof PagamentoJaEstornadoError) {
+      res.status(409).json({
+        error: "PAGAMENTO_JA_ESTORNADO",
+        detalhe: "Este pagamento já foi estornado por outro lançamento — recarregue a lista.",
+      });
+      return;
+    }
+    throw err;
+  }
   res.status(204).end();
 });
 
