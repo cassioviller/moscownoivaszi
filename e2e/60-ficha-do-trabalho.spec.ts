@@ -118,6 +118,33 @@ test.describe("Ficha do trabalho da costureira (S-A17)", () => {
     await expect(page.getByText("Pendente", { exact: true })).toBeVisible();
   });
 
+  /**
+   * S-O140 — o prazo próprio (E240) tinha porta e não tinha tela de EDIÇÃO: a
+   * ficha o mostrava e só o diálogo da criação o escrevia. Agora a ficha define,
+   * altera e limpa — e a prova é a linha do banco, não a tela.
+   */
+  test("definir, ver e limpar o prazo próprio pela ficha escreve no banco", async ({ page }) => {
+    await page.goto(`/ajustes/${ajusteId}`);
+    // Nasceu sem prazo próprio: a ficha oferece o gesto de definir.
+    await expect(page.getByTestId("prazo-proprio")).toContainText("não definido");
+    await page.getByTestId("alterar-prazo-proprio").click();
+    await page.getByTestId("prazo-proprio-input").fill("2030-03-15");
+    await page.getByTestId("salvar-prazo-proprio").click();
+    // A ficha mostra o dia, e o rótulo do prazo passa a ser o do prazo próprio.
+    await expect(page.getByTestId("prazo-proprio")).toContainText("15 de mar. de 2030");
+    let [linha] = await db.select({ prazo: ajustesTable.prazoProprio }).from(ajustesTable).where(eq(ajustesTable.id, ajusteId!));
+    expect(linha?.prazo).toBe("2030-03-15");
+
+    // Sobrevive ao recarregar, e "Limpar" volta à régua derivada.
+    await page.reload();
+    await expect(page.getByTestId("prazo-proprio")).toContainText("15 de mar. de 2030");
+    await page.getByTestId("alterar-prazo-proprio").click();
+    await page.getByTestId("limpar-prazo-proprio").click();
+    await expect(page.getByTestId("prazo-proprio")).toContainText("não definido");
+    [linha] = await db.select({ prazo: ajustesTable.prazoProprio }).from(ajustesTable).where(eq(ajustesTable.id, ajusteId!));
+    expect(linha?.prazo).toBeNull();
+  });
+
   test("o item de orçamento que cobra a confecção leva ao trabalho, não à fila", async ({
     page,
     request,

@@ -18,6 +18,7 @@ import { podeVirarPecaDoAcervo } from "@/lib/confeccao-no-acervo";
 import { brl, diaMesAbrevAno } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { useAcoesDeAjuste } from "./acoes";
+import { AlterarPrazoProprio } from "./prazo-proprio";
 
 /**
  * S-A17 — a ficha de UM trabalho da costureira.
@@ -158,11 +159,16 @@ export default function AjusteDetalhe() {
               </div>
             )}
             {/* E240/S-O50: o prazo que a costureira fixou é FATO da ficha, mesmo
-                quando a prova marcada manda sobre ele. */}
-            {a.prazoProprio && (
+                quando a prova marcada manda sobre ele. S-O140: e é EDITÁVEL aqui —
+                a porta existia desde o E240 e a única tela que a escrevia era a
+                da criação; a confecção sem prazo ganha o gesto de definir um. */}
+            {(a.prazoProprio || (confeccao && podeEditar)) && (
               <div>
                 <span className="text-muted-foreground text-sm">Prazo próprio</span>
-                <p className="font-medium" data-testid="prazo-proprio">{diaMesAbrevAno(a.prazoProprio)}</p>
+                <p className="font-medium flex items-center gap-2" data-testid="prazo-proprio">
+                  {a.prazoProprio ? diaMesAbrevAno(a.prazoProprio) : <span className="text-muted-foreground font-normal">não definido</span>}
+                  {podeEditar && <AlterarPrazoProprio ajusteId={a.id} prazoAtual={a.prazoProprio} />}
+                </p>
               </div>
             )}
             <div>
