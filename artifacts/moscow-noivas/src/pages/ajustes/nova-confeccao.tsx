@@ -31,6 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 import { mensagemApi } from "@/lib/erro-api";
 import { parseValor } from "@/lib/financeiro/dinheiro";
 import { instanteDiaHora } from "@/lib/formatos";
+import { Erro } from "@/components/estado";
 import { Plus } from "lucide-react";
 
 /**
@@ -166,6 +167,18 @@ export function NovaConfeccao({ podeCriar }: { podeCriar: boolean }) {
               <p className="text-sm text-muted-foreground">Escolha a noiva primeiro.</p>
             ) : atendimentos.isLoading ? (
               <p className="text-sm text-muted-foreground">Carregando os atendimentos dela…</p>
+            ) : atendimentos.isError ? (
+              /* S-C250 — a forma DERIVADA da S-C160: `dela` sai de
+                 `atendimentos.data ?? []` numa linha e o vazio é testado em
+                 outra, fora do alcance da grafia direta. O `isLoading` estava
+                 lido e o `isError` não, então um 500 aqui virava "Esta noiva
+                 ainda não tem atendimento nenhum" — e o ramo do zero manda a
+                 costureira à Agenda marcar um atendimento que pode já existir. */
+              <Erro
+                titulo="Não deu para carregar os atendimentos dela"
+                erro={atendimentos.error}
+                onTentarNovamente={() => atendimentos.refetch()}
+              />
             ) : dela.length === 0 ? (
               /* O servidor exige `atendimentoId` — dizer o motivo aqui evita o
                  422 depois do clique, que é a régua do E27. */

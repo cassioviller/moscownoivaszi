@@ -59,6 +59,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
+import { Erro } from "@/components/estado";
 import { MessageCircle } from "lucide-react";
 import { diaMesAbrevAno } from "@/lib/formatos";
 import { hojeLocal } from "@/lib/financeiro/datas";
@@ -476,6 +477,17 @@ export default function NovoAtendimento() {
 
       {!podeCriar ? (
         <p className="text-sm text-muted-foreground">Você não tem permissão para agendar.</p>
+      ) : cabines.isError ? (
+        /* S-C250 — o sítio que sobra nenhuma citava, achado ao medir a forma
+           derivada. O `isLoading` estava lido e o `isError` não: um 500 na
+           lista de cabines mandava a vendedora CADASTRAR uma cabine — sobre uma
+           loja que pode ter cinco. É a S-C160 na direção do gesto, e não só da
+           frase: o ramo do zero manda alguém criar o que já existe. */
+        <Erro
+          titulo="Não deu para carregar as cabines"
+          erro={cabines.error}
+          onTentarNovamente={() => cabines.refetch()}
+        />
       ) : !cabines.isLoading && cabinesAtivas.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Cadastre ao menos uma cabine em{" "}
@@ -552,6 +564,20 @@ export default function NovoAtendimento() {
                           </p>
                         ) : bloqueios.isLoading ? (
                           <p className="text-sm text-muted-foreground">Carregando reservas…</p>
+                        ) : bloqueios.isError ? (
+                          /* S-C250 — o segundo sítio deste arquivo, e o mais
+                             caro dos quatro: o ramo do zero não afirma só um
+                             vazio, ele OFERECE criar a reserva ali mesmo (E65).
+                             Um 500 em `bloqueios` dizia "Esta noiva ainda não
+                             tem reserva de casamento — crie agora" sobre uma
+                             noiva que já tem a peça presa, e o clique seguinte
+                             prenderia uma segunda. É a S-C160 com gesto
+                             pendurado no fim. */
+                          <Erro
+                            titulo="Não deu para carregar as reservas dela"
+                            erro={bloqueios.error}
+                            onTentarNovamente={() => bloqueios.refetch()}
+                          />
                         ) : reservasDaNoiva.length === 0 ? (
                           <div className="space-y-3 rounded-md border p-3">
                             {/* S36: quem não reserva peça vê o RECADO, não o

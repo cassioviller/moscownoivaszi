@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Erro } from "@/components/estado";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -227,6 +228,18 @@ export function LookbookNoiva({ leadId }: { leadId: string }) {
             />
             {vestidos.isPending ? (
               <Skeleton className="h-32 w-full" />
+            ) : vestidos.isError ? (
+              /* S-C250 — a forma DERIVADA da S-C160. `filtrados` sai de
+                 `(vestidos.data ?? [])` dentro do `useMemo`, e o vazio é
+                 testado aqui: o `isPending` estava lido e o `isError` não, e um
+                 500 no acervo virava "Nenhum vestido ativo encontrado." — a
+                 frase que faz a vendedora montar o lookbook sem as peças que a
+                 loja tem. */
+              <Erro
+                titulo="Não deu para carregar o acervo"
+                erro={vestidos.error}
+                onTentarNovamente={() => vestidos.refetch()}
+              />
             ) : filtrados.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhum vestido ativo encontrado.</p>
             ) : (
