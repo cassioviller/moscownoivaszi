@@ -90,7 +90,7 @@ test.describe("Configurações — Índices IPCA (E237)", () => {
     await page.waitForLoadState("networkidle");
     const card = page.getByTestId("card-indices-ipca");
     await expect(card).toBeVisible();
-    // O mês mais antigo da lista (24 meses atrás) — não colide com nada que a suíte de API grava.
+    // O mês mais antigo da lista (12 meses atrás) — não colide com nada que a suíte de API grava.
     const linha = card.locator("li[data-testid^='indice-']").last();
     const competencia = (await linha.getAttribute("data-testid"))!.replace("indice-", "");
     await linha.locator("input").fill("0,37");

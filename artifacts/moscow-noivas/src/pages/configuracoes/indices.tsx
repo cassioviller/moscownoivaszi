@@ -26,7 +26,7 @@ import { pctBR as pct } from "@/lib/formatos";
  * meses CHEIOS entre o vencimento e hoje. Mês sem número é mês sem correção —
  * a frase da mora, na fila e no carnê, diz qual mês falta.
  *
- * A tela mostra os últimos 24 meses (o mês corrente incluso, embora ele nunca
+ * A tela mostra os últimos 12 meses (o mês corrente incluso, embora ele nunca
  * seja "cheio" ainda — vale para o mês que vem) e um campo por mês; salvar é
  * UPSERT: corrigir um número errado é digitar de novo, e a trilha guarda quem.
  */
@@ -41,7 +41,7 @@ export function IndicesMonetarios() {
   const { toast } = useToast();
   const [rascunho, setRascunho] = useState<Record<string, string>>({});
 
-  const competencias = useMemo(() => ultimasCompetencias(competenciaAtual(), 24).reverse(), []);
+  const competencias = useMemo(() => ultimasCompetencias(competenciaAtual(), 12).reverse(), []);
   const gravado = useMemo(() => new Map((indices.data ?? []).map((i) => [i.competencia, i.variacaoPct])), [indices.data]);
 
   async function salvar(competencia: string) {

@@ -64,6 +64,7 @@ import {
   atendimentosTable,
   ajustesTable,
   ajusteChecklistItensTable,
+  indicesMonetariosTable,
 } from "../lib/db/src/index";
 
 export const LOJA_DEMO_ID = "demo-manuais-loja";
@@ -619,6 +620,22 @@ async function main(): Promise<void> {
         ...(desfecho ? { desfecho, atendidoEm: emDias(dias, hora, 6) } : {}),
       })
       .onConflictDoNothing();
+  }
+
+  // ── P4/E237: o IPCA dos últimos 12 meses, valores de exemplo, para o print
+  //    de Configurações → Índices e para a mora da demonstração corrigir. ────
+  {
+    const [ano, mes] = diaLocal(agora).split("-").map(Number) as [number, number];
+    const exemplos = [0.42, 0.38, 0.31, 0.46, 0.5, 0.29, 0.35, 0.44, 0.52, 0.16, 0.24, 0.39];
+    for (let i = 1; i <= 12; i++) {
+      let m = mes - i, a = ano;
+      while (m <= 0) { m += 12; a -= 1; }
+      const competencia = `${a}-${String(m).padStart(2, "0")}`;
+      await db.insert(indicesMonetariosTable).values({
+        id: `demo-ipca-${competencia}`, lojaId: LOJA_DEMO_ID, indice: "IPCA", competencia,
+        variacaoPct: exemplos[i - 1]!, atualizadoPor: "demonstração (valor de exemplo)",
+      }).onConflictDoNothing();
+    }
   }
 
   // ── A fila da costureira ──────────────────────────────────────────────────

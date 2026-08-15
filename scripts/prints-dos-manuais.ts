@@ -618,6 +618,19 @@ const MANUAIS: Record<string, Manual> = {
         ],
       },
       {
+        nome: "indices-ipca",
+        rota: `/loja/${LOJA}/configuracoes`,
+        alvo: "[data-testid='card-indices-ipca']",
+        folga: 40,
+        altura: 1700,
+        preparar: [{ rolarAte: "[data-testid='card-indices-ipca']" }],
+        legenda: "Índices — IPCA (cláusula 9ª): um campo por mês; o número gravado aparece ao lado. A parcela vencida corrige pelos meses cheios de atraso com o que você digitar aqui — mês sem número não corrige, e a fila diz qual falta.",
+        realces: [
+          { alvo: "[data-testid='card-indices-ipca'] li input >> nth=0", nota: "A variação do mês, em pontos percentuais (0,42% é 0,42)." },
+          { alvo: "[data-testid='card-indices-ipca'] li button >> nth=0", nota: "“Gravar” — corrigir um número errado é gravar de novo; a trilha guarda quem.", numeroEm: "topo-direita" },
+        ],
+      },
+      {
         nome: "privacidade",
         rota: `/loja/${LOJA}/configuracoes`,
         alvo: "text=Privacidade (LGPD) >> xpath=ancestor::*[self::section or self::div][1]",
