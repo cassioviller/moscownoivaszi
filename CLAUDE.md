@@ -40,7 +40,7 @@ para o documento que manda.
    A tabela do `EXECUCAO.md` é a fila; **conte, não deduza** — depois da
    segunda metade de 15/08, que pegou as 22 sobras abertas e executou tudo o
    que era executável, resta **UMA sobra** (contada depois do E234): a
-   **S-C51** 🟡 (a conciliação por parcela — espera a contadora, com a pergunta
+   **S-C51** 🟡 (a conciliação por parcela — **respondida em 15/08: POR PAGAMENTO**, é o E235, código; a pergunta
    pronta no plano). A S-C132 fechou no E220, a S-C301 no E233 e a S-C300 no
    E234. **O plano das três está em
    [`2026-08-15-as-tres-ultimas-plano.md`](docs/propostas/2026-08-15-as-tres-ultimas-plano.md)**

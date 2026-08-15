@@ -15,7 +15,7 @@ mostra que ele pode esperar sem custar nada.
 |---|---|---|---|---|
 | 1 | **S-C301** — validação de CNPJ | **E233** ✅ `8a8bfe5f` | nada | 3 portas de escrita, 1 seed, 1 tela; **1 documento inválido no banco inteiro**, e é o da loja |
 | 2 | **S-C300** — cidade, representante e PIX no cadastro da loja | **E234** ✅ `714192a6` | ~~**D7** (dona)~~ respondida SIM | 1 migração (7 colunas), 4 schemas do spec, 2 telas, 2 papéis, 1 seed |
-| 3 | **S-C51** — conciliação por ATO | **E235** | **contadora** | 303 parcelas recebidas · **0 em pedaços** · 2 sem ato · **0 conciliadas, nunca** |
+| 3 | **S-C51** — conciliação por ATO | **E235** | ~~**contadora**~~ respondida: por pagamento | 303 parcelas recebidas · **0 em pedaços** · 2 sem ato · **0 conciliadas, nunca** |
 
 E um **passo 0 que não é código**: o `origin/main` está **3 commits atrás**
 (`git rev-list --count origin/main..main` = 3). Publicar pede a autorização da
@@ -29,7 +29,7 @@ dona, como sempre.
 |---|---|---|
 | **D7** — representante (nome, RG, CPF), PIX (chave + titular) e cidade/UF entram no cadastro da loja? | **Sim, os sete campos** | O **E234 está destravado** — é código, não decisão. Fecha a S-C300 e o E220 inteiro |
 | O E233 valida também o **CPF** (locatária e representante), no mesmo módulo? | **Sim, CNPJ e CPF juntos** | O E233 tem **5 portas**, não 3: as duas do CPF (`POST /contratos`, `PATCH /leads`) entram |
-| **S-C51** — conciliação por ato? | **Perguntar à contadora antes** | O **E235 fica pronto e não executa**. A pergunta, com o número, está abaixo; a resposta entra na tabela de decisões do rastreador |
+| **S-C51** — conciliação por ato? | **Respondida em 15/08/2026: POR PAGAMENTO (A)** — a pergunta abaixo foi feita e a resposta veio na recomendação | O **E235 destrava** — é código: um movimento por ato de recebimento, a parcela sem ato continua sendo um, o carimbo passa a ser por ato |
 | Publicar o `main`? | **Sim, agora** | Feito: `origin/main` = `c3e53ace`, fast-forward de 5 commits (E220 primeira fatia, rastreador, manual, plano, decisões) |
 
 **Consequência para a fila:** o que resta de código sem depender de ninguém é
@@ -250,7 +250,7 @@ sem quem vai usar é a que se reescreve.
    confere.
 3. **E234** — **executado (`714192a6`)**, no mesmo dia da resposta à D7. Fecha a S-C300 e o E220 inteiro
    (o papel deixa de ter lacuna que não seja da noiva).
-4. **Contadora → E235** — a pergunta com o número; respondida *por ato*, é um
+4. **Contadora → E235** — **respondida em 15/08: por pagamento (por ato)**; é um
    dia; *por parcela*, a S-C51 vira decisão escrita e fecha sem código.
 
 Fechados os três, **a trilha do contrato de papel fica sem sobra aberta** —
