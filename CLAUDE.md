@@ -25,14 +25,20 @@ para o documento que manda.
    (`f8ab561`), **E219 (`c0071940`)**, E221 (`fcc24e9`) e E222 (`31422db`) —
    **11 de 12**, mais os que a medição fez nascer: **E224** (`75fa2cbf`) e
    **E223** (`7455bc39`, a porta de trocar peça, que destravou o E219 em
-   15/08). **O ÚNICO épico de código aberto na trilha é o E220**, travado em
-   D4/D7.
+   15/08). **O E220 destravou em 15/08 (terceira sessão), pela ordem da dona — "começa
+   pelo desenho das 21 cláusulas": a PRIMEIRA FATIA está EXECUTADA em
+   `880b9a5a`** (o PDF É o instrumento: 21 cláusulas com os números lidos das
+   réguas, a identificação das partes com a qualificação do E215, a régua de
+   EFEITO `e220-instrumento`); a D4 ficou respondida pelo gesto. **O que resta
+   dele é a S-C301** (a validação de CNPJ, 🟡, próxima da fila) e a **S-C300**
+   (representante, PIX e a CIDADE do foro — `lojas` não tem as colunas; é a D7).
    A tabela do `EXECUCAO.md` é a fila; **conte, não deduza** — depois da
    segunda metade de 15/08, que pegou as 22 sobras abertas e executou tudo o
-   que era executável, restam **DUAS sobras, e nenhuma é código**: a **S-C51**
-   🟡 (a conciliação por parcela — espera a contadora, porque carimbo por ATO
-   pede a tabela que o E221 recusou por escrito) e a **S-C132** 🔵 (o PDF sem a
-   qualificação — é o E220, travado em D4/D7). Mais **5 pendências que não são
+   que era executável, restam **TRÊS sobras** (contadas depois da terceira sessão de 15/08): a
+   **S-C51** 🟡 (a conciliação por parcela — espera a contadora, porque carimbo
+   por ATO pede a tabela que o E221 recusou por escrito), a **S-C301** 🟡 (a
+   validação de CNPJ — código, a próxima) e a **S-C300** 🔵 (a D7 vista do
+   banco). A S-C132 fechou no E220. Mais **5 pendências que não são
    software** (a P5 nasceu no E219: confirmar que os 7 dias da 17ª contam do
    fecho). As duas sessões do dia estão contadas em
    `docs/revisao/2026-08-15-sessao-a-fila-do-que-restava.md` (a madrugada:
