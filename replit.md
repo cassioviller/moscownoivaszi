@@ -228,6 +228,33 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   que ela devolve por não haver o que achar. **A peneira agora PROVA que
   enxerga**: um `sql\`UPDATE contratos …\`` sintético tem de ser achado, e a
   ponte `nome quente ↔ tabela do drizzle` é conferida contra a chave do mapa.
+- **O relógio das portas que decidem por DATA** (E219): `lib/relogio.ts` —
+  `relogio.agora()` no lugar de `new Date()` em toda rota cuja regra depende do
+  calendário (a primeira é a troca de peça, 17ª: 7 dias do fecho, sextas e
+  sábados vedados). É objeto de propósito: o teste de API o fixa com
+  `vi.spyOn(relogio, "agora")`, e sem isso a suíte da 17ª ficaria verde cinco
+  dias por semana e vermelha dois (S-O119 do lado do calendário — medido numa
+  sexta real). A régua pura (`financeiro-core/src/troca.ts`) recebe `hoje` por
+  parâmetro, como toda conta da trilha desde o E211.
+- **A fila de atrasos responde do CACHE por 5 min, por loja** (S-C89):
+  `lib/fila-de-atrasos-cache.ts` — o sino refazia a conta inteira (2 consultas
+  fixas + 3 por contrato atrasado, +1 se cobrado, +1 pelas órfãs) a cada 5 min
+  em TODA tela aberta. As **10 portas que mudam a fila** derrubam o cache da
+  loja e estão enumeradas no próprio arquivo; a conta de consultas tem régua de
+  IGUALDADE (cache desligado de propósito: `expected 9 to be +0`). O cache é
+  por PROCESSO — com réplicas atrás de balanceador a invalidação não atravessa
+  (S-C282; teto de dano = o TTL).
+- **Três varreduras novas de 15/08**, todas com o par acha-o-plantado /
+  ignora-o-que-não-é (molde S-C180): a do **vazio silenciado**
+  (`moscow-noivas/src/lib/vazio-silenciado-varredura.test.ts` — frase de vazio
+  sobre `?? []` sem `isError` do MESMO recurso; achou um quinto sítio fora de
+  sobra ao nascer), a da **contradição interna dos manuais**
+  (`varredura-manuais-contradicao.test.ts` — célula pregada não pode negar
+  prosa do mesmo documento, e toda negação de UI é dívida declarada com ID; é
+  ela que segura a S-C270), e o helper de **população por diferença**
+  (`api-server/src/__tests__/populacao-da-varredura.ts` — a saída não é "o
+  piso caiu", é a lista NOMEADA do que entrou/saiu contra `git ls-files`; o
+  piso `> 200` seguia verde sobre 295 com um recorte inteiro faltando).
 - **A varredura de QUEM SERIALIZA o schema aninhado** (E192, S-O76):
   `cd artifacts/api-server && npx vitest run src/__tests__/varredura-schemas-aninhados.test.ts`
   (**~1,5 s a parte de papel; o último caso toca o banco**). Ela é a **primeira

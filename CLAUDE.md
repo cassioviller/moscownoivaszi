@@ -22,16 +22,21 @@ para o documento que manda.
    valor, mas por **de onde vem o dado**. **As Ondas A, B e C estão EXECUTADAS**,
    menos o E219: E211 (`0c8874a`), E212 (`a88d7ead`), E213 (`fa7d838`), E214
    (`0c15cda`), E215 (`c3adcf93`), E216 (`eaa4e90`), E217 (`a2ada8aa`), E218
-   (`f8ab561`), E221 (`fcc24e9`) e E222 (`31422db`) — **10 de 12**, mais o
-   **E224** (`75fa2cbf`), que a medição fez nascer. **O E217 fechou a Onda C** —
-   a rescisão calcula, e com ela **a regra do E196 destravou**: manual se
-   reescreve depois da onda, e a onda acabou.
+   (`f8ab561`), **E219 (`c0071940`)**, E221 (`fcc24e9`) e E222 (`31422db`) —
+   **11 de 12**, mais os que a medição fez nascer: **E224** (`75fa2cbf`) e
+   **E223** (`7455bc39`, a porta de trocar peça, que destravou o E219 em
+   15/08). **O ÚNICO épico de código aberto na trilha é o E220**, travado em
+   D4/D7.
    A tabela do `EXECUCAO.md` é a fila; **conte, não deduza** — depois da
-   segunda metade de 14/08 (E225, E226, E227, S-C170, S-C180 — as OITO 🟡 de
-   código da manhã fecharam à tarde) são **52 sobras** (**ZERO 🟠**, **4 🟡 —
-   nenhuma pede código sozinha**, 48 🔵) e **4 pendências que não são
-   software**. E a manhã provou a S-A5 dentro do próprio rastreador: a
-   linha-resumo dizia 55 quando a tabela media 57.
+   madrugada de 15/08 (E223 → E219 → S-C234, mais o **lote paralelo dos
+   blocos 5–8**: quatro agentes, 20 sobras fechadas de uma vez, 9 abertas
+   pelos próprios fechos) são **23 sobras** (**ZERO 🟠**, **2 🟡** — S-C51
+   espera a contadora, S-C270 são os manuais atrás da onda —, 21 🔵) e **5
+   pendências que não são software** (a P5 nasceu no E219: confirmar que os 7
+   dias da 17ª contam do fecho). A sessão está contada em
+   `docs/revisao/2026-08-15-sessao-a-fila-do-que-restava.md`. E a manhã de
+   14/08 provou a S-A5 dentro do próprio rastreador: a linha-resumo dizia 55
+   quando a tabela media 57.
 
    **O E215 é o primeiro épico da trilha em que a medição mudou o tamanho nos
    DOIS sentidos**, e as duas metades valem para os que faltam. Encareceu: o
@@ -101,10 +106,16 @@ para o documento que manda.
    e o anterior segue em
    [`2026-08-13-fechar-o-contrato-plano.md`](docs/propostas/2026-08-13-fechar-o-contrato-plano.md).
 
-   **O E219 está BLOQUEADO, e o motivo é o achado que ordena o resto:** a porta
-   que ele guardaria **não existe**. `contrato_itens` e `contrato_bloqueios`
-   recebem escrita num sítio só — o `INSERT` do `POST /contratos` —, então trocar
-   de traje hoje é cancelar o contrato e fazer outro.
+   **O E219 DESTRAVOU em 15/08, e o caminho foi o que a medição mandou:** a
+   porta que ele guardaria não existia (`contrato_itens` e `contrato_bloqueios`
+   recebiam escrita num sítio só — o `INSERT` do `POST /contratos`), então
+   primeiro nasceu o **E223** (`7455bc39`, `POST /contratos/:id/trocar-peca`:
+   prende a reserva nova ANTES de libertar a antiga, snapshot da PEÇA sem
+   tocar no preço — os dois preços vão para a trilha) e só então a guarda da
+   17ª (`c0071940`: 7 dias contados do FECHO, convenção declarada na frase e
+   pendente de confirmação na P5; sextas e sábados vedados pelo dia do GESTO).
+   De brinde nasceu `relogio.agora()` — a primeira regra que decide pelo dia
+   da semana do clique não é testável sem relógio que o teste alcance.
 
    **Quatro épicos seguidos ensinaram a mesma coisa, de quatro formas: o plano
    deste contrato supõe portas que o sistema não tem.** No E213 a régua faltava
@@ -176,11 +187,12 @@ para o documento que manda.
      que virou nota: `dataFutura(-10)` não é passado — a base do helper é fixa
      em 2027, e a cena do atraso precisa de `Date.now()` real.
 
-   **O que resta em 🟡 não se fecha escrevendo código**: S-C60 e S-C51 esperam
-   decisão, S-C220 espera a dona decidir o perfil da Recepção, e S-C231 (os
-   cartões-resumo da carteira somam sem a mora que as linhas mostram) espera
-   medir a convenção compartilhada com o dashboard e o sino antes de mexer.
-   Fora isso, 48 🔵 — conte na tabela.
+   **O que resta em 🟡 depois de 15/08**: a **S-C51** espera a contadora (o
+   leitor de atos é decisão de modelagem) e a **S-C270** é a reescrita dos
+   manuais depois da onda E223–E232 — quatro frases negam UI que existe, e as
+   quatro estão PREGADAS como dívida declarada na
+   `varredura-manuais-contradicao`, que nasceu no mesmo lote: a reescrita dá
+   baixa e a régua cobra. Fora isso, 21 🔵 — conte na tabela.
 
    Esta linha já apontou para o **E222** depois de ele estar executado, que é a
    **S-A5 acontecendo de novo**: quem abre a sessão lê o estado velho como se
@@ -475,11 +487,13 @@ para o documento que manda.
    ainda está em dia — esta linha envelhece a cada commit, e já envelheceu
    cinco vezes.
 
-   Hoje a régua é **API 1660 (229 arquivos) · frontend 943 (99 arquivos) ·
-   E2E 174 · typecheck verde** — as **quatro medidas em série** na tarde de
-   2026-08-14, no fecho do E225 (a API rodou INTEIRA quatro vezes na tarde:
-   1648 no E226 e no E227, 1654 na S-C170, 1660 no E225; o E2E, três: 171 no
-   E226, 174 no E227 com o spec 63, 174 no E225). **E este parágrafo é a prova
+   Hoje a régua é **API 1726 (242 arquivos) · frontend 974 (104 arquivos) ·
+   E2E 177 · typecheck verde** — as quatro medidas em série na madrugada de
+   2026-08-15, no fecho da integração dos blocos 5–8 (a API rodou INTEIRA
+   cinco vezes na sessão: 1697 no E223, 1700 no E219, 1707 na S-C234, 1726 na
+   integração — mais as quatro dos agentes em bancos próprios; o E2E, duas:
+   177 no lote E223+E219 e 177 no fecho). O parágrafo abaixo, dos números de
+   14/08, fica como a prova viva de sempre: **E este parágrafo é a prova
    viva do que ele manda fazer: os QUATRO agentes do lote da manhã acharam,
    cada um por conta própria, que ele estava três épicos atrás** — ele dizia
    *1616 (221) · 879 (96)* e a base `c2b8a274` já media *1624 (223) · 887
