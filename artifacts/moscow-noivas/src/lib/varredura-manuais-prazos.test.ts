@@ -82,6 +82,21 @@ const REGUAS = {
     arquivo: "lib/financeiro-core/src/exclusividade.ts",
     unidade: "% do aluguel da peça",
   },
+
+  /**
+   * **S-C270 — os números que a onda E223–E232 criou**, registrados na
+   * reescrita dos manuais de 15/08. Cada um é uma promessa que algum manual
+   * faz e a régua prega contra a fonte:
+   * - a 17ª (E219): troca de traje até N dias DO FECHO do contrato;
+   * - a 5ª/15ª (E232): o vencimento sugerido da parcela do reparo;
+   * - a decisão da dona de 14/08 (E228): a reserva sem noiva expira sozinha.
+   */
+  PRAZO_DA_TROCA_DIAS: { arquivo: "lib/financeiro-core/src/troca.ts", unidade: "dias" },
+  PRAZO_DA_COBRANCA_DE_REPARO_DIAS: { arquivo: "lib/financeiro-core/src/avaria.ts", unidade: "dias" },
+  VALIDADE_DO_BLOQUEIO_ORFAO_DIAS: {
+    arquivo: "artifacts/api-server/src/lib/disponibilidade.ts",
+    unidade: "dias",
+  },
 } as const;
 
 type NomeDaRegua = keyof typeof REGUAS;

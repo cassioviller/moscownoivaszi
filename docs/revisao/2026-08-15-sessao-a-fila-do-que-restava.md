@@ -8,9 +8,12 @@ paralelo** — quatro agentes, um por bloco da
 cada um em worktree e banco próprios, integrados por cherry-pick em série.
 
 **O que sobrou aberto na trilha não é código desta fila**: o E220 (travado em
-D4/D7), a S-C51 (modelagem, com a contadora), a S-C270 🟡 nova (os manuais
-atrás da onda — pregada na varredura que nasceu no mesmo lote) e 21 🔵. Conte
-na tabela do `EXECUCAO.md`.
+D4/D7), a S-C51 (modelagem, com a contadora) e 21 🔵. A S-C270 🟡 — os
+manuais atrás da onda, pregada na varredura que nasceu no mesmo lote — abriu
+e **fechou no mesmo dia**: os cinco manuais foram reescritos contra a onda
+inteira na sequência da integração ([relatório](2026-08-13-contrato-de-papel/execucao/S-C270.md)),
+com a régua de contradição cobrando cada baixa. Conte na tabela do
+`EXECUCAO.md`.
 
 ## Os commits
 

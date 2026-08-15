@@ -445,7 +445,7 @@
             </tr>
             <tr>
               <td><strong>11ª / 12ª / 13ª / 18ª</strong> rescisão</td>
-              <td><span class="btn">Cancelar contrato</span> — o diálogo mostra linha a linha o que a loja retém e o que devolve, <strong>antes</strong> de confirmar</td>
+              <td><span class="btn">Cancelar contrato</span> — o diálogo pergunta <strong>“Quem está rescindindo?”</strong> (a noiva, e vale a régua da retenção; a loja, e a 13ª devolve tudo) e mostra linha a linha o que a loja retém e o que devolve, <strong>antes</strong> de confirmar</td>
               <td>Se a loja fica devendo, nasce <strong>conta a pagar</strong> do tipo <span class="btn">Devolução</span>, em <span class="btn">Contas a pagar</span></td>
             </tr>
           </tbody>
@@ -458,11 +458,10 @@
         <p>Quer dizer que <strong>o dia em que alguém clica muda o valor</strong>. É a única cobrança do sistema em que isso acontece, e é o motivo de a fila de atrasos aparecer na lista de contratos em vez de esperar alguém abrir a reserva.</p>
       </div>
 
-      <div class="fala aviso">
-        <span class="rotulo">Duas coisas o sistema sabe fazer e nenhuma tela oferece</span>
-        <p><strong>Perdoar a multa da 9ª.</strong> A decisão de 13/08/2026 foi <em>cobrar por padrão, perdoar por gesto</em> — o contrato diz “deverá incidir”, então o notável não é cobrar, é abrir mão. O sistema grava quem perdoou, quando, quanto dispensou e <strong>por quê</strong>, e a parcela passa a exibir o selo. <strong>Só que o gesto não existe em tela nenhuma</strong>: hoje ninguém consegue perdoar uma multa pela interface.</p>
-        <p><strong>Pactuar a antecedência da 18ª.</strong> É o campo que faz a noiva que pagou tudo e avisou a tempo receber de volta sem dedução. Ele existe no contrato, e <strong>nenhuma tela o preenche</strong> — então a 18ª nunca dispara.</p>
-        <p>As duas estão anotadas como trabalho. Enquanto não forem feitas, <strong>perdoar uma multa é decisão que o sistema não registra</strong>, e a 18ª é cláusula que o papel tem e o sistema não alcança.</p>
+      <div class="fala">
+        <span class="rotulo">Os dois gestos que faltavam ganharam tela</span>
+        <p><strong>Perdoar a multa da 9ª tem botão.</strong> A decisão de 13/08/2026 — <em>cobrar por padrão, perdoar por gesto</em> — está inteira na ficha do contrato: na parcela vencida, <span class="btn">Perdoar multa</span> abre o diálogo, mostra a conta do que está sendo dispensado e <strong>exige o motivo</strong>; quem perdoou, quando, quanto e por quê ficam na parcela e na Auditoria. <span class="btn">Restabelecer cobrança</span> desfaz, também com rastro. O gesto pede o acesso de <strong>editar em Contratos</strong> — perdoar dinheiro é decisão de quem decide sobre contrato.</p>
+        <p><strong>A antecedência da 18ª se pactua na tela.</strong> O campo <em>“Prazo de devolução antecipada da reserva (cláusula 18ª)”</em> está no diálogo das datas da locação, contrato a contrato — preenchido, a 18ª dispara na rescisão de quem pagou tudo e avisou a tempo; vazio segue sendo “não pactuado”, e vale a 11ª.</p>
       </div>
 
       <p>Os outros dois exemplos, para calibrar a ordem de grandeza:</p>
@@ -716,10 +715,10 @@
 
     <section id="decisoes">
       <h2>O que espera uma decisão sua</h2>
-      <p class="resumo">São <strong>oito</strong>, e <strong>nenhuma se resolve escrevendo código</strong>. Quatro vieram da leitura do contrato de papel, duas travam o mesmo trabalho, e duas são escolhas de produto. As quatro que estavam nesta lista em 12/08/2026 você já decidiu — estão no fim, para conferência.</p>
+      <p class="resumo">São <strong>oito</strong>, e <strong>nenhuma se resolve escrevendo código</strong>. Cinco vieram da leitura do contrato de papel, duas travam o mesmo trabalho (o PDF), e uma é escolha de produto. As que estavam nesta lista antes você já decidiu — estão no fim, para conferência, inclusive a rodada inteira de 14/08.</p>
 
-      <h3>O contrato de papel — quatro pendências</h3>
-      <p>Em 13/08/2026 as 21 cláusulas do instrumento foram lidas uma a uma contra o que o sistema faz. Oito viraram código. <strong>Quatro coisas sobraram, e as quatro são suas.</strong></p>
+      <h3>O contrato de papel — cinco pendências</h3>
+      <p>Em 13/08/2026 as 21 cláusulas do instrumento foram lidas uma a uma contra o que o sistema faz, e a fila de código que nasceu dali <strong>terminou em 15/08</strong> — dos doze épicos, onze estão no sistema, e o que falta é o PDF (as duas decisões abaixo). <strong>Cinco coisas são suas.</strong></p>
 
       <div class="rolagem">
         <table>
@@ -744,6 +743,11 @@
               <td class="prazo">P4</td>
               <td><strong>Qual índice corrige a parcela vencida</strong> (cláusula 9ª)</td>
               <td>A cláusula manda corrigir e <strong>não nomeia o índice</strong>. IPCA, IGP-M e INPC dão três respostas diferentes para a mesma dívida. Enquanto você não escolher, o sistema cobra a multa e os juros e <strong>declara</strong> o que não faz — a noiva lê <em>“Sem correção monetária — o contrato não nomeia índice”</em>. <strong>Escolhido o índice, a correção entra nas quatro telas de uma vez</strong></td>
+            </tr>
+            <tr>
+              <td class="prazo">P5</td>
+              <td><strong>Os “7 dias da data da locação” da 17ª contam de quê?</strong> (a troca de traje)</td>
+              <td>A cláusula não define “data da locação”, e as duas leituras — o fecho do contrato ou a retirada da peça — dão janelas diferentes. <strong>O sistema conta do fecho</strong>, que é a leitura coerente (depois da retirada a troca de modelo nem existe), e a frase da recusa diz isso na letra para ninguém adivinhar. Se a sua leitura for outra, muda-se a âncora da conta, não a régua — mas confirme antes que alguém discuta um prazo com noiva na frente</td>
             </tr>
           </tbody>
         </table>
@@ -772,15 +776,8 @@
         </table>
       </div>
 
-      <h3>Duas escolhas de produto</h3>
-      <p>Estas duas não são do contrato: são de como a loja trabalha. Nenhuma é urgente, e as duas ficam piores com o tempo.</p>
-
-      <div class="fala aviso">
-        <span class="rotulo">A loja segura uma peça antes de saber de qual noiva ela é?</span>
-        <p>Hoje <strong>sim</strong>: dá para bloquear um vestido sem dizer para quem, e ele fica sem dona para sempre. Era proposital — quando isso foi olhado pela última vez, quase toda reserva do banco estava assim, e exigir a noiva teria virado uma parede diária.</p>
-        <p><strong>O argumento caiu quando foi remedido:</strong> das <strong>116</strong> reservas da loja, <strong>zero</strong> estão sem dona. A parede tem largura nenhuma. O lado do dinheiro já foi fechado — cobrar o reparo de uma peça sem dona no carnê de uma noiva qualquer <strong>não é mais possível</strong>. O que sobrou é a pergunta de produto.</p>
-        <p><strong>Se a resposta for “não”</strong>, o campo passa a ser obrigatório e o sistema recusa a reserva anônima. <strong>Se for “sim”</strong>, fica como está e a resposta vira registro — para ninguém remedir isso de novo daqui a três meses.</p>
-      </div>
+      <h3>Uma escolha de produto</h3>
+      <p>Esta não é do contrato: é de como a loja concilia o banco. Não é urgente, e fica pior com o tempo.</p>
 
       <div class="fala aviso">
         <span class="rotulo">A conciliação precisa enxergar cada pagamento, ou basta a parcela?</span>
@@ -795,7 +792,42 @@
         <li><strong>O perfil “Proprietária” está no gênero errado.</strong> O nome está gravado no cadastro inicial e ecoa em mais quatro lugares; corrigir pede um script para quem já instalou.</li>
       </ul>
 
-      <h3>As quatro que você já decidiu</h3>
+      <h3>A rodada de 14/08 — decidida em bloco, e já no sistema</h3>
+      <p>Em <strong>14/08/2026</strong> você respondeu de uma vez as perguntas que a trilha do contrato acumulou, todas na recomendação. As que pediam código <strong>entraram no dia seguinte</strong>:</p>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>O que</th><th>Estado</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>A loja segura uma peça antes de saber de qual noiva é?</strong></td>
+              <td><strong>Sim, com validade.</strong> A reserva sem noiva vale <span class="prazo" data-regua="VALIDADE_DO_BLOQUEIO_ORFAO_DIAS">7 dias</span> — o mesmo prazo do link público. A lista de Reservas mostra o selo com a data (<em>“segura até …”</em> / <em>“venceu em … — não segura mais”</em>), e vencida, a peça volta ao mercado sozinha</td>
+            </tr>
+            <tr>
+              <td><strong>A Recepção responde “quando retiro?” sem ver dinheiro?</strong></td>
+              <td><strong>Sim — leitura estreita.</strong> A ficha da noiva mostra à Recepção só as duas datas da locação, sem valor, sem parcelas, sem status de pagamento. O fecho do E172 (contrato fora do alcance dela) continua inteiro</td>
+            </tr>
+            <tr>
+              <td><strong>A peça devolvida de contrato cancelado passa pela lavanderia?</strong></td>
+              <td><strong>Sim — a lavagem ocupa</strong>, cancelado ou não: a peça só volta ao mercado depois da janela de lavagem, como qualquer outra</td>
+            </tr>
+            <tr>
+              <td><strong>Quem pode mudar o expediente de retirada (cláusula 4ª)?</strong></td>
+              <td><strong>Quem decide sobre contrato.</strong> Os campos do expediente passaram a exigir <strong>editar em Contratos</strong> — o expediente é o que o contrato promete, e a Costureira (e a Recepção) leem sem escrever</td>
+            </tr>
+            <tr>
+              <td><strong>O lookbook público diz que a peça é exclusiva?</strong></td>
+              <td><strong>Sim.</strong> O selo <em>“Peça exclusiva”</em> aparece no lookbook que a noiva abre em casa — é argumento de venda</td>
+            </tr>
+            <tr>
+              <td><strong>A fila de atrasos age?</strong></td>
+              <td><strong>Sim.</strong> Cada linha tem o botão <span class="btn">Contato</span> — o registro de telefonema da ficha, aberto dali, sem ida-e-volta</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="nota">As demais da rodada fecharam <b>por decisão escrita</b>, sem código — os contratos antigos ficam como nasceram, o “véu” pendurado na reserva-mãe continua existindo, e o resto está registrado na trilha de revisão com a sua resposta ao lado.</p>
+
+      <h3>As quatro que você já decidiu antes</h3>
       <p>Em <strong>12/08/2026</strong>, e todas já estão no sistema:</p>
 
       <div class="rolagem">
@@ -826,7 +858,7 @@
   </main>
 
   <footer>
-    <p>Este manual descreve o sistema como ele está em <strong>14/08/2026</strong>. Os nomes de botão e os recados de erro são citados literalmente da tela — se algum não bater com o que você vê, o manual envelheceu, e vale avisar.</p>
+    <p>Este manual descreve o sistema como ele está em <strong>15/08/2026</strong>. Os nomes de botão e os recados de erro são citados literalmente da tela — se algum não bater com o que você vê, o manual envelheceu, e vale avisar.</p>
     <p>Com ele, os <strong>cinco manuais</strong> estão escritos: vendedora, recepção, costureira, noiva e proprietário.</p>
   </footer>
 

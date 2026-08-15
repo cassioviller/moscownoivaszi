@@ -28,12 +28,14 @@ para o documento que manda.
    15/08). **O ÚNICO épico de código aberto na trilha é o E220**, travado em
    D4/D7.
    A tabela do `EXECUCAO.md` é a fila; **conte, não deduza** — depois da
-   madrugada de 15/08 (E223 → E219 → S-C234, mais o **lote paralelo dos
-   blocos 5–8**: quatro agentes, 20 sobras fechadas de uma vez, 9 abertas
-   pelos próprios fechos) são **23 sobras** (**ZERO 🟠**, **2 🟡** — S-C51
-   espera a contadora, S-C270 são os manuais atrás da onda —, 21 🔵) e **5
-   pendências que não são software** (a P5 nasceu no E219: confirmar que os 7
-   dias da 17ª contam do fecho). A sessão está contada em
+   madrugada de 15/08 (E223 → E219 → S-C234, o **lote paralelo dos blocos
+   5–8**: quatro agentes, 20 sobras fechadas de uma vez, 9 abertas pelos
+   próprios fechos, e a **S-C270 fechada em seguida** — os cinco manuais
+   reescritos contra a onda, com as quatro dívidas baixadas sob a régua de
+   contradição e os três números novos no registro de prazos) são **22
+   sobras** (**ZERO 🟠**, **1 🟡** — a S-C51, que espera a contadora —, 21
+   🔵) e **5 pendências que não são software** (a P5 nasceu no E219:
+   confirmar que os 7 dias da 17ª contam do fecho). A sessão está contada em
    `docs/revisao/2026-08-15-sessao-a-fila-do-que-restava.md`. E a manhã de
    14/08 provou a S-A5 dentro do próprio rastreador: a linha-resumo dizia 55
    quando a tabela media 57.
@@ -187,12 +189,13 @@ para o documento que manda.
      que virou nota: `dataFutura(-10)` não é passado — a base do helper é fixa
      em 2027, e a cena do atraso precisa de `Date.now()` real.
 
-   **O que resta em 🟡 depois de 15/08**: a **S-C51** espera a contadora (o
-   leitor de atos é decisão de modelagem) e a **S-C270** é a reescrita dos
-   manuais depois da onda E223–E232 — quatro frases negam UI que existe, e as
-   quatro estão PREGADAS como dívida declarada na
-   `varredura-manuais-contradicao`, que nasceu no mesmo lote: a reescrita dá
-   baixa e a régua cobra. Fora isso, 21 🔵 — conte na tabela.
+   **O que resta em 🟡 depois de 15/08 é UMA linha**: a **S-C51**, que espera
+   a contadora (o leitor de atos é decisão de modelagem). A S-C270 — os
+   manuais atrás da onda — fechou no mesmo dia em que nasceu: os cinco
+   reescritos, as quatro dívidas baixadas com a `varredura-manuais-contradicao`
+   cobrando cada baixa, e a `varredura-manuais-prazos` com **21 réguas** (os
+   números da troca, do reparo e do órfão entraram no registro). Fora isso,
+   21 🔵 — conte na tabela.
 
    Esta linha já apontou para o **E222** depois de ele estar executado, que é a
    **S-A5 acontecendo de novo**: quem abre a sessão lê o estado velho como se

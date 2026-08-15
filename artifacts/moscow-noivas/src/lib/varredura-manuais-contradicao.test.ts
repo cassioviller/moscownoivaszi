@@ -139,32 +139,19 @@ function contradicoesDe(html: string): string[] {
  * e esperam a reescrita do manual — quando ela vier, este teste cobra a baixa.
  */
 const DIVIDA_DECLARADA: { manual: string; trecho: string; motivo: string }[] = [
-  {
-    manual: "docs/manuais/noiva.html",
-    trecho: "A data de DEVOLUÇÃO não está nesta tela",
-    motivo:
-      "ENVELHECIDA (S-C270) — o portal mostra devolução prevista e feita desde o E230 (noiva-portal.tsx:603-615), quando o contrato tem a data",
-  },
-  {
-    manual: "docs/manuais/proprietario.html",
-    trecho: "o gesto não existe em tela nenhuma",
-    motivo: "ENVELHECIDA (S-C270) — o perdão da 9ª tem botão desde o E226: contratos/[id].tsx:933",
-  },
+  // S-C270 (15/08): a frase da noiva sobre a devolução ausente SAIU na
+  // reescrita — o guia agora lista «Devolução combinada para …» e
+  // «Devolvido em …» entre os estados do card "O seu vestido".
+  // S-C270 (15/08): a frase do proprietário sobre o perdão sem tela SAIU na
+  // reescrita — o bloco virou "Os dois gestos que faltavam ganharam tela".
   {
     manual: "docs/manuais/recepcao.html",
     trecho: "não há botão escondido",
     motivo: "verdade — reservar peça é do acervo, e o perfil da Recepção só consulta",
   },
-  {
-    manual: "docs/manuais/vendedora.html",
-    trecho: "ainda não tem botão",
-    motivo: "ENVELHECIDA (S-C270) — «Perdoar multa» existe na ficha do contrato desde o E226",
-  },
-  {
-    manual: "docs/manuais/vendedora.html",
-    trecho: "ainda não está em tela nenhuma",
-    motivo: "ENVELHECIDA (S-C270) — a mesma nota da vendedora, segunda frase",
-  },
+  // S-C270 (15/08): as duas frases da vendedora sobre o perdão sem botão
+  // SAÍRAM na reescrita — o manual agora ensina «Perdoar multa» e
+  // «Restabelecer cobrança». Baixa dada no mesmo commit, como esta régua cobra.
 ];
 
 describe("varredura — o manual não contradiz a si mesmo (S-C222)", () => {
