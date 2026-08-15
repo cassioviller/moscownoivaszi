@@ -2,7 +2,9 @@ import ts from "typescript";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { getTableConfig } from "drizzle-orm/pg-core";
+import { getTableColumns } from "drizzle-orm";
 import * as schema from "@workspace/db";
+import * as zodApi from "@workspace/api-zod";
 import { arquivosVersionados } from "./arquivos-versionados";
 
 /**
@@ -31,33 +33,137 @@ import { arquivosVersionados } from "./arquivos-versionados";
  *   diagnóstico não previa — **4 das 27 restrições únicas só têm escrita com
  *   `onConflict`**, e para elas frase nenhuma faria diferença.
  *
- * ## O que ela erra, e para que lado
+ * ## O que ela erra, e para que lado — E238 (S-O83): a conta é por COLUNA
  *
- * A conta é por TABELA, não por COLUNA: uma escrita crua em `contas_pagar`
- * marca todas as restrições únicas de `contas_pagar` como alcançáveis, mesmo a
- * `contas_pagar_recorrencia_unica`, que é PARCIAL (`where recorrencia_id is not
- * null`) e cujo único inserte com recorrência declara `onConflictDoNothing`.
- * Saber qual coluna cada `values()` preenche é análise de fluxo, não de
- * sintaxe — e a aproximação **erra para MAIS**: ela pede julgamento sobre
- * índice que talvez ninguém alcance, nunca dispensa julgamento sobre índice
- * alcançável. É a mesma escolha da leitura léxica da ordem das trancas.
+ * Até o E238 a conta era por TABELA: uma escrita crua em `contas_pagar`
+ * marcava todas as restrições únicas de `contas_pagar` como alcançáveis, mesmo
+ * a `contas_pagar_recorrencia_unica`, que é PARCIAL (`where recorrencia_id is
+ * not null`) e cujo único insert com recorrência declara `onConflictDoNothing`.
+ * A S-O83 dizia que isso errava para MAIS em dois dos 23, e **a medição por
+ * coluna achou dois — não os dois que a sobra nomeava**:
+ *
+ * - `contas_pagar_recorrencia_unica` — sim: o único insert que preenche
+ *   `recorrencia_id` declara `onConflictDoNothing` SOBRE ESSE índice, e o outro
+ *   insert da tabela (`POST /contas-pagar`) espalha `parsed.data`, cujo schema
+ *   (`CreateContaPagarBody`) não tem `recorrenciaId`. Sai da conta.
+ * - `portal_tokens_lead_unq` — a sobra não a citava: a porta que cria faz
+ *   upsert sobre `lead_id`, e a única escrita crua é o UPDATE de revogação,
+ *   que não toca a coluna. Sai da conta — e o julgamento manual que dizia
+ *   exatamente isso deixa de precisar existir.
+ * - `convites_loja_email_pendente_unq` — a sobra a citava, e ela FICA: o
+ *   insert do convite chega ao índice de verdade (a rota confere o pendente
+ *   antes, e a corrida entre dois convites cai nele). O que a sobra lembrava é
+ *   onde a FRASE morava (o `catch` local que o E186 tirou), não se o índice era
+ *   alcançável.
+ *
+ * O que a conta por coluna sabe, e como:
+ *
+ * - **INSERT** alcança o índice quando o `values()` preenche TODAS as colunas
+ *   dele (coluna anulável ausente vira NULL, e NULL nunca colide em índice
+ *   único). As chaves saem do objeto literal — inclusive dentro de
+ *   `array.map((c) => ({ … }))` — e o `...parsed.data` é resolvido pelo schema
+ *   Zod do `safeParse` que o precede na mesma função (`X.safeParse(req.body)`
+ *   → `X.shape`, do `@workspace/api-zod`). Qualquer outro spread ou valor que
+ *   não seja literal (`values(valores)`) é OPACO e conta como se preenchesse
+ *   tudo — erra para MAIS, na direção segura.
+ * - **UPDATE** alcança quando o `set()` toca ao menos uma coluna do índice.
+ * - **`onConflict`** é por ÍNDICE: `onConflictDoNothing({ target })` cobre só
+ *   o índice daquelas colunas; sem `target` cobre todos os da tabela. A conta
+ *   antiga tratava a escrita inteira como não-crua, o que **errava para
+ *   MENOS** numa tabela com dois índices — não há caso vivo hoje, e a régua
+ *   fecha a porta antes do primeiro.
+ *
+ * O que ela continua sem ver: o predicado do índice parcial (a linha inserida
+ * pode não satisfazê-lo) — erra para mais, como antes.
  */
 
 const RAIZ = join(import.meta.dirname, "..", "..", "..", "..");
 const PASTA_DAS_ROTAS = "artifacts/api-server/src/routes";
 const VERBOS = new Set(["insert", "update"]);
 
-/** O nome de cada tabela no BANCO, indexado pelo identificador do drizzle. */
-function nomesNoBanco(): Map<string, string> {
-  const mapa = new Map<string, string>();
+type TabelaDoSchema = { nome: string; colunas: Map<string, string> };
+
+/** Cada tabela do schema — o nome no BANCO e as colunas (propriedade → coluna). */
+function tabelasDoSchema(): Map<string, TabelaDoSchema> {
+  const mapa = new Map<string, TabelaDoSchema>();
   for (const [nome, valor] of Object.entries(schema as Record<string, unknown>)) {
     try {
-      mapa.set(nome, getTableConfig(valor as never).name);
+      const colunas = new Map<string, string>();
+      for (const [prop, col] of Object.entries(getTableColumns(valor as never))) {
+        colunas.set(prop, (col as { name: string }).name);
+      }
+      mapa.set(nome, { nome: getTableConfig(valor as never).name, colunas });
     } catch {
       // Não é tabela — o pacote exporta enums, tipos e o próprio `db`.
     }
   }
   return mapa;
+}
+
+/** As chaves de um schema Zod de objeto do `@workspace/api-zod`, ou `null`. */
+function chavesDoSchemaZod(nome: string): string[] | null {
+  const s = (zodApi as Record<string, unknown>)[nome] as { shape?: Record<string, unknown> } | undefined;
+  return s?.shape ? Object.keys(s.shape) : null;
+}
+
+/**
+ * As colunas do BANCO que um objeto de `values()`/`set()` preenche — `null`
+ * quando alguma parte é OPACA (spread não resolvido, valor que não é literal).
+ */
+function colunasPreenchidas(sf: ts.SourceFile, no: ts.Node, tabela: TabelaDoSchema): string[] | null {
+  const chaves: string[] = [];
+  let opaco = false;
+  const literal = (obj: ts.ObjectLiteralExpression): void => {
+    for (const pr of obj.properties) {
+      if (ts.isPropertyAssignment(pr) || ts.isShorthandPropertyAssignment(pr)) {
+        chaves.push(pr.name.getText(sf).replace(/["']/g, ""));
+      } else if (ts.isSpreadAssignment(pr)) {
+        // `...parsed.data` → o schema do `safeParse` que declarou `parsed`.
+        const resolvidas = chavesDoSpread(sf, pr.expression);
+        if (resolvidas) chaves.push(...resolvidas);
+        else opaco = true;
+      } else {
+        opaco = true;
+      }
+    }
+  };
+  const visitar = (n: ts.Node): void => {
+    if (ts.isObjectLiteralExpression(n)) literal(n);
+    else if (ts.isArrayLiteralExpression(n)) n.elements.forEach(visitar);
+    else if (ts.isParenthesizedExpression(n)) visitar(n.expression);
+    else if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === "map") {
+      const cb = n.arguments[0];
+      if (cb && ts.isArrowFunction(cb)) visitar(cb.body);
+      else opaco = true;
+    } else opaco = true;
+  };
+  visitar(no);
+  if (opaco) return null;
+  return [...new Set(chaves.map((k) => tabela.colunas.get(k) ?? `?${k}`))];
+}
+
+/** `...parsed.data` — as chaves do schema Zod cujo `safeParse` declarou `parsed`. */
+function chavesDoSpread(sf: ts.SourceFile, expr: ts.Expression): string[] | null {
+  if (!ts.isPropertyAccessExpression(expr) || expr.name.text !== "data" || !ts.isIdentifier(expr.expression)) return null;
+  const variavel = expr.expression.text;
+  for (let p: ts.Node | undefined = expr.parent; p; p = p.parent) {
+    if (!ts.isFunctionLike(p) && !ts.isSourceFile(p)) continue;
+    let achado: string[] | null = null;
+    const v = (n: ts.Node): void => {
+      if (achado) return;
+      if (
+        ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.name.text === variavel && n.initializer &&
+        ts.isCallExpression(n.initializer) && ts.isPropertyAccessExpression(n.initializer.expression) &&
+        n.initializer.expression.name.text === "safeParse" && ts.isIdentifier(n.initializer.expression.expression)
+      ) {
+        achado = chavesDoSchemaZod(n.initializer.expression.expression.text);
+      }
+      n.forEachChild(v);
+    };
+    v(p);
+    if (achado) return achado;
+  }
+  return null;
 }
 
 /** Sobe do `.insert(T)` até o fim da cadeia, para ler o `.onConflict…` dela. */
@@ -89,6 +195,13 @@ export type EscritaDeRota = {
   tabela: string;
   /** A cadeia declara `onConflictDoNothing`/`onConflictDoUpdate`. */
   onConflict: boolean;
+  /**
+   * E238 — as colunas do BANCO que o `onConflict` cobre: `null` sem
+   * `onConflict`; `[]` quando não há `target` (cobre todo índice da tabela).
+   */
+  onConflictColunas: string[] | null;
+  /** E238 — as colunas do BANCO que `values()`/`set()` preenche; `null` = opaco. */
+  colunas: string[] | null;
 };
 
 /** Os arquivos de rota versionados — a régua do `git ls-files`, sempre. */
@@ -98,7 +211,7 @@ export function arquivosDeRota(): string[] {
 
 /** Toda escrita de rota numa tabela do schema, com a disciplina de conflito. */
 export function escritasDeRota(): EscritaDeRota[] {
-  const nomes = nomesNoBanco();
+  const tabelas = tabelasDoSchema();
   const out: EscritaDeRota[] = [];
   for (const rel of arquivosDeRota()) {
     const sf = ts.createSourceFile(rel, readFileSync(join(RAIZ, rel), "utf8"), ts.ScriptTarget.Latest, true);
@@ -114,14 +227,20 @@ export function escritasDeRota(): EscritaDeRota[] {
       if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && VERBOS.has(n.expression.name.text)) {
         const arg = n.arguments[0];
         if (arg && ts.isIdentifier(arg)) {
-          const tabela = nomes.get(apelidos.get(arg.text) ?? arg.text);
+          const tabela = tabelas.get(apelidos.get(arg.text) ?? arg.text);
           if (tabela) {
+            const cadeia = cadeiaCompleta(n);
+            const verbo = n.expression.name.text;
+            const carga = chamadasNaCadeia(cadeia, verbo === "insert" ? "values" : "set")[0]?.arguments[0];
+            const conflito = chamadasNaCadeia(cadeia, "onConflictDoNothing")[0] ?? chamadasNaCadeia(cadeia, "onConflictDoUpdate")[0];
             out.push({
               arquivo: rel,
               linha: sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1,
-              verbo: n.expression.name.text,
-              tabela,
-              onConflict: /\.onConflict(DoNothing|DoUpdate)\s*\(/.test(cadeiaCompleta(n).getText(sf)),
+              verbo,
+              tabela: tabela.nome,
+              onConflict: conflito !== undefined,
+              onConflictColunas: conflito ? colunasDoTarget(sf, conflito, tabela) : null,
+              colunas: carga ? colunasPreenchidas(sf, carga, tabela) : null,
             });
           }
         }
@@ -133,7 +252,53 @@ export function escritasDeRota(): EscritaDeRota[] {
   return out;
 }
 
+/** As chamadas `.nome(...)` dentro de uma cadeia. */
+function chamadasNaCadeia(cadeia: ts.Node, nome: string): ts.CallExpression[] {
+  const out: ts.CallExpression[] = [];
+  const v = (n: ts.Node): void => {
+    if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === nome) out.push(n);
+    n.forEachChild(v);
+  };
+  v(cadeia);
+  return out;
+}
+
+/** As colunas do `target` de um `onConflict…({ target: [t.a, t.b] })` — `[]` sem target. */
+function colunasDoTarget(sf: ts.SourceFile, conflito: ts.CallExpression, tabela: TabelaDoSchema): string[] {
+  const opcoes = conflito.arguments[0];
+  if (!opcoes || !ts.isObjectLiteralExpression(opcoes)) return [];
+  const target = opcoes.properties.find(
+    (p): p is ts.PropertyAssignment => ts.isPropertyAssignment(p) && p.name.getText(sf) === "target",
+  );
+  if (!target) return [];
+  const txt = target.initializer.getText(sf);
+  const cols: string[] = [];
+  for (const [prop, col] of tabela.colunas) if (new RegExp(`\\.${prop}\\b`).test(txt)) cols.push(col);
+  return cols;
+}
+
 /** As tabelas em que alguma rota escreve SEM `onConflict` — onde o 23505 nasce. */
 export function tabelasEscritasCruas(): Set<string> {
   return new Set(escritasDeRota().filter((e) => !e.onConflict).map((e) => e.tabela));
+}
+
+/** Uma restrição única do banco, como `pg_index` a descreve. */
+export type IndiceUnico = { tabela: string; indice: string; colunas: string[] };
+
+/**
+ * E238 (S-O83) — **as escritas de rota que ALCANÇAM um índice**, pela conta por
+ * coluna descrita no topo do arquivo. Vazio = nenhuma rota chega a violá-lo.
+ */
+export function escritasQueAlcancam(indice: IndiceUnico, escritas: readonly EscritaDeRota[] = escritasDeRota()): EscritaDeRota[] {
+  return escritas.filter((e) => {
+    if (e.tabela !== indice.tabela) return false;
+    // `onConflict` sem target cobre todo índice; com target, só o das colunas.
+    if (e.onConflictColunas !== null && (e.onConflictColunas.length === 0 || indice.colunas.every((c) => e.onConflictColunas!.includes(c)))) {
+      return false;
+    }
+    if (e.colunas === null) return true; // opaco: erra para MAIS
+    return e.verbo === "insert"
+      ? indice.colunas.every((c) => e.colunas!.includes(c))
+      : indice.colunas.some((c) => e.colunas!.includes(c));
+  });
 }

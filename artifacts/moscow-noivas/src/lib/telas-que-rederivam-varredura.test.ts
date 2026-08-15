@@ -199,9 +199,75 @@ describe("S-O66 — afirmar e passar adiante é a mesma classe, um arquivo mais 
     ).toEqual([]);
   });
 
-  it("a dívida do recorte novo está travada em 23", () => {
-    const dentro = arquivosDeTela().flatMap(assercoesPassadasAdiante);
-    expect(dentro.length, `asserções vivas:\n${dentro.join("\n")}`).toBe(23);
+  /**
+   * **E238 (S-O84) — as 23 julgadas UMA A UMA, e a régua passou a ser por
+   * linha.** A S-O84 dizia que julgar em CLASSE é mais fraco que por linha, e a
+   * regra 31 pede que nenhuma linha do passivo siga sem julgamento. A contagem
+   * (`toBe(23)`) deixava a 24ª vermelha sem dizer QUAL, e deixava uma sair e
+   * outra entrar com a suíte verde. Agora o razão é a LISTA — cada sítio com o
+   * nome afirmado, o número de vezes, e o julgamento ao lado: em todas as 23 a
+   * guarda está a uma linha de distância, na MESMA função, e nenhuma entrega
+   * o dado a uma soma. Uma que sumir fica vermelha (cobra a baixa aqui); uma
+   * que nascer fica vermelha com o nome — e o julgamento é de quem a escreveu.
+   *
+   * O formato é `arquivo → nome! ×n`, ordenado, para o diff do vitest dizer a
+   * linha exata que mudou.
+   */
+  const JULGADAS_UMA_A_UMA: readonly string[] = [
+    // `diasProva !== null` (ficha) e `diasCasamento !== null` — o `!` é sobre a
+    // data de que o número acima foi derivado, dentro do mesmo ternário.
+    "pages/ajustes/[ajusteId].tsx → casamento! ×1",
+    "pages/ajustes/[ajusteId].tsx → proximaProva! ×1",
+    // A mesma dupla na fila de ajustes: o `&&` de cima é o `diasProva !== null`.
+    "pages/ajustes/index.tsx → casamento! ×1",
+    "pages/ajustes/index.tsx → proximaProva! ×1",
+    // O botão de baixar o estorno só existe sob `!!linha.estornoPendente`, três
+    // linhas acima; o `!` repete a guarda para o tipo do diálogo.
+    "pages/comissoes/index.tsx → estornoPendente! ×1",
+    // `competenciaValida(compParam ?? "") ? compParam! : competenciaAtual()` — o
+    // predicado não estreita o tipo do lado de fora, e o ramo verdadeiro é
+    // exatamente o de `compParam` não-nulo.
+    "pages/financeiro/dre.tsx → compParam! ×1",
+    // `lojaId` de `useParams` — o roteador garante como garante `leadId`; a
+    // query fica `enabled: !!lojaId`. Não entra em GARANTIDOS_PELO_ROTEADOR
+    // porque em Mensagens é o único arquivo com esse nome, e a lista curta é
+    // por medida (95,6%).
+    "pages/mensagens/index.tsx → lojaId! ×2",
+    // As três filas nascem de recortes de `mensagens-do-dia.ts` que já filtram
+    // pelo campo — `pediramRemarcacaoNaJanela` (`remarcacaoPedidaEm`),
+    // `jaContatadasNaJanela` (`contatadoEm`) e `orcamentosVencendoNaJanela`
+    // (`!o.validade` → fora). O `!` é a repetição do recorte que montou a
+    // lista, na linha que a imprime — a um arquivo de distância, e é o único
+    // caso dos 23 em que a guarda não está na mesma função.
+    "pages/mensagens/index.tsx → contatadoEm! ×1",
+    "pages/mensagens/index.tsx → remarcacaoPedidaEm! ×1",
+    "pages/mensagens/index.tsx → validade! ×2",
+    // `mostrarContagem = dias !== null && dias >= 0`, uma linha antes.
+    "pages/noivas/[leadId]/index.tsx → dias! ×1",
+    "pages/noivas/index.tsx → dias! ×1",
+    // `lojaId` de `useParams`, passado à vista do funil (mesmo caso de Mensagens).
+    "pages/noivas/index.tsx → lojaId! ×1",
+    // O diálogo de revogar só abre com `open={!!revogandoId}`.
+    "pages/noivas/[leadId]/lookbook.tsx → revogandoId! ×1",
+    // `acimaDoTeto = tetoC != null && …`; o `teto!` do aviso está sob o mesmo
+    // `acimaDoTeto`; `valorUnitario!` vem depois de `valorInvalido` (que inclui
+    // `=== null`) ter retornado; `vestidoId!` itera `pecasSemReserva`, que
+    // filtra `it.vestidoId &&` no `useMemo` que a monta.
+    "pages/orcamentos/[id].tsx → tetoC! ×1",
+    "pages/orcamentos/[id].tsx → teto! ×1",
+    "pages/orcamentos/[id].tsx → valorUnitario! ×1",
+    "pages/orcamentos/[id].tsx → vestidoId! ×1",
+    // `reservas` é filtrado por `!!b.casamentoData` no `useMemo` de cima, e as
+    // três leituras são sobre essa lista.
+    "pages/reservas/index.tsx → casamentoData! ×3",
+  ];
+
+  it("as asserções do recorte novo são as 23 julgadas uma a uma — nem uma a mais, nem uma a menos", () => {
+    const contagem = new Map<string, number>();
+    for (const a of arquivosDeTela().flatMap(assercoesPassadasAdiante)) contagem.set(a, (contagem.get(a) ?? 0) + 1);
+    const hoje = [...contagem].map(([sitio, n]) => `${sitio} ×${n}`).sort();
+    expect(hoje).toEqual([...JULGADAS_UMA_A_UMA].sort());
+    expect(JULGADAS_UMA_A_UMA.reduce((s, l) => s + Number(/×(\d+)$/.exec(l)![1]), 0)).toBe(23);
   });
 
   it("os cinco nomes dispensados são a maioria esmagadora — a lista é curta por medida", () => {

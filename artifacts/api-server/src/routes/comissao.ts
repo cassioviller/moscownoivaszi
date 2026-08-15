@@ -235,6 +235,62 @@ async function trancarContratos(
   }
 }
 
+/**
+ * E238 (S-O106, S-O107) — **a linha do FECHAMENTO também se tranca, e é a
+ * primeira da fila.**
+ *
+ * A S-O79 trancou o CONTRATO e releu o carimbo sob a tranca — e deixou de fora
+ * a outra tabela que decide o fechamento: `comissao_fechamentos`. Duas leituras
+ * dela decidiam sem ninguém segurar a linha:
+ *
+ * - **S-O107** — `jaFechadas` (quem já fechou nesta competência) saía de um
+ *   `select` solto. Reabrir apaga a linha; se o fechamento a lê antes de o
+ *   DELETE commitar, ele conta a vendedora como já fechada, não fecha ninguém e
+ *   responde **409 "Todas as vendedoras de 2025-07 já foram fechadas"** sobre
+ *   uma competência que acabou de voltar a estar aberta. A dona clica em
+ *   fechar logo depois de reabrir e ouve que já fechou.
+ * - **S-O106** — `estornosPendentes` subtrai do pendente o que fechamentos
+ *   PARCIAIS já absorveram (`estorno_absorvido`, E102/C5). Reabrir um parcial
+ *   devolve o valor ao pendente **apagando a linha**; o fechamento que a leu
+ *   antes carrega o pendente velho, e a releitura da S-O79 não o alcança —
+ *   ela relê o contrato, não o fechamento. E o reabrir de um parcial **não
+ *   tranca contrato nenhum** (a lista dele é vazia por definição), então a
+ *   tranca do contrato não serializa os dois. Medido: pendente de R$ 10.000,00
+ *   com R$ 4.000,00 já absorvidos por 2025-07; reabrir 07 × fechar 08 (venda de
+ *   R$ 20.000,00) no mesmo segundo dava base de **R$ 14.000,00 em vez de
+ *   R$ 10.000,00** — R$ 4.000,00 de estorno perdidos, R$ 400,00 pagos a mais.
+ *
+ * O `FOR UPDATE` cobre TODAS as linhas de fechamento das vendedoras em jogo,
+ * de todas as competências: é o conjunto que `estornosPendentes` lê. Quem
+ * chega segundo espera; quem acorda relê depois — as duas leituras acima
+ * passam a acontecer DEPOIS desta tranca. O reabrir não precisa de tranca
+ * própria: o `DELETE … RETURNING` dele já segura a linha, e é contra ela que
+ * este `FOR UPDATE` faz fila.
+ *
+ * Ordem: fechamento ANTES de contrato, nas duas portas que tomam os dois
+ * (fechar e baixar à mão) — o reabrir toma a conta a pagar, apaga o fechamento
+ * e só então tranca contratos, na mesma direção. `DEGRAUS_DA_ORDEM` declara o
+ * degrau.
+ */
+async function trancarFechamentosDasVendedoras(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  lojaId: string,
+  vendedoraIds: readonly string[],
+): Promise<{ vendedoraId: string; competencia: string }[]> {
+  if (vendedoraIds.length === 0) return [];
+  return tx
+    .select({
+      vendedoraId: comissaoFechamentosTable.vendedoraId,
+      competencia: comissaoFechamentosTable.competencia,
+    })
+    .from(comissaoFechamentosTable)
+    .where(and(
+      eq(comissaoFechamentosTable.lojaId, lojaId),
+      inArray(comissaoFechamentosTable.vendedoraId, [...vendedoraIds]),
+    ))
+    .for("update");
+}
+
 /** O que a tranca precisa reler para a decisão continuar valendo. */
 type EstornoSobATranca = {
   valorC: number;
@@ -1383,14 +1439,15 @@ router.post("/lojas/:lojaId/comissao/fechamentos", async (req, res): Promise<voi
     if (vendas.size === 0) return null;
     const vendedoraIds = [...vendas.keys()];
 
+    // E238 (S-O107): quem já fechou é lido SOB a tranca dos fechamentos — o
+    // reabrir concorrente que ainda não commitou segura a linha, e este select
+    // espera por ele em vez de contar como fechada uma competência que já
+    // voltou a estar aberta. E o `estornosPendentes` logo abaixo (S-O106)
+    // passa a ler os fechamentos parciais depois da mesma tranca.
     const jaFechadas = new Set(
-      (await tx
-        .select({ vendedoraId: comissaoFechamentosTable.vendedoraId })
-        .from(comissaoFechamentosTable)
-        .where(and(
-          eq(comissaoFechamentosTable.lojaId, lojaId),
-          eq(comissaoFechamentosTable.competencia, competencia),
-        ))).map((f) => f.vendedoraId),
+      (await trancarFechamentosDasVendedoras(tx, lojaId, vendedoraIds))
+        .filter((f) => f.competencia === competencia)
+        .map((f) => f.vendedoraId),
     );
     const aFechar = vendedoraIds.filter((id) => !jaFechadas.has(id));
     if (aFechar.length === 0) return [];
@@ -1589,6 +1646,10 @@ router.post("/lojas/:lojaId/comissao/estornos/baixa",
       // a baixar nasce do estado do banco no instante da escrita, não de ids que
       // o cliente mandou (que poderiam baixar o que já não está pendente, ou uma
       // pendência nascida entre o preview e o clique).
+      // E238 (S-O106): a mesma tranca do fechamento, pela mesma razão — o que
+      // está pendente depende dos fechamentos da vendedora, e o reabrir apaga
+      // linhas dessa tabela sem trancar contrato nenhum.
+      await trancarFechamentosDasVendedoras(tx, lojaId, [vendedoraId]);
       const pend = await estornosPendentes(tx, lojaId, [vendedoraId], competencia);
       const e = pend.get(vendedoraId);
       if (!e || e.contratoIds.length === 0) return null;

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { arquivosVersionados } from "./arquivos-versionados";
 import { comArquivoSintetico, diferencaNomeada } from "./populacao-da-varredura";
@@ -20,6 +21,8 @@ import {
   trancasPorTransacao,
   trancasSemDegrauDeclarado,
   COLUNAS_DE_ESTADO,
+  ESTADO_E_A_EXISTENCIA,
+  FILHAS,
   NOMES_NO_BANCO,
   TABELAS_QUENTES,
   type Porta,
@@ -105,14 +108,21 @@ import {
  *    `.for("update")` antes da escrita e aprova. Quando o `if` é falso a escrita
  *    de `:801` roda sem tranca nenhuma. Nenhuma varredura sintática resolve
  *    isso; resolve-se com corrida determinística no molde `sm7`.
- * 2. **Ela não confere o que o helper PERGUNTA.**
- *    `verificarDisponibilidade({ executor: tx })` conta como releitura da guarda
- *    porque recebe o executor da transação, e a varredura não lê o que ele
- *    pergunta lá dentro. ~~**Vale igual para a ordem.**~~ **A metade da ORDEM
- *    fechou no E186 (S-O59)**: a conta segue o `tx` para dentro das funções do
- *    mesmo módulo, então `trancarContratos` (`comissao.ts:224`) e `trancarEixos`
- *    (`agenda.ts:98`) contam nas três contas. O que sobra de fora é o helper
- *    IMPORTADO de outro arquivo — resolução de módulo, não de projeto.
+ * 2. ~~**Ela não confere o que o helper PERGUNTA.**~~ **Fechado no E238
+ *    (S-O110, S-O82).** A releitura passou a ser reconhecida pelo que a chamada
+ *    PERGUNTA, não pela forma: o helper que recebe o `tx` só conta se o corpo
+ *    dele — seguindo as funções que ele chama, no módulo dele e nos que ele
+ *    importa — tiver um `select` da tabela alvo, de uma linha-pai (`PAIS`) ou
+ *    de uma filha (FK do schema, `FILHAS`), por executor que não seja o `db`
+ *    do pool. `verificarDisponibilidade({ executor: tx })` continua contando,
+ *    e agora por MEDIDA: a varredura resolve o import (`../lib/disponibilidade`),
+ *    entra em `buscarBloqueiosAtivos` e acha o `select` de `bloqueio_vestidos`.
+ *    Um helper que recebesse o `tx` só para ESCREVER (o `registrarAuditoria`
+ *    de toda transação) deixou de passar. O mesmo vale para o `select` direto
+ *    depois da tranca (regra 3b): tabela alheia à guarda não conta. **E o
+ *    helper importado deixou de ser invisível** para as três contas — trancas,
+ *    ordem e releitura —, com o que NÃO se resolve (pacote de fora, método de
+ *    objeto) registrado por porta em `delegacoesInvisiveis` e travado em zero.
  * 3. **Ela não sabe se a linha trancada é A linha.** `PAIS` diz que trancar o
  *    lead serve para escrever no contrato; não diz que é o lead CERTO. Trancar
  *    outro lead passaria.
@@ -207,7 +217,22 @@ const sitio = (p: Porta): string => `${p.arquivo}:${p.linha} ${p.verbo}(${p.tabe
  * `conciliacao_de_recebimentos` (`onConflictDoNothing`) não é porta: a tabela
  * não é quente.
  */
-const RETRATO = { TRANCA: 37, CAS: 12, ABERTA: 13 } as const;
+/**
+ * **E238 (2026-08-15): 72 portas · 43 TRANCA · 12 CAS · 17 ABERTA.** As dez a
+ * mais são as duas tabelas quentes novas, `comissao_fechamentos` e
+ * `contas_pagar` (S-O108) — nenhuma porta das cinco anteriores mudou de
+ * disciplina com a peneira nova da releitura (S-O110), medido porta a porta:
+ * o diff entre o enumerador de antes e o de hoje são exatamente as dez linhas
+ * das duas tabelas. Das dez, **seis já tinham disciplina**: as quatro de
+ * `comissao.ts` (reabrir: DELETE do fechamento sob a tranca da conta, com o
+ * `RETURNING` como CAS de existência, e o DELETE da conta; fechar: os dois
+ * INSERTs sob a tranca dos fechamentos que o próprio E238 pôs, S-O106/S-O107),
+ * a conta da DEVOLUÇÃO de `contratos.ts` (sob a tranca do contrato que projeta
+ * `status`) e o DELETE de conta de `financeiro.ts`. **As outras quatro são
+ * `financeiro.ts`, e entram na dívida declarada abaixo** — duas de nascimento e
+ * duas que são a S-O120.
+ */
+const RETRATO = { TRANCA: 43, CAS: 12, ABERTA: 17 } as const;
 
 /**
  * O retrato da ORDEM, travado pelo mesmo critério — e é ele que estava 1 e 2
@@ -228,7 +253,13 @@ const RETRATO = { TRANCA: 37, CAS: 12, ABERTA: 13 } as const;
  * `criarReservaDeVestido` (savepoint), que já era contada como transação
  * própria — o degrau 8 continua sendo tomado por ela, depois dos dois de cá.
  */
-const RETRATO_DA_ORDEM = { transacoes: 30, trancas: 42 } as const;
+/**
+ * **42 → 44 (E238)**: a tranca dos fechamentos de comissão
+ * (`trancarFechamentosDasVendedoras`, `comissao.ts`), tomada nas duas
+ * transações que já trancavam contratos — fechar e baixar à mão —, ANTES do
+ * contrato. Nenhuma transação nasceu: 30 continuam 30.
+ */
+const RETRATO_DA_ORDEM = { transacoes: 30, trancas: 44 } as const;
 
 /**
  * A dívida reconhecida: as portas que hoje não são TRANCA nem CAS.
@@ -388,6 +419,27 @@ const SEM_DISCIPLINA: Record<string, number> = {
   // Era 6; a sétima é o carnê (`:525`), que só ficou visível quando `parcelas`
   // virou tabela quente no E180. Mesma família das outras seis, mesmo veredito.
   "scripts/loja-de-demonstracao.ts": 7,
+  /**
+   * **E238 — 0 para 4, e as quatro só ficaram visíveis porque `contas_pagar`
+   * virou tabela quente (S-O108).** Julgadas uma a uma:
+   *
+   * - `POST /financeiro/contas-pagar` (`:195`) e a geração das recorrências
+   *   (`:1406`) são **nascimento**: a linha não existe, não há estado anterior
+   *   a reler; a segunda ainda declara `onConflictDoNothing` sobre o índice
+   *   parcial `contas_pagar_recorrencia_unica`, que é a rede sob concorrência
+   *   — o mesmo critério das três de `reservas.ts` e da de `orcamentos.ts`.
+   * - `quitarContas` (`:332`) e o estorno do pagamento (`:578`) **são portas
+   *   de verdade, e são a S-O120**: as duas mudam `contas_pagar.status` sem
+   *   repetir no `where` o status que leram (`PREVISTA` → `PAGA`, `PAGA` →
+   *   `PREVISTA`) e sem tranca — dois cliques em "pagar" no mesmo segundo leem
+   *   a conta como aberta e registram DUAS saídas de caixa sobre a mesma
+   *   conta; a UNIQUE de `pagamento_itens.conta_pagar_id` é o cinto que
+   *   segura o segundo, e é o índice que este arquivo não confere. Ficam
+   *   declaradas, não perdoadas: fechar é um CAS de uma linha cada, fora do
+   *   escopo do E238 (comissão), e a régua cobra a baixa aqui quando alguém o
+   *   fizer.
+   */
+  "artifacts/api-server/src/routes/financeiro.ts": 4,
 };
 const TOTAL_SEM_DISCIPLINA = RETRATO.ABERTA;
 
@@ -468,14 +520,16 @@ describe("varredura — a enumeração das portas de escrita", () => {
    * (`contratos.ts`), e o vermelho `expected 57 to be 56` foi o que cobrou este
    * parágrafo.
    */
-  it("acha as portas — são 62, e o total é o retrato somado", () => {
+  it("acha as portas — são 72, e o total é o retrato somado", () => {
     expect(portas.length).toBe(RETRATO.TRANCA + RETRATO.CAS + RETRATO.ABERTA);
   });
 
-  it("as cinco tabelas quentes têm porta — nenhuma some da conta", () => {
+  it("as sete tabelas quentes têm porta — nenhuma some da conta", () => {
     const porTabela = new Set(portas.map((p) => p.tabela));
     expect([...porTabela].sort()).toEqual([
       "bloqueioVestidosTable",
+      "comissaoFechamentosTable",
+      "contasPagarTable",
       "contratosTable",
       "orcamentosTable",
       "parcelasTable",
@@ -526,6 +580,9 @@ describe("varredura — a peneira de SQL cru enxerga, e o nome sai do schema", (
     contratosTable: "contratos",
     orcamentosTable: "orcamentos",
     parcelasTable: "parcelas",
+    // E238 (S-O108): as duas nasceram já derivadas — a linha aqui é a conferência.
+    comissaoFechamentosTable: "comissao_fechamentos",
+    contasPagarTable: "contas_pagar",
   };
 
   it("o derivado diz o mesmo que a mão dizia — a troca não renomeou nada", () => {
@@ -713,6 +770,10 @@ describe("varredura — as colunas de estado saem do schema, não da mão de que
     orcamentosTable: ["status", "aceitoEm", "aprovadoEm", "publicoAbertoEm"],
     bloqueioVestidosTable: ["canceladoEm"],
     parcelasTable: ["status", "recebidoEm", "conciliadoEm", "enviadoContabilidadeEm", "moraPerdoadaEm"],
+    // E238 (S-O108): `contas_pagar` tem `status` (PREVISTA/PAGA); o fechamento
+    // de comissão não tem coluna de estado — o estado dele é EXISTIR.
+    contasPagarTable: ["status"],
+    comissaoFechamentosTable: [],
   };
 
   it("o derivado contém tudo o que a lista curada sabia — nada se perdeu na troca", () => {
@@ -727,8 +788,17 @@ describe("varredura — as colunas de estado saem do schema, não da mão de que
    * ABERTA e a dívida explodir — e conjunto vazio em UMA tabela passaria
    * despercebido no total.
    */
-  it("nenhuma tabela quente fica sem coluna de estado", () => {
-    for (const t of TABELAS_QUENTES) expect(COLUNAS_DE_ESTADO[t].length).toBeGreaterThan(0);
+  it("nenhuma tabela quente fica sem coluna de estado — salvo a que declara que o estado é existir", () => {
+    for (const t of TABELAS_QUENTES) {
+      if (ESTADO_E_A_EXISTENCIA.has(t)) {
+        // E238: a exceção só vale enquanto for verdade — coluna de estado que
+        // nascer em `comissao_fechamentos` tira a tabela da exceção.
+        expect({ [t]: COLUNAS_DE_ESTADO[t] }).toEqual({ [t]: [] });
+        continue;
+      }
+      expect(COLUNAS_DE_ESTADO[t].length).toBeGreaterThan(0);
+    }
+    expect([...ESTADO_E_A_EXISTENCIA]).toEqual(["comissaoFechamentosTable"]);
     expect(COLUNAS_DE_ESTADO).toEqual(
       Object.fromEntries(TABELAS_QUENTES.map((t) => [t, colunasDeEstadoDe(t)])),
     );
@@ -915,6 +985,250 @@ describe("varredura — o enumerador reconhece a porta certa e a errada", () => 
   });
 });
 
+/**
+ * E238 — **a releitura é reconhecida pelo que PERGUNTA (S-O110), e o helper
+ * importado deixou de ser invisível (S-O82).**
+ *
+ * O autoteste da peneira nova, pelo mesmo motivo dos de cima: sobre o
+ * repositório ela nasceu SEM mudar a disciplina de nenhuma porta das cinco
+ * tabelas anteriores (medido porta a porta, § RETRATO), e verde que não se viu
+ * vermelho é decoração. Cada caso abaixo é a peneira sentindo uma coisa só.
+ */
+describe("varredura — a releitura é o que a chamada pergunta, não a forma dela", () => {
+  const cabecalho = `import { contratosTable, parcelasTable, auditoriaTable } from "@workspace/db";`;
+  const transacaoQueDelega = (helper: string, chamada: string) => `
+    ${cabecalho}
+    ${helper}
+    await db.transaction(async (tx) => {
+      await tx.select({ id: contratosTable.id }).from(contratosTable).where(eq(contratosTable.id, id)).for("update");
+      ${chamada}
+      await tx.update(contratosTable).set({ cpf }).where(eq(contratosTable.id, id));
+    });`;
+
+  it("aprova o helper que recebe o `tx` e LÊ a tabela alvo — é a releitura delegada", () => {
+    const fonte = transacaoQueDelega(
+      `async function relerContrato(tx, id) {
+         return tx.select({ status: contratosTable.status }).from(contratosTable).where(eq(contratosTable.id, id));
+       }`,
+      `const [sob] = await relerContrato(tx, id); if (sob.status !== "ATIVO") return;`,
+    );
+    const [p] = portasNoTexto("sintetico.ts", fonte);
+    expect(p!.releituraDaGuarda).toBe("guarda delegada a relerContrato (lê contratosTable)");
+    expect(p!.disciplina).toBe("TRANCA");
+  });
+
+  /**
+   * O contra-exemplo que a S-O110 nomeava: um helper que recebe o `tx` para
+   * ESCREVER passava pela mesma porta — e toda transação desta casa tem um
+   * (`registrarAuditoria`). A regra antiga lia "recebe o executor" e aprovava.
+   */
+  it("reprova o helper que recebe o `tx` só para ESCREVER — trilha não é releitura", () => {
+    const fonte = transacaoQueDelega(
+      `async function registrar(tx, detalhe) {
+         await tx.insert(auditoriaTable).values({ detalhe });
+       }`,
+      `await registrar(tx, { id });`,
+    );
+    const [p] = portasNoTexto("sintetico.ts", fonte);
+    expect(p!.releituraDaGuarda).toBeNull();
+    expect(p!.disciplina).toBe("ABERTA");
+  });
+
+  it("reprova o helper que lê tabela ALHEIA à guarda do alvo — perguntar outra coisa não é reperguntar", () => {
+    const fonte = transacaoQueDelega(
+      `async function lerAvarias(tx, id) {
+         return tx.select().from(avariasTable).where(eq(avariasTable.contratoId, id));
+       }`,
+      `await lerAvarias(tx, id);`,
+    );
+    // `avarias` não é pai nem filha de `contratos` no schema.
+    expect(FILHAS.contratosTable).not.toContain("avariasTable");
+    const [p] = portasNoTexto("sintetico.ts", fonte);
+    expect(p!.releituraDaGuarda).toBeNull();
+    expect(p!.disciplina).toBe("ABERTA");
+  });
+
+  it("e a leitura pelo `db` do POOL dentro do helper não conta — não está sob a tranca", () => {
+    const fonte = transacaoQueDelega(
+      `async function relerNoPool(tx, id) {
+         return db.select({ status: contratosTable.status }).from(contratosTable).where(eq(contratosTable.id, id));
+       }`,
+      `await relerNoPool(tx, id);`,
+    );
+    expect(portasNoTexto("sintetico.ts", fonte)[0]!.releituraDaGuarda).toBeNull();
+  });
+
+  it("segue a pergunta para dentro do helper que o helper chama, e para a FILHA — a forma do DELETE /reservas/:id", () => {
+    const fonte = `
+      import { reservasTable, bloqueioVestidosTable } from "@workspace/db";
+      const contarFilhos = async (executor, id) =>
+        executor.select({ n: count() }).from(bloqueioVestidosTable).where(eq(bloqueioVestidosTable.reservaId, id));
+      async function historia(tx, id) { return contarFilhos(tx, id); }
+      await db.transaction(async (tx) => {
+        await tx.select({ id: reservasTable.id }).from(reservasTable).where(eq(reservasTable.id, id)).for("update");
+        const [h] = await historia(tx, id); if (h.n > 0) return;
+        await tx.delete(reservasTable).where(eq(reservasTable.id, id));
+      });`;
+    const [p] = portasNoTexto("sintetico.ts", fonte);
+    expect(p!.releituraDaGuarda).toBe("guarda delegada a historia (lê bloqueioVestidosTable)");
+    expect(p!.disciplina).toBe("TRANCA");
+  });
+
+  it("o `select` direto depois da tranca (3b) também só conta sobre alvo, pai ou filha", () => {
+    const alheio = `
+      ${cabecalho}
+      await db.transaction(async (tx) => {
+        await tx.select({ id: contratosTable.id }).from(contratosTable).where(eq(contratosTable.id, id)).for("update");
+        await tx.select().from(auditoriaTable).where(eq(auditoriaTable.entidadeId, id));
+        await tx.update(contratosTable).set({ cpf }).where(eq(contratosTable.id, id));
+      });`;
+    expect(portasNoTexto("sintetico.ts", alheio)[0]!.disciplina).toBe("ABERTA");
+    const filha = alheio.replace("from(auditoriaTable).where(eq(auditoriaTable.entidadeId, id))", "from(parcelasTable).where(eq(parcelasTable.contratoId, id))");
+    const [p] = portasNoTexto("sintetico.ts", filha);
+    expect(p!.releituraDaGuarda).toBe("releitura em parcelasTable (filha)");
+    expect(p!.disciplina).toBe("TRANCA");
+  });
+
+  /**
+   * A tranca na LINHA-PAI que projeta a coluna de estado do pai é releitura
+   * (regra 3a, estendida no E238): a conta da DEVOLUÇÃO (`contratos.ts`, E217)
+   * nasce sob `select({ status: contratosTable.status }).for("update")`, e é
+   * esse status que decide se ela nasce.
+   */
+  it("aprova a tranca na linha-pai que projeta o estado do pai — é a guarda da filha", () => {
+    const fonte = `
+      import { contratosTable, contasPagarTable } from "@workspace/db";
+      await db.transaction(async (tx) => {
+        const [sob] = await tx.select({ status: contratosTable.status }).from(contratosTable)
+          .where(eq(contratosTable.id, id)).for("update");
+        if (sob.status === "CANCELADO") return;
+        await tx.insert(contasPagarTable).values({ origemContratoId: id });
+      });`;
+    const [p] = portasNoTexto("sintetico.ts", fonte);
+    expect(p!.releituraDaGuarda).toBe("tranca lê contratosTable.status (linha-pai)");
+    expect(p!.disciplina).toBe("TRANCA");
+  });
+
+  /**
+   * S-O108 — a tabela cujo estado é EXISTIR: o `DELETE … RETURNING` é o CAS.
+   */
+  it("no fechamento de comissão, o DELETE com RETURNING é CAS — e sem RETURNING não é", () => {
+    const fonte = `
+      import { comissaoFechamentosTable } from "@workspace/db";
+      const [removido] = await db.delete(comissaoFechamentosTable).where(eq(comissaoFechamentosTable.id, id)).returning();`;
+    const [p] = portasNoTexto("sintetico.ts", fonte);
+    expect(p!.casNoWhere).toEqual(["<a linha existir>"]);
+    expect(p!.disciplina).toBe("CAS");
+    expect(portasNoTexto("sintetico.ts", fonte.replace(".returning()", ""))[0]!.disciplina).toBe("ABERTA");
+    // E só vale para quem declara que o estado é existir: em `contratos`, não.
+    const outra = fonte.replace(/comissaoFechamentosTable/g, "contratosTable");
+    expect(portasNoTexto("sintetico.ts", outra)[0]!.disciplina).toBe("ABERTA");
+  });
+
+  /**
+   * S-O82 — **o helper IMPORTADO conta nas três contas.** O arquivo do helper
+   * é plantado no DISCO (não no index: a resolução do import é por caminho, e o
+   * arquivo não deve entrar na população das outras varreduras que rodam em
+   * paralelo) e o chamador é texto com o caminho de verdade, para o `../` ter
+   * de onde partir.
+   */
+  const RAIZ = join(import.meta.dirname, "..", "..", "..", "..");
+  const comHelperNoDisco = <T>(relativo: string, conteudo: string, medir: () => T): T => {
+    const absoluto = join(RAIZ, relativo);
+    if (existsSync(absoluto)) throw new Error(`não sobrescrevo ${relativo}`);
+    writeFileSync(absoluto, conteudo);
+    try {
+      return medir();
+    } finally {
+      rmSync(absoluto, { force: true });
+    }
+  };
+  const helperRel = "artifacts/api-server/src/lib/zz-sintetico-e238-helper.ts";
+  const chamadorRel = "artifacts/api-server/src/routes/zz-sintetico-e238-rota.ts";
+  const helper = `
+    import { contratosTable, bloqueioVestidosTable } from "@workspace/db";
+    export async function trancarBloqueios(tx, ids) {
+      for (const b of [...ids].sort()) {
+        await tx.select({ id: bloqueioVestidosTable.id }).from(bloqueioVestidosTable).where(eq(bloqueioVestidosTable.id, b)).for("update");
+      }
+    }
+    export async function relerContrato(tx, id) {
+      return tx.select({ status: contratosTable.status }).from(contratosTable).where(eq(contratosTable.id, id));
+    }
+    export async function soEscreve(tx, id) {
+      await tx.insert(auditoriaTable).values({ id });
+    }`;
+
+  it("segue o executor para dentro do helper IMPORTADO — a tranca de lá conta aqui, na ordem da chamada", () => {
+    const rota = `
+      import { contratosTable, leadsTable } from "@workspace/db";
+      import { trancarBloqueios } from "../lib/zz-sintetico-e238-helper";
+      await db.transaction(async (tx) => {
+        await tx.select({ id: leadsTable.id }).from(leadsTable).where(eq(leadsTable.id, id)).for("update");
+        await trancarBloqueios(tx, ids);
+      });`;
+    comHelperNoDisco(helperRel, helper, () => {
+      const trancas = [...trancasNoTexto(chamadorRel, rota).values()].flat();
+      expect(trancas.map((t) => t.tabela)).toEqual(["leadsTable", "bloqueioVestidosTable"]);
+      expect(trancas.map((t) => t.viaHelper)).toEqual([null, `trancarBloqueios (${helperRel})`]);
+      expect(trancas[1]!.lacoOrdenado).toBe(true);
+    });
+  });
+
+  it("e a releitura delegada ao helper IMPORTADO é lida pelo que ele pergunta", () => {
+    const rota = (chamada: string) => `
+      import { contratosTable } from "@workspace/db";
+      import { relerContrato, soEscreve } from "../lib/zz-sintetico-e238-helper";
+      await db.transaction(async (tx) => {
+        await tx.select({ id: contratosTable.id }).from(contratosTable).where(eq(contratosTable.id, id)).for("update");
+        ${chamada}
+        await tx.update(contratosTable).set({ cpf }).where(eq(contratosTable.id, id));
+      });`;
+    comHelperNoDisco(helperRel, helper, () => {
+      const [le] = portasNoTexto(chamadorRel, rota("const [sob] = await relerContrato(tx, id);"));
+      expect(le!.releituraDaGuarda).toBe(`guarda delegada a relerContrato (lê contratosTable em ${helperRel})`);
+      expect(le!.disciplina).toBe("TRANCA");
+      const [escreve] = portasNoTexto(chamadorRel, rota("await soEscreve(tx, id);"));
+      expect(escreve!.releituraDaGuarda).toBeNull();
+      expect(escreve!.disciplina).toBe("ABERTA");
+      expect(escreve!.delegacoesInvisiveis).toEqual([]);
+    });
+  });
+
+  it("o que NÃO se resolve fica registrado como delegação invisível — e nunca conta como releitura", () => {
+    const rota = `
+      import { contratosTable } from "@workspace/db";
+      import { relerFora } from "pacote-de-fora";
+      await db.transaction(async (tx) => {
+        await tx.select({ id: contratosTable.id }).from(contratosTable).where(eq(contratosTable.id, id)).for("update");
+        await relerFora(tx, id);
+        await servico.reler({ executor: tx });
+        await tx.update(contratosTable).set({ cpf }).where(eq(contratosTable.id, id));
+      });`;
+    const [p] = portasNoTexto(chamadorRel, rota);
+    expect(p!.releituraDaGuarda).toBeNull();
+    expect(p!.delegacoesInvisiveis).toEqual(["relerFora", "servico.reler"]);
+    expect(p!.disciplina).toBe("ABERTA");
+  });
+
+  it("e sobre o repositório não há delegação invisível — tudo que recebe o `tx` foi lido", () => {
+    const invisiveis = portas.flatMap((p) => p.delegacoesInvisiveis.map((d) => `${sitio(p)} → ${d}`));
+    expect(invisiveis).toEqual([]);
+  });
+
+  /**
+   * As FILHAS saem das FKs do schema, e a conferência é a mesma da S-C33: o que
+   * o código lê para baixo hoje está declarado — reserva → bloqueios (o
+   * `DELETE /reservas/:id`), bloqueio → avarias (o `DELETE /bloqueios/:id`).
+   */
+  it("as filhas são derivadas das FKs — as duas que o código relê estão lá", () => {
+    expect(FILHAS.reservasTable).toContain("bloqueioVestidosTable");
+    expect(FILHAS.bloqueioVestidosTable).toContain("avariasTable");
+    expect(FILHAS.contratosTable).toEqual(expect.arrayContaining(["parcelasTable", "contasPagarTable"]));
+    expect(FILHAS.comissaoFechamentosTable).toEqual([]);
+  });
+});
+
 describe("varredura — toda porta de escrita tem disciplina", () => {
   const abertas = portas.filter((p) => p.disciplina === "ABERTA");
 
@@ -935,7 +1249,7 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
     expect(hoje).toEqual(SEM_DISCIPLINA);
   });
 
-  it("o total da dívida é 13 — 6 de nascimento/serialização implícita e 7 do gerador da demo", () => {
+  it("o total da dívida é 17 — 8 de nascimento/serialização implícita, 2 da S-O120 e 7 do gerador da demo", () => {
     expect(abertas.length).toBe(TOTAL_SEM_DISCIPLINA);
     expect(Object.values(SEM_DISCIPLINA).reduce((s, n) => s + n, 0)).toBe(TOTAL_SEM_DISCIPLINA);
   });
@@ -963,7 +1277,7 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
    * - **8 → 11 por CAS** é drift ANTERIOR, medido pela S-C11 e não causado por
    *   ela: os pisos eram `>=` e ninguém os subiu depois do E212 e do E213.
    */
-  it("e o censo das disciplinas é o retrato — 36 TRANCA · 11 CAS · 13 ABERTA", () => {
+  it("e o censo das disciplinas é o retrato — 43 TRANCA · 12 CAS · 17 ABERTA", () => {
     const conta = { TRANCA: 0, CAS: 0, ABERTA: 0 };
     for (const p of portas) conta[p.disciplina] += 1;
     expect(conta).toEqual(RETRATO);
@@ -1006,7 +1320,7 @@ describe("varredura — as trancas sobem a cadeia, e nunca descem", () => {
    * commit sobre as quatro pastas varridas. É o caso vivo da S-C46: *piso não
    * obriga a remedir, e a prosa envelhece calada.*
    */
-  it("olha para as transações de verdade — 30 transações trancam, e são 42 trancas", () => {
+  it("olha para as transações de verdade — 30 transações trancam, e são 44 trancas", () => {
     const porTransacao = trancasPorTransacao();
     expect({
       transacoes: porTransacao.size,
@@ -1018,10 +1332,27 @@ describe("varredura — as trancas sobem a cadeia, e nunca descem", () => {
    * O piso do que o E186 abriu: sem trancas via helper, a conta voltou a ser a
    * do E180 e as três contas abaixo passam a aprovar o que não leram.
    */
-  it("e sete delas são alcançadas SEGUINDO o executor para dentro do helper", () => {
+  it("e nove delas são alcançadas SEGUINDO o executor para dentro do helper", () => {
     const viaHelper = [...trancasPorTransacao().values()].flat().filter((t) => t.viaHelper !== null);
-    expect(viaHelper).toHaveLength(7);
-    expect([...new Set(viaHelper.map((t) => t.viaHelper))].sort()).toEqual(["trancarContratos", "trancarEixos"]);
+    // 7 → 9 no E238: `trancarFechamentosDasVendedoras` (fechar e baixar à mão).
+    expect(viaHelper).toHaveLength(9);
+    expect([...new Set(viaHelper.map((t) => t.viaHelper))].sort()).toEqual([
+      "trancarContratos",
+      "trancarEixos",
+      "trancarFechamentosDasVendedoras",
+    ]);
+  });
+
+  /**
+   * E238 (S-O82) — o piso do que o épico abriu do lado do IMPORT: hoje nenhuma
+   * tranca é alcançada por helper de OUTRO arquivo (os dois de `lib/` que tomam
+   * `FOR UPDATE` abrem a própria transação), e a contagem fica travada em zero
+   * para que a primeira seja explicada — o nome vem com o arquivo entre
+   * parênteses, que é como o enumerador a distingue da local.
+   */
+  it("nenhuma tranca vem de helper importado hoje — a contagem trava em zero", () => {
+    const importadas = [...trancasPorTransacao().values()].flat().filter((t) => t.viaHelper?.includes(" (") ?? false);
+    expect(importadas.map((t) => `${t.arquivo}:${t.linha} via ${t.viaHelper}`)).toEqual([]);
   });
 
   it("nenhuma transação tranca uma tabela DEPOIS de outra mais funda na cadeia", () => {

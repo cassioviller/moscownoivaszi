@@ -6,7 +6,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { DUPLICADO_POR_INDICE, SEM_FRASE_POR_DECISAO } from "../lib/erros";
-import { arquivosDeRota, escritasDeRota, tabelasEscritasCruas } from "./escritas-de-rota";
+import { arquivosDeRota, escritasDeRota, escritasQueAlcancam, tabelasEscritasCruas, type IndiceUnico } from "./escritas-de-rota";
 
 /** A raiz do repositório — `arquivosDeRota()` devolve caminhos a partir dela. */
 const RAIZ = path.resolve(__dirname, "..", "..", "..", "..");
@@ -42,29 +42,59 @@ const RAIZ = path.resolve(__dirname, "..", "..", "..", "..");
  * **E as outras 4 viraram frase neste épico** — convite pendente repetido,
  * regra de comissão no mesmo dia, conta paga duas vezes e versão de proposta
  * congelada duas vezes.
+ *
+ * **E238 (S-O83) — a conta passou a ser por COLUNA, e o passivo caiu de 8 para
+ * 6.** A sobra dizia que a conta por tabela errava para MAIS em dois dos 23,
+ * e a medição achou dois — não os dois que ela nomeava (a prosa de
+ * `escritas-de-rota.ts` conta os três). Saem `contas_pagar_recorrencia_unica`
+ * (a única porta que preenche `recorrencia_id` declara `onConflictDoNothing`
+ * sobre ESSE índice; o `POST /contas-pagar` espalha um schema que não tem a
+ * coluna) e `portal_tokens_lead_unq` (a única escrita crua é o UPDATE de
+ * revogação, que não toca `lead_id`). As duas tinham julgamento manual em
+ * `SEM_FRASE_POR_DECISAO` dizendo exatamente isso — e julgamento sobre índice
+ * que ninguém alcança é dívida imaginária (a régua do órfão, abaixo, é quem
+ * cobrou a baixa). `convites_loja_email_pendente_unq` FICA alcançável: dois
+ * convites no mesmo segundo caem nele.
+ *
+ * | | |
+ * |---|---|
+ * | restrições únicas que não são PK | **27** |
+ * | alcançáveis por rota, por coluna | **21** (eram 23 por tabela) |
+ * | com frase própria | **15** |
+ * | sem frase, com julgamento escrito | **6** (eram 8) |
  */
 describe("E186 — os índices que uma rota alcança têm frase ou têm julgamento", () => {
   let f: Fixture;
   let agent: Awaited<ReturnType<typeof loginComLoja>>;
   let alcancaveis: string[] = [];
+  let porTabela: string[] = [];
 
   beforeAll(async () => {
     f = await criarFixture();
     // Convidar é ato de administração — o perfil da vendedora não passa do gate.
     agent = await loginComLoja(f.superAdminEmail, f.lojaId);
 
+    // E238: as COLUNAS de cada índice vêm junto — é por elas que a conta decide.
     const r = await db.execute(sql`
-      SELECT t.relname AS tabela, i.relname AS indice
+      SELECT t.relname AS tabela, i.relname AS indice,
+             (SELECT string_agg(a.attname, ',' ORDER BY k.ord)
+                FROM unnest(ix.indkey) WITH ORDINALITY AS k(attnum, ord)
+                JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum) AS colunas
       FROM pg_index ix
       JOIN pg_class i ON i.oid = ix.indexrelid
       JOIN pg_class t ON t.oid = ix.indrelid
       JOIN pg_namespace n ON n.oid = t.relnamespace
       WHERE n.nspname = 'public' AND ix.indisunique AND NOT ix.indisprimary
       ORDER BY t.relname, i.relname`);
+    const indices: IndiceUnico[] = (r.rows as { tabela: string; indice: string; colunas: string }[]).map((x) => ({
+      tabela: x.tabela,
+      indice: x.indice,
+      colunas: x.colunas.split(","),
+    }));
+    const escritas = escritasDeRota();
+    alcancaveis = indices.filter((i) => escritasQueAlcancam(i, escritas).length > 0).map((i) => i.indice);
     const cruas = tabelasEscritasCruas();
-    alcancaveis = (r.rows as { tabela: string; indice: string }[])
-      .filter((x) => cruas.has(x.tabela))
-      .map((x) => x.indice);
+    porTabela = indices.filter((i) => cruas.has(i.tabela)).map((i) => i.indice);
   });
 
   afterAll(async () => {
@@ -102,10 +132,23 @@ describe("E186 — os índices que uma rota alcança têm frase ou têm julgamen
    * nomes não trava nada — quem trava é o número, e ele cai quando alguém baixa
    * a dívida, ficando vermelho para cobrar a baixa aqui.
    */
-  it("e o passivo sem frase é 8 — a contagem trava, não a lista", () => {
+  it("e o passivo sem frase é 6 — a contagem trava, não a lista", () => {
     const semFrase = alcancaveis.filter((i) => !(i in DUPLICADO_POR_INDICE));
-    expect(semFrase).toHaveLength(8);
-    expect(Object.keys(SEM_FRASE_POR_DECISAO)).toHaveLength(8);
+    expect(semFrase).toHaveLength(6);
+    expect(Object.keys(SEM_FRASE_POR_DECISAO)).toHaveLength(6);
+  });
+
+  /**
+   * E238 (S-O83) — a conta por coluna contra a conta por tabela: a diferença é
+   * o que a sobra chamava de "erra para MAIS", e ela está NOMEADA. Índice que
+   * entrar aqui é um que a conta antiga cobraria julgamento e a nova não — e
+   * o vermelho desta linha é o que obriga a explicar o terceiro.
+   */
+  it("a conta por coluna dispensa exatamente dois índices que a conta por tabela cobrava", () => {
+    const dispensados = porTabela.filter((i) => !alcancaveis.includes(i)).sort();
+    expect(dispensados).toEqual(["contas_pagar_recorrencia_unica", "portal_tokens_lead_unq"]);
+    // E nunca o contrário: por coluna não alcança o que por tabela não alcança.
+    expect(alcancaveis.filter((i) => !porTabela.includes(i))).toEqual([]);
   });
 
   /**

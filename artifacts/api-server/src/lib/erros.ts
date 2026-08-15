@@ -203,6 +203,14 @@ export const DUPLICADO_POR_INDICE: Record<string, { error: string; detalhe: stri
  * `e186-indices-alcancaveis-api.test.ts` cobra que nenhum fique sem um dos dois.
  * É a forma da regra 31: **o objetivo não é zerar o número, é que nenhuma linha
  * dele siga sem julgamento.**
+ *
+ * **E238 (S-O83) — duas linhas SAÍRAM porque a conta passou a ser por COLUNA.**
+ * `portal_tokens_lead_unq` e `contas_pagar_recorrencia_unica` tinham aqui um
+ * julgamento que dizia, em prosa, "ninguém alcança" — e a régua passou a
+ * saber isso sozinha (a porta que cria o portal faz upsert e a revogação não
+ * toca `lead_id`; o único insert que preenche `recorrencia_id` declara
+ * `onConflictDoNothing` sobre esse índice). Julgamento sobre índice que rota
+ * nenhuma alcança é dívida imaginária, e a régua do órfão cobrou a baixa.
  */
 export const SEM_FRASE_POR_DECISAO: Record<string, string> = {
   // Os cinco tokens. Colidem quando dois `randomUUID`/`randomBytes` empatam, o
@@ -213,17 +221,6 @@ export const SEM_FRASE_POR_DECISAO: Record<string, string> = {
   lookbooks_token_unq: "token sorteado — idem",
   orcamentos_publico_token_unq: "token sorteado — idem",
   portal_tokens_token_unq: "token sorteado — idem",
-  // Um portal por noiva, e a rota que o cria já resolve a colisão com
-  // `onConflictDoUpdate` (`portal.ts:731`): regenerar o link substitui o antigo
-  // na mesma linha. O que sobra alcançando a tabela é o UPDATE de revogação,
-  // que não mexe no `lead_id`.
-  portal_tokens_lead_unq: "a porta que cria já faz upsert; o resto não toca a coluna",
-  // A conta gerada por uma recorrência num mês. O índice é PARCIAL
-  // (`recorrencia_id is not null`) e o único insert que o preenche declara
-  // `onConflictDoNothing` (`financeiro.ts:1241`), que faz o POST perdedor
-  // reportar `geradas: 0`. As outras escritas de `contas_pagar` nascem sem
-  // recorrência — a conta por tabela erra para mais, e este é o caso.
-  contas_pagar_recorrencia_unica: "índice parcial; a única porta que o preenche declara onConflictDoNothing",
   // A conta a pagar de um fechamento de comissão. Ela é CRIADA na mesma
   // transação que grava o fechamento (`comissao.ts:1301`), com id novo — não há
   // segundo dono possível para a linha.

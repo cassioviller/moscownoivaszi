@@ -1,6 +1,6 @@
 import ts from "typescript";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { getTableColumns } from "drizzle-orm";
 import { getTableConfig, type PgTable } from "drizzle-orm/pg-core";
 import * as schema from "@workspace/db/schema";
@@ -65,12 +65,23 @@ const PASTAS = [
   "scripts",
 ] as const;
 
+/**
+ * As sete tabelas quentes. Quatro pela D4 (E171), `parcelas` pelo E180
+ * (S-O34) e — **E238 (S-O108)** — `comissao_fechamentos` e `contas_pagar`: a
+ * S-O107 morava numa tabela que a régua não contava, achada por leitura, como
+ * o E180 achou `parcelas`; e `contas_pagar` já tinha degrau em
+ * `DEGRAUS_DA_ORDEM` sem ser contada como porta. Custaram 10 portas de uma
+ * vez (6 com disciplina, 4 na dívida declarada) e uma exceção nova, a tabela
+ * cujo estado é existir (§ ESTADO_E_A_EXISTENCIA).
+ */
 export const TABELAS_QUENTES = [
   "bloqueioVestidosTable",
   "reservasTable",
   "contratosTable",
   "orcamentosTable",
   "parcelasTable",
+  "comissaoFechamentosTable",
+  "contasPagarTable",
 ] as const;
 export type TabelaQuente = (typeof TABELAS_QUENTES)[number];
 
@@ -99,6 +110,8 @@ const TABELAS_DO_SCHEMA: Record<TabelaQuente, PgTable> = {
   contratosTable: schema.contratosTable,
   orcamentosTable: schema.orcamentosTable,
   parcelasTable: schema.parcelasTable,
+  comissaoFechamentosTable: schema.comissaoFechamentosTable,
+  contasPagarTable: schema.contasPagarTable,
 };
 
 /**
@@ -155,7 +168,70 @@ export const PAIS: Record<TabelaQuente, readonly string[]> = {
     "leadsTable",
   ],
   parcelasTable: ["parcelasTable", "contratosTable", "leadsTable"],
+  /**
+   * E238 (S-O108) — as duas tabelas do fechamento de comissão. O parentesco
+   * é o das FKs que o schema declara: `comissao_fechamentos.conta_pagar_id`
+   * aponta para a conta (o reabrir tranca a CONTA antes de apagar o
+   * fechamento, S-M22); `contas_pagar.origem_comissao_fechamento_id` e
+   * `contas_pagar.origem_contrato_id` apontam para o fechamento e para o
+   * contrato (a conta da comissão nasce sob a tranca dos fechamentos, E238; a
+   * conta da DEVOLUÇÃO nasce sob a tranca do contrato, E217).
+   */
+  comissaoFechamentosTable: ["comissaoFechamentosTable", "contasPagarTable"],
+  contasPagarTable: ["contasPagarTable", "comissaoFechamentosTable", "contratosTable"],
 };
+
+/**
+ * E238 (S-O108) — **a tabela cujo estado é EXISTIR.**
+ *
+ * `comissao_fechamentos` não tem `status` nem fato datado anulável: a linha
+ * existe enquanto a competência está fechada e some quando é reaberta. O
+ * critério de `ehColunaDeEstado` devolve vazio para ela — e vazio, na régua
+ * das colunas, era o sinal de sonda cega. Aqui não é: é a forma do estado.
+ *
+ * O que isso muda na leitura das portas: o `DELETE … RETURNING` sobre uma
+ * tabela destas É o CAS — o `where` repete a condição lida (a linha existe) e
+ * o `returning()` vazio é "mudou no meio", que é exatamente a frase do E158
+ * para o CAS de `status`. É a guarda que o reabrir do fechamento usa desde a
+ * S-O79 (`comissao.ts`, *"o `returning()` é quem responde"*).
+ */
+export const ESTADO_E_A_EXISTENCIA: ReadonlySet<TabelaQuente> = new Set<TabelaQuente>(["comissaoFechamentosTable"]);
+
+/**
+ * E238 (S-O110) — **as FILHAS de cada tabela quente, derivadas das FKs do schema.**
+ *
+ * A pergunta que uma porta relê nem sempre é sobre a linha alvo ou o pai dela:
+ * o `DELETE /reservas/:id` (`reservas.ts`, S-M22/R2-V8) tranca a reserva e
+ * reconta a HISTÓRIA — os bloqueios da reserva, e as avarias, provas e
+ * contratos presos a eles. É uma releitura da guarda, e ela lê para BAIXO. A
+ * peneira da releitura aceita, então, a tabela alvo, uma linha-pai declarada
+ * em `PAIS` ou uma filha — e filha é o que o schema diz: tabela com FK que
+ * aponta para a quente. Derivada, não escrita à mão (é a S-C33 de novo).
+ */
+function filhasDe(quente: TabelaQuente): string[] {
+  const alvo = getTableConfig(TABELAS_DO_SCHEMA[quente]).name;
+  const filhas: string[] = [];
+  for (const [nome, valor] of Object.entries(schema as Record<string, unknown>)) {
+    let config: ReturnType<typeof getTableConfig>;
+    try {
+      config = getTableConfig(valor as PgTable);
+    } catch {
+      continue; // não é tabela — o pacote exporta enums, tipos e relações
+    }
+    if (nome === quente) continue;
+    const aponta = config.foreignKeys.some((fk) => getTableConfig(fk.reference().foreignTable).name === alvo);
+    if (aponta && !filhas.includes(nome)) filhas.push(nome);
+  }
+  return filhas;
+}
+const filhasPorTabela: Partial<Record<TabelaQuente, readonly string[]>> = {};
+for (const t of TABELAS_QUENTES) filhasPorTabela[t] = filhasDe(t);
+export const FILHAS = filhasPorTabela as Record<TabelaQuente, readonly string[]>;
+
+/** As tabelas cuja leitura, depois da tranca, conta como releitura da guarda do alvo. */
+export function tabelasDaGuarda(tabela: TabelaQuente): string[] {
+  return [...new Set([...PAIS[tabela], ...FILHAS[tabela]])];
+}
 
 /**
  * As colunas que decidem ESTADO em cada tabela — as que uma corrida muda embaixo
@@ -328,6 +404,16 @@ export const DEGRAUS_DA_ORDEM: readonly (readonly string[])[] = [
   ["cabinesTable"],
   ["usuariosTable"],
   ["leadsTable", "reservasTable", "avariasTable", "contasPagarTable"],
+  /**
+   * E238 (S-O106/S-O107) — o fechamento de comissão ganhou tranca própria
+   * (`trancarFechamentosDasVendedoras`), tomada DEPOIS da conta a pagar e ANTES
+   * do contrato: o reabrir toma a conta (S-M22), apaga o fechamento (o
+   * `DELETE` segura a linha) e só então tranca contratos; fechar e baixar à mão
+   * tomam os fechamentos e depois os contratos. Degrau próprio, e não o da
+   * linha-pai da rota, porque o reabrir toma a conta E o fechamento na mesma
+   * transação — tabelas do mesmo degrau são as que nenhuma rota pede juntas.
+   */
+  ["comissaoFechamentosTable"],
   ["orcamentosTable"],
   ["contratosTable"],
   ["parcelasTable"],
@@ -361,30 +447,156 @@ const VERBOS = new Set(["insert", "update", "delete"]);
  * recebe vira o executor daquela função, e as trancas de lá contam como se
  * estivessem escritas no ponto da chamada.
  *
- * **O que continua de fora, e está declarado:** a resolução é de módulo, não de
- * projeto — helper importado de outro arquivo segue invisível. É a mesma
- * escolha da peneira de apelidos: o que se resolve é o que o arquivo diz por
- * inteiro, e o resto vira caso a decidir, não silêncio.
+ * **O que ficava de fora até o E238, e a S-O82 nomeava:** a resolução era de
+ * MÓDULO — helper importado de outro arquivo seguia invisível, tanto para a
+ * conta das trancas quanto para a da releitura. Hoje são zero helpers
+ * importados que tranquem com o `tx` do chamador (os dois de `lib/` que tomam
+ * `FOR UPDATE` abrem a PRÓPRIA transação), e o primeiro que nascesse passaria
+ * verde. Desde o E238 o `import` relativo (`../lib/x`) e o de pacote do
+ * repositório (`@workspace/x` → `lib/x/src`) são RESOLVIDOS: o arquivo
+ * importado é parseado, a função exportada é encontrada — inclusive atrás de
+ * `export * from` / `export { x } from` —, e as trancas e as perguntas de lá
+ * contam como se estivessem no ponto da chamada. O que não se resolve
+ * (pacote de fora do repositório, `import * as ns`) continua sendo caso a
+ * decidir, não silêncio: a chamada que passa o `tx` para o que a varredura
+ * não alcança fica registrada em `delegacoesInvisiveis` da porta, e a
+ * varredura trava a contagem em zero.
  */
-type FuncaoLocal = { params: string[]; corpo: ts.Node };
+type Modulo = {
+  sf: ts.SourceFile;
+  /** As funções declaradas no topo do módulo, por nome. */
+  locais: Map<string, FuncaoLocal>;
+  /** Os nomes importados: `nome local → { especificador, nome original }`. */
+  importados: Map<string, { spec: string; original: string }>;
+  /** Os re-exports (`export * from "x"`, `export { a as b } from "x"`). */
+  reexports: { spec: string; nomes: Map<string, string> | null }[];
+};
+type FuncaoLocal = { params: string[]; corpo: ts.Node; modulo: Modulo };
 
-/** As funções declaradas no módulo — as únicas em que o executor é seguível. */
-function funcoesLocais(sf: ts.SourceFile): Map<string, FuncaoLocal> {
-  const mapa = new Map<string, FuncaoLocal>();
+/**
+ * Dois caches, e a diferença é deliberada: o módulo de um `SourceFile` já
+ * parseado é guardado pelo OBJETO (os autotestes parseiam dezenas de textos
+ * diferentes com o mesmo `fileName` sintético — guardar por nome faria o
+ * segundo texto herdar as funções do primeiro); o módulo alcançado por IMPORT
+ * é guardado pelo caminho, que é o que o identifica.
+ */
+const cacheModulosPorFonte = new WeakMap<ts.SourceFile, Modulo>();
+const cacheModulosPorCaminho = new Map<string, Modulo | null>();
+
+/** O módulo de um `SourceFile` — as funções, os imports e os re-exports dele. */
+function moduloDe(sf: ts.SourceFile): Modulo {
+  const pronto = cacheModulosPorFonte.get(sf);
+  if (pronto) return pronto;
+  const modulo: Modulo = { sf, locais: new Map(), importados: new Map(), reexports: [] };
   const guardar = (nome: string, fn: ts.FunctionDeclaration | ts.ArrowFunction | ts.FunctionExpression): void => {
-    if (fn.body) mapa.set(nome, { params: fn.parameters.map((p) => p.name.getText(sf)), corpo: fn.body });
+    if (fn.body) modulo.locais.set(nome, { params: fn.parameters.map((p) => p.name.getText(sf)), corpo: fn.body, modulo });
   };
+  // As funções são colhidas em QUALQUER profundidade — o `contarHistoria` do
+  // `DELETE /reservas/:id` é uma const dentro do handler, e é ele que relê a
+  // guarda. Nome repetido em escopos diferentes: o primeiro no arquivo vence.
+  const colher = (n: ts.Node): void => {
+    if (ts.isFunctionDeclaration(n) && n.name && !modulo.locais.has(n.name.text)) guardar(n.name.text, n);
+    if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer &&
+        (ts.isArrowFunction(n.initializer) || ts.isFunctionExpression(n.initializer)) && !modulo.locais.has(n.name.text)) {
+      guardar(n.name.text, n.initializer);
+    }
+    n.forEachChild(colher);
+  };
+  colher(sf);
   for (const stmt of sf.statements) {
-    if (ts.isFunctionDeclaration(stmt) && stmt.name) guardar(stmt.name.text, stmt);
-    if (ts.isVariableStatement(stmt)) {
-      for (const d of stmt.declarationList.declarations) {
-        if (ts.isIdentifier(d.name) && d.initializer && (ts.isArrowFunction(d.initializer) || ts.isFunctionExpression(d.initializer))) {
-          guardar(d.name.text, d.initializer);
+    if (ts.isImportDeclaration(stmt) && ts.isStringLiteral(stmt.moduleSpecifier)) {
+      const bindings = stmt.importClause?.namedBindings;
+      if (bindings && ts.isNamedImports(bindings)) {
+        for (const el of bindings.elements) {
+          modulo.importados.set(el.name.text, { spec: stmt.moduleSpecifier.text, original: el.propertyName?.text ?? el.name.text });
         }
       }
     }
+    if (ts.isExportDeclaration(stmt) && stmt.moduleSpecifier && ts.isStringLiteral(stmt.moduleSpecifier)) {
+      const nomes = stmt.exportClause && ts.isNamedExports(stmt.exportClause)
+        ? new Map(stmt.exportClause.elements.map((el) => [el.name.text, el.propertyName?.text ?? el.name.text]))
+        : null;
+      modulo.reexports.push({ spec: stmt.moduleSpecifier.text, nomes });
+    }
   }
-  return mapa;
+  cacheModulosPorFonte.set(sf, modulo);
+  return modulo;
+}
+
+/**
+ * Resolve um especificador de import para o arquivo do repositório, ou `null`
+ * quando ele aponta para fora (pacote de terceiros, `node:*`).
+ *
+ * `fileName` dos módulos varridos é RELATIVO à raiz do repositório
+ * (`artifacts/api-server/src/routes/comissao.ts`); os módulos alcançados por
+ * import ganham o mesmo formato, para que o achado seja legível.
+ */
+function resolverEspecificador(deArquivo: string, spec: string): string | null {
+  let base: string;
+  if (spec.startsWith(".")) {
+    base = join(dirname(deArquivo), spec);
+  } else if (spec.startsWith("@workspace/")) {
+    const [pacote, ...resto] = spec.slice("@workspace/".length).split("/");
+    base = join("lib", pacote!, "src", ...(resto.length > 0 ? resto : ["index"]));
+  } else {
+    return null;
+  }
+  for (const candidato of [`${base}.ts`, `${base}.tsx`, join(base, "index.ts")]) {
+    if (existsSync(join(RAIZ, candidato))) return candidato;
+  }
+  return null;
+}
+
+/** O módulo atrás de um especificador, parseado uma vez — `null` quando não se resolve. */
+function moduloImportado(deArquivo: string, spec: string): Modulo | null {
+  const rel = resolverEspecificador(deArquivo, spec);
+  if (!rel) return null;
+  if (cacheModulosPorCaminho.has(rel)) return cacheModulosPorCaminho.get(rel)!;
+  const sf = ts.createSourceFile(rel, readFileSync(join(RAIZ, rel), "utf8"), ts.ScriptTarget.Latest, true);
+  const modulo = moduloDe(sf);
+  cacheModulosPorCaminho.set(rel, modulo);
+  return modulo;
+}
+
+/**
+ * A função que um nome alcança de dentro de um módulo: declarada nele, ou
+ * importada — seguindo re-exports até três degraus. `undefined` quando o nome
+ * não é função visível (ou o import não se resolve dentro do repositório).
+ */
+function funcaoAlcancavel(modulo: Modulo, nome: string, degraus = 3): FuncaoLocal | undefined {
+  const local = modulo.locais.get(nome);
+  if (local) return local;
+  const imp = modulo.importados.get(nome);
+  if (!imp) return undefined;
+  const alvo = moduloImportado(modulo.sf.fileName, imp.spec);
+  return alvo ? exportadaDe(alvo, imp.original, degraus) : undefined;
+}
+
+function exportadaDe(modulo: Modulo, nome: string, degraus: number): FuncaoLocal | undefined {
+  const local = modulo.locais.get(nome);
+  if (local) return local;
+  if (degraus <= 0) return undefined;
+  for (const re of modulo.reexports) {
+    const original = re.nomes === null ? nome : re.nomes.get(nome);
+    if (!original) continue;
+    const alvo = moduloImportado(modulo.sf.fileName, re.spec);
+    const fn = alvo ? exportadaDe(alvo, original, degraus - 1) : undefined;
+    if (fn) return fn;
+  }
+  return undefined;
+}
+
+/** A chamada passa o `tx` para o que a varredura não alcança — o nome, para o achado. */
+function chamadaInvisivel(modulo: Modulo, chamada: ts.CallExpression): string | null {
+  const alvo = chamada.expression;
+  if (ts.isIdentifier(alvo)) {
+    if (funcaoAlcancavel(modulo, alvo.text)) return null;
+    // Nome que não é import nem função local — método de objeto, callback,
+    // parâmetro: a varredura não tem como segui-lo.
+    return alvo.text;
+  }
+  // `ns.fn(tx)`, `obj.metodo(tx)` — fora do que a resolução por nome alcança.
+  return alvo.getText(modulo.sf);
 }
 
 /** Uma tranca vista dentro de um corpo, com a posição que a ORDENA na transação. */
@@ -407,19 +619,20 @@ function textoDoLaco(sf: ts.SourceFile, chamada: ts.Node, corpo: ts.Node): strin
 }
 
 /**
- * As trancas de um corpo, seguindo o executor para dentro das funções do módulo.
+ * As trancas de um corpo, seguindo o executor para dentro das funções que o
+ * módulo alcança — as dele e, desde o E238 (S-O82), as importadas.
  *
  * `visitados` corta a recursão de uma função que chame a si mesma passando o
  * executor adiante — não há nenhuma hoje, e uma varredura que trava é pior que
  * uma que não vê.
  */
 function trancasNoCorpo(
-  sf: ts.SourceFile,
+  modulo: Modulo,
   corpo: ts.Node,
   executor: string,
-  locais: Map<string, FuncaoLocal>,
   visitados: ReadonlySet<string> = new Set(),
 ): TrancaBruta[] {
+  const sf = modulo.sf;
   const out: TrancaBruta[] = [];
 
   for (const chamada of chamadasDe(corpo, "for")) {
@@ -437,13 +650,14 @@ function trancasNoCorpo(
 
   const v = (n: ts.Node): void => {
     if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && !visitados.has(n.expression.text)) {
-      const fn = locais.get(n.expression.text);
+      const fn = funcaoAlcancavel(modulo, n.expression.text);
       if (fn) {
         const i = n.arguments.findIndex((a) => ts.isIdentifier(a) && a.text === executor);
         const param = i === -1 ? undefined : fn.params[i];
         if (param) {
-          for (const t of trancasNoCorpo(sf, fn.corpo, param, locais, new Set([...visitados, n.expression.text]))) {
-            out.push({ ...t, posicao: n.getStart(sf), viaHelper: t.viaHelper ?? n.expression.text });
+          const nome = fn.modulo === modulo ? n.expression.text : `${n.expression.text} (${fn.modulo.sf.fileName})`;
+          for (const t of trancasNoCorpo(fn.modulo, fn.corpo, param, new Set([...visitados, n.expression.text]))) {
+            out.push({ ...t, posicao: n.getStart(sf), viaHelper: t.viaHelper ?? nome });
           }
         }
       }
@@ -453,6 +667,64 @@ function trancasNoCorpo(
   v(corpo);
 
   return out.sort((a, b) => a.posicao - b.posicao);
+}
+
+/**
+ * ## S-O110/E238 — a releitura é reconhecida pelo que PERGUNTA, não pela forma
+ *
+ * Até o E238 a regra 3c aceitava como releitura *qualquer* chamada que
+ * recebesse o `tx` depois da tranca. `relerEstornosSobATranca` cumpre o que o
+ * nome diz — e um helper que recebesse o `tx` para ESCREVER (o
+ * `registrarAuditoria` está em toda transação desta casa) passava pela mesma
+ * porta. O E186 já tinha recortado o caso oposto (`chamadasQueSoTrancam`);
+ * esta é a peneira simétrica: a chamada só conta como releitura se o corpo do
+ * helper — seguindo as funções que ele chama, dentro do módulo dele e nos que
+ * ele importa — tiver um `select` (ou `query.<tabela>`) da tabela ALVO ou de
+ * uma linha-pai declarada em `PAIS`, por um executor que não seja o `db` do
+ * pool. Devolve a tabela perguntada, para o achado dizer o quê.
+ */
+function tabelaPerguntadaPor(
+  fn: FuncaoLocal,
+  tabelas: readonly string[],
+  visitados: ReadonlySet<FuncaoLocal> = new Set(),
+): string | null {
+  const sf = fn.modulo.sf;
+  const apelidos = apelidosDasQuentes(sf);
+  const canonico = (nome: string): string => apelidos.get(nome) ?? nome;
+  let achada: string | null = null;
+  const v = (n: ts.Node): void => {
+    if (achada) return;
+    if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression)) {
+      const nome = n.expression.name.text;
+      if (nome === "select" && raizDoReceptor(n.expression.expression) !== "db") {
+        const de = tabelaDoFrom(cadeiaCompleta(n));
+        if (de && tabelas.includes(canonico(de))) achada = canonico(de);
+      }
+      // `tx.query.contratosTable.findFirst(...)` — a leitura relacional do drizzle.
+      if ((nome === "findFirst" || nome === "findMany") && ts.isPropertyAccessExpression(n.expression.expression)) {
+        const tabela = n.expression.expression.name.text;
+        const query = n.expression.expression.expression;
+        if (
+          ts.isPropertyAccessExpression(query) &&
+          query.name.text === "query" &&
+          raizDoReceptor(query) !== "db" &&
+          tabelas.includes(canonico(tabela))
+        ) {
+          achada = canonico(tabela);
+        }
+      }
+    }
+    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression)) {
+      const outra = funcaoAlcancavel(fn.modulo, n.expression.text);
+      if (outra && !visitados.has(outra)) {
+        const t = tabelaPerguntadaPor(outra, tabelas, new Set([...visitados, fn]));
+        if (t) achada = t;
+      }
+    }
+    if (!achada) n.forEachChild(v);
+  };
+  v(fn.corpo);
+  return achada;
 }
 
 export type Disciplina = "TRANCA" | "CAS" | "ABERTA";
@@ -474,6 +746,13 @@ export type Porta = {
   releituraDaGuarda: string | null;
   /** As colunas de estado que o `where` da própria escrita repete. */
   casNoWhere: string[];
+  /**
+   * E238 (S-O82/S-O110) — as chamadas que passam o `tx` adiante, depois da
+   * tranca, para o que a varredura NÃO alcança (import que não se resolve
+   * dentro do repositório, método de objeto). Nenhuma delas conta como
+   * releitura; a varredura trava a contagem em zero.
+   */
+  delegacoesInvisiveis: string[];
   disciplina: Disciplina;
 };
 
@@ -563,7 +842,7 @@ export function portasNoTexto(caminho: string, texto: string): Porta[] {
 
 function portasNaFonte(sf: ts.SourceFile): Porta[] {
   const apelidos = apelidosDasQuentes(sf);
-  const locais = funcoesLocais(sf);
+  const modulo = moduloDe(sf);
   const portas: Porta[] = [];
 
   const visitar = (no: ts.Node): void => {
@@ -571,7 +850,7 @@ function portasNaFonte(sf: ts.SourceFile): Porta[] {
       const arg = no.arguments[0];
       const tabela = arg && ts.isIdentifier(arg) ? apelidos.get(arg.text) : undefined;
       if (tabela) {
-        portas.push(analisar(sf, no, no.expression.name.text, tabela, locais));
+        portas.push(analisar(modulo, no, no.expression.name.text, tabela));
       }
     }
     no.forEachChild(visitar);
@@ -581,12 +860,12 @@ function portasNaFonte(sf: ts.SourceFile): Porta[] {
 }
 
 function analisar(
-  sf: ts.SourceFile,
+  modulo: Modulo,
   escrita: ts.CallExpression,
   verbo: string,
   tabela: TabelaQuente,
-  locais: Map<string, FuncaoLocal>,
 ): Porta {
+  const sf = modulo.sf;
   const inicio = escrita.getStart(sf);
   const linha = sf.getLineAndCharacterOfPosition(inicio).line + 1;
   const executor = raizDoReceptor((escrita.expression as ts.PropertyAccessExpression).expression);
@@ -621,6 +900,7 @@ function analisar(
    * `comissao.ts:1071` a TRANCA por um motivo falso.
    */
   const chamadasQueSoTrancam = new Set<number>();
+  const delegacoesInvisiveis: string[] = [];
 
   if (corpoTx && txNome) {
     // 2. `FOR UPDATE` na linha certa: um `.for(...)` do MESMO executor, ANTES
@@ -636,15 +916,19 @@ function analisar(
       // 3a. A releitura mais comum é o PRÓPRIO select da tranca, quando ele
       //     projeta a coluna de estado (`{ status: ... }`) ou tudo (`select()`).
       //     É a forma de `reservas.ts:200-206` e `contratos.ts:1159-1163`.
+      //     E238 (S-O110): vale também para a tranca numa LINHA-PAI quente —
+      //     a conta da DEVOLUÇÃO (`contratos.ts`, E217) nasce sob a tranca do
+      //     contrato que projeta `contratos.status`, e é esse status a guarda.
       const sel = chamadasDe(cadeia, "select")[0];
-      if (sel && alvo === tabela) {
+      if (sel && PAIS[tabela].includes(alvo) && (TABELAS_QUENTES as readonly string[]).includes(alvo)) {
         const proj = sel.arguments[0];
+        const sufixo = alvo === tabela ? "" : " (linha-pai)";
         if (!proj) {
-          releituraDaGuarda ??= `tranca com select() inteiro em ${alvo}`;
+          releituraDaGuarda ??= `tranca com select() inteiro em ${alvo}${sufixo}`;
         } else if (ts.isObjectLiteralExpression(proj)) {
           const txt = proj.getText(sf);
-          for (const col of COLUNAS_DE_ESTADO[tabela]) {
-            if (txt.includes(`${tabela}.${col}`)) releituraDaGuarda ??= `tranca lê ${tabela}.${col}`;
+          for (const col of COLUNAS_DE_ESTADO[alvo as TabelaQuente]) {
+            if (txt.includes(`${alvo}.${col}`)) releituraDaGuarda ??= `tranca lê ${alvo}.${col}${sufixo}`;
           }
         }
       }
@@ -653,17 +937,30 @@ function analisar(
     // 2b. S-O59/E186: e as trancas que o helper toma com o `tx` que recebeu. É
     //     a mesma tranca, escrita uma vez e chamada de três lugares — o que
     //     mudou é que a varredura passou a enxergá-la.
-    for (const t of trancasNoCorpo(sf, corpoTx, txNome, locais)) {
+    for (const t of trancasNoCorpo(modulo, corpoTx, txNome)) {
       if (t.viaHelper === null || t.posicao >= inicio) continue;
       trancadas.push(t.tabela);
       posPrimeiraTranca = Math.min(posPrimeiraTranca, t.posicao);
       chamadasQueSoTrancam.add(t.posicao);
     }
 
-    // 3b. Ou um select SEM `for` depois da tranca; 3c. ou um helper que recebe o
-    //     executor da transação e faz a pergunta lá dentro
-    //     (`verificarDisponibilidade({ executor: tx })`).
+    // 3b. Ou um select SEM `for` depois da tranca — E238 (S-O110): da tabela
+    //     ALVO ou de uma linha-pai declarada, e não de qualquer tabela; 3c. ou
+    //     um helper que recebe o executor da transação e faz a pergunta lá
+    //     dentro (`verificarDisponibilidade({ executor: tx })`) — E238: e a
+    //     pergunta é conferida no corpo dele (§ tabelaPerguntadaPor), inclusive
+    //     quando o helper vem de outro arquivo (S-O82).
     const depoisDaTranca = (n: ts.Node): boolean => n.getStart(sf) > posPrimeiraTranca && n.getStart(sf) < inicio;
+    const guarda = tabelasDaGuarda(tabela);
+    const recebeOTx = (n: ts.CallExpression): boolean =>
+      n.arguments.some(
+        (a) =>
+          (ts.isIdentifier(a) && a.text === txNome) ||
+          (ts.isObjectLiteralExpression(a) &&
+            a.properties.some(
+              (pr) => ts.isPropertyAssignment(pr) && ts.isIdentifier(pr.initializer) && pr.initializer.text === txNome,
+            )),
+      );
     const v = (n: ts.Node): void => {
       if (depoisDaTranca(n) && ts.isCallExpression(n)) {
         if (
@@ -672,18 +969,23 @@ function analisar(
           raizDoReceptor(n.expression.expression) === txNome &&
           chamadasDe(cadeiaCompleta(n), "for").length === 0
         ) {
-          releituraDaGuarda ??= `releitura em ${tabelaDoFrom(cadeiaCompleta(n)) ?? "?"}`;
-        }
-        for (const a of n.arguments) {
-          if (ts.isIdentifier(a) && a.text === txNome && !chamadasQueSoTrancam.has(n.getStart(sf))) {
-            releituraDaGuarda ??= `guarda delegada a ${n.expression.getText(sf)}`;
+          const de = tabelaDoFrom(cadeiaCompleta(n));
+          if (de && guarda.includes(de)) {
+            releituraDaGuarda ??= `releitura em ${de}${FILHAS[tabela].includes(de) ? " (filha)" : ""}`;
           }
-          if (ts.isObjectLiteralExpression(a)) {
-            for (const pr of a.properties) {
-              if (ts.isPropertyAssignment(pr) && ts.isIdentifier(pr.initializer) && pr.initializer.text === txNome) {
-                releituraDaGuarda ??= `guarda delegada a ${n.expression.getText(sf)}`;
-              }
+        }
+        if (recebeOTx(n) && !chamadasQueSoTrancam.has(n.getStart(sf))) {
+          const nome = n.expression.getText(sf);
+          const fn = ts.isIdentifier(n.expression) ? funcaoAlcancavel(modulo, n.expression.text) : undefined;
+          if (fn) {
+            const pergunta = tabelaPerguntadaPor(fn, guarda);
+            if (pergunta) {
+              const onde = fn.modulo === modulo ? "" : ` em ${fn.modulo.sf.fileName}`;
+              releituraDaGuarda ??= `guarda delegada a ${nome} (lê ${pergunta}${onde})`;
             }
+          } else {
+            const invisivel = chamadaInvisivel(modulo, n);
+            if (invisivel && !delegacoesInvisiveis.includes(invisivel)) delegacoesInvisiveis.push(invisivel);
           }
         }
       }
@@ -699,6 +1001,15 @@ function analisar(
     for (const col of COLUNAS_DE_ESTADO[tabela]) {
       if (txt.includes(`${tabela}.${col}`) && !casNoWhere.includes(col)) casNoWhere.push(col);
     }
+  }
+  // E238 (S-O108): na tabela cujo estado é existir, o `DELETE … RETURNING` é o
+  // CAS — a linha que a transação removeu é a resposta (§ ESTADO_E_A_EXISTENCIA).
+  if (
+    ESTADO_E_A_EXISTENCIA.has(tabela) &&
+    verbo === "delete" &&
+    chamadasDe(cadeiaCompleta(escrita), "returning").length > 0
+  ) {
+    casNoWhere.push("<a linha existir>");
   }
 
   const trancaNoAlvoOuPai = trancadas.some((t) => PAIS[tabela].includes(t));
@@ -721,6 +1032,7 @@ function analisar(
     trancaNoAlvoOuPai,
     releituraDaGuarda,
     casNoWhere,
+    delegacoesInvisiveis,
     disciplina,
   };
 }
@@ -865,7 +1177,7 @@ export function trancasNoTexto(caminho: string, texto: string): Map<string, Tran
 function trancasNaFonte(sf: ts.SourceFile): Map<string, Tranca[]> {
   const mapa = new Map<string, Tranca[]>();
   const rel = sf.fileName;
-  const locais = funcoesLocais(sf);
+  const modulo = moduloDe(sf);
   const v = (no: ts.Node): void => {
     if (
       ts.isCallExpression(no) &&
@@ -884,7 +1196,7 @@ function trancasNaFonte(sf: ts.SourceFile): Map<string, Tranca[]> {
          * linha a poria antes de trancas que ela sucede. `trancasNoCorpo` já
          * devolve ordenado pela posição da CHAMADA.
          */
-        const trancas: Tranca[] = trancasNoCorpo(sf, corpo, txNome, locais).map((t) => ({
+        const trancas: Tranca[] = trancasNoCorpo(modulo, corpo, txNome).map((t) => ({
           arquivo: rel,
           linha: t.linha,
           tabela: t.tabela,
