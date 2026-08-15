@@ -38,7 +38,9 @@ para o documento que manda.
    **S-C51** 🟡 (a conciliação por parcela — espera a contadora, porque carimbo
    por ATO pede a tabela que o E221 recusou por escrito), a **S-C301** 🟡 (a
    validação de CNPJ — código, a próxima) e a **S-C300** 🔵 (a D7 vista do
-   banco). A S-C132 fechou no E220. Mais **5 pendências que não são
+   banco). A S-C132 fechou no E220. **O plano das três está em
+   [`2026-08-15-as-tres-ultimas-plano.md`](docs/propostas/2026-08-15-as-tres-ultimas-plano.md)**
+   — E233 (CNPJ, hoje), E234 (D7), E235 (contadora), cada uma medida. Mais **5 pendências que não são
    software** (a P5 nasceu no E219: confirmar que os 7 dias da 17ª contam do
    fecho). As duas sessões do dia estão contadas em
    `docs/revisao/2026-08-15-sessao-a-fila-do-que-restava.md` (a madrugada:
