@@ -15,6 +15,7 @@ export interface BaixarEstornoComissaoInput {
   competencia: string;
   /**
      * Justificativa da baixa — fica no registro de auditoria
+     * @maxLength 300
      * @nullable
      */
   motivo?: string | null;

@@ -14,6 +14,7 @@ export interface BloqueioVestidoInput {
   casamentoData?: Date;
   inicio?: Date;
   fim?: Date;
+  /** @maxLength 1000 */
   observacao?: string;
   reservaId?: string;
 }

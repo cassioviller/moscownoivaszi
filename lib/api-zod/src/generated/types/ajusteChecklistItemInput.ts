@@ -7,7 +7,10 @@
  */
 
 export interface AjusteChecklistItemInput {
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
   descricao: string;
   ordem?: number;
 }

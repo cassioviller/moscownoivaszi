@@ -9,7 +9,10 @@ import type { CancelarContratoInputDestinoPago } from './cancelarContratoInputDe
 import type { CancelarContratoInputIniciativa } from './cancelarContratoInputIniciativa';
 
 export interface CancelarContratoInput {
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
   motivo: string;
   destinoPago?: CancelarContratoInputDestinoPago;
   iniciativa?: CancelarContratoInputIniciativa;

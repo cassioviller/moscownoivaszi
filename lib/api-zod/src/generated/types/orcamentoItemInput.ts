@@ -12,7 +12,10 @@ export interface OrcamentoItemInput {
   vestidoId?: string;
   itemEstoqueId?: string;
   ajusteId?: string;
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
   descricao: string;
   /** @minimum 0 */
   valorUnitario: number;

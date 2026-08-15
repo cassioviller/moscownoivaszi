@@ -170,7 +170,11 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
       // E235: 132 → 133. `MarcarConciliadoResultado.recibos` — quantos ATOS o
       // carimbo marcou. É RESPOSTA, montada por extenso no handler (`atos.length`);
       // nenhuma entrada nova de inteiro.
-    ).toBe(133);
+      //
+      // E239/S-O112: 133 → 134. `ContratoParcela.numero` — o recorte da parcela
+      // que viaja DENTRO do contrato repete o `numero` da `Parcela`; a conta é
+      // de linhas do spec, não de portas. Nenhuma entrada nova de inteiro.
+    ).toBe(134);
 
     // A outra ponta: se um dia o gerador aprender `.int()`, este número deixa
     // de ser zero e a régua acima vira ruído — é o sinal de trocar a varredura
@@ -295,7 +299,13 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
       // E236: 927 → 928. `ManualDeUso.atualizadoEm` (`date-time`, nullable) na RESPOSTA
       // do `listManuais` — o mtime do PDF versionado; `null` = a instalação subiu sem ele.
       // E237: 928 → 930. `IndiceMonetario.atualizadoEm` (resposta do GET/PUT de índices) e nada de entrada.
-    ).toBe(930);
+      // E239/S-O112: 930 → 925 — e DESCE porque uma promessa vazia deixou de ser
+      // feita: `Contrato.parcelas` virou `ContratoParcela`, sem a volta
+      // `contrato → lead`, então o `ParcelaLead.ultimoContatoEm` que as CINCO
+      // operações de contrato prometiam dentro de cada parcela (e só o
+      // `POST /contratos` cumpria) saiu do Zod delas. As quatro datas da
+      // própria parcela continuam, sob o nome novo. Nenhuma entrada mudou.
+    ).toBe(925);
 
     // S-C281 — e nenhuma sobrou crua. O hook do `orval.config.ts` é um gesto
     // que se pode desligar; se alguém o desligar, o número acima continua 916

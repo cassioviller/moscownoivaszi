@@ -14,5 +14,6 @@ export interface AtendimentoInput {
   tipo?: AtendimentoInputTipo;
   bloqueioId?: string;
   inicio: Date;
+  /** @maxLength 1000 */
   observacao?: string;
 }

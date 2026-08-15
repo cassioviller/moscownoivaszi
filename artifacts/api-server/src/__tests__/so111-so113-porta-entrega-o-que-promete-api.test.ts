@@ -191,4 +191,43 @@ describe("S-O113/S-O111/S-O112 — a porta entrega o que o schema promete", () =
       .expect(200);
     expect(estornada.body.contrato?.lead?.noivaNome).toBe(lead.noivaNome);
   });
+
+  /**
+   * S-O112/E239 — **a outra metade: as duas portas de parcela SOLTA que
+   * faltavam, e o recorte de dentro do contrato.**
+   *
+   * Vermelho medido em 2026-08-15, antes do conserto:
+   * `gerar-plano → [0].contrato undefined · POST /contratos/:id/parcelas →
+   * contrato undefined` — as duas respondiam o `.returning()` cru. E o
+   * `GET /contratos/:id` prometia `parcelas[].contrato` e não entregava; hoje
+   * não promete: `Contrato.parcelas` é `ContratoParcela`, e o campo não vem
+   * porque não é para vir — quem lê o contrato já tem a noiva no `lead` dele.
+   */
+  it("S-O112 · o carnê gerado e a avulsa devolvem cada parcela COM o contrato e a noiva; dentro do contrato a parcela não promete a volta", async () => {
+    const { agent, contrato, lead } = await contratoDeVerdade(260);
+    const plano = await agent
+      .post(`/api/lojas/${f.lojaId}/contratos/${contrato.body.id}/parcelas/gerar-plano`)
+      .send({ numParcelas: 3, primeiroVencimento: dataFutura(10).toISOString() })
+      .expect(201);
+    const parcelas = plano.body as { contrato?: { leadId: string; lead?: { noivaNome: string } } }[];
+    expect(parcelas).toHaveLength(3);
+    for (const p of parcelas) {
+      expect(p.contrato?.leadId, "cada parcela do carnê diz de quem é").toBe(lead.id);
+      expect(p.contrato?.lead?.noivaNome).toBe(lead.noivaNome);
+    }
+
+    const avulsa = await agent
+      .post(`/api/lojas/${f.lojaId}/contratos/${contrato.body.id}/parcelas`)
+      .send({ descricao: "Ajuste extra", valorPrevisto: 80, vencimento: dataFutura(20).toISOString() })
+      .expect(201);
+    expect(avulsa.body.contrato?.lead?.noivaNome, "a avulsa também").toBe(lead.noivaNome);
+
+    // Dentro do contrato, a parcela é `ContratoParcela`: o Zod de resposta
+    // estripa o que o recorte não declara, e `contrato` não está nele.
+    const lido = await agent.get(`/api/lojas/${f.lojaId}/contratos/${contrato.body.id}`).expect(200);
+    const doContrato = lido.body.parcelas as { contrato?: unknown; mora?: unknown }[];
+    expect(doContrato.length).toBeGreaterThanOrEqual(4);
+    for (const p of doContrato) expect(p).not.toHaveProperty("contrato");
+    expect(lido.body.lead?.noivaNome, "a noiva vem no pai, uma vez").toBe(lead.noivaNome);
+  });
 });

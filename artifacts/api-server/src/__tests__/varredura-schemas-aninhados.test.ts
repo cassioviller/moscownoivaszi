@@ -77,7 +77,7 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
    * acrescenta um objeto aninhado a um schema de resposta, e é aí que a régua
    * serve — obriga a perguntar quem vai preenchê-lo.
    */
-  it("216 operações · 156 com schema de resposta · 74 com relação · 273 pares na fronteira", () => {
+  it("216 operações · 156 com schema de resposta · 75 com relação · 280 pares na fronteira", () => {
     /**
      * E221: 200 → 203, e as três são do recibo da cláusula 7ª — `listRecibos`,
      * `getReciboPdf` e `getPortalReciboPdf`. **Só uma acrescenta par à
@@ -192,7 +192,17 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // `GET` passou a povoar `Contrato.rescisao` para contrato ATIVO, e a
     // fronteira desce um degrau em toda porta que entrega o pai. São DUAS
     // portas povoando `rescisao` agora, e não uma.
-    expect(c.pares.length, "a fronteira mudou — um objeto aninhado nasceu, ou um pai passou a ser entregue").toBe(283);
+    // E239/S-O112: 283 → 280. `Contrato.parcelas` passou a ser
+    // `ContratoParcela` — a parcela SEM a volta para o contrato —, então os
+    // pares `parcelas.contrato` (e o degrau `parcelas.contrato.lead`) das
+    // quatro portas de contrato SAÍRAM da fronteira: eram promessa que só o
+    // `POST /contratos` cumpria e as outras três não (o GET, o PATCH e o
+    // cancelamento). A fronteira DESCE quando uma promessa vazia deixa de ser
+    // feita, e é a direção certa: −4 pares de `Parcela.contrato`, −1 de
+    // `ParcelaContrato.lead` (o do POST, que chegava até lá), +2 de
+    // `ContratoParcela.mora` (o GET e o PATCH relem pelo mesmo `with`, e a mora
+    // do carnê é o par que o E226 abriu — agora sob o nome novo).
+    expect(c.pares.length, "a fronteira mudou — um objeto aninhado nasceu, ou um pai passou a ser entregue").toBe(280);
     /**
      * **E199/S-O114 — 147 → 165 entregues, e é o maior salto que esta conta já
      * deu.** Não entrou uma linha de porta: o motor deixou de parar na borda da
@@ -232,7 +242,12 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // `Parcela.mora` (o carnê era a quarta leitura que a nota do E213 dava por
     // coberta, e eram três). Este vermelho é a régua VENDO o conserto da
     // S-C190: a porta que não entregava passou a entregar.
-    expect(c.pares.filter((p) => p.entregue).length).toBe(182);
+    // E239/S-O112: 182 → 185. Entram os dois de parcela SOLTA (`gerar-plano`
+    // e a avulsa passam por `comOContratoDela`) e os dois `ContratoParcela.mora`
+    // do GET e do PATCH (o par que o E226 abriu, sob o nome do recorte novo);
+    // sai o `parcelas.contrato` do POST, que era o único dos quatro de dentro
+    // do contrato que a promessa velha cumpria — e a promessa foi embora.
+    expect(c.pares.filter((p) => p.entregue).length).toBe(185);
     // E213: 89 → 99, e desta vez a coluna do NÃO cresce com razão. `Parcela` é
     // schema COMPARTILHADO: ela viaja em muitas respostas e só três montam a
     // `mora` (a fila de cobrança, o recebimento/perdão e o portal). É o mesmo
@@ -251,7 +266,14 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // E226: 102 → 101 — o par `Parcela.mora` do `GET /contratos/{contratoId}`
     // atravessou para a coluna de cima. A parcela do carnê era a única que a
     // vendedora lia SEM a conta da 9ª.
-    expect(c.pares.filter((p) => !p.entregue).length).toBe(101);
+    // E239/S-O112: 101 → 95, e os seis são a sobra inteira. Três
+    // `Parcela.contrato` mudos DENTRO do contrato saíram pela PROMESSA (o GET,
+    // o PATCH e o cancelamento não prometem mais a volta — `ContratoParcela`),
+    // mais o degrau `ParcelaContrato.lead` do POST que só chegava até ali; e
+    // os dois de parcela SOLTA (`gerar-plano` e a avulsa) atravessaram para a
+    // coluna de cima pela ENTREGA (`comOContratoDela`). Os `.mora` das
+    // parcelas do contrato continuam onde estavam — só mudaram de nome.
+    expect(c.pares.filter((p) => !p.entregue).length).toBe(95);
   });
 
   /**
@@ -346,23 +368,30 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // o que rescindir, e a lista não é onde se decide.
     "Contrato.rescisao",
     "Contrato.vendedora",
+    // E239/S-O112: a parcela DENTRO do contrato é `ContratoParcela`, e a mora
+    // dela é entregue pelo GET (E226) e pelo PATCH (que relê pelo mesmo
+    // `with`), e não pelo POST nem pelo cancelamento — o mesmo papel do
+    // `Parcela.mora` abaixo, sob o nome do recorte novo.
+    "ContratoParcela.mora",
     "Lead.interesse",
     "LeadInteresse.atributos",
     "Orcamento.itens",
     "Orcamento.lead",
-    "Parcela.contrato",
+    // E239/S-O112: `Parcela.contrato` e `ParcelaContrato.lead` SAÍRAM desta
+    // lista — toda porta que responde uma parcela SOLTA a entrega agora (a
+    // lista, receber, estornar, perdoar, o carnê gerado e a avulsa), e a que
+    // viaja dentro do contrato não a promete mais.
     // E213 — `Parcela.mora` é montada pelas três portas que a calculam (a fila
     // de cobrança, o recebimento/perdão e o portal) e não pelas outras que
     // devolvem `Parcela`. Schema COMPARTILHADO fazendo o papel dele, como o
     // `Lead.interesse` — não porta muda.
     "Parcela.mora",
-    "ParcelaContrato.lead",
     "Perfil.acessosModulos",
     "Vestido.atributos",
     "Vestido.fotos",
   ];
 
-  it("15 arestas são entregues por umas portas e não por outras, e o conjunto está travado", () => {
+  it("14 arestas são entregues por umas portas e não por outras, e o conjunto está travado", () => {
     const desiguais = [...c.arestas]
       .filter(([, v]) => v.entrega > 0 && v.promete > v.entrega)
       .map(([k]) => k)

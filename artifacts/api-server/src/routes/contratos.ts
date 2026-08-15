@@ -178,13 +178,14 @@ async function contratoAtivo(contratoId: string, lojaId: string): Promise<boolea
  * `GET /financeiro/parcelas` é quem monta o par (`financeiro.ts:139`), e o
  * recorte é o mesmo: o `.parse` do schema reduz o contrato a `{leadId, lead}`.
  *
- * As outras quatro mudas da sobra **não se fecham assim, e é decisão de spec**:
- * ali a parcela viaja DENTRO do contrato (`GET /contratos/:id`, o cancelamento,
- * as duas portas de geração de carnê), e devolver o contrato dentro de cada
- * parcela do próprio contrato é repetir o pai N vezes no filho. O que está
- * errado lá é a PROMESSA, não a entrega — a saída é o idioma que o E192 já
- * usou para `Atendimento.ajustes`: um schema estreito para o caso aninhado.
- * Fica na S-O112, agora com o diagnóstico separado em duas metades.
+ * **E239 fechou a S-O112 pelas duas metades**, e a medição corrigiu a nota
+ * acima: eram 11 pares prometidos e 5 mudos — três DENTRO do contrato (o GET,
+ * o PATCH e o cancelamento, por `parcelas.contrato`) e dois em parcela SOLTA
+ * (`gerar-plano` e a avulsa). Os dois de parcela solta passam por aqui agora,
+ * como receber, estornar e perdoar já passavam. Os três de dentro do contrato
+ * fecharam pela PROMESSA: `Contrato.parcelas` é `ContratoParcela` (a parcela
+ * sem a volta), o idioma do E192 para `Atendimento.ajustes` — devolver o
+ * contrato dentro de cada parcela do próprio contrato é repetir o pai N vezes.
  */
 async function comOContratoDela<T extends { id: string }>(parcela: T) {
   const completa = await db.query.parcelasTable.findFirst({
@@ -3301,7 +3302,8 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas", async (req, res): P
     res.status(422).json({ error: "CONTRATO_NAO_ATIVO", detalhe: `Contrato está ${desfecho.naoAtivo}` });
     return;
   }
-  res.status(201).json(CreateParcelaAvulsaResponse.parse(desfecho.parcela));
+  // S-O112/E239 — a avulsa volta com o contrato e a noiva, como toda parcela solta.
+  res.status(201).json(CreateParcelaAvulsaResponse.parse(await comOContratoDela(desfecho.parcela)));
 });
 
 router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (req, res): Promise<void> => {
@@ -3632,7 +3634,9 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (
   }
 
   const criadas = [...desfecho.criadas].sort((a, b) => a.numero - b.numero);
-  res.status(201).json(GerarPlanoParcelasResponse.parse(criadas));
+  // S-O112/E239 — cada parcela do carnê volta com o contrato e a noiva; é gesto
+  // humano de uma vez por contrato, e N leituras cabem nele.
+  res.status(201).json(GerarPlanoParcelasResponse.parse(await Promise.all(criadas.map((p) => comOContratoDela(p)))));
 });
 
 export default router;

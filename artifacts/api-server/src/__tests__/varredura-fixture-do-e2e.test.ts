@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { arquivosVersionados } from "./arquivos-versionados";
+import { corpoSeguindoChamadas, lerRotas } from "./schemas-aninhados";
 
 /**
  * S-O101 — **spec que escreve no banco compartilhado apaga o que escreveu, e a
@@ -104,6 +105,141 @@ function naoCobertas(fonte: string, grafo: Map<string, string[]>): string[] {
   if (inseridas.length === 0) return [];
   const apagadas = new Set([...corpoDosHooks(fonte).matchAll(APAGA)].map((m) => m[1]!));
   return inseridas.filter((t) => !coberta(t, apagadas, grafo));
+}
+
+/**
+ * S-O118/E239 — **o que o spec cria ATRAVÉS da aplicação também é escrita.**
+ *
+ * Até aqui a régua enxergava `db.insert` — a escrita direta — e o spec que
+ * criava o contrato por `request.post(`${API_URL}/api/lojas/…/contratos`)`
+ * ficava invisível para ela, embora deixasse no banco de dev exatamente o
+ * mesmo rastro. A varredura das cabines (S-D25) fechava isso para UMA rota,
+ * com um regex de `.post(…/cabines)`; a forma geral é a da regra 22: cruzar as
+ * rotas de criação do ROTEADOR (o `router.post` e as tabelas em que o handler
+ * insere, seguindo a chamada como o motor da `varredura-schemas-aninhados` já
+ * faz) com os `.post(`…`)` de cada spec.
+ *
+ * Medido em 2026-08-15, antes de escrever: **66 `router.post` no roteador,
+ * 113 pares (spec, rota) fora de `/api/auth`, todos com handler** — a rota mais
+ * chamada é `POST /leads` (22 specs), depois `POST /contratos` (12), que
+ * insere em CINCO tabelas (`contratos`, `parcelas`, `contrato_itens`,
+ * `contrato_bloqueios`, `audit_log`).
+ *
+ * O que fica FORA, dito: o que o spec cria CLICANDO (`getByRole("button")`)
+ * não tem forma estática — o botão não diz a rota que chama. É a metade que
+ * só o run vê, e o placar dele é a régua (S-O93).
+ */
+const CHAMA_POST = /\.post\(\s*`([^`]*)`/g;
+/** `request.delete(`…`)` num hook — a limpeza feita pela porta da API. */
+const CHAMA_DELETE = /\.delete\(\s*`([^`]*)`/g;
+
+/**
+ * Escrita COLATERAL, que não é fixture — dita, com o motivo de cada linha:
+ *
+ * - `audit_log`: a trilha é o rastro de todo gesto; a linha fica quando a
+ *   entidade some (o `entidadeId` não tem FK) e cai com a loja. Cobrá-la aqui
+ *   obrigaria todo spec a apagar trilha, que é exatamente o que a casa não faz.
+ * - `sessoes`: o `POST /auth/login` cria a sessão de quem encena o spec. Ela
+ *   tem `expira_em`, e o próprio login apaga as sessões anteriores do mesmo
+ *   usuário (`lib/auth.ts` — `delete(sessoesTable).where(usuarioId)`): o run
+ *   seguinte recolhe a deste. Medido em 2026-08-15: sem esta linha, **44 dos
+ *   65 specs** reprovariam só por terem feito login pela API.
+ */
+const ESCRITA_COLATERAL = new Set(["auditLogTable", "sessoesTable"]);
+
+/**
+ * Os helpers de limpeza moram em `e2e/helpers.ts` (`apagarCabineCriada`,
+ * `apagarReservaDeProva`), e o hook os CHAMA em vez de escrever o `delete`.
+ * O leitor de hook segue a chamada um nível — é a S-O114 pelo lado do E2E:
+ * ler só o corpo do hook diria que a cabine do `18-agenda-grade` fica de pé,
+ * e o `apagarCabineCriada` a apaga junto com os atendimentos dela.
+ */
+function funcoesDosHelpers(): Map<string, string> {
+  const fonte = readFileSync(join(RAIZ, "e2e/helpers.ts"), "utf8");
+  const mapa = new Map<string, string>();
+  const re = /export\s+(?:async\s+)?function\s+(\w+)\s*\([^)]*\)[^{]*\{/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(fonte)) !== null) {
+    const abre = re.lastIndex - 1;
+    let profundidade = 0;
+    for (let i = abre; i < fonte.length; i++) {
+      if (fonte[i] === "{") profundidade++;
+      else if (fonte[i] === "}") {
+        profundidade--;
+        if (profundidade === 0) {
+          mapa.set(m[1]!, fonte.slice(abre, i));
+          break;
+        }
+      }
+    }
+  }
+  return mapa;
+}
+
+function corpoDosHooksSeguindoHelpers(fonte: string, helpers: Map<string, string>): string {
+  let corpo = corpoDosHooks(fonte);
+  for (const m of corpo.matchAll(/\b(\w+)\s*\(/g)) {
+    const h = helpers.get(m[1]!);
+    if (h) corpo += "\n" + h;
+  }
+  return corpo;
+}
+
+/**
+ * O roteador lido pelas duas pontas: rota normalizada (`/lojas/:p/leads`) →
+ * tabelas em que o `router.post` INSERE, e → tabelas que o `router.delete`
+ * APAGA (a limpeza que um hook faz por `request.delete` conta como `db.delete`).
+ */
+type RotasDoRoteador = { cria: Map<string, string[]>; apaga: Map<string, string[]> };
+
+function rotasDoRoteador(): RotasDoRoteador {
+  const { handlers, funcoes } = lerRotas();
+  const cria = new Map<string, string[]>();
+  const apaga = new Map<string, string[]>();
+  for (const h of handlers) {
+    if (h.metodo !== "post" && h.metodo !== "delete") continue;
+    const corpo = corpoSeguindoChamadas(h.corpo, funcoes);
+    const rota = h.rota.replace(/:[A-Za-z0-9_]+/g, ":p");
+    if (h.metodo === "post") {
+      cria.set(
+        rota,
+        [...new Set([...corpo.matchAll(INSERE)].map((m) => m[1]!))].filter((t) => !ESCRITA_COLATERAL.has(t)),
+      );
+    } else {
+      apaga.set(rota, [...new Set([...corpo.matchAll(APAGA)].map((m) => m[1]!))]);
+    }
+  }
+  return { cria, apaga };
+}
+
+function rotaDoSpec(url: string): string {
+  return url.replace(/\$\{[^}]+\}/g, ":p").split("?")[0]!.replace(/^.*?\/api/, "");
+}
+
+/** As tabelas que o spec preenche pela API — o `.post` casado com o roteador. */
+function inseridasPelaApi(fonte: string, rotas: RotasDoRoteador): string[] {
+  const out = new Set<string>();
+  for (const m of fonte.matchAll(CHAMA_POST)) for (const t of rotas.cria.get(rotaDoSpec(m[1]!)) ?? []) out.add(t);
+  return [...out];
+}
+
+/** As tabelas que os hooks apagam — por `db.delete`, pelos helpers, ou pela porta `DELETE` da API. */
+function apagadasNosHooks(fonte: string, rotas: RotasDoRoteador, helpers: Map<string, string>): Set<string> {
+  const corpo = corpoDosHooksSeguindoHelpers(fonte, helpers);
+  const out = new Set([...corpo.matchAll(APAGA)].map((m) => m[1]!));
+  for (const m of corpo.matchAll(CHAMA_DELETE)) for (const t of rotas.apaga.get(rotaDoSpec(m[1]!)) ?? []) out.add(t);
+  return out;
+}
+
+function naoCobertasPelaApi(
+  fonte: string,
+  grafo: Map<string, string[]>,
+  rotas: RotasDoRoteador,
+  helpers: Map<string, string> = new Map(),
+): string[] {
+  const inseridas = inseridasPelaApi(fonte, rotas);
+  if (inseridas.length === 0) return [];
+  return inseridas.filter((t) => !coberta(t, apagadasNosHooks(fonte, rotas, helpers), grafo));
 }
 
 function specs(): string[] {
@@ -225,4 +361,121 @@ describe("varredura — o que o spec escreve no banco, o hook apaga (S-O101)", (
       "e2e/62-avaria-fecha.spec.ts",
     ]);
   });
+
+  /**
+   * S-O118/E239 — a segunda ponta: **a escrita que passa pela API.**
+   */
+  describe("o que o spec cria pela API também precisa de hook (S-O118)", () => {
+    const rotas = rotasDoRoteador();
+    const helpers = funcoesDosHelpers();
+
+    it("o roteador é lido inteiro, e as rotas de criação dizem em que tabelas escrevem", () => {
+      // Piso: 66 `router.post` em 2026-08-15. Sem piso, um regex quebrado
+      // devolveria mapa vazio e aprovaria todo spec.
+      expect(rotas.cria.size, "`router.post` lidos do api-server").toBeGreaterThanOrEqual(50);
+      expect(rotas.apaga.size, "`router.delete` lidos do api-server").toBeGreaterThanOrEqual(15);
+      expect(rotas.apaga.get("/lojas/:p/contas-pagar/:p"), "apagar a conta pela API apaga `contas_pagar`").toContain("contasPagarTable");
+      expect(rotas.cria.get("/lojas/:p/leads"), "criar a noiva escreve em `leads`").toEqual(["leadsTable"]);
+      // A rota que mais escreve: cinco tabelas, e a trilha fica de fora por decisão.
+      expect(rotas.cria.get("/lojas/:p/contratos")).toEqual(
+        expect.arrayContaining(["contratosTable", "parcelasTable", "contratoItensTable", "contratoBloqueiosTable"]),
+      );
+      expect(rotas.cria.get("/lojas/:p/contratos")).not.toContain("auditLogTable");
+    });
+
+    it("o leitor de `.post` casa a URL do spec com a rota do roteador, com ou sem API_URL", () => {
+      const fonte = `
+        await request.post(\`\${API_URL}/api/lojas/\${estado.lojaId}/leads\`, { data: {} });
+        await page.request.post(\`/api/lojas/\${lojaId}/contratos\`, { data: {} });
+        await request.post(\`\${API_URL}/api/auth/login\`, { data: {} });
+        await request.post(\`\${API_URL}/api/lojas/\${id}/orcamentos/\${o}/link?x=1\`);
+      `;
+      const achadas = inseridasPelaApi(fonte, rotas).sort();
+      expect(achadas).toContain("leadsTable");
+      expect(achadas).toContain("contratosTable");
+      expect(achadas, "a query string não atrapalha o casamento").toContain("orcamentoVersoesTable");
+      // Login não cria nada; um `.post` sem casamento é ignorado, não inventado.
+      expect(inseridasPelaApi("await request.post(`${API_URL}/api/rota/que/nao/existe`)", rotas)).toEqual([]);
+    });
+
+    it("a régua REPROVA o contrato criado pela API e não apagado — e aprova o hook", () => {
+      const semHook = `
+        test("fecha o contrato", async ({ request }) => {
+          await request.post(\`\${API_URL}/api/lojas/\${lojaId}/contratos\`, { data: {} });
+        });
+        test.afterAll(async () => { await db.delete(leadsTable).where(eq(leadsTable.id, leadId)); });
+      `;
+      // A noiva cai no hook, mas o contrato é RESTRICT — e as parcelas caem COM
+      // o contrato, então a única linha que falta é a dele.
+      expect(naoCobertasPelaApi(semHook, grafo, rotas)).toEqual(["contratosTable", "parcelasTable", "contratoItensTable"]);
+      const comHook = semHook.replace(
+        "await db.delete(leadsTable)",
+        "await db.delete(contratosTable).where(eq(contratosTable.leadId, leadId));\n await db.delete(leadsTable)",
+      );
+      expect(naoCobertasPelaApi(comHook, grafo, rotas)).toEqual([]);
+    });
+
+    it("todo spec que cria pela API tem a limpeza num hook, ou está na dívida com motivo", () => {
+      const ofensores: string[] = [];
+      for (const relativo of specs()) {
+        const descobertas = naoCobertasPelaApi(readFileSync(join(RAIZ, relativo), "utf8"), grafo, rotas, helpers);
+        if (descobertas.length > 0) ofensores.push(`${relativo}: ${descobertas.join(", ")}`);
+      }
+      expect(ofensores.sort()).toEqual(Object.keys(CRIA_PELA_API_SEM_HOOK).sort());
+    });
+
+    it("a dívida não guarda linha morta", () => {
+      const vivos = new Set(
+        specs().filter((r) => naoCobertasPelaApi(readFileSync(join(RAIZ, r), "utf8"), grafo, rotas, helpers).length > 0)
+          .map((r) => `${r}: ${naoCobertasPelaApi(readFileSync(join(RAIZ, r), "utf8"), grafo, rotas, helpers).join(", ")}`),
+      );
+      const mortas = Object.keys(CRIA_PELA_API_SEM_HOOK).filter((k) => !vivos.has(k));
+      expect(mortas, "linha da dívida que já não reprova — apague-a").toEqual([]);
+    });
+  });
 });
+
+/**
+ * **A dívida de quem cria pela API e não recolhe num hook — 9 de 65 specs,
+ * medidos em 2026-08-15, cada linha com o julgamento.**
+ *
+ * A régua nasceu VERMELHA (regra 34): nove specs, e nenhum deles é o
+ * `52-orcamento-vira-contrato` que a sobra citava — ele apaga contrato,
+ * bloqueio, lead e vestido no `afterAll`, e a régua o vê verde. O que ela
+ * achou é de três classes, e a classe decide o que fazer:
+ *
+ * - **rastro de verdade**, que o run seguinte herda: as contas a pagar e os
+ *   pagamentos do `15` e do `33`, a regra de comissão do `41`, o saldo de
+ *   referência do `32`, a conta da rescisão do `62`. Cada um pede um
+ *   `delete` no hook — e o E2E precisa rodar para provar que o hook não
+ *   derruba o spec seguinte, o que é trabalho de quem tem a porta (S-O130).
+ * - **decisão escrita no próprio spec**: o `39` e o `40` CANCELAM o contrato
+ *   em vez de apagá-lo (*"sem apagar o histórico"*), e a noiva fica; o `06`
+ *   recolhe no COMEÇO do run seguinte (o `request.delete` antes do `post`).
+ *   São padrões que a régua não distingue de esquecimento, e ficam ditos.
+ * - **falso positivo do detector**: o `12` faz `POST /contas-pagar` para
+ *   ouvir **403** — a régua lê a rota e não o status esperado.
+ *
+ * Linha paga sai daqui (o teste ao lado cobra); linha nova entra com motivo,
+ * ou o spec ganha o hook.
+ */
+const CRIA_PELA_API_SEM_HOOK: Record<string, string> = {
+  "e2e/06-agenda.spec.ts: atendimentosTable":
+    "o atendimento do dia fixo (2028-02-14) é recolhido no COMEÇO do run seguinte, pelo `request.delete` que precede o `post` — limpeza de partida, não de hook.",
+  "e2e/12-permissoes.spec.ts: contasPagarTable":
+    "o `POST /contas-pagar` é da Recepção e espera 403 — nada nasce; a régua lê a rota, não o status.",
+  "e2e/15-onda5-pdf-e-folha.spec.ts: contasPagarTable, pagamentosTable, pagamentoItensTable":
+    "rastro real: `recorrencias/gerar` cria as contas de 2025-01 e o spec paga uma; sem hook. S-O130.",
+  "e2e/32-alerta-caixa.spec.ts: saldosReferenciaTable":
+    "rastro real: o saldo de referência de R$ 100.000 do dia fica (a conta a pagar é apagada pela API no hook, e a régua vê). S-O130.",
+  "e2e/33-auditoria-filtros.spec.ts: contasPagarTable, pagamentosTable, pagamentoItensTable":
+    "rastro real: a conta de R$ 123,45 e o pagamento dela ficam; sem hook. S-O130.",
+  "e2e/39-pendencias-comissao.spec.ts: leadsTable, contratosTable, parcelasTable, contratoItensTable, contratoBloqueiosTable":
+    "decisão do spec: o hook CANCELA o contrato em vez de apagá-lo (\"sem apagar o histórico\"), e a noiva fica com ele.",
+  "e2e/40-reabrir-fechamento.spec.ts: leadsTable, contratosTable, parcelasTable, contratoItensTable, contratoBloqueiosTable, contasPagarTable":
+    "decisão do spec para o contrato (cancelado, não apagado); a conta a pagar do fechamento de comissão fica. S-O130.",
+  "e2e/41-colocacao-comissao.spec.ts: comissaoRegrasTable, comissaoFaixasTable":
+    "rastro real: o hook apaga contratos e noivas e deixa a REGRA de comissão criada; sem hook para ela. S-O130.",
+  "e2e/62-avaria-fecha.spec.ts: contasPagarTable":
+    "rastro real: o `POST /cancelar` cria a conta a pagar da devolução (13ª §3º) e o hook apaga contrato, vestido, reserva e noiva — a conta não cai com nenhum deles. S-O130.",
+};

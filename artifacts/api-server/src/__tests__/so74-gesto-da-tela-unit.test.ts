@@ -26,10 +26,9 @@ import { arquivosVersionados } from "./arquivos-versionados";
  *   `/lojas/:id/reservas` — as cinco do agregado.
  * ✔ conta como chamador: `useOperacao` ou `operacao(` em `moscow-noivas/src`
  *   (fora de teste) e em `e2e/`. É onde a pessoa clica.
- * ✘ NÃO cobre: as outras 195 operações do cliente. Medido em 2026-08-12:
- *   **32 das 200 não têm chamador**, e a maioria é falso positivo deste
- *   detector — a tela usa a URL da operação (`<img src>`, `href` de exportação)
- *   em vez do hook. Separar as duas classes é a **S-O96**.
+ * ✔ cobre, desde o E239 (S-O96): as OUTRAS operações do cliente, no bloco de
+ *   baixo — com o detector que enxerga as três formas de chamar (o hook, o
+ *   `getXUrl(` e a URL literal num `href`/`src`), e a dívida nomeada.
  * ✘ NÃO cobre: se o gesto está no lugar CERTO, nem se ele pede o módulo certo
  *   — a segunda é a `s36-gate-da-tela-unit`, ao lado.
  */
@@ -113,5 +112,115 @@ describe("S-O74 — toda porta de `reservas` tem gesto de tela, ou dívida com m
     // Dívida que fica na tabela depois de paga é a S-A4/S-A6 da regra 21: a
     // lista deixa de dizer o que falta.
     expect(paga).toEqual([]);
+  });
+});
+
+/**
+ * **S-O96/E239 — a régua de gesto para o cliente INTEIRO, e o detector que
+ * não erra com URL em `href`/`src`.**
+ *
+ * A sobra media *"32 das 200 sem chamador"* e dizia que a maioria era falso
+ * positivo. Medido de novo em 2026-08-15, antes de escrever: são **216
+ * operações** (não 200), **34 sem hook** pelo detector do E189; dessas, **5**
+ * usam `getXUrl(` (a foto do vestido e os quatro `exportar*`) e **18** usam a
+ * URL LITERAL num `href`, `src` ou `request.<verbo>` (o PDF do contrato, o
+ * recibo, o backup, a foto da avaria, os PDFs do portal, o manual…). Sobram
+ * **11** — e ao escrever a régua sobraram **10**: o `createReserva` tem
+ * chamador LITERAL no `62-avaria-fecha` (`request.post(…/reservas)`), que o
+ * detector do E189 não via. Ele continua na dívida do bloco de cima, que mede
+ * só o HOOK (gesto de tela), e sai desta, que mede quem exercita a porta.
+ * Contando só as TELAS (sem o `e2e/`) seriam 17: as seis a mais são portas
+ * que só a suíte encena (`deletePerfil`, `deleteLead`, `deleteCabine`,
+ * `createReserva`, `deleteBloqueio`, `pagarContaPagar`) — a régua conta o
+ * `e2e/` como o E189 contava, porque é onde a porta é EXERCITADA.
+ *
+ * O detector: uma operação tem chamador se em `moscow-noivas/src` (fora de
+ * teste) ou em `e2e/` aparece `useX(`/`x(`, OU `getXUrl(`, OU o caminho da
+ * operação como template literal (`/api/lojas/${…}/contratos/${…}/pdf`).
+ */
+function operacoesDoCliente(): { op: string; caminhos: string[] }[] {
+  const cli = readFileSync(join(RAIZ, "lib", "api-client-react", "src", "generated", "api.ts"), "utf8");
+  const out: { op: string; caminhos: string[] }[] = [];
+  for (const m of cli.matchAll(/export const get(\w+)Url = [\s\S]*?\n\}/g)) {
+    const op = m[1]![0]!.toLowerCase() + m[1]!.slice(1);
+    const caminhos = [...m[0].matchAll(/`(\/api\/[^`]+)`/g)].map((t) =>
+      t[1]!.replace(/\$\{[^}]+\}/g, ":p").split("?")[0]!,
+    );
+    out.push({ op, caminhos: [...new Set(caminhos)] });
+  }
+  return out;
+}
+
+const escapar = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+
+/** As três formas de chamar uma operação, num texto só. */
+function temChamador(op: string, caminhos: string[], fonte: string): "hook" | "url" | "literal" | null {
+  const Op = op[0]!.toUpperCase() + op.slice(1);
+  if (new RegExp(`\\b(use${Op}|${op})\\s*\\(`).test(fonte)) return "hook";
+  if (new RegExp(`\\bget${Op}Url\\s*\\(`).test(fonte)) return "url";
+  for (const c of caminhos) {
+    const re = new RegExp(escapar(c).replace(/:p/g, "\\$\\{[^}]+\\}") + "(?![\\w/-])");
+    if (re.test(fonte)) return "literal";
+  }
+  return null;
+}
+
+/**
+ * A dívida do cliente inteiro — cada linha é um julgamento, e o julgamento
+ * separa as duas classes que a sobra pedia: **sem gesto por decisão** e
+ * **porta sem tela** (a S-O131 recolhe as segundas).
+ */
+const SEM_GESTO_NO_CLIENTE: Record<string, string> = {
+  healthCheck: "por decisão — é o monitor quem bate em /healthz, não uma pessoa; a tela não tem o que fazer com ele.",
+  deleteReserva: SEM_GESTO_POR_DECISAO.deleteReserva!,
+  deleteVestido:
+    "por decisão — a peça sai de linha pelo status (`inativo`, em `vestidos/[id]/editar.tsx`) e não some: contrato e trilha apontam para ela. Apagar é porta de API para o acervo de teste.",
+  deleteOrcamento:
+    "por decisão — orçamento recusado/vencido é histórico da noiva; a tela muda o status e não apaga (o E162 fez o gate em cima dele).",
+  deleteLoja: "porta sem tela — o superadmin apaga loja só pela API (S-O131).",
+  deleteUsuario: "porta sem tela — o admin desativa pela edição e não tem botão de apagar (S-O131).",
+  deleteAtributo: "porta sem tela — o catálogo de atributos (pages/catalogo) cria e edita, não remove (S-O131).",
+  deleteAtributoOpcao: "porta sem tela — idem, para a opção (S-O131).",
+  updateComissaoRegra:
+    "porta sem tela — pages/comissoes cria e remove regra; editar uma existente é só pela API (S-O131).",
+  createParcelaAvulsa:
+    "por decisão — a parcela avulsa nasce por gesto com vínculo: o reparo (`POST /avarias/:id/cobrar`, F22/E97) e as cobranças do contrato (E217). A porta crua fica para a API.",
+  listAuditoriaGlobal: "porta sem tela — a auditoria do superadmin, cruzando lojas, não tem página (S-O131).",
+};
+
+describe("S-O96 — toda operação do cliente gerado tem chamador, ou dívida com motivo", () => {
+  const operacoes = operacoesDoCliente();
+  const fonte = fonteDeQuemChama();
+
+  it("o cliente é lido inteiro e o detector enxerga as três formas", () => {
+    // Piso: 216 operações em 2026-08-15. Sem ele, um regex quebrado no cliente
+    // devolveria zero e a dívida abaixo seria toda "linha morta".
+    expect(operacoes.length).toBeGreaterThanOrEqual(200);
+    const fonteDeProva = [
+      "const { data } = useListReservas(lojaId);",
+      "<img src={getGetVestidoFotoUrl(lojaId, id, 0)} />",
+      "<a href={`/api/lojas/${lojaId}/contratos/${contrato.id}/pdf`}>PDF</a>",
+    ].join("\n");
+    const de = (op: string) => operacoes.find((o) => o.op === op)!;
+    expect(temChamador("listReservas", de("listReservas").caminhos, fonteDeProva)).toBe("hook");
+    expect(temChamador("getVestidoFoto", de("getVestidoFoto").caminhos, fonteDeProva)).toBe("url");
+    expect(temChamador("getContratoPdf", de("getContratoPdf").caminhos, fonteDeProva)).toBe("literal");
+    // E o que NÃO é chamador: a URL da lista de contratos não é a do PDF, e
+    // `/contratos/${id}/pdf-x` não casa com `/pdf` — a régua exige a fronteira.
+    expect(temChamador("getReciboPdf", de("getReciboPdf").caminhos, fonteDeProva)).toBeNull();
+    expect(temChamador("getContratoPdf", de("getContratoPdf").caminhos, "`/api/lojas/${l}/contratos/${c}/pdf-x`")).toBeNull();
+  });
+
+  it("nenhuma operação fica sem chamador e sem julgamento", () => {
+    const semGesto = operacoes.filter((o) => temChamador(o.op, o.caminhos, fonte) === null).map((o) => o.op).sort();
+    expect(semGesto).toEqual(Object.keys(SEM_GESTO_NO_CLIENTE).sort());
+  });
+
+  it("a dívida não guarda linha morta", () => {
+    const paga = Object.keys(SEM_GESTO_NO_CLIENTE).filter((op) => {
+      const o = operacoes.find((x) => x.op === op);
+      return !o || temChamador(op, o.caminhos, fonte) !== null;
+    });
+    expect(paga, "operação que ganhou gesto (ou saiu do cliente) — tire-a da dívida").toEqual([]);
   });
 });

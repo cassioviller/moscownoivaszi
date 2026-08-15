@@ -9,10 +9,10 @@ import type { ContratoDescontoTipo } from './contratoDescontoTipo';
 import type { ContratoEstadoCivil } from './contratoEstadoCivil';
 import type { ContratoFormaPagamento } from './contratoFormaPagamento';
 import type { ContratoItem } from './contratoItem';
+import type { ContratoParcela } from './contratoParcela';
 import type { ContratoPecasItem } from './contratoPecasItem';
 import type { ContratoStatus } from './contratoStatus';
 import type { Lead } from './lead';
-import type { Parcela } from './parcela';
 import type { Rescisao } from './rescisao';
 import type { Usuario } from './usuario';
 
@@ -80,7 +80,7 @@ export interface Contrato {
   observacoes?: string | null;
   fechadoEm: Date;
   rescisao?: Rescisao | null;
-  parcelas?: Parcela[];
+  parcelas?: ContratoParcela[];
   itens?: ContratoItem[];
   lead?: Lead;
   vendedora?: Usuario;

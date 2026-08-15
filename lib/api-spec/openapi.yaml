@@ -5385,7 +5385,7 @@ components:
       properties:
         nome: { type: string, minLength: 1 }
         cnpj: { type: string, description: "CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000/0000-00. Vazio apaga. (E233)" }
-        endereco: { type: string }
+        endereco: { type: string, maxLength: 300 }
         telefone: { type: string }
         # E234 (D7) — os sete do instrumento. `representanteCpf` passa pela régua do E233 (422 CPF_INVALIDO). Vazio apaga.
         cidade: { type: string }
@@ -5400,7 +5400,7 @@ components:
       properties:
         nome: { type: string, minLength: 1 }
         cnpj: { type: string, description: "CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000/0000-00. Vazio apaga. (E233)" }
-        endereco: { type: string }
+        endereco: { type: string, maxLength: 300 }
         telefone: { type: string }
         # E234 (D7) — os sete do instrumento. `representanteCpf` passa pela régua do E233 (422 CPF_INVALIDO). Vazio apaga.
         cidade: { type: string }
@@ -5421,7 +5421,7 @@ components:
       properties:
         nome: { type: string, minLength: 1 }
         cnpj: { type: string, description: "CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000/0000-00. Vazio apaga. (E233)" }
-        endereco: { type: string }
+        endereco: { type: string, maxLength: 300 }
         telefone:
           type: string
           description: >
@@ -5864,7 +5864,7 @@ components:
         tamanho: { type: string }
         cor: { type: string }
         categoria: { type: string }
-        observacoes: { type: string }
+        observacoes: { type: string, maxLength: 1000 }
         atributos:
           type: array
           items:
@@ -5891,7 +5891,7 @@ components:
         # peça do acervo em silêncio — `vestidos.ts` decide INATIVO por
         # `status !== "ativo"`. Agora a grafia errada é 400 na borda.
         status: { type: string, enum: [ativo, inativo] }
-        observacoes: { type: string }
+        observacoes: { type: string, maxLength: 1000 }
         atributos:
           type: array
           items:
@@ -5995,7 +5995,7 @@ components:
         whatsapp: { type: string }
         casamentoData: { type: string, format: date-time }
         casamentoHorario: { type: string }
-        casamentoLocal: { type: string }
+        casamentoLocal: { type: string, maxLength: 300 }
         origem: { type: string, enum: [LOJA, WHATSAPP, SITE, INSTAGRAM] }
         # E215 — a qualificação de quem assina. Opcionais aqui de propósito: o
         # cadastro nasce de uma ligação perguntando preço, e a régua é do FECHO.
@@ -6024,12 +6024,12 @@ components:
         whatsapp: { type: string }
         casamentoData: { type: string, format: date-time }
         casamentoHorario: { type: string }
-        casamentoLocal: { type: string }
+        casamentoLocal: { type: string, maxLength: 300 }
         perdidaMotivo:
           type: string
           enum: [PRECO, DATA_INDISPONIVEL, CONCORRENTE, DESISTENCIA, SEM_RETORNO, OUTRO]
           description: "Obrigatório quando etapa vira PERDIDO; ignorado nas demais"
-        perdidaDetalhe: { type: string }
+        perdidaDetalhe: { type: string, maxLength: 1000 }
         # F2 (E98): a origem passou a ser corrigível — errar o canal no cadastro
         # envenenava /leads/conversao sem conserto possível. A janela fecha na
         # CONVERSÃO, não no contrato: é `converteu(etapa)` que decide, a mesma
@@ -6087,8 +6087,8 @@ components:
       # separados: `null` é APAGUE, ausente segue sendo "não mexi" (é o que o
       # `definirTeto` do E2E 19 usa, mandando só o teto).
       properties:
-        algoAMais: { type: ["string", "null"] }
-        naoQuerUsar: { type: ["string", "null"] }
+        algoAMais: { type: ["string", "null"], maxLength: 1000 }
+        naoQuerUsar: { type: ["string", "null"], maxLength: 1000 }
         tetoOrcamento: { type: ["number", "null"] }
         atributos:
           type: array
@@ -6257,7 +6257,7 @@ components:
       properties:
         data: { type: string, format: date-time }
         canal: { type: string, enum: [WHATSAPP, TELEFONE, PRESENCIAL, OUTRO] }
-        observacao: { type: string }
+        observacao: { type: string, maxLength: 1000 }
 
     # ── Agenda ──
     ItemEstoque:
@@ -6329,7 +6329,7 @@ components:
         usuarioId: { type: string }
         inicio: { type: string }
         fim: { type: string }
-        motivo: { type: string }
+        motivo: { type: string, maxLength: 300 }
     Cabine:
       type: object
       required: [id, lojaId, nome, ativo]
@@ -6420,7 +6420,7 @@ components:
         tipo: { type: string, enum: [ATENDIMENTO, PROVA] }
         bloqueioId: { type: string }
         inicio: { type: string, format: date-time }
-        observacao: { type: string }
+        observacao: { type: string, maxLength: 1000 }
     AtendimentoUpdate:
       type: object
       properties:
@@ -6429,7 +6429,7 @@ components:
         inicio: { type: string, format: date-time }
         situacao: { type: string, enum: [AGENDADO, EM_ATENDIMENTO, CONCLUIDO, FALTOU] }
         desfecho: { type: string, enum: [RESERVOU, VAI_PENSAR, NAO_SERVIU] }
-        observacao: { type: string }
+        observacao: { type: string, maxLength: 1000 }
     Ajuste:
       type: object
       required: [id, lojaId, atendimentoId, descricao, status]
@@ -6500,12 +6500,12 @@ components:
       type: object
       required: [descricao]
       properties:
-        descricao: { type: string, minLength: 1 }
+        descricao: { type: string, minLength: 1, maxLength: 1000 }
         ordem: { type: integer }
     AjusteChecklistItemUpdate:
       type: object
       properties:
-        descricao: { type: string, minLength: 1 }
+        descricao: { type: string, minLength: 1, maxLength: 1000 }
         feito: { type: boolean }
         ordem: { type: integer }
     AjusteInput:
@@ -6513,13 +6513,13 @@ components:
       required: [atendimentoId, descricao]
       properties:
         atendimentoId: { type: string }
-        descricao: { type: string, minLength: 1 }
+        descricao: { type: string, minLength: 1, maxLength: 1000 }
         tipo: { type: string, enum: [AJUSTE, CONFECCAO] }
         custo: { type: number, minimum: 0 }
     AjusteUpdate:
       type: object
       properties:
-        descricao: { type: string, minLength: 1 }
+        descricao: { type: string, minLength: 1, maxLength: 1000 }
         tipo: { type: string, enum: [AJUSTE, CONFECCAO] }
         custo: { type: ["number", "null"], minimum: 0 }
         status: { type: string, enum: [PENDENTE, FEITO] }
@@ -6683,7 +6683,7 @@ components:
         casamentoData: { type: string, format: date-time }
         inicio: { type: string, format: date-time }
         fim: { type: string, format: date-time }
-        observacao: { type: string }
+        observacao: { type: string, maxLength: 1000 }
         reservaId: { type: string }
     Avaria:
       type: object
@@ -6980,7 +6980,7 @@ components:
         lavagemConcluidaEm: { type: ["string", "null"], format: date-time }
         inicio: { type: string, format: date-time }
         fim: { type: string, format: date-time }
-        observacao: { type: string }
+        observacao: { type: string, maxLength: 1000 }
     ConflitoBloqueio:
       type: object
       description: Item de conflito de disponibilidade (mesmo shape nos 409 e no batch)
@@ -7169,7 +7169,7 @@ components:
         # legitimamente, o clamp decide.
         descontoValor: { type: number, minimum: 0 }
         validade: { type: string, format: date-time }
-        observacoes: { type: string }
+        observacoes: { type: string, maxLength: 1000 }
     OrcamentoUpdate:
       type: object
       properties:
@@ -7179,7 +7179,7 @@ components:
         # legitimamente, o clamp decide.
         descontoValor: { type: number, minimum: 0 }
         validade: { type: string, format: date-time }
-        observacoes: { type: string }
+        observacoes: { type: string, maxLength: 1000 }
         status: { type: string, enum: [RASCUNHO, ENVIADO, APROVADO, RECUSADO] }
     OrcamentoItem:
       type: object
@@ -7205,7 +7205,7 @@ components:
         # da costureira — o que foi cobrado e o que alguém costura viram a
         # mesma coisa.
         ajusteId: { type: string }
-        descricao: { type: string, minLength: 1 }
+        descricao: { type: string, minLength: 1, maxLength: 1000 }
         # S-M23 (achados 1#1/5#2): sem piso, quantidade −1 SUBTRAÍA do total —
         # R$ 200,00 de serviço viravam desconto silencioso que contrato, aceite
         # e carnê validavam em cadeia. O editar sempre teve o minimum.
@@ -7214,7 +7214,7 @@ components:
     OrcamentoItemUpdate:
       type: object
       properties:
-        descricao: { type: string, minLength: 1 }
+        descricao: { type: string, minLength: 1, maxLength: 1000 }
         valorUnitario: { type: number, minimum: 0 }
         quantidade: { type: integer, minimum: 1 }
     LinkOrcamentoPublico:
@@ -7599,10 +7599,17 @@ components:
           anyOf:
             - $ref: "#/components/schemas/Rescisao"
             - type: "null"
+        # S-O112/E239 — a parcela COMO O CONTRATO A ENTREGA: as colunas do carnê
+        # mais a mora derivada, e SEM a volta para o contrato (`Parcela.contrato`).
+        # Devolver o contrato dentro de cada parcela do próprio contrato é repetir
+        # o pai N vezes no filho — o mesmo ciclo que o E192 cortou em
+        # `Atendimento.ajustes`. Medido antes: `Parcela.contrato` prometida em
+        # 11 pares e muda em 5, três deles por AQUI (o GET, o PATCH e o
+        # cancelamento).
         parcelas:
           type: array
           items:
-            $ref: "#/components/schemas/Parcela"
+            $ref: "#/components/schemas/ContratoParcela"
         itens:
           type: array
           items:
@@ -7649,7 +7656,7 @@ components:
           items: { type: string }
         vendedoraId: { type: string }
         cpf: { type: string }
-        vestidoDescricao: { type: string }
+        vestidoDescricao: { type: string, maxLength: 1000 }
         # S-M23 (achado 5#4 + nota do ângulo 1): a parcela avulsa exige piso
         # desde sempre — o carnê que entra pelo POST /contratos não exigia, e
         # uma parcela de −R$ 1.000,00 compensada passava na guarda de SOMA:
@@ -7661,7 +7668,7 @@ components:
         dataRetirada: { type: string, format: date-time }
         dataDevolucao: { type: string, format: date-time }
         prazoDevolucaoReservaDias: { type: integer }
-        observacoes: { type: string }
+        observacoes: { type: string, maxLength: 1000 }
         parcelas:
           type: array
           items:
@@ -7676,7 +7683,7 @@ components:
       type: object
       properties:
         cpf: { type: string, description: "CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); qualquer grafia entra e é gravada como 000.000.000-00. (E233)" }
-        vestidoDescricao: { type: string }
+        vestidoDescricao: { type: string, maxLength: 1000 }
         formaPagamento: { type: string, enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO] }
         dataCasamento: { type: string, format: date-time }
         # S-C232 — apagar a data gravada é decisão tão legítima quanto trocá-la
@@ -7687,12 +7694,12 @@ components:
         dataRetirada: { type: ["string", "null"], format: date-time }
         dataDevolucao: { type: ["string", "null"], format: date-time }
         prazoDevolucaoReservaDias: { type: ["integer", "null"] }
-        observacoes: { type: string }
+        observacoes: { type: string, maxLength: 1000 }
     CancelarContratoInput:
       type: object
       required: [motivo]
       properties:
-        motivo: { type: string, minLength: 1 }
+        motivo: { type: string, minLength: 1, maxLength: 300 }
         # O que fazer com parcelas já PAGAS: "manter" (noiva perdeu o sinal —
         # ficam PAGAS no caixa, default) ou "estornar" (valor devolvido —
         # viram CANCELADA com campos de recebimento zerados). Independe da
@@ -7810,12 +7817,42 @@ components:
         moraPerdoadaEm: { type: ["string", "null"], format: date-time }
         moraPerdoadaMotivo: { type: ["string", "null"] }
         # Quem é a noiva desta parcela, sem rebuscar todos os contratos: a
-        # cobrança junta por aqui. Presente no GET da lista; ausente nas
-        # respostas de receber/estornar (que devolvem a parcela seca).
+        # cobrança junta por aqui. Entregue por TODA porta que responde uma
+        # parcela solta — a lista, receber, estornar, perdoar a mora, o carnê
+        # gerado e a avulsa (S-O112/E239). Dentro de `Contrato.parcelas` a
+        # parcela é `ContratoParcela`, que não promete a volta.
         contrato:
           anyOf:
             - $ref: "#/components/schemas/ParcelaContrato"
             - type: "null"
+    # S-O112/E239 — o recorte de `Parcela` que viaja DENTRO de `Contrato.parcelas`:
+    # os mesmos campos, menos a volta para o contrato. As duas listas de enum
+    # (`origem`, `status`, `formaRecebimento`) são a mesma do `Parcela`, e a
+    # `varredura-enums-do-banco-no-spec` cobra as duas contra o banco — valor
+    # novo que entrar numa e não na outra reprova lá.
+    ContratoParcela:
+      type: object
+      required: [id, lojaId, contratoId, numero, valorPrevisto, vencimento, status, origem]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        contratoId: { type: string }
+        numero: { type: integer }
+        descricao: { type: ["string", "null"] }
+        valorPrevisto: { type: number }
+        vencimento: { type: string, format: date-time }
+        origem: { type: string, enum: [PLANO, AVULSA, AVARIA, REAJUSTE_DATA, ATRASO_DEVOLUCAO, MORA] }
+        status: { type: string, enum: [PREVISTA, PARCIAL, PAGA, CANCELADA] }
+        valorRecebido: { type: ["number", "null"], description: "Acumulado desta parcela, somando todos os recebimentos" }
+        recebidoEm: { type: ["string", "null"], format: date-time }
+        formaRecebimento: { type: ["string", "null"], enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO, null] }
+        conciliadoEm: { type: ["string", "null"], format: date-time }
+        mora:
+          anyOf:
+            - $ref: "#/components/schemas/MoraDaParcela"
+            - type: "null"
+        moraPerdoadaEm: { type: ["string", "null"], format: date-time }
+        moraPerdoadaMotivo: { type: ["string", "null"] }
     # E213 — a conta da cláusula 9ª sobre uma parcela vencida.
     #
     # A base é a PARCELA (decisão da dona, 13/08/2026, sustentada pelo CDC art.
@@ -7933,7 +7970,7 @@ components:
         tipo: { type: string, enum: [DESPESA, FORNECEDOR, SALARIO, COMISSAO, DEVOLUCAO] }
         colaboradorId: { type: string }
         competencia: { type: string }
-        descricao: { type: string, minLength: 1 }
+        descricao: { type: string, minLength: 1, maxLength: 1000 }
         categoria: { type: string }
         fornecedor: { type: string }
         # S-M23 (achado 5#3): a anatomia da S-M2 nas portas de CRIAÇÃO — uma
@@ -7951,7 +7988,7 @@ components:
         # S-M2, quitando conta com R$ 0,00.)
         valorPago: { type: number, minimum: 0.01 }
         forma: { type: string }
-        observacoes: { type: string }
+        observacoes: { type: string, maxLength: 1000 }
     # Uma saída de caixa quita N contas (pagamento_itens já modela o rateio).
     # Sem valorPago: a saída vale a soma das contas quitadas.
     PagamentoInput:
@@ -7970,7 +8007,7 @@ components:
         # (a saída vale a soma das contas) — o piso só morde valor presente.
         valorPago: { type: number, minimum: 0.01 }
         forma: { type: string }
-        observacoes: { type: string }
+        observacoes: { type: string, maxLength: 1000 }
     PagamentoItem:
       type: object
       required: [id, lojaId, pagamentoId, contaPagarId, valor]
@@ -8091,7 +8128,7 @@ components:
       properties:
         tipo: { type: string, enum: [SALARIO, DESPESA, FORNECEDOR] }
         usuarioId: { type: string, description: "Obrigatório para SALARIO" }
-        descricao: { type: string, minLength: 1, description: "Obrigatório para DESPESA/FORNECEDOR" }
+        descricao: { type: string, minLength: 1, description: "Obrigatório para DESPESA/FORNECEDOR", maxLength: 1000 }
         categoria: { type: string }
         fornecedor: { type: string }
         # S-M23: recorrência negativa gerava "despesa" que INFLAVA o caixa todo mês.
@@ -8100,7 +8137,7 @@ components:
     RecorrenciaUpdate:
       type: object
       properties:
-        descricao: { type: string, minLength: 1 }
+        descricao: { type: string, minLength: 1, maxLength: 1000 }
         categoria: { type: string }
         fornecedor: { type: string }
         valor: { type: number, minimum: 0.01 }
@@ -8387,6 +8424,7 @@ components:
           description: "A competência em que o estorno aparece pendente (a mesma do preview)"
         motivo:
           type: ["string", "null"]
+          maxLength: 300
           description: "Justificativa da baixa — fica no registro de auditoria"
 
     BaixaEstornoComissao:

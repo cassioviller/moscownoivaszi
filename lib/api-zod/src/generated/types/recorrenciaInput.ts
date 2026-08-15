@@ -14,6 +14,7 @@ export interface RecorrenciaInput {
   /**
      * Obrigatório para DESPESA/FORNECEDOR
      * @minLength 1
+     * @maxLength 1000
      */
   descricao?: string;
   categoria?: string;

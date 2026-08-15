@@ -9,7 +9,10 @@ import type { AjusteInputTipo } from './ajusteInputTipo';
 
 export interface AjusteInput {
   atendimentoId: string;
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
   descricao: string;
   tipo?: AjusteInputTipo;
   /** @minimum 0 */

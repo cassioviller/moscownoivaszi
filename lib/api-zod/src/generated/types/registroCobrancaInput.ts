@@ -10,5 +10,6 @@ import type { RegistroCobrancaInputCanal } from './registroCobrancaInputCanal';
 export interface RegistroCobrancaInput {
   data: Date;
   canal: RegistroCobrancaInputCanal;
+  /** @maxLength 1000 */
   observacao?: string;
 }

@@ -15,6 +15,7 @@ export interface ContratoInput {
   bloqueioVestidoIds?: string[];
   vendedoraId: string;
   cpf?: string;
+  /** @maxLength 1000 */
   vestidoDescricao?: string;
   /** @minimum 0.01 */
   valorTotal: number;
@@ -23,6 +24,7 @@ export interface ContratoInput {
   dataRetirada?: Date;
   dataDevolucao?: Date;
   prazoDevolucaoReservaDias?: number;
+  /** @maxLength 1000 */
   observacoes?: string;
   parcelas?: ContratoInputParcelasItem[];
 }

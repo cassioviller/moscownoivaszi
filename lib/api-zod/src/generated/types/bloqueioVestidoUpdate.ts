@@ -18,5 +18,6 @@ export interface BloqueioVestidoUpdate {
   lavagemConcluidaEm?: Date | null;
   inicio?: Date;
   fim?: Date;
+  /** @maxLength 1000 */
   observacao?: string;
 }

@@ -116,6 +116,15 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
       cd artifacts/api-server && DATABASE_URL="$URL" ./node_modules/.bin/tsx src/scripts/seed.ts
       DATABASE_URL="$URL" pnpm run test      # ao terminar: dropdb moscow_wt_<nome>
 
+  **E o `$URL` mora na variável, não num arquivo do scratchpad** (E239,
+  2026-08-15): dois agentes disparados na mesma sessão COMPARTILHAM o diretório
+  de scratchpad. Um gravou o URL do seu banco em `scratchpad/url.txt`, o vizinho
+  gravou o dele no MESMO arquivo, e quando o vizinho terminou e fez `dropdb`, a
+  suíte do primeiro — que lia o arquivo — morreu no meio com `3D000 database
+  "moscow_wt_loteA" does not exist`: **87 arquivos reprovados e 315 testes
+  pulados** numa árvore que estava verde. Crave o nome do banco no comando (ou
+  num arquivo com o nome do lote), nunca num `url.txt` genérico.
+
   Medido: **185 arquivos, 1299 testes, tudo verde** no banco próprio, e duas
   suítes disparadas no mesmo segundo (`Start at 13:10:52` nas duas) terminando
   em ~7 s cada. **Só com `push`, uma reprova** — a que exige os 4 perfis do

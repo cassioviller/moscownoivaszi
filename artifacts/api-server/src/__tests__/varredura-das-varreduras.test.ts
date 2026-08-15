@@ -90,7 +90,7 @@ function dizOTamanho(texto: string): boolean {
 }
 
 describe("S-C260 — toda varredura diz o tamanho do que olhou", () => {
-  it("a enumeração cobre as duas grafias e os dois pacotes — o retrato é 32", () => {
+  it("a enumeração cobre as duas grafias e os dois pacotes — o retrato é 35", () => {
     /**
      * Igualdade, e não piso: varredura nova tem de ser JULGADA, e o vermelho
      * aqui é onde alguém escreve que julgou. É o critério que a S-C75 aplicou
@@ -109,13 +109,18 @@ describe("S-C260 — toda varredura diz o tamanho do que olhou", () => {
     // E236: 31 → 32. A `varredura-manuais-prints` (frontend): toda âncora `data-print`
     // tem captura versionada, nenhuma captura é órfã, o manifesto bate, todo manual
     // tem PDF no git — a quinta régua de manual, e a primeira sobre as IMAGENS.
-    expect(todas.length, `varreduras encontradas:\n${todas.join("\n")}`).toBe(32);
+    // E239: 32 → 35, as três do lote B das 🔵, todas na API: a
+    // `varredura-banco-virgem-cobre-as-migracoes` (S-O103 — as migrações que
+    // backfillam × os specs do banco virgem), a `varredura-campo-escalar-do-spec`
+    // (S-O115 — o escalar do spec que ninguém preenche) e a
+    // `varredura-teto-do-texto-livre` (S-O109 — o `maxLength` do texto livre).
+    expect(todas.length, `varreduras encontradas:\n${todas.join("\n")}`).toBe(35);
 
     // E as duas dimensões, nomeadas: a sobra descrevia só a grafia, e o
     // julgamento de 14/08 também tinha perdido as 5 da primeira grafia que
     // moram no frontend.
     const porGrafia = (re: RegExp) => todas.filter((r) => re.test(path.basename(r))).length;
-    expect(porGrafia(/^varredura-/)).toBe(21); // E236: +1, a `varredura-manuais-prints`
+    expect(porGrafia(/^varredura-/)).toBe(24); // E236: +1, a `varredura-manuais-prints`; E239: +3, na API
     expect(porGrafia(/-varredura\./)).toBe(11);
     expect(todas.filter((r) => r.startsWith("artifacts/moscow-noivas/")).length).toBe(16); // E236: +1, no frontend
   });

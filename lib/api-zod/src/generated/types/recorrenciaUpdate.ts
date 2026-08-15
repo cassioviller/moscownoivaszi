@@ -7,7 +7,10 @@
  */
 
 export interface RecorrenciaUpdate {
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
   descricao?: string;
   categoria?: string;
   fornecedor?: string;

@@ -225,10 +225,11 @@ async function main(): Promise<void> {
      * ninguém perceba.
      */
     const nPerfis = Number(consultar("select count(*) from perfis")[0]?.[0] ?? "0");
-    const linhaPerfis = saida1.split("\n").find((l) => l.includes("Perfis de acesso")) ?? "";
+    // S-O92/E239: a linha passou a dizer "Perfis do sistema" — é o que ela conta.
+    const linhaPerfis = saida1.split("\n").find((l) => l.includes("Perfis do sistema")) ?? "";
     afirmar(
       "o resumo diz quantos perfis o banco tem (S-O71)",
-      new RegExp(`Perfis de acesso\\s+${nPerfis}(\\s|$)`).test(linhaPerfis),
+      new RegExp(`Perfis do sistema\\s+${nPerfis}(\\s|$)`).test(linhaPerfis),
       `o banco tem ${nPerfis} perfis e a linha diz "${linhaPerfis.trim()}"`,
     );
 

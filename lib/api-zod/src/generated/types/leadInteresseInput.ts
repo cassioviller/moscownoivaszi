@@ -8,9 +8,15 @@
 import type { VestidoAtributo } from './vestidoAtributo';
 
 export interface LeadInteresseInput {
-  /** @nullable */
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
   algoAMais?: string | null;
-  /** @nullable */
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
   naoQuerUsar?: string | null;
   /** @nullable */
   tetoOrcamento?: number | null;

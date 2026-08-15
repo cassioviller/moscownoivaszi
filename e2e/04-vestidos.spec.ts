@@ -37,9 +37,12 @@ test.describe("Vestidos", () => {
     await expect(page.getByText(/4\.?200/)).toBeVisible();
   });
 
-  // FALHA ESPERADA no main (achado UX-vestidos): o card exibe o valor cru do
-  // banco ("ativo", vestidos/index.tsx:226) em vez de um rótulo tratado; e o
-  // catálogo não tem busca nem indicação de disponibilidade por data.
+  // Nasceu como "FALHA ESPERADA no main" (achado UX-vestidos): o card exibia o
+  // enum cru `ativo`, e o catálogo não tinha busca nem disponibilidade por
+  // data. Os três estão fechados: o rótulo é tratado (é o que este teste
+  // prega), a busca é `useBuscaNaUrl` e a disponibilidade por data é o
+  // `BadgeDisponibilidade`, os dois em `vestidos/index.tsx`. O teste fica como
+  // régua do rótulo (S-O104/E239).
   test("status do vestido é exibido com rótulo tratado", async ({ page }) => {
     await page.goto("/vestidos");
     await expect(page.getByText("E2E Vestido Playwright")).toBeVisible();

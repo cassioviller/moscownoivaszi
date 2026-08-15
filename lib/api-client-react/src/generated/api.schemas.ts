@@ -90,6 +90,7 @@ export interface LojaInput {
   nome: string;
   /** CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000/0000-00. Vazio apaga. (E233) */
   cnpj?: string;
+  /** @maxLength 300 */
   endereco?: string;
   telefone?: string;
   cidade?: string;
@@ -108,6 +109,7 @@ export interface LojaUpdate {
   nome?: string;
   /** CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000/0000-00. Vazio apaga. (E233) */
   cnpj?: string;
+  /** @maxLength 300 */
   endereco?: string;
   telefone?: string;
   cidade?: string;
@@ -127,6 +129,7 @@ export interface DadosDaLojaInput {
   nome?: string;
   /** CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000/0000-00. Vazio apaga. (E233) */
   cnpj?: string;
+  /** @maxLength 300 */
   endereco?: string;
   /** Vazio é permitido (a loja pode não ter WhatsApp). Preenchido, tem de render um link de wa.me — o servidor recusa com TELEFONE_SEM_WHATSAPP o que `linkWhatsApp` transformaria em null, porque nesse caso o botão do portal da noiva some sem erro e sem aviso. */
   telefone?: string;
@@ -561,6 +564,7 @@ export interface VestidoInput {
   tamanho?: string;
   cor?: string;
   categoria?: string;
+  /** @maxLength 1000 */
   observacoes?: string;
   atributos?: VestidoAtributo[];
 }
@@ -590,6 +594,7 @@ export interface VestidoUpdate {
   cor?: string;
   categoria?: string;
   status?: VestidoUpdateStatus;
+  /** @maxLength 1000 */
   observacoes?: string;
   atributos?: VestidoAtributo[];
 }
@@ -775,6 +780,7 @@ export interface LeadInput {
   whatsapp?: string;
   casamentoData?: string;
   casamentoHorario?: string;
+  /** @maxLength 300 */
   casamentoLocal?: string;
   origem?: LeadInputOrigem;
   /** CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); qualquer grafia entra e é gravada como 000.000.000-00. (E233) */
@@ -865,9 +871,11 @@ export interface LeadUpdate {
   whatsapp?: string;
   casamentoData?: string;
   casamentoHorario?: string;
+  /** @maxLength 300 */
   casamentoLocal?: string;
   /** Obrigatório quando etapa vira PERDIDO; ignorado nas demais */
   perdidaMotivo?: LeadUpdatePerdidaMotivo;
+  /** @maxLength 1000 */
   perdidaDetalhe?: string;
   /** Corrigível enquanto o lead não converteu (CONTRATO_FECHADO ou além) */
   origem?: LeadUpdateOrigem;
@@ -903,9 +911,15 @@ export interface LeadUpdate {
 }
 
 export interface LeadInteresseInput {
-  /** @nullable */
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
   algoAMais?: string | null;
-  /** @nullable */
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
   naoQuerUsar?: string | null;
   /** @nullable */
   tetoOrcamento?: number | null;
@@ -1109,6 +1123,7 @@ export const RegistroCobrancaInputCanal = {
 export interface RegistroCobrancaInput {
   data: string;
   canal: RegistroCobrancaInputCanal;
+  /** @maxLength 1000 */
   observacao?: string;
 }
 
@@ -1180,6 +1195,7 @@ export interface AusenciaInput {
   usuarioId: string;
   inicio: string;
   fim: string;
+  /** @maxLength 300 */
   motivo?: string;
 }
 
@@ -1359,6 +1375,7 @@ export interface AtendimentoInput {
   tipo?: AtendimentoInputTipo;
   bloqueioId?: string;
   inicio: string;
+  /** @maxLength 1000 */
   observacao?: string;
 }
 
@@ -1387,6 +1404,7 @@ export interface AtendimentoUpdate {
   inicio?: string;
   situacao?: AtendimentoUpdateSituacao;
   desfecho?: AtendimentoUpdateDesfecho;
+  /** @maxLength 1000 */
   observacao?: string;
 }
 
@@ -1459,13 +1477,19 @@ export interface Ajuste {
 }
 
 export interface AjusteChecklistItemInput {
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
   descricao: string;
   ordem?: number;
 }
 
 export interface AjusteChecklistItemUpdate {
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
   descricao?: string;
   feito?: boolean;
   ordem?: number;
@@ -1481,7 +1505,10 @@ export const AjusteInputTipo = {
 
 export interface AjusteInput {
   atendimentoId: string;
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
   descricao: string;
   tipo?: AjusteInputTipo;
   /** @minimum 0 */
@@ -1505,7 +1532,10 @@ export const AjusteUpdateStatus = {
 } as const;
 
 export interface AjusteUpdate {
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
   descricao?: string;
   tipo?: AjusteUpdateTipo;
   /**
@@ -1650,6 +1680,7 @@ export interface BloqueioVestidoInput {
   casamentoData?: string;
   inicio?: string;
   fim?: string;
+  /** @maxLength 1000 */
   observacao?: string;
   reservaId?: string;
 }
@@ -1870,6 +1901,7 @@ export interface BloqueioVestidoUpdate {
   lavagemConcluidaEm?: string | null;
   inicio?: string;
   fim?: string;
+  /** @maxLength 1000 */
   observacao?: string;
 }
 
@@ -2099,6 +2131,7 @@ export interface OrcamentoInput {
   /** @minimum 0 */
   descontoValor?: number;
   validade?: string;
+  /** @maxLength 1000 */
   observacoes?: string;
 }
 
@@ -2125,6 +2158,7 @@ export interface OrcamentoUpdate {
   /** @minimum 0 */
   descontoValor?: number;
   validade?: string;
+  /** @maxLength 1000 */
   observacoes?: string;
   status?: OrcamentoUpdateStatus;
 }
@@ -2145,7 +2179,10 @@ export interface OrcamentoItemInput {
   vestidoId?: string;
   itemEstoqueId?: string;
   ajusteId?: string;
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
   descricao: string;
   /** @minimum 0 */
   valorUnitario: number;
@@ -2154,7 +2191,10 @@ export interface OrcamentoItemInput {
 }
 
 export interface OrcamentoItemUpdate {
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
   descricao?: string;
   /** @minimum 0 */
   valorUnitario?: number;
@@ -2490,10 +2530,10 @@ export interface Rescisao {
   explicacao: string;
 }
 
-export type ParcelaOrigem = typeof ParcelaOrigem[keyof typeof ParcelaOrigem];
+export type ContratoParcelaOrigem = typeof ContratoParcelaOrigem[keyof typeof ContratoParcelaOrigem];
 
 
-export const ParcelaOrigem = {
+export const ContratoParcelaOrigem = {
   PLANO: 'PLANO',
   AVULSA: 'AVULSA',
   AVARIA: 'AVARIA',
@@ -2502,10 +2542,10 @@ export const ParcelaOrigem = {
   MORA: 'MORA',
 } as const;
 
-export type ParcelaStatus = typeof ParcelaStatus[keyof typeof ParcelaStatus];
+export type ContratoParcelaStatus = typeof ContratoParcelaStatus[keyof typeof ContratoParcelaStatus];
 
 
-export const ParcelaStatus = {
+export const ContratoParcelaStatus = {
   PREVISTA: 'PREVISTA',
   PARCIAL: 'PARCIAL',
   PAGA: 'PAGA',
@@ -2515,10 +2555,10 @@ export const ParcelaStatus = {
 /**
  * @nullable
  */
-export type ParcelaFormaRecebimento = typeof ParcelaFormaRecebimento[keyof typeof ParcelaFormaRecebimento] | null;
+export type ContratoParcelaFormaRecebimento = typeof ContratoParcelaFormaRecebimento[keyof typeof ContratoParcelaFormaRecebimento] | null;
 
 
-export const ParcelaFormaRecebimento = {
+export const ContratoParcelaFormaRecebimento = {
   PIX: 'PIX',
   CARTAO_CREDITO: 'CARTAO_CREDITO',
   CARTAO_DEBITO: 'CARTAO_DEBITO',
@@ -2528,20 +2568,7 @@ export const ParcelaFormaRecebimento = {
   OUTRO: 'OUTRO',
 } as const;
 
-export interface ParcelaLead {
-  noivaNome: string;
-  /** @nullable */
-  whatsapp?: string | null;
-  /** @nullable */
-  ultimoContatoEm?: string | null;
-}
-
-export interface ParcelaContrato {
-  leadId: string;
-  lead?: ParcelaLead | null;
-}
-
-export interface Parcela {
+export interface ContratoParcela {
   id: string;
   lojaId: string;
   contratoId: string;
@@ -2550,8 +2577,8 @@ export interface Parcela {
   descricao?: string | null;
   valorPrevisto: number;
   vencimento: string;
-  origem: ParcelaOrigem;
-  status: ParcelaStatus;
+  origem: ContratoParcelaOrigem;
+  status: ContratoParcelaStatus;
   /**
      * Acumulado desta parcela, somando todos os recebimentos
      * @nullable
@@ -2560,7 +2587,7 @@ export interface Parcela {
   /** @nullable */
   recebidoEm?: string | null;
   /** @nullable */
-  formaRecebimento?: ParcelaFormaRecebimento;
+  formaRecebimento?: ContratoParcelaFormaRecebimento;
   /** @nullable */
   conciliadoEm?: string | null;
   mora?: MoraDaParcela | null;
@@ -2568,7 +2595,6 @@ export interface Parcela {
   moraPerdoadaEm?: string | null;
   /** @nullable */
   moraPerdoadaMotivo?: string | null;
-  contrato?: ParcelaContrato | null;
 }
 
 export type ContratoItemTipo = typeof ContratoItemTipo[keyof typeof ContratoItemTipo];
@@ -2660,7 +2686,7 @@ export interface Contrato {
   observacoes?: string | null;
   fechadoEm: string;
   rescisao?: Rescisao | null;
-  parcelas?: Parcela[];
+  parcelas?: ContratoParcela[];
   itens?: ContratoItem[];
   lead?: Lead;
   vendedora?: Usuario;
@@ -2700,6 +2726,7 @@ export interface ContratoInput {
   bloqueioVestidoIds?: string[];
   vendedoraId: string;
   cpf?: string;
+  /** @maxLength 1000 */
   vestidoDescricao?: string;
   /** @minimum 0.01 */
   valorTotal: number;
@@ -2708,6 +2735,7 @@ export interface ContratoInput {
   dataRetirada?: string;
   dataDevolucao?: string;
   prazoDevolucaoReservaDias?: number;
+  /** @maxLength 1000 */
   observacoes?: string;
   parcelas?: ContratoInputParcelasItem[];
 }
@@ -2728,6 +2756,7 @@ export const ContratoUpdateFormaPagamento = {
 export interface ContratoUpdate {
   /** CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); qualquer grafia entra e é gravada como 000.000.000-00. (E233) */
   cpf?: string;
+  /** @maxLength 1000 */
   vestidoDescricao?: string;
   formaPagamento?: ContratoUpdateFormaPagamento;
   dataCasamento?: string;
@@ -2737,6 +2766,7 @@ export interface ContratoUpdate {
   dataDevolucao?: string | null;
   /** @nullable */
   prazoDevolucaoReservaDias?: number | null;
+  /** @maxLength 1000 */
   observacoes?: string;
 }
 
@@ -2757,7 +2787,10 @@ export const CancelarContratoInputIniciativa = {
 } as const;
 
 export interface CancelarContratoInput {
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
   motivo: string;
   destinoPago?: CancelarContratoInputDestinoPago;
   iniciativa?: CancelarContratoInputIniciativa;
@@ -2785,6 +2818,87 @@ export interface GerarPlanoInput {
   numParcelas: number;
   primeiroVencimento: string;
   vencimentoEntrada?: string;
+}
+
+export type ParcelaOrigem = typeof ParcelaOrigem[keyof typeof ParcelaOrigem];
+
+
+export const ParcelaOrigem = {
+  PLANO: 'PLANO',
+  AVULSA: 'AVULSA',
+  AVARIA: 'AVARIA',
+  REAJUSTE_DATA: 'REAJUSTE_DATA',
+  ATRASO_DEVOLUCAO: 'ATRASO_DEVOLUCAO',
+  MORA: 'MORA',
+} as const;
+
+export type ParcelaStatus = typeof ParcelaStatus[keyof typeof ParcelaStatus];
+
+
+export const ParcelaStatus = {
+  PREVISTA: 'PREVISTA',
+  PARCIAL: 'PARCIAL',
+  PAGA: 'PAGA',
+  CANCELADA: 'CANCELADA',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ParcelaFormaRecebimento = typeof ParcelaFormaRecebimento[keyof typeof ParcelaFormaRecebimento] | null;
+
+
+export const ParcelaFormaRecebimento = {
+  PIX: 'PIX',
+  CARTAO_CREDITO: 'CARTAO_CREDITO',
+  CARTAO_DEBITO: 'CARTAO_DEBITO',
+  DINHEIRO: 'DINHEIRO',
+  BOLETO: 'BOLETO',
+  TRANSFERENCIA: 'TRANSFERENCIA',
+  OUTRO: 'OUTRO',
+} as const;
+
+export interface ParcelaLead {
+  noivaNome: string;
+  /** @nullable */
+  whatsapp?: string | null;
+  /** @nullable */
+  ultimoContatoEm?: string | null;
+}
+
+export interface ParcelaContrato {
+  leadId: string;
+  lead?: ParcelaLead | null;
+}
+
+export interface Parcela {
+  id: string;
+  lojaId: string;
+  contratoId: string;
+  numero: number;
+  /** @nullable */
+  descricao?: string | null;
+  valorPrevisto: number;
+  vencimento: string;
+  origem: ParcelaOrigem;
+  status: ParcelaStatus;
+  /**
+     * Acumulado desta parcela, somando todos os recebimentos
+     * @nullable
+     */
+  valorRecebido?: number | null;
+  /** @nullable */
+  recebidoEm?: string | null;
+  /** @nullable */
+  formaRecebimento?: ParcelaFormaRecebimento;
+  /** @nullable */
+  conciliadoEm?: string | null;
+  mora?: MoraDaParcela | null;
+  /** @nullable */
+  moraPerdoadaEm?: string | null;
+  /** @nullable */
+  moraPerdoadaMotivo?: string | null;
+  contrato?: ParcelaContrato | null;
 }
 
 export interface PerdoarMoraInput {
@@ -2883,7 +2997,10 @@ export interface ContaPagarInput {
   tipo: ContaPagarInputTipo;
   colaboradorId?: string;
   competencia?: string;
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
   descricao: string;
   categoria?: string;
   fornecedor?: string;
@@ -2897,6 +3014,7 @@ export interface PagarContaInput {
   /** @minimum 0.01 */
   valorPago: number;
   forma?: string;
+  /** @maxLength 1000 */
   observacoes?: string;
 }
 
@@ -2907,6 +3025,7 @@ export interface PagamentoInput {
   /** @minimum 0.01 */
   valorPago?: number;
   forma?: string;
+  /** @maxLength 1000 */
   observacoes?: string;
 }
 
@@ -3077,6 +3196,7 @@ export interface RecorrenciaInput {
   /**
      * Obrigatório para DESPESA/FORNECEDOR
      * @minLength 1
+     * @maxLength 1000
      */
   descricao?: string;
   categoria?: string;
@@ -3087,7 +3207,10 @@ export interface RecorrenciaInput {
 }
 
 export interface RecorrenciaUpdate {
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
   descricao?: string;
   categoria?: string;
   fornecedor?: string;
@@ -3360,6 +3483,7 @@ export interface BaixarEstornoComissaoInput {
   competencia: string;
   /**
      * Justificativa da baixa — fica no registro de auditoria
+     * @maxLength 300
      * @nullable
      */
   motivo?: string | null;

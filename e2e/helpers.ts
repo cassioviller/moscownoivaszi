@@ -44,6 +44,16 @@ export function lerEstado(): E2EState {
  * cliente HTTP. O default não muda, e nenhum dos 171 specs enxerga diferença.
  */
 export const API_URL = `http://localhost:${process.env.E2E_API_PORT ?? 5099}`;
+/**
+ * S-O102/E239 — o irmão do `API_URL`, pelo mesmo motivo. A porta WEB só
+ * existia no `baseURL` do `playwright.config.ts`; medido em 2026-08-15,
+ * **nenhum spec monta URL de tela à mão** (`git grep "localhost:" -- 'e2e/*.ts'`
+ * devolve só o `API_URL` e este arquivo). A constante nasce ANTES do primeiro
+ * uso, para que quem precisar montar uma URL absoluta da tela (um link
+ * copiado, um `window.open`) não crave `5173` — que é como o `API_URL`
+ * cravava `5099` até o E190. O `playwright.config.ts` lê a MESMA env.
+ */
+export const WEB_URL = `http://localhost:${process.env.E2E_WEB_PORT ?? 5173}`;
 
 /**
  * E115 — cria um atendimento num horário LIVRE do expediente, tentando outras

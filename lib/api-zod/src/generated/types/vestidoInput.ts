@@ -21,6 +21,7 @@ export interface VestidoInput {
   tamanho?: string;
   cor?: string;
   categoria?: string;
+  /** @maxLength 1000 */
   observacoes?: string;
   atributos?: VestidoAtributo[];
 }

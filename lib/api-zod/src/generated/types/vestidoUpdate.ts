@@ -25,6 +25,7 @@ export interface VestidoUpdate {
   cor?: string;
   categoria?: string;
   status?: VestidoUpdateStatus;
+  /** @maxLength 1000 */
   observacoes?: string;
   atributos?: VestidoAtributo[];
 }

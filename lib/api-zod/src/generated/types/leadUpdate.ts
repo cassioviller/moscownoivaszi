@@ -18,9 +18,11 @@ export interface LeadUpdate {
   whatsapp?: string;
   casamentoData?: Date;
   casamentoHorario?: string;
+  /** @maxLength 300 */
   casamentoLocal?: string;
   /** Obrigatório quando etapa vira PERDIDO; ignorado nas demais */
   perdidaMotivo?: LeadUpdatePerdidaMotivo;
+  /** @maxLength 1000 */
   perdidaDetalhe?: string;
   /** Corrigível enquanto o lead não converteu (CONTRATO_FECHADO ou além) */
   origem?: LeadUpdateOrigem;

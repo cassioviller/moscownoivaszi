@@ -7,7 +7,10 @@
  */
 
 export interface OrcamentoItemUpdate {
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
   descricao?: string;
   /** @minimum 0 */
   valorUnitario?: number;

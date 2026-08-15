@@ -10,6 +10,7 @@ import type { ContratoUpdateFormaPagamento } from './contratoUpdateFormaPagament
 export interface ContratoUpdate {
   /** CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); qualquer grafia entra e é gravada como 000.000.000-00. (E233) */
   cpf?: string;
+  /** @maxLength 1000 */
   vestidoDescricao?: string;
   formaPagamento?: ContratoUpdateFormaPagamento;
   dataCasamento?: Date;
@@ -19,5 +20,6 @@ export interface ContratoUpdate {
   dataDevolucao?: Date | null;
   /** @nullable */
   prazoDevolucaoReservaDias?: number | null;
+  /** @maxLength 1000 */
   observacoes?: string;
 }

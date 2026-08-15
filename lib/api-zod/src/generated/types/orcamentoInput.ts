@@ -14,5 +14,6 @@ export interface OrcamentoInput {
   /** @minimum 0 */
   descontoValor?: number;
   validade?: Date;
+  /** @maxLength 1000 */
   observacoes?: string;
 }

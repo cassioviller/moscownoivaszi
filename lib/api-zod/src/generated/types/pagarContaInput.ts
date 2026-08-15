@@ -11,5 +11,6 @@ export interface PagarContaInput {
   /** @minimum 0.01 */
   valorPago: number;
   forma?: string;
+  /** @maxLength 1000 */
   observacoes?: string;
 }

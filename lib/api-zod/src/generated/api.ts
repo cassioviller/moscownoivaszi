@@ -187,6 +187,8 @@ export const ListLojasResponse = zod.array(ListLojasResponseItem)
 
 
 
+export const createLojaBodyEnderecoMax = 300;
+
 export const createLojaBodyUfMax = 2;
 
 
@@ -194,7 +196,7 @@ export const createLojaBodyUfMax = 2;
 export const CreateLojaBody = zod.object({
   "nome": zod.string().min(1),
   "cnpj": zod.string().optional().describe('CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000\/0000-00. Vazio apaga. (E233)'),
-  "endereco": zod.string().optional(),
+  "endereco": zod.string().max(createLojaBodyEnderecoMax).optional(),
   "telefone": zod.string().optional(),
   "cidade": zod.string().optional(),
   "uf": zod.string().max(createLojaBodyUfMax).optional(),
@@ -228,6 +230,8 @@ export const UpdateLojaParams = zod.object({
 })
 
 
+export const updateLojaBodyEnderecoMax = 300;
+
 export const updateLojaBodyUfMax = 2;
 
 
@@ -235,7 +239,7 @@ export const updateLojaBodyUfMax = 2;
 export const UpdateLojaBody = zod.object({
   "nome": zod.string().min(1).optional(),
   "cnpj": zod.string().optional().describe('CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000\/0000-00. Vazio apaga. (E233)'),
-  "endereco": zod.string().optional(),
+  "endereco": zod.string().max(updateLojaBodyEnderecoMax).optional(),
   "telefone": zod.string().optional(),
   "cidade": zod.string().optional(),
   "uf": zod.string().max(updateLojaBodyUfMax).optional(),
@@ -568,6 +572,8 @@ export const UpdateDadosDaLojaParams = zod.object({
 })
 
 
+export const updateDadosDaLojaBodyEnderecoMax = 300;
+
 export const updateDadosDaLojaBodyUfMax = 2;
 
 
@@ -575,7 +581,7 @@ export const updateDadosDaLojaBodyUfMax = 2;
 export const UpdateDadosDaLojaBody = zod.object({
   "nome": zod.string().min(1).optional(),
   "cnpj": zod.string().optional().describe('CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000\/0000-00. Vazio apaga. (E233)'),
-  "endereco": zod.string().optional(),
+  "endereco": zod.string().max(updateDadosDaLojaBodyEnderecoMax).optional(),
   "telefone": zod.string().optional().describe('Vazio é permitido (a loja pode não ter WhatsApp). Preenchido, tem de render um link de wa.me — o servidor recusa com TELEFONE_SEM_WHATSAPP o que `linkWhatsApp` transformaria em null, porque nesse caso o botão do portal da noiva some sem erro e sem aviso.\n'),
   "cidade": zod.string().optional(),
   "uf": zod.string().max(updateDadosDaLojaBodyUfMax).optional(),
@@ -1065,6 +1071,8 @@ export const createVestidoBodyPrecoBaseMin = 0;
 
 export const createVestidoBodyPrecoRealuguelMin = 0;
 
+export const createVestidoBodyObservacoesMax = 1000;
+
 
 
 export const CreateVestidoBody = zod.object({
@@ -1077,7 +1085,7 @@ export const CreateVestidoBody = zod.object({
   "tamanho": zod.string().optional(),
   "cor": zod.string().optional(),
   "categoria": zod.string().optional(),
-  "observacoes": zod.string().optional(),
+  "observacoes": zod.string().max(createVestidoBodyObservacoesMax).optional(),
   "atributos": zod.array(zod.object({
   "atributoId": zod.string(),
   "opcaoId": zod.string()
@@ -1241,6 +1249,8 @@ export const updateVestidoBodyPrecoBaseMin = 0;
 
 export const updateVestidoBodyPrecoRealuguelMin = 0;
 
+export const updateVestidoBodyObservacoesMax = 1000;
+
 
 
 export const UpdateVestidoBody = zod.object({
@@ -1253,7 +1263,7 @@ export const UpdateVestidoBody = zod.object({
   "cor": zod.string().optional(),
   "categoria": zod.string().optional(),
   "status": zod.enum(['ativo', 'inativo']).optional(),
-  "observacoes": zod.string().optional(),
+  "observacoes": zod.string().max(updateVestidoBodyObservacoesMax).optional(),
   "atributos": zod.array(zod.object({
   "atributoId": zod.string(),
   "opcaoId": zod.string()
@@ -1526,6 +1536,8 @@ export const CreateLeadParams = zod.object({
 })
 
 
+export const createLeadBodyCasamentoLocalMax = 300;
+
 export const createLeadBodyEnderecoEstadoMin = 2;
 export const createLeadBodyEnderecoEstadoMax = 2;
 
@@ -1538,7 +1550,7 @@ export const CreateLeadBody = zod.object({
   "whatsapp": zod.string().optional(),
   "casamentoData": dataDoCorpo().optional(),
   "casamentoHorario": zod.string().optional(),
-  "casamentoLocal": zod.string().optional(),
+  "casamentoLocal": zod.string().max(createLeadBodyCasamentoLocalMax).optional(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']).optional(),
   "cpf": zod.string().optional().describe('CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); qualquer grafia entra e é gravada como 000.000.000-00. (E233)'),
   "rg": zod.string().optional(),
@@ -1797,6 +1809,12 @@ export const UpdateLeadParams = zod.object({
   "leadId": zod.coerce.string()
 })
 
+export const updateLeadBodyCasamentoLocalMax = 300;
+
+export const updateLeadBodyPerdidaDetalheMax = 1000;
+
+
+
 export const UpdateLeadBody = zod.object({
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']).optional(),
   "noivaNome": zod.string().optional(),
@@ -1805,9 +1823,9 @@ export const UpdateLeadBody = zod.object({
   "whatsapp": zod.string().optional(),
   "casamentoData": dataDoCorpo().optional(),
   "casamentoHorario": zod.string().optional(),
-  "casamentoLocal": zod.string().optional(),
+  "casamentoLocal": zod.string().max(updateLeadBodyCasamentoLocalMax).optional(),
   "perdidaMotivo": zod.enum(['PRECO', 'DATA_INDISPONIVEL', 'CONCORRENTE', 'DESISTENCIA', 'SEM_RETORNO', 'OUTRO']).optional().describe('Obrigatório quando etapa vira PERDIDO; ignorado nas demais'),
-  "perdidaDetalhe": zod.string().optional(),
+  "perdidaDetalhe": zod.string().max(updateLeadBodyPerdidaDetalheMax).optional(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']).optional().describe('Corrigível enquanto o lead não converteu (CONTRATO_FECHADO ou além)'),
   "cpf": zod.string().nullish().describe('CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); qualquer grafia entra e é gravada como 000.000.000-00. (E233) Null apaga.'),
   "rg": zod.string().nullish(),
@@ -1912,9 +1930,15 @@ export const SetLeadInteresseParams = zod.object({
   "leadId": zod.coerce.string()
 })
 
+export const setLeadInteresseBodyAlgoAMaisMax = 1000;
+
+export const setLeadInteresseBodyNaoQuerUsarMax = 1000;
+
+
+
 export const SetLeadInteresseBody = zod.object({
-  "algoAMais": zod.string().nullish(),
-  "naoQuerUsar": zod.string().nullish(),
+  "algoAMais": zod.string().max(setLeadInteresseBodyAlgoAMaisMax).nullish(),
+  "naoQuerUsar": zod.string().max(setLeadInteresseBodyNaoQuerUsarMax).nullish(),
   "tetoOrcamento": zod.number().nullish(),
   "atributos": zod.array(zod.object({
   "atributoId": zod.string(),
@@ -1955,10 +1979,14 @@ export const CreateRegistroCobrancaParams = zod.object({
   "leadId": zod.coerce.string()
 })
 
+export const createRegistroCobrancaBodyObservacaoMax = 1000;
+
+
+
 export const CreateRegistroCobrancaBody = zod.object({
   "data": dataDoCorpo(),
   "canal": zod.enum(['WHATSAPP', 'TELEFONE', 'PRESENCIAL', 'OUTRO']),
-  "observacao": zod.string().optional()
+  "observacao": zod.string().max(createRegistroCobrancaBodyObservacaoMax).optional()
 })
 
 export const CreateRegistroCobrancaResponse = zod.object({
@@ -2113,11 +2141,15 @@ export const CreateAusenciaParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+export const createAusenciaBodyMotivoMax = 300;
+
+
+
 export const CreateAusenciaBody = zod.object({
   "usuarioId": zod.string(),
   "inicio": zod.string(),
   "fim": zod.string(),
-  "motivo": zod.string().optional()
+  "motivo": zod.string().max(createAusenciaBodyMotivoMax).optional()
 })
 
 export const CreateAusenciaResponse = zod.object({
@@ -2411,6 +2443,10 @@ export const CreateAtendimentoParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+export const createAtendimentoBodyObservacaoMax = 1000;
+
+
+
 export const CreateAtendimentoBody = zod.object({
   "leadId": zod.string(),
   "cabineId": zod.string(),
@@ -2418,7 +2454,7 @@ export const CreateAtendimentoBody = zod.object({
   "tipo": zod.enum(['ATENDIMENTO', 'PROVA']).optional(),
   "bloqueioId": zod.string().optional(),
   "inicio": dataDoCorpo(),
-  "observacao": zod.string().optional()
+  "observacao": zod.string().max(createAtendimentoBodyObservacaoMax).optional()
 })
 
 
@@ -2615,13 +2651,17 @@ export const UpdateAtendimentoParams = zod.object({
   "atendimentoId": zod.coerce.string()
 })
 
+export const updateAtendimentoBodyObservacaoMax = 1000;
+
+
+
 export const UpdateAtendimentoBody = zod.object({
   "cabineId": zod.string().optional(),
   "vendedoraId": zod.string().optional(),
   "inicio": dataDoCorpo().optional(),
   "situacao": zod.enum(['AGENDADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'FALTOU']).optional(),
   "desfecho": zod.enum(['RESERVOU', 'VAI_PENSAR', 'NAO_SERVIU']).optional(),
-  "observacao": zod.string().optional()
+  "observacao": zod.string().max(updateAtendimentoBodyObservacaoMax).optional()
 })
 
 
@@ -3400,6 +3440,7 @@ export const CreateAjusteParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+export const createAjusteBodyDescricaoMax = 1000;
 
 export const createAjusteBodyCustoMin = 0;
 
@@ -3407,7 +3448,7 @@ export const createAjusteBodyCustoMin = 0;
 
 export const CreateAjusteBody = zod.object({
   "atendimentoId": zod.string(),
-  "descricao": zod.string().min(1),
+  "descricao": zod.string().min(1).max(createAjusteBodyDescricaoMax),
   "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
   "custo": zod.number().min(createAjusteBodyCustoMin).optional()
 })
@@ -3589,13 +3630,14 @@ export const UpdateAjusteParams = zod.object({
   "ajusteId": zod.coerce.string()
 })
 
+export const updateAjusteBodyDescricaoMax = 1000;
 
 export const updateAjusteBodyCustoMin = 0;
 
 
 
 export const UpdateAjusteBody = zod.object({
-  "descricao": zod.string().min(1).optional(),
+  "descricao": zod.string().min(1).max(updateAjusteBodyDescricaoMax).optional(),
   "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
   "custo": zod.number().min(updateAjusteBodyCustoMin).nullish(),
   "status": zod.enum(['PENDENTE', 'FEITO']).optional()
@@ -3786,11 +3828,12 @@ export const AddChecklistItemParams = zod.object({
   "ajusteId": zod.coerce.string()
 })
 
+export const addChecklistItemBodyDescricaoMax = 1000;
 
 
 
 export const AddChecklistItemBody = zod.object({
-  "descricao": zod.string().min(1),
+  "descricao": zod.string().min(1).max(addChecklistItemBodyDescricaoMax),
   "ordem": zod.number().optional()
 })
 
@@ -3808,11 +3851,12 @@ export const UpdateChecklistItemParams = zod.object({
   "itemId": zod.coerce.string()
 })
 
+export const updateChecklistItemBodyDescricaoMax = 1000;
 
 
 
 export const UpdateChecklistItemBody = zod.object({
-  "descricao": zod.string().min(1).optional(),
+  "descricao": zod.string().min(1).max(updateChecklistItemBodyDescricaoMax).optional(),
   "feito": zod.boolean().optional(),
   "ordem": zod.number().optional()
 })
@@ -4708,6 +4752,10 @@ export const CreateBloqueioParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+export const createBloqueioBodyObservacaoMax = 1000;
+
+
+
 export const CreateBloqueioBody = zod.object({
   "vestidoId": zod.string(),
   "leadId": zod.string().optional(),
@@ -4715,7 +4763,7 @@ export const CreateBloqueioBody = zod.object({
   "casamentoData": dataDoCorpo().optional(),
   "inicio": dataDoCorpo().optional(),
   "fim": dataDoCorpo().optional(),
-  "observacao": zod.string().optional(),
+  "observacao": zod.string().max(createBloqueioBodyObservacaoMax).optional(),
   "reservaId": zod.string().optional()
 })
 
@@ -4926,6 +4974,10 @@ export const UpdateBloqueioParams = zod.object({
   "bloqueioId": zod.coerce.string()
 })
 
+export const updateBloqueioBodyObservacaoMax = 1000;
+
+
+
 export const UpdateBloqueioBody = zod.object({
   "leadId": zod.string().nullish(),
   "provaDataReal": dataDoCorpo().optional(),
@@ -4934,7 +4986,7 @@ export const UpdateBloqueioBody = zod.object({
   "lavagemConcluidaEm": dataDoCorpo().nullish(),
   "inicio": dataDoCorpo().optional(),
   "fim": dataDoCorpo().optional(),
-  "observacao": zod.string().optional()
+  "observacao": zod.string().max(updateBloqueioBodyObservacaoMax).optional()
 })
 
 
@@ -5456,6 +5508,8 @@ export const CreateOrcamentoParams = zod.object({
 
 export const createOrcamentoBodyDescontoValorMin = 0;
 
+export const createOrcamentoBodyObservacoesMax = 1000;
+
 
 
 export const CreateOrcamentoBody = zod.object({
@@ -5464,7 +5518,7 @@ export const CreateOrcamentoBody = zod.object({
   "descontoTipo": zod.enum(['PERCENTUAL', 'VALOR']).optional(),
   "descontoValor": zod.number().min(createOrcamentoBodyDescontoValorMin).optional(),
   "validade": dataDoCorpo().optional(),
-  "observacoes": zod.string().optional()
+  "observacoes": zod.string().max(createOrcamentoBodyObservacoesMax).optional()
 })
 
 
@@ -5637,13 +5691,15 @@ export const UpdateOrcamentoParams = zod.object({
 
 export const updateOrcamentoBodyDescontoValorMin = 0;
 
+export const updateOrcamentoBodyObservacoesMax = 1000;
+
 
 
 export const UpdateOrcamentoBody = zod.object({
   "descontoTipo": zod.enum(['PERCENTUAL', 'VALOR']).optional(),
   "descontoValor": zod.number().min(updateOrcamentoBodyDescontoValorMin).optional(),
   "validade": dataDoCorpo().optional(),
-  "observacoes": zod.string().optional(),
+  "observacoes": zod.string().max(updateOrcamentoBodyObservacoesMax).optional(),
   "status": zod.enum(['RASCUNHO', 'ENVIADO', 'APROVADO', 'RECUSADO']).optional()
 })
 
@@ -5739,6 +5795,7 @@ export const AddOrcamentoItemParams = zod.object({
   "orcamentoId": zod.coerce.string()
 })
 
+export const addOrcamentoItemBodyDescricaoMax = 1000;
 
 export const addOrcamentoItemBodyValorUnitarioMin = 0;
 
@@ -5750,7 +5807,7 @@ export const AddOrcamentoItemBody = zod.object({
   "vestidoId": zod.string().optional(),
   "itemEstoqueId": zod.string().optional(),
   "ajusteId": zod.string().optional(),
-  "descricao": zod.string().min(1),
+  "descricao": zod.string().min(1).max(addOrcamentoItemBodyDescricaoMax),
   "valorUnitario": zod.number().min(addOrcamentoItemBodyValorUnitarioMin),
   "quantidade": zod.number().min(1).optional()
 })
@@ -5773,6 +5830,7 @@ export const UpdateOrcamentoItemParams = zod.object({
   "itemId": zod.coerce.string()
 })
 
+export const updateOrcamentoItemBodyDescricaoMax = 1000;
 
 export const updateOrcamentoItemBodyValorUnitarioMin = 0;
 
@@ -5780,7 +5838,7 @@ export const updateOrcamentoItemBodyValorUnitarioMin = 0;
 
 
 export const UpdateOrcamentoItemBody = zod.object({
-  "descricao": zod.string().min(1).optional(),
+  "descricao": zod.string().min(1).max(updateOrcamentoItemBodyDescricaoMax).optional(),
   "valorUnitario": zod.number().min(updateOrcamentoItemBodyValorUnitarioMin).optional(),
   "quantidade": zod.number().min(1).optional()
 })
@@ -6738,15 +6796,7 @@ export const ListContratosResponse = zod.object({
   "explicacao": zod.string().optional()
 }),zod.null()]).optional(),
   "moraPerdoadaEm": dataDoCorpo().nullish(),
-  "moraPerdoadaMotivo": zod.string().nullish(),
-  "contrato": zod.union([zod.object({
-  "leadId": zod.string(),
-  "lead": zod.union([zod.object({
-  "noivaNome": zod.string(),
-  "whatsapp": zod.string().nullish(),
-  "ultimoContatoEm": dataDoCorpo().nullish()
-}),zod.null()]).optional()
-}),zod.null()]).optional()
+  "moraPerdoadaMotivo": zod.string().nullish()
 })).optional(),
   "itens": zod.array(zod.object({
   "id": zod.string(),
@@ -6822,7 +6872,11 @@ export const CreateContratoParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+export const createContratoBodyVestidoDescricaoMax = 1000;
+
 export const createContratoBodyValorTotalMin = 0.01;
+
+export const createContratoBodyObservacoesMax = 1000;
 
 export const createContratoBodyParcelasItemNumeroMin = 0;
 
@@ -6837,14 +6891,14 @@ export const CreateContratoBody = zod.object({
   "bloqueioVestidoIds": zod.array(zod.string()).optional(),
   "vendedoraId": zod.string(),
   "cpf": zod.string().optional(),
-  "vestidoDescricao": zod.string().optional(),
+  "vestidoDescricao": zod.string().max(createContratoBodyVestidoDescricaoMax).optional(),
   "valorTotal": zod.number().min(createContratoBodyValorTotalMin),
   "formaPagamento": zod.enum(['PIX', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'DINHEIRO', 'BOLETO', 'TRANSFERENCIA', 'OUTRO']).optional(),
   "dataCasamento": dataDoCorpo().optional(),
   "dataRetirada": dataDoCorpo().optional(),
   "dataDevolucao": dataDoCorpo().optional(),
   "prazoDevolucaoReservaDias": zod.number().optional(),
-  "observacoes": zod.string().optional(),
+  "observacoes": zod.string().max(createContratoBodyObservacoesMax).optional(),
   "parcelas": zod.array(zod.object({
   "numero": zod.number().min(createContratoBodyParcelasItemNumeroMin),
   "descricao": zod.string().optional(),
@@ -6938,15 +6992,7 @@ export const CreateContratoResponse = zod.object({
   "explicacao": zod.string().optional()
 }),zod.null()]).optional(),
   "moraPerdoadaEm": dataDoCorpo().nullish(),
-  "moraPerdoadaMotivo": zod.string().nullish(),
-  "contrato": zod.union([zod.object({
-  "leadId": zod.string(),
-  "lead": zod.union([zod.object({
-  "noivaNome": zod.string(),
-  "whatsapp": zod.string().nullish(),
-  "ultimoContatoEm": dataDoCorpo().nullish()
-}),zod.null()]).optional()
-}),zod.null()]).optional()
+  "moraPerdoadaMotivo": zod.string().nullish()
 })).optional(),
   "itens": zod.array(zod.object({
   "id": zod.string(),
@@ -7104,15 +7150,7 @@ export const GetContratoResponse = zod.object({
   "explicacao": zod.string().optional()
 }),zod.null()]).optional(),
   "moraPerdoadaEm": dataDoCorpo().nullish(),
-  "moraPerdoadaMotivo": zod.string().nullish(),
-  "contrato": zod.union([zod.object({
-  "leadId": zod.string(),
-  "lead": zod.union([zod.object({
-  "noivaNome": zod.string(),
-  "whatsapp": zod.string().nullish(),
-  "ultimoContatoEm": dataDoCorpo().nullish()
-}),zod.null()]).optional()
-}),zod.null()]).optional()
+  "moraPerdoadaMotivo": zod.string().nullish()
 })).optional(),
   "itens": zod.array(zod.object({
   "id": zod.string(),
@@ -7185,15 +7223,21 @@ export const UpdateContratoParams = zod.object({
   "contratoId": zod.coerce.string()
 })
 
+export const updateContratoBodyVestidoDescricaoMax = 1000;
+
+export const updateContratoBodyObservacoesMax = 1000;
+
+
+
 export const UpdateContratoBody = zod.object({
   "cpf": zod.string().optional().describe('CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); qualquer grafia entra e é gravada como 000.000.000-00. (E233)'),
-  "vestidoDescricao": zod.string().optional(),
+  "vestidoDescricao": zod.string().max(updateContratoBodyVestidoDescricaoMax).optional(),
   "formaPagamento": zod.enum(['PIX', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'DINHEIRO', 'BOLETO', 'TRANSFERENCIA', 'OUTRO']).optional(),
   "dataCasamento": dataDoCorpo().optional(),
   "dataRetirada": dataDoCorpo().nullish(),
   "dataDevolucao": dataDoCorpo().nullish(),
   "prazoDevolucaoReservaDias": zod.number().nullish(),
-  "observacoes": zod.string().optional()
+  "observacoes": zod.string().max(updateContratoBodyObservacoesMax).optional()
 })
 
 
@@ -7281,15 +7325,7 @@ export const UpdateContratoResponse = zod.object({
   "explicacao": zod.string().optional()
 }),zod.null()]).optional(),
   "moraPerdoadaEm": dataDoCorpo().nullish(),
-  "moraPerdoadaMotivo": zod.string().nullish(),
-  "contrato": zod.union([zod.object({
-  "leadId": zod.string(),
-  "lead": zod.union([zod.object({
-  "noivaNome": zod.string(),
-  "whatsapp": zod.string().nullish(),
-  "ultimoContatoEm": dataDoCorpo().nullish()
-}),zod.null()]).optional()
-}),zod.null()]).optional()
+  "moraPerdoadaMotivo": zod.string().nullish()
 })).optional(),
   "itens": zod.array(zod.object({
   "id": zod.string(),
@@ -7410,11 +7446,12 @@ export const CancelarContratoParams = zod.object({
   "contratoId": zod.coerce.string()
 })
 
+export const cancelarContratoBodyMotivoMax = 300;
 
 
 
 export const CancelarContratoBody = zod.object({
-  "motivo": zod.string().min(1),
+  "motivo": zod.string().min(1).max(cancelarContratoBodyMotivoMax),
   "destinoPago": zod.enum(['manter', 'estornar']).optional(),
   "iniciativa": zod.enum(['LOCATARIA', 'LOJA']).optional()
 })
@@ -7504,15 +7541,7 @@ export const CancelarContratoResponse = zod.object({
   "explicacao": zod.string().optional()
 }),zod.null()]).optional(),
   "moraPerdoadaEm": dataDoCorpo().nullish(),
-  "moraPerdoadaMotivo": zod.string().nullish(),
-  "contrato": zod.union([zod.object({
-  "leadId": zod.string(),
-  "lead": zod.union([zod.object({
-  "noivaNome": zod.string(),
-  "whatsapp": zod.string().nullish(),
-  "ultimoContatoEm": dataDoCorpo().nullish()
-}),zod.null()]).optional()
-}),zod.null()]).optional()
+  "moraPerdoadaMotivo": zod.string().nullish()
 })).optional(),
   "itens": zod.array(zod.object({
   "id": zod.string(),
@@ -8157,6 +8186,7 @@ export const CreateContaPagarParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+export const createContaPagarBodyDescricaoMax = 1000;
 
 export const createContaPagarBodyValorPrevistoMin = 0.01;
 
@@ -8166,7 +8196,7 @@ export const CreateContaPagarBody = zod.object({
   "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO', 'DEVOLUCAO']),
   "colaboradorId": zod.string().optional(),
   "competencia": zod.string().optional(),
-  "descricao": zod.string().min(1),
+  "descricao": zod.string().min(1).max(createContaPagarBodyDescricaoMax),
   "categoria": zod.string().optional(),
   "fornecedor": zod.string().optional(),
   "valorPrevisto": zod.number().min(createContaPagarBodyValorPrevistoMin),
@@ -8255,13 +8285,15 @@ export const PagarContaPagarParams = zod.object({
 
 export const pagarContaPagarBodyValorPagoMin = 0.01;
 
+export const pagarContaPagarBodyObservacoesMax = 1000;
+
 
 
 export const PagarContaPagarBody = zod.object({
   "data": dataDoCorpo(),
   "valorPago": zod.number().min(pagarContaPagarBodyValorPagoMin),
   "forma": zod.string().optional(),
-  "observacoes": zod.string().optional()
+  "observacoes": zod.string().max(pagarContaPagarBodyObservacoesMax).optional()
 })
 
 export const PagarContaPagarResponse = zod.object({
@@ -8388,6 +8420,8 @@ export const CreatePagamentoParams = zod.object({
 
 export const createPagamentoBodyValorPagoMin = 0.01;
 
+export const createPagamentoBodyObservacoesMax = 1000;
+
 
 
 export const CreatePagamentoBody = zod.object({
@@ -8395,7 +8429,7 @@ export const CreatePagamentoBody = zod.object({
   "contaIds": zod.array(zod.string()).min(1),
   "valorPago": zod.number().min(createPagamentoBodyValorPagoMin).optional(),
   "forma": zod.string().optional(),
-  "observacoes": zod.string().optional()
+  "observacoes": zod.string().max(createPagamentoBodyObservacoesMax).optional()
 })
 
 export const CreatePagamentoResponse = zod.object({
@@ -8557,6 +8591,7 @@ export const CreateRecorrenciaParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+export const createRecorrenciaBodyDescricaoMax = 1000;
 
 export const createRecorrenciaBodyValorMin = 0.01;
 
@@ -8565,7 +8600,7 @@ export const createRecorrenciaBodyValorMin = 0.01;
 export const CreateRecorrenciaBody = zod.object({
   "tipo": zod.enum(['SALARIO', 'DESPESA', 'FORNECEDOR']),
   "usuarioId": zod.string().optional().describe('Obrigatório para SALARIO'),
-  "descricao": zod.string().min(1).optional().describe('Obrigatório para DESPESA\/FORNECEDOR'),
+  "descricao": zod.string().min(1).max(createRecorrenciaBodyDescricaoMax).optional().describe('Obrigatório para DESPESA\/FORNECEDOR'),
   "categoria": zod.string().optional(),
   "fornecedor": zod.string().optional(),
   "valor": zod.number().min(createRecorrenciaBodyValorMin),
@@ -8591,13 +8626,14 @@ export const UpdateRecorrenciaParams = zod.object({
   "recorrenciaId": zod.coerce.string()
 })
 
+export const updateRecorrenciaBodyDescricaoMax = 1000;
 
 export const updateRecorrenciaBodyValorMin = 0.01;
 
 
 
 export const UpdateRecorrenciaBody = zod.object({
-  "descricao": zod.string().min(1).optional(),
+  "descricao": zod.string().min(1).max(updateRecorrenciaBodyDescricaoMax).optional(),
   "categoria": zod.string().optional(),
   "fornecedor": zod.string().optional(),
   "valor": zod.number().min(updateRecorrenciaBodyValorMin).optional(),
@@ -9198,12 +9234,14 @@ export const BaixarEstornoComissaoParams = zod.object({
 })
 
 export const baixarEstornoComissaoBodyCompetenciaRegExp = new RegExp('^\\d{4}-\\d{2}$');
+export const baixarEstornoComissaoBodyMotivoMax = 300;
+
 
 
 export const BaixarEstornoComissaoBody = zod.object({
   "vendedoraId": zod.string(),
   "competencia": zod.string().regex(baixarEstornoComissaoBodyCompetenciaRegExp).describe('A competência em que o estorno aparece pendente (a mesma do preview)'),
-  "motivo": zod.string().nullish().describe('Justificativa da baixa — fica no registro de auditoria')
+  "motivo": zod.string().max(baixarEstornoComissaoBodyMotivoMax).nullish().describe('Justificativa da baixa — fica no registro de auditoria')
 })
 
 export const BaixarEstornoComissaoResponse = zod.object({

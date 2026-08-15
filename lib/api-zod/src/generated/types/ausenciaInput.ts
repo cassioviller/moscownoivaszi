@@ -10,5 +10,6 @@ export interface AusenciaInput {
   usuarioId: string;
   inicio: string;
   fim: string;
+  /** @maxLength 300 */
   motivo?: string;
 }

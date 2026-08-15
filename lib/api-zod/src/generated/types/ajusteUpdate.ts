@@ -9,7 +9,10 @@ import type { AjusteUpdateStatus } from './ajusteUpdateStatus';
 import type { AjusteUpdateTipo } from './ajusteUpdateTipo';
 
 export interface AjusteUpdate {
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
   descricao?: string;
   tipo?: AjusteUpdateTipo;
   /**

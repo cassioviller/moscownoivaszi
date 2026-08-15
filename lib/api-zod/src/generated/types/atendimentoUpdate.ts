@@ -14,5 +14,6 @@ export interface AtendimentoUpdate {
   inicio?: Date;
   situacao?: AtendimentoUpdateSituacao;
   desfecho?: AtendimentoUpdateDesfecho;
+  /** @maxLength 1000 */
   observacao?: string;
 }

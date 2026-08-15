@@ -16,6 +16,7 @@ export interface LeadInput {
   whatsapp?: string;
   casamentoData?: Date;
   casamentoHorario?: string;
+  /** @maxLength 300 */
   casamentoLocal?: string;
   origem?: LeadInputOrigem;
   /** CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); qualquer grafia entra e é gravada como 000.000.000-00. (E233) */
