@@ -67,6 +67,13 @@ para o documento que manda.
    lugar em tela rolada (o `main` rola por dentro), e o diálogo aberto
    derrubava o navegador na captura seguinte. Como se republica está no
    `replit.md`. Sobras: S-C320 e S-C321, 🔵.
+   **E o E237 (`d352c6cf`): a P4 foi respondida — IPCA — e virou código no ato:
+   a 9ª corrige pelos meses cheios com o índice que a dona informa em
+   Configurações → Índices; mês sem número fica DITO com o mês que falta.
+   A P5 foi confirmada (do fecho). P1–P3 são gestos da dona na instalação
+   real. As três 🔵 do dia (S-C310/320/321) fecharam em `74e2acb2`; restam
+   S-C330 e S-C331, 🔵, nascidas no E237.**
+
 
    **A lição da segunda metade é de MEDIÇÃO, e ela tem número: SETE das nove
    sobras estavam erradas sobre si mesmas, e todas para MENOS.** A S-C281 dizia
@@ -545,8 +552,8 @@ para o documento que manda.
    `git rev-list --count origin/main..main` antes de assumir que ainda está em
    dia — esta linha envelhece a cada commit, e já envelheceu seis vezes.
 
-   Hoje a régua é **API 1782 (257 arquivos) · frontend 1003 (108 arquivos) ·
-   E2E 179 · typecheck verde** — as quatro medidas em série no fecho do E236, quarta sessão de 2026-08-15 (a API rodou inteira quatro vezes na sessão; o E2E, cinco). O parágrafo anterior media 1779 (256) · 998 · 179 no E235. O parágrafo anterior media 1774 (255) · 998 · 178 no E234, e 1755 (251) · 998 (108) · 177 no fecho da
+   Hoje a régua é **API 1786 (258 arquivos) · frontend 1003 (108 arquivos) ·
+   E2E 180 · typecheck verde** — as quatro medidas em série no fecho do E237, quarta sessão de 2026-08-15 (a API rodou inteira seis vezes na sessão; o E2E, sete). O parágrafo anterior media 1782 (257) · 1003 · 179 no E236. O parágrafo anterior media 1774 (255) · 998 · 178 no E234, e 1755 (251) · 998 (108) · 177 no fecho da
    segunda metade de 2026-08-15 (a API rodou INTEIRA **seis vezes** na
    sessão; o E2E, **quatro**). O parágrafo anterior media 1726 · 974 na
    madrugada do mesmo dia. O parágrafo abaixo, dos números de
