@@ -23,6 +23,34 @@ dona, como sempre.
 
 ---
 
+## As decisões, tomadas em 15/08/2026 (terceira sessão), todas na recomendação
+
+| Pergunta | Resposta da dona | O que muda no plano |
+|---|---|---|
+| **D7** — representante (nome, RG, CPF), PIX (chave + titular) e cidade/UF entram no cadastro da loja? | **Sim, os sete campos** | O **E234 está destravado** — é código, não decisão. Fecha a S-C300 e o E220 inteiro |
+| O E233 valida também o **CPF** (locatária e representante), no mesmo módulo? | **Sim, CNPJ e CPF juntos** | O E233 tem **5 portas**, não 3: as duas do CPF (`POST /contratos`, `PATCH /leads`) entram |
+| **S-C51** — conciliação por ato? | **Perguntar à contadora antes** | O **E235 fica pronto e não executa**. A pergunta, com o número, está abaixo; a resposta entra na tabela de decisões do rastreador |
+| Publicar o `main`? | **Sim, agora** | Passo 0 feito no mesmo dia |
+
+**Consequência para a fila:** o que resta de código sem depender de ninguém é
+**E233 → E234**, nesta ordem (o E234 usa a régua de CPF do E233 no representante
+e na chave PIX). O E235 espera; enquanto 0 de 303 parcelas estiver em pedaços,
+esperar não custa.
+
+**A pergunta para a contadora, pronta para copiar:**
+
+> A conciliação bancária do sistema hoje monta **um movimento por parcela**,
+> datado pelo dia do recebimento. Se uma parcela de R$ 1.000,00 for paga em duas
+> vezes (R$ 300,00 em 01/03 e R$ 700,00 em 15/03), o extrato traz duas linhas e
+> o sistema uma — a tela acusa três divergências de um pagamento certo. Até hoje
+> **nenhuma** parcela foi paga em pedaços (0 de 303) e a conciliação nunca foi
+> marcada como conferida. **Você prefere que a conciliação enxergue cada
+> pagamento (por ato — o que o extrato traz), ou basta a parcela?** Por ato, o
+> sistema passa a listar um movimento por recebimento e a marca de "conferido"
+> fica por recebimento; por parcela, fica como está.
+
+---
+
 ## O que a medição mudou antes de o plano ser escrito
 
 A regra desta trilha é *contar quem passa pela porta antes de estimar*, e as
@@ -104,11 +132,7 @@ proprietário já promete.
 
 ## E234 — o que é da loja mora no cadastro da loja (S-C300, D7)
 
-**Depende da D7.** O manual do proprietário já recomenda *sim*, e a razão está
-lá: *"os dois continuam sendo escritos à mão em cada contrato, que é onde
-nascem as divergências"*. Este épico está escrito para o **sim**; se a resposta
-for *não*, ele vira uma linha na tabela de decisões e o papel continua saindo
-com as lacunas que sai hoje.
+**A D7 foi respondida SIM em 15/08/2026** (os sete campos, na recomendação do manual do proprietário: *"os dois continuam sendo escritos à mão em cada contrato, que é onde nascem as divergências"*). Este épico é código, e vem logo depois do E233.
 
 **A migração — sete colunas em `lojas`, todas nulas por padrão** (a
 instalação existente não muda de comportamento até alguém preencher):
@@ -221,11 +245,10 @@ sem quem vai usar é a que se reescreve.
 
 ## A ordem, e o que ela custa em decisão
 
-1. **Passo 0** — publicar `main` (3 commits), com a autorização da dona.
+1. **Passo 0** — publicar `main`, com a autorização da dona — **autorizado e feito em 15/08**.
 2. **E233** — hoje, sem perguntar nada. Fecha a S-C301 e dá à P3 uma tela que
    confere.
-3. **D7 → E234** — a pergunta já está no manual do proprietário com a
-   recomendação; respondida *sim*, é um dia. Fecha a S-C300 e o E220 inteiro
+3. **E234** — a D7 já está respondida (sim); é um dia. Fecha a S-C300 e o E220 inteiro
    (o papel deixa de ter lacuna que não seja da noiva).
 4. **Contadora → E235** — a pergunta com o número; respondida *por ato*, é um
    dia; *por parcela*, a S-C51 vira decisão escrita e fecha sem código.
