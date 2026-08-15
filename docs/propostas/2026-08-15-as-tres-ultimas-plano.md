@@ -30,7 +30,7 @@ dona, como sempre.
 | **D7** — representante (nome, RG, CPF), PIX (chave + titular) e cidade/UF entram no cadastro da loja? | **Sim, os sete campos** | O **E234 está destravado** — é código, não decisão. Fecha a S-C300 e o E220 inteiro |
 | O E233 valida também o **CPF** (locatária e representante), no mesmo módulo? | **Sim, CNPJ e CPF juntos** | O E233 tem **5 portas**, não 3: as duas do CPF (`POST /contratos`, `PATCH /leads`) entram |
 | **S-C51** — conciliação por ato? | **Perguntar à contadora antes** | O **E235 fica pronto e não executa**. A pergunta, com o número, está abaixo; a resposta entra na tabela de decisões do rastreador |
-| Publicar o `main`? | **Sim, agora** | Passo 0 feito no mesmo dia |
+| Publicar o `main`? | **Sim, agora** | Feito: `origin/main` = `c3e53ace`, fast-forward de 5 commits (E220 primeira fatia, rastreador, manual, plano, decisões) |
 
 **Consequência para a fila:** o que resta de código sem depender de ninguém é
 **E233 → E234**, nesta ordem (o E234 usa a régua de CPF do E233 no representante
