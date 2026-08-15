@@ -9,9 +9,9 @@ test.describe("Seleção de loja", () => {
     await expect(page).toHaveURL(/selecionar-loja/);
     // S-O144: a loja de dev e a de demonstração dos manuais têm o MESMO nome
     // desde o seed real (15/08), e `getByText(nome).first()` clicava na que
-    // viesse primeiro — a demo, depois que ela renasceu. `loja_ativa_id` mora
-    // no USUÁRIO, então o clique errado trocava a loja de todos os specs
-    // seguintes (14 vermelhos em 04–13, todos na tela da demo). Pela chave.
+    // viesse primeiro — a demo, depois que ela renasceu. O mesmo `.first()`
+    // estava no `auth.setup`, e o storageState COMPARTILHADO nasceu apontando
+    // para a demo (14 vermelhos em 04–13, todos na tela dela). Pela chave.
     await expect(page.getByTestId(`loja-${estado.lojaId}`)).toBeVisible();
   });
 

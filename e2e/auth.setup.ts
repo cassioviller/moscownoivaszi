@@ -17,16 +17,24 @@ setup("autentica admin e seleciona a loja", async ({ page }) => {
   await loginViaUI(page, estado.adminEmail, estado.senha);
   await expect(page).toHaveURL(/selecionar-loja|dashboard/, { timeout: 10_000 });
 
-  if (page.url().includes("selecionar-loja")) {
-    const selecionou = page.waitForResponse(
-      (res) => res.url().includes("/api/auth/selecionar-loja") && res.ok(),
-      { timeout: 10_000 },
-    );
-    await page.getByText(estado.lojaNome).first().click();
-    await selecionou;
-    // Workaround do bug: navegação plena recarrega a sessão.
-    await page.goto("/dashboard");
-  }
+  /**
+   * S-O144 — SEMPRE pela tela de seleção, e SEMPRE pela chave. Há duas
+   * "Moscow Noivas" para o admin desde o seed real (bb03a0f7) — a de dev e a
+   * de demonstração dos manuais —, e o setup antigo clicava
+   * `getByText(nome).first()`: quando a demo renasceu (15/08, 21:27) e passou
+   * a vir primeiro, o storageState que TODOS os specs herdam nasceu apontando
+   * para ela — 14 vermelhos em 04–13, e o spec 03 passou por ser agnóstico de
+   * loja. `loja_ativa_id` mora na SESSÃO, e a sessão é uma só para a suíte.
+   */
+  await page.goto("/selecionar-loja");
+  const selecionou = page.waitForResponse(
+    (res) => res.url().includes("/api/auth/selecionar-loja") && res.ok(),
+    { timeout: 10_000 },
+  );
+  await page.getByTestId(`loja-${estado.lojaId}`).click();
+  await selecionou;
+  // Navegação plena recarrega a sessão com a loja escolhida.
+  await page.goto("/dashboard");
 
   // O tour do acesso (E24) abre sobre o dashboard na PRIMEIRA entrada do perfil
   // e é modal — sem fechá-lo, nada atrás dele é alcançável e todo spec que
