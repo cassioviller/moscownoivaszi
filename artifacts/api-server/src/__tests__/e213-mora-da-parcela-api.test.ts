@@ -200,7 +200,7 @@ describe("E213 — a parcela vencida tem multa e juros", () => {
      * linha que declara o alcance da régua dentro.
      */
     expect(detalhe.explicacao, "a trilha da mora não guarda a frase (S-C102)").toBeDefined();
-    expect(linhas[0]!.descricao).toBe(`Multa e juros (cláusula 9ª) — ${detalhe.explicacao}`);
+    expect(linhas[0]!.descricao).toBe(`Acréscimos da cláusula 9ª (multa, juros e correção) — ${detalhe.explicacao}`);
     // P4/E237: a ausência continua dita — agora com o MÊS que falta (o IPCA não foi informado nesta loja).
     expect(detalhe.explicacao).toMatch(/Sem correção monetária — (o IPCA de \d{2}\/\d{4} não foi informado \(Configurações → Índices\)|ainda não há mês cheio de atraso)/);
   });

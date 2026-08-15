@@ -139,6 +139,12 @@ const brlFmt = new Intl.NumberFormat("pt-BR", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
+/** P4/E237 — uma variação percentual na grafia brasileira: `pctBR(0.42)` → "0,42%". Até 4 casas: o IPCA vem com duas, e não se arredonda índice. */
+const pctFmt = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 4 });
+export function pctBR(valor: number): string {
+  return `${pctFmt.format(valor)}%`;
+}
+
 
 export function brl(valor: number): string {
   return brlFmt.format(valor);

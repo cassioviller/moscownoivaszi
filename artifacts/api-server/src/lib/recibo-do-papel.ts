@@ -342,7 +342,8 @@ function montarTokensDoRecibo(d: DadosDoRecibo): Token[] {
    */
   if (recibo.mora > 0) {
     dado("Quitacao desta parcela", brl(recibo.valorNaParcela));
-    dado("Multa e juros (cláusula 9ª)", brl(recibo.mora));
+    // S-C330: os três termos no rótulo (E237 trouxe a correção).
+    dado("Acréscimos da cláusula 9ª (multa, juros e correção)", brl(recibo.mora));
   }
   dado("Valor total do contrato", brl(contrato.valorTotal));
   // O acumulado e o saldo: é o que faz o recibo de um recebimento PARCIAL

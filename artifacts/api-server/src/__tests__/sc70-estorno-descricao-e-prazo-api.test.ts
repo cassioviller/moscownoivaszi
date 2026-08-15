@@ -235,7 +235,7 @@ describe("S-C70/S-C71/S-C90 — o estorno, a frase e o prazo nas portas do contr
       )!;
       await receber(parcela.id, 515);
       const mora = await moraDo(contrato.id);
-      expect(mora.descricao).toBe(`Multa e juros (cláusula 9ª) — ${naFila.mora!.explicacao}`);
+      expect(mora.descricao).toBe(`Acréscimos da cláusula 9ª (multa, juros e correção) — ${naFila.mora!.explicacao}`);
     });
 
     it("números maiores empurrariam mais texto para fora, e não empurram", async () => {
@@ -252,7 +252,8 @@ describe("S-C70/S-C71/S-C90 — o estorno, a frase e o prazo nas portas do contr
       // corte antigo comia, e é ele que reprova se a frase encolher de novo.
       // E237: era 221 com "— o contrato não nomeia índice."; a frase nova nomeia o mês que falta e o caminho
       // ("— o IPCA de mm/aaaa não foi informado (Configurações → Índices).") — 254, e o mês tem sempre 7 caracteres.
-      expect(mora.descricao!.length).toBe(254);
+      // S-C330: o rótulo passou de "Multa e juros (cláusula 9ª)" para "Acréscimos da cláusula 9ª (multa, juros e correção)" — 278.
+      expect(mora.descricao!.length).toBe(278);
     });
   });
 

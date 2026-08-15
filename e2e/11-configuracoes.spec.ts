@@ -59,7 +59,7 @@ test.describe("Configurações — Dados da loja (E234)", () => {
     // loja existente, e desde o E234 o botão trava também pelo CNPJ. É a P3 no
     // gesto real: a dona corrige o CNPJ ANTES de os sete campos poderem entrar.
     // (Medido no primeiro E2E do E234: 60 s esperando um botão desabilitado.)
-    await page.locator("#loja-cnpj").fill("11.222.333/0001-81");
+    await page.locator("#loja-cnpj").fill("37.771.644/0001-93");
     await page.locator("#loja-cidade").fill("São José dos Campos");
     await page.locator("#loja-uf").fill("SP");
     await page.locator("#loja-representante-nome").fill("Renato Nascimento de Brito");

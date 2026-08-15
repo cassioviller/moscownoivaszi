@@ -15,6 +15,7 @@ import { Percent } from "lucide-react";
 import { mensagemApi } from "@/lib/erro-api";
 import { Carregando, Erro } from "@/components/estado";
 import { competenciaAtual, rotuloCompetencia, ultimasCompetencias } from "@/lib/financeiro/datas";
+import { pctBR as pct } from "@/lib/formatos";
 
 /**
  * **P4/E237 — o IPCA informado por competência.**
@@ -29,10 +30,6 @@ import { competenciaAtual, rotuloCompetencia, ultimasCompetencias } from "@/lib/
  * seja "cheio" ainda — vale para o mês que vem) e um campo por mês; salvar é
  * UPSERT: corrigir um número errado é digitar de novo, e a trilha guarda quem.
  */
-// A variação em %, na grafia brasileira. Número, não data — mas a régua D15 lê o método de locale como
-// data em potencial, e o formatador nomeado é o que ela reconhece (o mesmo desenho do `brl`).
-const pctFmt = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 4 });
-const pct = (v: number) => `${pctFmt.format(v)}%`;
 
 export function IndicesMonetarios() {
   const { activeLojaId } = useAuth();

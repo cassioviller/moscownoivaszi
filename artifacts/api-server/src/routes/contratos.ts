@@ -2542,7 +2542,7 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("contrat
       detalhe:
         `Faltam R$ ${reais(saldoC).toFixed(2)} nesta parcela — o valor informado é maior.` +
         (acrescimoC > 0
-          ? ` (inclui R$ ${reais(acrescimoC).toFixed(2)} de multa e juros da cláusula 9ª)`
+          ? ` (inclui R$ ${reais(acrescimoC).toFixed(2)} de acréscimos da cláusula 9ª — multa, juros e correção)`
           : ""),
     });
     return;
@@ -2656,7 +2656,8 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("contrat
          * número: R$ 12.500,00 vencidos há 120 dias dão 216 caracteres, e
          * `dias` de três algarismos empurrava mais um para fora a cada casa.
          */
-        descricao: `Multa e juros (cláusula 9ª) — ${mora?.explicacao ?? ""}`,
+        // S-C330: o rótulo diz os TRÊS termos — com o IPCA informado (E237) o valor inclui correção.
+        descricao: `Acréscimos da cláusula 9ª (multa, juros e correção) — ${mora?.explicacao ?? ""}`,
         valorPrevisto: reais(aMoraC),
         vencimento: existente.vencimento,
         status: "PAGA",

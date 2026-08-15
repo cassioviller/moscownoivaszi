@@ -7,7 +7,8 @@ test.describe("Seleção de loja", () => {
   test("admin vê a loja disponível", async ({ page }) => {
     await loginViaUI(page, estado.adminEmail, estado.senha);
     await expect(page).toHaveURL(/selecionar-loja/);
-    await expect(page.getByText(estado.lojaNome)).toBeVisible();
+    // A loja de dev e a de demonstração dos manuais têm o mesmo nome desde o seed real (15/08) — a primeira basta.
+    await expect(page.getByText(estado.lojaNome).first()).toBeVisible();
   });
 
   // Era FALHA ESPERADA no main: clicar na loja gravava a sessão no servidor mas

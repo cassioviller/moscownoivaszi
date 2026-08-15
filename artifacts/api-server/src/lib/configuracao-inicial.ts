@@ -46,10 +46,11 @@ import {
   comissaoFaixasTable,
   recorrenciasTable,
   vestidosTable,
+  indicesMonetariosTable,
 } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import { CNPJ_DE_EXEMPLO, ancoraDeNegocio, hojeLocal, primeiroDiaDoMes } from "@workspace/financeiro-core";
+import { ancoraDeNegocio, hojeLocal, primeiroDiaDoMes } from "@workspace/financeiro-core";
 import { type AcessosModulos } from "./permissoes";
 
 // ── Os perfis (tabela GLOBAL — perfil não pertence a loja) ────────────────────
@@ -434,21 +435,26 @@ export const RECORRENCIAS_PADRAO: RecorrenciaPadrao[] = [
 /** Os defaults do ambiente de desenvolvimento — os mesmos ids de sempre. */
 export const LOJA_PADRAO = {
   id: "84e539bd-9199-4551-8ae5-7619868f62d3",
-  nome: "Moscow Noivas SP",
-  // E233: o exemplo anterior (12.345.678/0001-99) não fechava os dígitos e a
-  // porta o recusaria na primeira instalação. Este é o exemplo canônico, válido.
-  cnpj: CNPJ_DE_EXEMPLO,
-  endereco: "Rua das Noivas, 123, São Paulo - SP",
-  telefone: "(11) 99999-9999",
-  // E234 — o instrumento inteiro na instalação de exemplo: quem assina, o PIX,
-  // o foro. Valores claramente de exemplo (o CPF fecha os dígitos).
-  cidade: "São Paulo",
+  /**
+   * A pedido da dona (15/08/2026): o seed traz o CADASTRO REAL da loja, para
+   * a instalação de teste sair com o instrumento inteiro — CNPJ, endereço,
+   * cidade/UF do foro, quem assina e o PIX (P3). São os dados do contrato
+   * transcrito (`A-transcricao.md`) e das decisões D1/D7. Uma instalação de
+   * outra loja troca tudo por `SEED_LOJA_*`; o seed é idempotente e não
+   * reescreve loja existente — o que a dona digitar em Dados da loja fica.
+   */
+  nome: "Moscow Noivas",
+  cnpj: "37.771.644/0001-93",
+  endereco: "Rua Luis Jacinto, 297, Centro, São José dos Campos - SP, CEP 12243-260",
+  // O telefone real não está no contrato transcrito — troque em Dados da loja.
+  telefone: "(12) 99999-0000",
+  cidade: "São José dos Campos",
   uf: "SP",
-  representanteNome: "Representante de Exemplo",
-  representanteRg: "12.345.678-9",
-  representanteCpf: "390.533.447-05",
-  pixChave: "39053344705",
-  pixTitular: "Representante de Exemplo",
+  representanteNome: "Renato Nascimento de Brito",
+  representanteRg: "42.909.064-x",
+  representanteCpf: "333.486.478-27",
+  pixChave: "23723482805",
+  pixTitular: "Karina Shabalina",
 } as const;
 
 export const DONA_PADRAO = {
@@ -495,6 +501,8 @@ export type ResumoConfiguracao = {
     opcoes: number;
     escadaDeComissao: boolean;
     recorrencias: number;
+    /** P4/E237 — os meses de IPCA de exemplo que o seed inseriu (0 quando já existiam). */
+    indicesIpca?: number;
   };
 };
 
@@ -703,6 +711,35 @@ export async function aplicarConfiguracaoInicial(opts: OpcoesConfiguracao): Prom
   criado.opcoes = opcoesInseridas.length;
 
   if (!opts.comExemplosFinanceiros) return { lojaId: loja.id, lojaNome: loja.nome, donaEmail: dona.email, criado };
+
+  // 7b. O IPCA dos últimos 12 meses — VALORES DE EXEMPLO (P4/E237, a pedido
+  //     da dona em 15/08: a instalação de teste sai com a correção da 9ª
+  //     funcionando). São números plausíveis, não o IPCA publicado: a dona
+  //     troca cada um em Configurações → Índices, e a trilha guarda a troca.
+  //     Idempotente: mês já informado não é sobrescrito.
+  {
+    const hoje = hojeLocal();
+    const [ano, mes] = hoje.split("-").map(Number) as [number, number];
+    const exemplos = [0.42, 0.38, 0.31, 0.46, 0.5, 0.29, 0.35, 0.44, 0.52, 0.16, 0.24, 0.39];
+    for (let i = 1; i <= 12; i++) {
+      let m = mes - i, a = ano;
+      while (m <= 0) { m += 12; a -= 1; }
+      const competencia = `${a}-${String(m).padStart(2, "0")}`;
+      const inserido = await db
+        .insert(indicesMonetariosTable)
+        .values({
+          id: `${loja.id}-ipca-${competencia}`,
+          lojaId: loja.id,
+          indice: "IPCA",
+          competencia,
+          variacaoPct: exemplos[(i - 1) % exemplos.length]!,
+          atualizadoPor: "seed (valor de exemplo — troque pelo IPCA publicado)",
+        })
+        .onConflictDoNothing()
+        .returning({ id: indicesMonetariosTable.id });
+      if (inserido.length > 0) criado.indicesIpca = (criado.indicesIpca ?? 0) + 1;
+    }
+  }
 
   // 8. A escada de comissão da dona.
   //
