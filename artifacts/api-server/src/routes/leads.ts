@@ -633,7 +633,37 @@ router.get("/lojas/:lojaId/leads/:leadId/locacao", async (req, res): Promise<voi
           inArray(bloqueioVestidosTable.id, bloqueioIds),
           eq(bloqueioVestidosTable.lojaId, lojaId as string),
         ))
-        .orderBy(asc(bloqueioVestidosTable.createdAt))
+        /**
+         * **S-C290 — a VIVA primeiro, e só depois a mais antiga.**
+         *
+         * Este é o único dos três leitores da união N:N+legado que **não
+         * filtra `canceladoEm`**, e isso é decisão e não esquecimento: os
+         * outros dois respondem *"qual vestido é o seu"* — uma promessa, e
+         * reserva cancelada não promete nada —, enquanto este responde *"a
+         * peça saiu e voltou?"*, que é FATO FÍSICO. Cancelar a reserva não
+         * desfaz a retirada, e é a régua que o E225 já tinha estabelecido pelo
+         * lado da disponibilidade (a peça "na rua" ocupa mesmo com o contrato
+         * cancelado).
+         *
+         * O que estava errado era o DESEMPATE. Com `asc(createdAt)` sozinho, a
+         * reserva mais velha vence — e depois de uma troca a mais velha é
+         * justamente a abandonada. A ficha diria *"não retirada"* sobre uma
+         * noiva que está com a peça nova em casa.
+         *
+         * O caminho é vivo, e não hipotético: cancelar a reserva-mãe
+         * soft-cancela todos os bloqueios dela (`reservas.ts:437`) **sem
+         * conferir se algum está preso por contrato ATIVO** — o vínculo em
+         * `contrato_bloqueios` fica, e o contrato segue ATIVO. População no
+         * `heliumdb` em 15/08: **0 contratos ativos com reserva cancelada
+         * vinculada**. Armado, não disparado.
+         *
+         * A ordem agora é: viva antes de cancelada, e entre iguais a mais
+         * antiga — o mesmo desempate de sempre, com a viva na frente.
+         */
+        .orderBy(
+          asc(sql`case when ${bloqueioVestidosTable.canceladoEm} is null then 0 else 1 end`),
+          asc(bloqueioVestidosTable.createdAt),
+        )
         .limit(1);
       if (bloqueio) {
         reais = {

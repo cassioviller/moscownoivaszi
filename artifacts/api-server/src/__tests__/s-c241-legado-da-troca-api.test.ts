@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { db, bloqueioVestidosTable, contratosTable } from "@workspace/db";
+import { db, bloqueioVestidosTable, contratoBloqueiosTable, contratosTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { relogio } from "../lib/relogio";
 import { diaDaSemana, diaLocal } from "@workspace/financeiro-core";
@@ -186,4 +186,87 @@ describe("S-C241 — a coluna legada não sobrevive à troca apontando a peça v
     expect(r.status).toBe(422);
     expect(r.body.error).toBe("TROCA_APOS_RETIRADA");
   });
+
+/**
+ * **S-C290 — depois da troca, a ficha diz as datas da peça VIVA.**
+ *
+ * A sobra nasceu na S-C241, ao medir que `leads.ts` é o único dos três leitores
+ * da união que **não filtra `canceladoEm`**. Medido de novo, a assimetria é
+ * decisão e não esquecimento: os outros dois respondem *"qual vestido é o
+ * seu"* — promessa, e reserva cancelada não promete —, e este responde *"a peça
+ * saiu e voltou?"*, que é fato físico. Cancelar a reserva não desfaz a
+ * retirada, e é a régua que o E225 já tinha estabelecido pelo outro lado.
+ *
+ * **O errado era o DESEMPATE.** Com `asc(createdAt)` sozinho vence a reserva
+ * mais velha, e depois de uma troca a mais velha é a abandonada: a ficha diria
+ * *"não retirada"* sobre uma noiva que está com a peça nova em casa.
+ *
+ * E o caminho não é hipotético: cancelar a reserva-MÃE soft-cancela todos os
+ * bloqueios dela (`reservas.ts:437`) **sem conferir se algum está preso por
+ * contrato ATIVO**. População no `heliumdb`: **0** contratos ativos com reserva
+ * cancelada vinculada — armado, não disparado.
+ */
+describe("S-C290 — o desempate prefere a reserva viva", () => {
+  it("a peça NOVA saiu; a ficha diz a retirada dela, não o silêncio da abandonada", async () => {
+    const lead = await criarLead(f);
+    const vestidoA = await criarVestido(f);
+    const bloqueioA = await criarBloqueio(f, {
+      tipo: "RESERVA_CASAMENTO",
+      vestidoId: vestidoA.id,
+      leadId: lead.id,
+      casamentoData: dataFutura(90),
+    });
+    const orcamento = await criarOrcamento(f, { leadId: lead.id });
+    await criarOrcamentoItem(f, {
+      orcamentoId: orcamento.id,
+      tipo: "VESTIDO",
+      descricao: vestidoA.nome,
+      valorUnitario: 5000,
+      vestidoId: vestidoA.id,
+    });
+    const criado = await agent
+      .post(`/api/lojas/${f.lojaId}/contratos`)
+      .send({
+        leadId: lead.id,
+        vendedoraId: f.vendedoraId,
+        orcamentoId: orcamento.id,
+        valorTotal: 5000,
+        bloqueioVestidoIds: [bloqueioA.id],
+      })
+      .expect(201);
+
+    const vestidoB = await criarVestido(f, { precoBase: 7000 });
+    const troca = await agent
+      .post(`/api/lojas/${f.lojaId}/contratos/${criado.body.id}/trocar-peca`)
+      .send({ bloqueioId: bloqueioA.id, vestidoNovoId: vestidoB.id })
+      .expect(200);
+
+    /**
+     * O vínculo da reserva ABANDONADA é recolocado à mão: a troca o apaga, e
+     * sem ele o desempate não tem o que desempatar. É a forma do caminho vivo
+     * (cancelar a reserva-mãe deixa o vínculo e cancela o bloqueio), encenada
+     * no menor número de passos.
+     */
+    await db.insert(contratoBloqueiosTable).values({
+      contratoId: criado.body.id as string,
+      bloqueioId: bloqueioA.id,
+    });
+
+    // A peça NOVA saiu de verdade.
+    const saiuEm = dataFutura(85);
+    await db
+      .update(bloqueioVestidosTable)
+      .set({ retiradaDataReal: saiuEm })
+      .where(eq(bloqueioVestidosTable.id, troca.body.bloqueioNovoId as string));
+
+    const ficha = await agent
+      .get(`/api/lojas/${f.lojaId}/leads/${lead.id}/locacao`)
+      .expect(200);
+
+    // Antes do desempate: `null`, porque a abandonada é a mais velha e vencia o
+    // `asc(createdAt)` — a ficha dizia "não retirada" com a peça na casa dela.
+    expect(ficha.body.retiradaFeitaEm).not.toBeNull();
+    expect(new Date(ficha.body.retiradaFeitaEm).toISOString()).toBe(saiuEm.toISOString());
+  });
+});
 });
