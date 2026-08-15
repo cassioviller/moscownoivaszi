@@ -7351,6 +7351,30 @@ components:
         bloqueioVestidoIds:
           type: array
           items: { type: string }
+        # S-C240 — as MESMAS reservas, com o nome da peça e o endereço dela.
+        #
+        # Os ids acima existem desde o E72 e não servem para desenhar nada: a
+        # tela do contrato não tinha como dizer QUAL vestido está preso, e o
+        # caminho para a peça física era sempre pela ficha dela. Com a porta de
+        # troca (E223) morando na ficha da peça, quem abre o contrato não
+        # alcançava o gesto que o contrato governa.
+        #
+        # Só as VIVAS: reserva cancelada não é peça deste contrato (é a mesma
+        # régua de `montarVestidoDaNoiva`), e mostrá-la prometeria um vestido
+        # que a loja já liberou.
+        pecas:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [bloqueioId, vestidoId, nome]
+            properties:
+              bloqueioId: { type: string }
+              vestidoId: { type: string }
+              nome: { type: string }
+              codigo: { type: ["string", "null"] }
+              retiradaFeitaEm: { type: ["string", "null"], format: date-time }
+              devolucaoFeitaEm: { type: ["string", "null"], format: date-time }
         vendedoraId: { type: string }
         status: { type: string, enum: [ATIVO, CANCELADO] }
         # E215 — a qualificação da locatária CONGELADA no fecho, pela mesma razão

@@ -9,6 +9,7 @@ import type { ContratoDescontoTipo } from './contratoDescontoTipo';
 import type { ContratoEstadoCivil } from './contratoEstadoCivil';
 import type { ContratoFormaPagamento } from './contratoFormaPagamento';
 import type { ContratoItem } from './contratoItem';
+import type { ContratoPecasItem } from './contratoPecasItem';
 import type { ContratoStatus } from './contratoStatus';
 import type { Lead } from './lead';
 import type { Parcela } from './parcela';
@@ -24,6 +25,7 @@ export interface Contrato {
   /** @nullable */
   bloqueioVestidoId?: string | null;
   bloqueioVestidoIds?: string[];
+  pecas?: ContratoPecasItem[];
   vendedoraId: string;
   status: ContratoStatus;
   /** @nullable */

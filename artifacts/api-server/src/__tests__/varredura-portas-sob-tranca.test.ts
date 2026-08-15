@@ -191,8 +191,15 @@ const sitio = (p: Porta): string => `${p.arquivo}:${p.linha} ${p.verbo}(${p.tabe
  * ANINHADA de `criarReservaDeVestido`, que agora aceita executor): o
  * soft-cancel do bloqueio antigo e o `updatedAt` do contrato são as duas
  * escritas novas, as duas atrás do `FOR UPDATE` da própria linha.
+ *
+ * S-C241: TRANCA 36 → 37 — o zeramento de `contratos.bloqueio_vestido_id` na
+ * troca. Porta nova, disciplina velha e o mesmo `FOR UPDATE` do contrato que a
+ * escrita ao lado já tomou: são duas linhas de `UPDATE contratos` na mesma
+ * transação porque dizem coisas diferentes — uma carimba o `updatedAt` sempre,
+ * a outra só apaga o vínculo legado **quando ele aponta a reserva que está
+ * saindo** (o `and` com o valor antigo é o que a mantém honesta).
  */
-const RETRATO = { TRANCA: 36, CAS: 11, ABERTA: 13 } as const;
+const RETRATO = { TRANCA: 37, CAS: 11, ABERTA: 13 } as const;
 
 /**
  * O retrato da ORDEM, travado pelo mesmo critério — e é ele que estava 1 e 2
@@ -453,7 +460,7 @@ describe("varredura — a enumeração das portas de escrita", () => {
    * (`contratos.ts`), e o vermelho `expected 57 to be 56` foi o que cobrou este
    * parágrafo.
    */
-  it("acha as portas — são 60, e o total é o retrato somado", () => {
+  it("acha as portas — são 61, e o total é o retrato somado", () => {
     expect(portas.length).toBe(RETRATO.TRANCA + RETRATO.CAS + RETRATO.ABERTA);
   });
 

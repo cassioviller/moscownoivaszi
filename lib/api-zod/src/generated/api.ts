@@ -6586,6 +6586,14 @@ export const ListContratosResponse = zod.object({
   "orcamentoId": zod.string().nullish(),
   "bloqueioVestidoId": zod.string().nullish(),
   "bloqueioVestidoIds": zod.array(zod.string()).optional(),
+  "pecas": zod.array(zod.object({
+  "bloqueioId": zod.string(),
+  "vestidoId": zod.string(),
+  "nome": zod.string(),
+  "codigo": zod.string().nullish(),
+  "retiradaFeitaEm": dataDoCorpo().nullish(),
+  "devolucaoFeitaEm": dataDoCorpo().nullish()
+})).optional(),
   "vendedoraId": zod.string(),
   "status": zod.enum(['ATIVO', 'CANCELADO']),
   "cpf": zod.string().nullish(),
@@ -6777,6 +6785,14 @@ export const CreateContratoResponse = zod.object({
   "orcamentoId": zod.string().nullish(),
   "bloqueioVestidoId": zod.string().nullish(),
   "bloqueioVestidoIds": zod.array(zod.string()).optional(),
+  "pecas": zod.array(zod.object({
+  "bloqueioId": zod.string(),
+  "vestidoId": zod.string(),
+  "nome": zod.string(),
+  "codigo": zod.string().nullish(),
+  "retiradaFeitaEm": dataDoCorpo().nullish(),
+  "devolucaoFeitaEm": dataDoCorpo().nullish()
+})).optional(),
   "vendedoraId": zod.string(),
   "status": zod.enum(['ATIVO', 'CANCELADO']),
   "cpf": zod.string().nullish(),
@@ -6934,6 +6950,14 @@ export const GetContratoResponse = zod.object({
   "orcamentoId": zod.string().nullish(),
   "bloqueioVestidoId": zod.string().nullish(),
   "bloqueioVestidoIds": zod.array(zod.string()).optional(),
+  "pecas": zod.array(zod.object({
+  "bloqueioId": zod.string(),
+  "vestidoId": zod.string(),
+  "nome": zod.string(),
+  "codigo": zod.string().nullish(),
+  "retiradaFeitaEm": dataDoCorpo().nullish(),
+  "devolucaoFeitaEm": dataDoCorpo().nullish()
+})).optional(),
   "vendedoraId": zod.string(),
   "status": zod.enum(['ATIVO', 'CANCELADO']),
   "cpf": zod.string().nullish(),
@@ -7102,6 +7126,14 @@ export const UpdateContratoResponse = zod.object({
   "orcamentoId": zod.string().nullish(),
   "bloqueioVestidoId": zod.string().nullish(),
   "bloqueioVestidoIds": zod.array(zod.string()).optional(),
+  "pecas": zod.array(zod.object({
+  "bloqueioId": zod.string(),
+  "vestidoId": zod.string(),
+  "nome": zod.string(),
+  "codigo": zod.string().nullish(),
+  "retiradaFeitaEm": dataDoCorpo().nullish(),
+  "devolucaoFeitaEm": dataDoCorpo().nullish()
+})).optional(),
   "vendedoraId": zod.string(),
   "status": zod.enum(['ATIVO', 'CANCELADO']),
   "cpf": zod.string().nullish(),
@@ -7316,6 +7348,14 @@ export const CancelarContratoResponse = zod.object({
   "orcamentoId": zod.string().nullish(),
   "bloqueioVestidoId": zod.string().nullish(),
   "bloqueioVestidoIds": zod.array(zod.string()).optional(),
+  "pecas": zod.array(zod.object({
+  "bloqueioId": zod.string(),
+  "vestidoId": zod.string(),
+  "nome": zod.string(),
+  "codigo": zod.string().nullish(),
+  "retiradaFeitaEm": dataDoCorpo().nullish(),
+  "devolucaoFeitaEm": dataDoCorpo().nullish()
+})).optional(),
   "vendedoraId": zod.string(),
   "status": zod.enum(['ATIVO', 'CANCELADO']),
   "cpf": zod.string().nullish(),

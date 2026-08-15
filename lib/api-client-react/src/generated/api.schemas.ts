@@ -2364,6 +2364,18 @@ export interface Recibo {
   saldoRestante: number;
 }
 
+export type ContratoPecasItem = {
+  bloqueioId: string;
+  vestidoId: string;
+  nome: string;
+  /** @nullable */
+  codigo?: string | null;
+  /** @nullable */
+  retiradaFeitaEm?: string | null;
+  /** @nullable */
+  devolucaoFeitaEm?: string | null;
+};
+
 export type ContratoStatus = typeof ContratoStatus[keyof typeof ContratoStatus];
 
 
@@ -2544,6 +2556,7 @@ export interface Contrato {
   /** @nullable */
   bloqueioVestidoId?: string | null;
   bloqueioVestidoIds?: string[];
+  pecas?: ContratoPecasItem[];
   vendedoraId: string;
   status: ContratoStatus;
   /** @nullable */

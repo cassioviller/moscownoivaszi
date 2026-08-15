@@ -15,10 +15,10 @@ import { comArquivoSintetico } from "./populacao-da-varredura";
  *
  * |  | `varredura-*` | `*-varredura` |
  * |---|---|---|
- * | `api-server` | 13 | 1 |
+ * | `api-server` | 14 | 1 |
  * | `moscow-noivas` | 5 | 10 |
  *
- * **São 29, e o julgamento cobriu uma célula.** O que escapou não foi só a
+ * **São 30, e o julgamento cobriu uma célula.** O que escapou não foi só a
  * segunda grafia: as 5 da PRIMEIRA grafia que moram no frontend também nunca
  * foram julgadas, e nenhuma sobra falava delas. Enumerar por uma grafia é a
  * S-C79 ao vivo — *"onze arquivos entraram em dois dias sob um piso verde"* —,
@@ -90,18 +90,29 @@ function dizOTamanho(texto: string): boolean {
 }
 
 describe("S-C260 — toda varredura diz o tamanho do que olhou", () => {
-  it("a enumeração cobre as duas grafias e os dois pacotes — o retrato é 29", () => {
-    // Igualdade, e não piso: varredura nova tem de ser JULGADA, e o vermelho
-    // aqui é onde alguém escreve que julgou. É o critério que a S-C75 aplicou
-    // às dívidas, virado para a lista das próprias réguas.
+  it("a enumeração cobre as duas grafias e os dois pacotes — o retrato é 30", () => {
+    /**
+     * Igualdade, e não piso: varredura nova tem de ser JULGADA, e o vermelho
+     * aqui é onde alguém escreve que julgou. É o critério que a S-C75 aplicou
+     * às dívidas, virado para a lista das próprias réguas.
+     *
+     * **E este número já esteve errado, pela razão que a S-C182 descreve.**
+     * Ele nasceu 29 porque foi medido enquanto ESTE arquivo ainda não tinha
+     * passado por `git add`: a régua enumera pelo `git ls-files` e **não se
+     * enxergava**. Verde na medição, vermelho no commit seguinte — e o que
+     * pegou foi a suíte inteira, não a rodada do arquivo sozinho. A S-C182
+     * escreveu esse degrau para as encenações (*"o `git add` é obrigatório,
+     * porque a população vem do `git ls-files`"*); ele vale igual para a régua
+     * que se conta entre os contados.
+     */
     const todas = varreduras();
-    expect(todas.length, `varreduras encontradas:\n${todas.join("\n")}`).toBe(29);
+    expect(todas.length, `varreduras encontradas:\n${todas.join("\n")}`).toBe(30);
 
     // E as duas dimensões, nomeadas: a sobra descrevia só a grafia, e o
     // julgamento de 14/08 também tinha perdido as 5 da primeira grafia que
     // moram no frontend.
     const porGrafia = (re: RegExp) => todas.filter((r) => re.test(path.basename(r))).length;
-    expect(porGrafia(/^varredura-/)).toBe(18);
+    expect(porGrafia(/^varredura-/)).toBe(19);
     expect(porGrafia(/-varredura\./)).toBe(11);
     expect(todas.filter((r) => r.startsWith("artifacts/moscow-noivas/")).length).toBe(15);
   });

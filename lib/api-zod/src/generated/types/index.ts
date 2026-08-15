@@ -127,6 +127,7 @@ export * from './contratoInputFormaPagamento';
 export * from './contratoInputParcelasItem';
 export * from './contratoItem';
 export * from './contratoItemTipo';
+export * from './contratoPecasItem';
 export * from './contratosPage';
 export * from './contratoStatus';
 export * from './contratoUpdate';

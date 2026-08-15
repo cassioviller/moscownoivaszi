@@ -262,7 +262,7 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
    * as chamadas peneiradas; a garantia de que nenhuma escapou é da
    * `varredura-datas-nao-aceitam-nulo`, que mede por EFEITO.
    */
-  it("916 datas coercidas — todas peneiradas pelo `dataDoCorpo()`, que recusa o `null`", () => {
+  it("926 datas coercidas — todas peneiradas pelo `dataDoCorpo()`, que recusa o `null`", () => {
     // E228: 892 → 910. O `orfaoSeguraAte` (S-C60) entrou no `BloqueioVestido`,
     // que viaja em 18 respostas — uma coluna nova num schema compartilhado
     // multiplica pelo número de portas que o serializam. Todas são SAÍDA
@@ -273,11 +273,19 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
     // E230: 912 → 914 — `devolucaoPrevista`/`devolucaoFeitaEm` do
     // `VestidoDaNoiva` (S-C92). SAÍDA do portal, uma rota.
     // E231: 914 → 916 — as duas REAIS da `LocacaoDoLead` (S-C121). SAÍDA.
+    // S-C240: 916 → 926, e são DEZ porque `Contrato.pecas[]` traz duas datas
+    // (`retiradaFeitaEm`, `devolucaoFeitaEm`) e o `Contrato` é devolvido por
+    // cinco operações — a mesma multiplicação do E215, que fez 53 de um campo
+    // só. Todas são SAÍDA: a tela do contrato as LÊ para dizer "na loja",
+    // "retirada em…" ou "devolvida em…", e nenhuma borda as manda.
+    //
+    // E desde a S-C281 elas nascem peneiradas: `dataDoCorpo()` recusa o `null`
+    // antes de coagir, então nem as de saída podem virar 1970.
     const coeridas = (zod.match(/dataDoCorpo\(\)/g) ?? []).length;
     expect(
       coeridas,
       "mudou o número de datas coercidas? A guarda do V12 (`reservas.ts`) é campo a campo, não global",
-    ).toBe(916);
+    ).toBe(926);
 
     // S-C281 — e nenhuma sobrou crua. O hook do `orval.config.ts` é um gesto
     // que se pode desligar; se alguém o desligar, o número acima continua 916

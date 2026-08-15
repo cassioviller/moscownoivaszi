@@ -216,6 +216,11 @@ export default function ContratoDetail() {
     [contrato?.parcelas],
   );
 
+  // S-C240 — as reservas VIVAS do contrato, já com nome e endereço, vindas da
+  // porta. A ordem é a da porta (a mais antiga primeiro): a primeira reservada
+  // é a que a noiva chama de "o meu vestido", o mesmo desempate do portal.
+  const pecas = contrato?.pecas ?? [];
+
   /**
    * E221 — os recibos da cláusula 7ª. A loja também precisa CONSEGUIR emitir:
    * a noiva liga pedindo o comprovante do Pix de março, e sem isto a vendedora
@@ -837,6 +842,65 @@ export default function ContratoDetail() {
                   );
                 })()}
               </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/**
+         * S-C240 — **as peças físicas do contrato, e o caminho até elas.**
+         *
+         * A tela do contrato falava de "reserva" em nove lugares e em nenhum
+         * deles queria dizer a peça: eram todos a reserva de 40% da cláusula 8ª
+         * §1º. Quem abria o contrato não via QUAL vestido está preso, e o
+         * caminho para a peça física era sempre pela ficha dela — que é onde o
+         * E223 pôs a porta de TROCA. O gesto que o contrato governa morava numa
+         * tela a que o contrato não levava.
+         *
+         * Só as reservas VIVAS chegam aqui (a porta as filtra por
+         * `canceladoEm`), pela mesma razão do portal: mostrar reserva cancelada
+         * prometeria um vestido que a loja já liberou.
+         */}
+        <Card data-testid="pecas-do-contrato">
+          <CardHeader>
+            <CardTitle>Peças deste contrato</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* Sem ramo de erro aqui de propósito, e é a exceção medida da
+                S-C162: a página inteira retorna no `if (isError)` da :381 antes
+                de qualquer frase, então a lista abaixo nunca é desenhada sobre
+                uma consulta que falhou. A frase de vazio é honesta. */}
+            {pecas.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Nenhuma peça do acervo presa por este contrato — ele pode ser só de serviço, ou a
+                reserva foi desfeita.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {pecas.map((p) => (
+                  <li
+                    key={p.bloqueioId}
+                    className="flex flex-wrap items-center justify-between gap-2 border-b pb-2 last:border-0"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{p.nome}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {p.codigo ? `${p.codigo} · ` : ""}
+                        {p.devolucaoFeitaEm
+                          ? `devolvida em ${instanteDia(p.devolucaoFeitaEm)}`
+                          : p.retiradaFeitaEm
+                            ? `retirada em ${instanteDia(p.retiradaFeitaEm)}`
+                            : "na loja"}
+                      </p>
+                    </div>
+                    <Button asChild variant="outline" size="sm">
+                      {/* É a ficha da reserva que tem a troca (17ª), a prova e
+                          a devolução — o contrato leva até lá em vez de repetir
+                          os gestos numa segunda tela. */}
+                      <Link to={`/loja/${lojaId}/reservas/${p.bloqueioId}`}>Abrir a reserva</Link>
+                    </Button>
+                  </li>
+                ))}
+              </ul>
             )}
           </CardContent>
         </Card>

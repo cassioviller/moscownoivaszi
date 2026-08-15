@@ -17,7 +17,7 @@ import {
   contasPagarTable,
   type InsertContratoItem,
 } from "@workspace/db";
-import { eq, and, isNull, isNotNull, inArray, sql, desc, count } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, inArray, sql, asc, desc, count } from "drizzle-orm";
 import { verificarDisponibilidade, diaLocal } from "../lib/disponibilidade";
 import { registrarAuditoria } from "../lib/auditoria";
 import { avancarEtapaLead } from "../lib/estados";
@@ -1239,6 +1239,40 @@ router.get("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<voi
     .where(eq(contratoBloqueiosTable.contratoId, contratoId));
 
   /**
+   * S-C240 — as mesmas reservas, com o nome da peça, para a tela do contrato
+   * poder dizer QUAL vestido está preso e levar até ele.
+   *
+   * Os ids acima existem desde o E72 e não desenham nada. Quem abria o contrato
+   * não via as peças físicas dele, e o caminho para elas era sempre pela ficha
+   * da peça — o que ficou visível quando o E223 pôs a porta de TROCA lá: o
+   * gesto que o contrato governa morava numa tela a que o contrato não levava.
+   *
+   * Uma consulta a mais, e só ela: o `innerJoin` traz o nome junto, e as
+   * canceladas saem no WHERE — reserva cancelada não é peça deste contrato (a
+   * régua de `montarVestidoDaNoiva`), e mostrá-la prometeria um vestido que a
+   * loja já liberou para outra noiva.
+   */
+  const pecas = vinculos.length > 0
+    ? await db
+        .select({
+          bloqueioId: bloqueioVestidosTable.id,
+          vestidoId: bloqueioVestidosTable.vestidoId,
+          nome: vestidosTable.nome,
+          codigo: vestidosTable.codigo,
+          retiradaFeitaEm: bloqueioVestidosTable.retiradaDataReal,
+          devolucaoFeitaEm: bloqueioVestidosTable.devolucaoDataReal,
+        })
+        .from(bloqueioVestidosTable)
+        .innerJoin(vestidosTable, eq(vestidosTable.id, bloqueioVestidosTable.vestidoId))
+        .where(and(
+          inArray(bloqueioVestidosTable.id, vinculos.map((v) => v.bloqueioId)),
+          eq(bloqueioVestidosTable.lojaId, lojaId),
+          isNull(bloqueioVestidosTable.canceladoEm),
+        ))
+        .orderBy(asc(bloqueioVestidosTable.createdAt))
+    : [];
+
+  /**
    * A rescisão é da noiva que **ainda pode** rescindir: contrato CANCELADO é
    * registro morto (a mesma régua do `PATCH`), e o que ele reteve já está na
    * trilha (`CONTRATO_CANCELADO`, com `rescisaoDevolucaoTotal`) e na
@@ -1327,6 +1361,7 @@ router.get("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<voi
        */
       parcelas: contrato.parcelas.map((p) => ({ ...p, mora: moraDe(p) })),
       bloqueioVestidoIds: vinculos.map((v) => v.bloqueioId),
+      pecas,
       rescisao: rescisaoNoPayload(),
     }),
   );
@@ -2209,10 +2244,55 @@ router.post("/lojas/:lojaId/contratos/:contratoId/trocar-peca", async (req, res)
     if (!sobTranca) return { sumiu: true as const };
     if (sobTranca.status !== "ATIVO") return { naoAtivo: true as const };
 
+    /**
+     * S-C242 — **a condição lida no pool tem de ser repetida aqui dentro.**
+     *
+     * O vínculo foi conferido lá em cima (`:2152`), FORA da transação, e entre
+     * aquela leitura e esta escrita cabe uma troca inteira. Duas vendedoras no
+     * mesmo segundo passavam as duas pela conferência do pool; a primeira
+     * trocava, apagava o vínculo antigo e gravava o novo, e a segunda entrava
+     * com a reserva antiga já cancelada — coisa que NADA aqui olhava —, criava
+     * a SEGUNDA peça, tentava apagar um vínculo que já não existia (no-op
+     * silencioso) e gravava o seu.
+     *
+     * O contrato terminava com **duas reservas vivas e dois vestidos presos**,
+     * de um gesto que era para trocar uma peça por outra. Medido:
+     * `expected 2 to be 1`.
+     *
+     * O conserto é o idioma da K8 e da S-O31: a condição do `where` repete o
+     * estado LIDO. Zero linhas quer dizer que outra troca passou na frente — e
+     * a resposta é o mesmo 422 da conferência lenta, que já diz a frase certa
+     * ("a reserva não é deste contrato"), porque depois da primeira troca **ela
+     * de fato não é mais**.
+     */
+    const [vinculoSobTranca] = await tx.select({ contratoId: contratoBloqueiosTable.contratoId })
+      .from(contratoBloqueiosTable)
+      .where(and(
+        eq(contratoBloqueiosTable.contratoId, contratoId),
+        eq(contratoBloqueiosTable.bloqueioId, bloqueioId),
+      ));
+    if (!vinculoSobTranca) return { vinculoSumiu: true as const };
+
     const [antigoSobTranca] = await tx.select().from(bloqueioVestidosTable)
       .where(and(eq(bloqueioVestidosTable.id, bloqueioId), eq(bloqueioVestidosTable.lojaId, lojaId)))
       .for("update");
     if (!antigoSobTranca) return { sumiu: true as const };
+    /**
+     * **Reserva CANCELADA não recusa a troca, e isso é decisão do E223.**
+     *
+     * A primeira versão deste conserto acrescentou aqui um
+     * `if (antigoSobTranca.canceladoEm) return vinculoSumiu` — cinto e
+     * suspensório da mesma corrida, por raciocínio e não por medição. O
+     * E223 tem cena dizendo o contrário, e ela reprovou no mesmo minuto:
+     * *"reserva antiga já cancelada: a troca ainda funciona e religa o contrato
+     * numa reserva viva"*. É o caminho de quem cancelou a reserva por fora e
+     * precisa reatar o contrato a uma peça de verdade — tirá-lo deixaria o
+     * contrato preso a nada.
+     *
+     * **O que fecha a corrida é o VÍNCULO, e só ele.** A primeira troca apaga a
+     * linha de `contrato_bloqueios`; a segunda não a encontra. O estado
+     * `canceladoEm` da reserva não é o que distingue os dois casos — o vínculo é.
+     */
     // A retirada pode ter sido registrada na janela entre a leitura do pool e
     // a tranca — física ganha de gesto, como no E225.
     if (antigoSobTranca.retiradaDataReal) return { jaSaiu: true as const };
@@ -2262,6 +2342,33 @@ router.post("/lojas/:lojaId/contratos/:contratoId/trocar-peca", async (req, res)
       ))
       .returning({ id: contratoItensTable.id, valorUnitario: contratoItensTable.valorUnitario });
 
+    /**
+     * S-C241 — a coluna singular legada ZERA quando a peça que ela aponta sai.
+     *
+     * `contratos.bloqueio_vestido_id` é o vínculo de antes do E72, declarado
+     * como "lido, nunca mais escrito". Nenhum leitor DECIDE por ele, mas três
+     * o leem em UNIÃO com o N:N (`visao-noiva.ts:228`, `portal.ts:772`,
+     * `leads.ts:602`) — e união não decide, **acrescenta**. Sem esta linha, um
+     * contrato cuja coluna aponte a reserva trocada faz a seção "O seu
+     * vestido" do portal mostrar DUAS peças, e a noiva lê que vai vestir um
+     * vestido que já não é dela.
+     *
+     * Zera em vez de repontar, e a razão é que repontar seria fingir que uma
+     * coluna singular consegue dizer a verdade sobre um contrato que pode ter
+     * várias reservas. Depois de uma troca ela só estaria certa por acaso —
+     * e campo que só pode mentir é pior que campo ausente. Os três leitores em
+     * união já sabem viver sem ele: é o caso de 772 dos 772 contratos de hoje.
+     *
+     * O `and` com o valor antigo é de propósito: se a coluna apontar OUTRA
+     * reserva do mesmo contrato — a que não está sendo trocada —, ela continua
+     * verdadeira e não se mexe.
+     */
+    await tx.update(contratosTable)
+      .set({ bloqueioVestidoId: null, updatedAt: agora })
+      .where(and(
+        eq(contratosTable.id, contratoId),
+        eq(contratosTable.bloqueioVestidoId, bloqueioId),
+      ));
     await tx.update(contratosTable)
       .set({ updatedAt: agora })
       .where(eq(contratosTable.id, contratoId));
@@ -2295,6 +2402,18 @@ router.post("/lojas/:lojaId/contratos/:contratoId/trocar-peca", async (req, res)
     res.status(422).json({
       error: "CONTRATO_NAO_ATIVO",
       detalhe: "Contrato não está ativo — a troca de peça é gesto de contrato vivo.",
+    });
+    return;
+  }
+  // S-C242 — a mesma frase da conferência lenta, e pelo mesmo motivo: quando
+  // outra troca passa na frente, a reserva de que esta partia deixou mesmo de
+  // ser deste contrato.
+  if ("vinculoSumiu" in desfecho) {
+    res.status(422).json({
+      error: "RESERVA_NAO_E_DESTE_CONTRATO",
+      detalhe:
+        "Esta reserva não está mais presa por este contrato — outra troca aconteceu enquanto esta era enviada. Recarregue e escolha a peça atual.",
+      campos: [{ campo: "bloqueioId", motivo: "A reserva não pertence mais a este contrato" }],
     });
     return;
   }
