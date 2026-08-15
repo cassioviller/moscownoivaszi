@@ -70,6 +70,33 @@ const NEGACAO_DE_UI =
   /\bnão\s+(?:tem|têm|há|existe|existem|está|estão)\s+(?:\p{L}+\s+){0,2}?(?:tela|telas|botão|botões|formulário|formulários)\b/iu;
 
 /**
+ * **A segunda forma da negação: "não MOSTRA" (15/08).**
+ *
+ * A grafia acima nega a EXISTÊNCIA de uma tela. A reescrita desta onda achou
+ * duas frases que negam o DADO, e nenhuma delas caía nela — as duas no guia da
+ * noiva, na seção *"O que o portal não faz"*, e as duas contradizendo o próprio
+ * documento algumas telas acima:
+ *
+ * - *"**Não mostra a data de devolução.** Ela aparece no PDF do contrato […] e
+ *   não na tela"* — enquanto a seção "O seu vestido" já descrevia
+ *   *"Devolução combinada para …"* e *"Devolvido em …"* (E230/S-C92);
+ * - *"Avaria, atraso, extravio, rescisão e peça exclusiva **não têm seção
+ *   nenhuma ali**"* — enquanto o mesmo manual descrevia, duas seções antes, a
+ *   seção *"O que o seu contrato prevê"*, que é exatamente as seis cláusulas.
+ *
+ * As duas sobreviveram à reescrita da S-C270 porque a régua procurava a palavra
+ * errada. **Negar o dado é a mesma mentira que negar a tela** — a noiva que lê
+ * "não mostra" não vai procurar, e é o custo do E184 pelo lado do que se
+ * esconde em vez do que se ensina errado.
+ *
+ * O elo com o chip não serve aqui (o dado não tem botão), então esta grafia é
+ * pregada pela DÍVIDA DECLARADA, como a outra: frase nova reprova até ser
+ * declarada, frase declarada que sumiu reprova até a baixa.
+ */
+const NEGACAO_DE_DADO =
+  /\bn[ãa]o\s+(?:mostra|exibe|traz|apresenta|informa)\b(?![^.]*\bo valor\b)/iu;
+
+/**
  * Os chips do documento, crus.
  *
  * S-C271 — a extração saiu daqui e da `varredura-manuais-textos` para
@@ -99,6 +126,9 @@ function frasesDe(html: string): string[] {
 }
 
 const negacoesDe = (html: string) => frasesDe(html).filter((f) => NEGACAO_DE_UI.test(f));
+
+/** As frases que negam o DADO, para a dívida declarada da segunda grafia. */
+const negacoesDeDadoDe = (html: string) => frasesDe(html).filter((f) => NEGACAO_DE_DADO.test(f));
 
 /**
  * A identidade do chip: as palavras ≥ 5 letras DEPOIS da primeira — a
@@ -220,5 +250,156 @@ describe("varredura — o manual não contradiz a si mesmo (S-C222)", () => {
       `<p>O sistema sabe registrar quem dispensou, mas esse aviso não está em tela nenhuma.</p>`;
     expect(negacoesDe(medido)).toHaveLength(1);
     expect(contradicoesDe(medido)).toEqual([]);
+  });
+});
+
+/**
+ * **A data do manual, que aparece DUAS vezes e podia divergir.**
+ *
+ * Todo manual abre com *"Atualizado em DD/MM/AAAA"* no cabeçalho e fecha com
+ * *"descreve o sistema como ele está em DD/MM/AAAA"* no rodapé. São a mesma
+ * afirmação escrita em dois lugares, e em 15/08/2026 os **cinco** estavam
+ * divergindo: a reescrita da S-C270 corrigiu o rodapé e esqueceu o topo, e por
+ * um dia os manuais diziam 14/08 na capa e 15/08 no pé.
+ *
+ * Nenhuma das quatro varreduras pegava: a de contradição procura **negação de
+ * existência de UI**, não data; as outras três olham do manual para fora. É
+ * contradição interna da mesma classe da S-C222, e por isso mora aqui.
+ *
+ * A régua não confere se a data está CERTA — isso é leitura humana, e o
+ * `git log` é quem sabe. Ela confere que as duas dizem a MESMA coisa, que é o
+ * que ninguém lembra de fazer duas vezes seguidas.
+ */
+const DATA_DO_TOPO = /Atualizado em <b>(\d{2}\/\d{2}\/\d{4})<\/b>/;
+const DATA_DO_PE = /(?:descreve o sistema como ele está em) <strong>(\d{2}\/\d{2}\/\d{4})<\/strong>/;
+
+describe("varredura — a data do manual bate consigo mesma", () => {
+  it("os cinco manuais têm as duas datas, e elas são iguais", () => {
+    const docs = manuais();
+    expect(docs.length).toBe(5);
+
+    const divergentes: string[] = [];
+    for (const doc of docs) {
+      const html = ler(doc);
+      const topo = DATA_DO_TOPO.exec(html)?.[1];
+      const pe = DATA_DO_PE.exec(html)?.[1];
+      expect(topo, `${doc} perdeu a data do cabeçalho`).toBeTruthy();
+      expect(pe, `${doc} perdeu a data do rodapé`).toBeTruthy();
+      if (topo !== pe) divergentes.push(`${doc}: topo diz ${topo}, rodapé diz ${pe}`);
+    }
+
+    expect(
+      divergentes,
+      "o manual diz duas datas diferentes sobre si mesmo — quem lê o topo e quem lê o pé " +
+        "ficam sabendo de versões diferentes. Reescreveu? mude as duas.",
+    ).toEqual([]);
+  });
+});
+
+/**
+ * **A dívida da segunda grafia: toda frase que nega o DADO, declarada.**
+ *
+ * A régua de cima cruza a negação com os CHIPS do documento. Esta não tem como:
+ * o dado não tem botão, e não há o que cruzar. O que ela faz é o que o
+ * `comissao.ts` faz com a tranca — **obrigar a frase a estar declarada**, nas
+ * duas direções: frase nova reprova até alguém escrever por que ela é verdade,
+ * e frase declarada que sumiu do manual reprova até a baixa (a lição do E186,
+ * de que tabela de dívida também envelhece).
+ *
+ * As duas primeiras entradas nasceram e morreram no mesmo dia: eram as frases
+ * do guia da noiva que a reescrita da S-C270 não pegou, porque a régua daquele
+ * dia só conhecia a negação de TELA. Ficam citadas no comentário porque é o
+ * caso que motivou esta segunda grafia.
+ */
+const NEGACOES_DE_DADO_DECLARADAS: { manual: string; trecho: string; motivo: string }[] = [
+  // 15/08: SAÍRAM na reescrita, e foram elas que fizeram esta régua nascer —
+  //   «Não mostra a data de devolução» (o portal mostra desde o E230/S-C92);
+  //   «Avaria, atraso … não têm seção nenhuma ali» (a seção "O que o seu
+  //   contrato prevê" existe desde o E230).
+  // A frase que ficou no lugar delas nega o VALOR, não o dado, e por isso não
+  // cai nesta grafia — o `(?!… o valor)` da regex é exatamente essa distinção.
+  {
+    manual: "docs/manuais/noiva.html",
+    trecho: "Não cobra e não recebe",
+    motivo:
+      "verdade e permanente — o portal é extrato, e receber dinheiro por ele seria outro produto. " +
+      "Não é dívida a pagar: é fronteira do que a loja decidiu não fazer",
+  },
+  {
+    manual: "docs/manuais/noiva.html",
+    trecho: "Não avisa você",
+    motivo:
+      "verdade — não há e-mail nem push em lugar nenhum do sistema; aceite, confirmação e pedido " +
+      "de remarcação aparecem nas filas, e é lá que se olha",
+  },
+  {
+    manual: "docs/manuais/noiva.html",
+    trecho: "Não manda mensagem para ela",
+    motivo: "verdade — quem manda é a vendedora, pelo WhatsApp, com o link colado",
+  },
+  {
+    manual: "docs/manuais/noiva.html",
+    trecho: "Não mostra nada de outra noiva",
+    motivo: "verdade, e é invariante de segurança: o portal resolve tudo pelo token do próprio link",
+  },
+  {
+    manual: "docs/manuais/recepcao.html",
+    trecho: "os números que a fila não mostra porque já saíram dela",
+    motivo:
+      "verdade, e a própria frase diz por quê — quem confirmou pelo portal, quem já foi procurada " +
+      "e quem pediu remarcação saem da fila de propósito; os totais delas ficam no rodapé",
+  },
+  {
+    manual: "docs/manuais/vendedora.html",
+    trecho: "não mostra nada — e é o caso da maioria dos contratos antigos",
+    motivo:
+      "verdade — as duas linhas de retirada e devolução só aparecem quando há data, e o silêncio " +
+      "é o certo: 775 dos 776 contratos foram fechados antes de a tela ter esses campos",
+  },
+  {
+    manual: "docs/manuais/vendedora.html",
+    trecho: "não mostra mais essa conta: registro morto não se recalcula",
+    motivo:
+      "verdade e DECISÃO do E217 — a rescisão do contrato cancelado não se recalcula porque ela " +
+      "foi decidida noutro dia; o que ele reteve está na trilha e na conta a pagar que nasceu ali",
+  },
+];
+
+describe("varredura — a negação do DADO também é declarada (15/08)", () => {
+  it("toda frase que nega o dado está na lista, com motivo", () => {
+    const naoDeclaradas: string[] = [];
+    for (const doc of manuais()) {
+      for (const frase of negacoesDeDadoDe(ler(doc))) {
+        const declarada = NEGACOES_DE_DADO_DECLARADAS.some(
+          (d) => d.manual === doc && frase.includes(d.trecho),
+        );
+        if (!declarada) naoDeclaradas.push(`${doc} · «${frase}»`);
+      }
+    }
+    expect(
+      naoDeclaradas,
+      "o manual afirma que o sistema NÃO MOSTRA alguma coisa, e ninguém escreveu por que isso é " +
+        "verdade. Negar o dado é a mesma mentira que negar a tela — quem lê não vai procurar. " +
+        "Confira contra a tela e declare em NEGACOES_DE_DADO_DECLARADAS, ou apague a frase.",
+    ).toEqual([]);
+  });
+
+  it("nenhuma declaração descreve frase que o manual já não tem — a baixa é cobrada", () => {
+    // A outra direção, que é a lição do E186: a lista envelhece do lado de cá
+    // também, e uma dívida paga que continua declarada faz o próximo leitor
+    // procurar uma frase que não existe.
+    const orfas = NEGACOES_DE_DADO_DECLARADAS.filter((d) => !ler(d.manual).includes(d.trecho));
+    expect(
+      orfas.map((d) => `${d.manual} · «${d.trecho}»`),
+      "declaração sobre frase que o manual não tem mais — dê a baixa na lista",
+    ).toEqual([]);
+  });
+
+  it("a peneira distingue negar o DADO de negar o VALOR", () => {
+    // A frase que substituiu as duas removidas diz que o portal não mostra o
+    // VALOR do caso dela — e isso é verdade, e é diferente de dizer que a
+    // regra não está lá. A régua não pode confundir as duas.
+    expect(NEGACAO_DE_DADO.test("O portal não mostra a data de devolução.")).toBe(true);
+    expect(NEGACAO_DE_DADO.test("Não mostra o VALOR do que o contrato cobra além do aluguel")).toBe(false);
   });
 });

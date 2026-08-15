@@ -48,11 +48,19 @@ const DESTINO_IMAGENS = path.join(RAIZ, "docs/manuais/capturas");
 const DESTINO_PDF = path.join(RAIZ, "docs/manuais/pdf");
 const LOJA = "demo-manuais-loja";
 
+/**
+ * `--so-injetar` reconstrói a página publicável sobre as capturas versionadas,
+ * e para isso **não precisa do app de pé** — a bandeira é lida aqui em cima
+ * porque a guarda abaixo pararia o script antes de ela ser considerada.
+ */
+const SO_INJETAR = process.argv.includes("--so-injetar");
+
 const BASE_URL = process.env.BASE_URL;
-if (!BASE_URL) {
+if (!BASE_URL && !SO_INJETAR) {
   console.error(
     "prints-dos-manuais: BASE_URL é obrigatória (onde o app está de pé, ex.: http://localhost:5173).\n" +
-      "  Sem ela o script antigo do repositório gravou em `undefined/` — a S-D1 não se repete.",
+      "  Sem ela o script antigo do repositório gravou em `undefined/` — a S-D1 não se repete.\n" +
+      "  Só reescreveu o TEXTO do manual? `--so-injetar` republica sobre as capturas versionadas.",
   );
   process.exit(1);
 }
@@ -405,10 +413,18 @@ mkdirSync(DESTINO_PDF, { recursive: true });
  * Sem isto, um print renomeado deixa o arquivo velho no disco, a âncora antiga
  * do HTML continua achando imagem, e o PDF sai com uma tela que não existe mais
  * — sem aviso nenhum, porque nada falta.
+ *
+ * **`--so-injetar` NÃO limpa**, e a primeira versão da bandeira esquecia disto:
+ * este laço roda no topo do módulo, então injetar apagava as 24 capturas
+ * versionadas ANTES de lê-las, e a página saía com 90 KB e 24 figuras vazias em
+ * vez de 5 MB. O modo que existe justamente para não recapturar não pode
+ * começar destruindo o que ele ia reusar.
  */
-for (const arquivo of readdirSync(DESTINO_IMAGENS)) {
-  if (arquivo.startsWith(`${process.argv[2] ?? "vendedora"}-`) && arquivo.endsWith(".png")) {
-    unlinkSync(path.join(DESTINO_IMAGENS, arquivo));
+if (!SO_INJETAR) {
+  for (const arquivo of readdirSync(DESTINO_IMAGENS)) {
+    if (arquivo.startsWith(`${qual}-`) && arquivo.endsWith(".png")) {
+      unlinkSync(path.join(DESTINO_IMAGENS, arquivo));
+    }
   }
 }
 
@@ -656,11 +672,21 @@ async function recortar(pagina: Page, c: Captura, destino: string): Promise<void
 }
 
 /**
- * O PDF sai do MESMO HTML da página publicada — o manual não tem duas versões.
- * O que muda é o que se injeta antes de imprimir: as imagens nos lugares que o
- * HTML declara (`<figure data-print="…">`) e a folha de estilo de impressão.
+ * O HTML do manual com as imagens injetadas nas âncoras que ele declara.
+ *
+ * **Separado do `gerarPdf` porque as duas coisas mudam em ritmos diferentes**
+ * (S-C270/15-08): o TEXTO do manual se reescreve ao fim de cada onda — é a
+ * regra do E196 —, e os PRINTS só mudam quando a tela muda. Recapturar 24
+ * telas para republicar um parágrafo custa subir o app, semear a loja de
+ * demonstração e dirigir o navegador; injetar sobre as capturas versionadas
+ * custa um `readFileSync`.
+ *
+ * As capturas estão no versionamento (`docs/manuais/capturas/`), então esta
+ * função é reproduzível sem app no ar. O que ela NÃO faz é perceber que a tela
+ * mudou — para isso é o `capturar()`, e o print velho é mentira do mesmo jeito
+ * que a prosa velha. Quem muda a tela recaptura; quem muda só o texto, injeta.
  */
-async function gerarPdf(pagina: Page): Promise<void> {
+function montarHtmlComImagens(): string {
   const fonte = path.join(RAIZ, "docs/manuais", manual.arquivo);
   const html = readFileSync(fonte, "utf8");
 
@@ -702,6 +728,16 @@ async function gerarPdf(pagina: Page): Promise<void> {
    * para ser publicada, e nasce do MESMO arquivo que o PDF.
    */
   writeFileSync(path.join(DESTINO_PDF, `${qual}.html`), paraImprimir);
+  return paraImprimir;
+}
+
+/**
+ * O PDF sai do MESMO HTML da página publicada — o manual não tem duas versões.
+ * O que muda é o que se injeta antes de imprimir: as imagens nos lugares que o
+ * HTML declara (`<figure data-print="…">`) e a folha de estilo de impressão.
+ */
+async function gerarPdf(pagina: Page): Promise<void> {
+  const paraImprimir = montarHtmlComImagens();
 
   await pagina.setContent(paraImprimir, { waitUntil: "load" });
   await pagina.emulateMedia({ media: "print" });
@@ -782,5 +818,26 @@ const CSS_DE_IMPRESSAO = `
   }
 `;
 
-console.log(`prints-dos-manuais: ${qual} · ${manual.capturas.length} capturas · sessão ${manual.email ?? "admin"}`);
-await capturar();
+/**
+ * `--so-injetar` reconstrói a página publicável a partir das capturas que já
+ * estão no versionamento, **sem subir o app**.
+ *
+ * É o caminho da reescrita de manual (a regra do E196: manual se reescreve ao
+ * fim de cada onda). Sem ele, republicar um parágrafo custava semear a loja de
+ * demonstração e dirigir 24 telas — e o custo fazia a página publicada
+ * envelhecer: em 15/08 ela ainda era a de **11/08**, quatro ondas atrás.
+ *
+ * Quem mudou a TELA continua rodando o script inteiro: print velho é mentira
+ * do mesmo jeito que prosa velha, e esta bandeira não sabe a diferença.
+ */
+if (SO_INJETAR) {
+  const html = montarHtmlComImagens();
+  console.log(
+    `prints-dos-manuais: ${qual} · injetadas ${manual.capturas.length} capturas versionadas ` +
+      `· ${(html.length / 1_000_000).toFixed(1)} MB em docs/manuais/pdf/${qual}.html ` +
+      `(sem app no ar — para recapturar, rode sem --so-injetar)`,
+  );
+} else {
+  console.log(`prints-dos-manuais: ${qual} · ${manual.capturas.length} capturas · sessão ${manual.email ?? "admin"}`);
+  await capturar();
+}

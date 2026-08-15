@@ -249,7 +249,7 @@
     <div class="contexto">
       <span>Perfil: <b>Vendedora</b></span>
       <span>Abre: <b>noivas, agenda e acervo</b></span>
-      <span>Atualizado em <b>14/08/2026</b></span>
+      <span>Atualizado em <b>15/08/2026</b></span>
     </div>
   </header>
 
@@ -592,7 +592,15 @@
       <p><strong>As datas se corrigem sem cancelar nada</strong>: o botão <span class="btn">Alterar</span> (ou <span class="btn">Informar</span>, quando ainda não há data) abre o diálogo com <strong>três campos</strong> — a retirada, a devolução e o <strong>“Prazo de devolução antecipada da reserva (cláusula 18ª)”</strong>. Contrato cancelado não muda mais.</p>
       <p><strong>Apagar uma data gravada funciona</strong>: esvazie o campo e salve, e o contrato volta a ficar sem a data — o que ainda não foi combinado não precisa ficar preso a um chute antigo. O prazo da 18ª se apaga do mesmo jeito.</p>
       <p class="nota"><b>O prazo da 18ª é negociado a cada contrato</b>, não é constante: é o número de dias antes da retirada até o qual a noiva, tendo pago tudo à vista, ainda recebe de volta o que passou da reserva se cancelar. Vazio quer dizer “não pactuado” — e aí a rescisão cai na régua geral da 11ª. Quem preenche está prometendo em nome da loja: combine com a dona antes.</p>
+      <p><strong>O diálogo avisa o horário errado enquanto você digita</strong>, sem esperar o clique: se a data cair fora do expediente da cláusula 4ª, uma linha amarela aparece embaixo do campo dizendo exatamente o quê — <em>“14:30 está fora do expediente de sábado (10:30 às 18:00).”</em> ou <em>“A loja não retira nem devolve no domingo.”</em> É a mesma frase que a recusa do servidor daria; a diferença é que você a lê enquanto a noiva ainda está na sua frente.</p>
+      <p class="nota">Repare que <b>o sábado fecha uma hora antes</b> — e é por isso que o campo não trava o horário: a faixa muda com o dia da semana, e um limite fixo mentiria em metade da semana.</p>
       <figure class="print" data-print="contrato"></figure>
+
+      <h3>As peças deste contrato, e o caminho até elas</h3>
+      <p>Abaixo dos dados vem o card <strong>“Peças deste contrato”</strong>, com <strong>uma linha por vestido preso</strong>: o nome, o código e em que pé ele está — <em>“na loja”</em>, <em>“retirada em 06/09/2028”</em> ou <em>“devolvida em 12/09/2028”</em>.</p>
+      <p>Cada linha traz o botão <span class="btn">Abrir a reserva</span>, e é por ele que se chega aos gestos da peça: registrar a retirada e a devolução, marcar a prova, lançar uma avaria e <strong>trocar o modelo</strong> (cláusula 17ª). <strong>O contrato não repete esses gestos</strong> — ele leva até onde eles moram, para não existirem dois lugares dizendo a mesma coisa.</p>
+      <p class="nota">Só as reservas <b>vivas</b> aparecem. Depois de uma troca, a peça antiga sai da lista no mesmo instante: ela deixou de ser deste contrato, e mostrá-la prometeria um vestido que a loja já liberou para outra noiva.</p>
+      <p>Contrato só de serviço — ajuste, confecção sem peça do acervo — mostra a frase <em>“Nenhuma peça do acervo presa por este contrato”</em>, e está certo: não há o que abrir.</p>
 
       <p>Abaixo, <strong>o carnê inteiro</strong> — a parcela paga sai riscada, e a próxima traz a data:</p>
       <figure class="print" data-print="contrato-carne"></figure>
@@ -632,6 +640,11 @@
         <li><strong>Dia da semana</strong>: <strong>às sextas-feiras e aos sábados não se troca de modelo</strong> (§1º) — são os dias de retirada e devolução, e a cláusula protege o balcão. Volte em outro dia da semana</li>
       </ul>
       <p class="nota">Depois que a peça <b>saiu da loja</b>, trocar de modelo não existe — o sistema recusa com a frase <em>“A peça já foi retirada — a troca de modelo acontece antes de a peça sair da loja.”</em>. O caminho aí é registrar a devolução e conversar sobre um contrato novo.</p>
+      <p><strong>Se alguém trocou a mesma peça enquanto você preenchia</strong>, a segunda troca é recusada — e não “vence a última”:</p>
+      <div class="fala aviso">
+        <p data-tela="Esta reserva não está mais presa por este contrato — outra troca aconteceu enquanto esta era enviada."><em>“Esta reserva não está mais presa por este contrato — outra troca aconteceu enquanto esta era enviada. Recarregue e escolha a peça atual.”</em></p>
+      </div>
+      <p>Recarregue a ficha: ela mostra a peça que ficou. <strong>Sem essa recusa o contrato terminaria com duas peças presas</strong> de um gesto que era para trocar uma pela outra — e as duas sairiam da arara das outras noivas.</p>
 
       <h3>Registrar a devolução abre uma pergunta, e ela vale dinheiro</h3>
       <div class="fala aviso">
@@ -792,7 +805,8 @@
         <li><strong>Dentro do diálogo “Gerar contrato”</strong>, com a peça nomeada e o que a rescisão custaria</li>
       </ul>
       <p>Quem marca a peça é a loja, na ficha dela, em <span class="btn">Editar vestido</span>. <strong>A marca não se apaga sozinha</strong> quando a peça sai pela primeira vez — apagá-la por efeito de um contrato deixaria a ficha errada no dia em que aquele contrato fosse cancelado.</p>
-      <p class="nota">O selo <b>não é filtro</b>: a busca do acervo filtra por atributo do catálogo, e “exclusiva” não é um deles. Para achá-las, o caminho hoje é o selo na lista.</p>
+      <p><strong>E agora elas se acham sem rolar a lista.</strong> No acervo, ao lado dos filtros, há o botão <span class="btn">Só exclusivas</span> — ele recorta a lista para as peças marcadas, e <strong>não depende de data escolhida</strong>: “quais peças carregam a multa da 12ª” é pergunta sobre o acervo, não sobre um dia. O recorte entra no endereço, então o link filtrado pode ser mandado para a dona.</p>
+      <p class="nota">Ele fica ao lado de <b>“Só disponíveis”</b>, que é o oposto: aquele só aparece quando há data escolhida, porque disponibilidade é sempre pergunta sobre um dia.</p>
     </section>
 
     <section id="desistir">
