@@ -100,6 +100,16 @@ export default function ConfigAtendimentos() {
   // quem o servidor aceitava.
   const podeEditar = podeNoModulo(acessosModulos, "agenda", "editar");
   const podeCriarCabine = podeNoModulo(acessosModulos, "agenda", "criar");
+  /**
+   * S-C221 — o expediente de retirada/devolução é a cláusula 4ª do CONTRATO,
+   * e o servidor passou a exigir `contratos.editar` para os quatro campos
+   * dela (agenda.ts, PUT /disponibilidade/regras). O gate da tela é o mesmo
+   * do endpoint (a régua da s36-gate-da-tela): sem a permissão, os campos
+   * aparecem SÓ-LEITURA e o salvar não os manda — mandar seria oferecer o
+   * 403.
+   */
+  const podeEditarClausula4a =
+    podeEditar && podeNoModulo(acessosModulos, "contratos", "editar");
 
   const [nomeCabine, setNomeCabine] = useState("");
 
@@ -257,34 +267,39 @@ export default function ConfigAtendimentos() {
       retiradaDias,
     } = form.getValues();
     // E222 — "HH:MM" na tela, minutos desde a meia-noite no servidor.
+    // S-C221: sem `contratos.editar` os campos da 4ª nem entram no corpo (o
+    // servidor recusaria o PUT inteiro com 403), então as paredes deles só
+    // valem para quem pode mandá-los.
     const rAbertura = minutosDoRelogio(retiradaAbertura);
     const rFechamento = minutosDoRelogio(retiradaFechamento);
     const rSabado = minutosDoRelogio(retiradaFechamentoSabado);
-    if (rAbertura === null || rFechamento === null || rSabado === null) {
-      toast({
-        title: "Horário de retirada inválido",
-        description: "Informe as três horas no formato 10:30.",
-        variant: "destructive",
-      });
-      return;
-    }
-    // A mesma parede do servidor, e no sábado também: sem isso o expediente
-    // salvaria invertido e nenhuma retirada seria aceita depois.
-    if (rAbertura >= rFechamento || rAbertura >= rSabado) {
-      toast({
-        title: "Horário de retirada inválido",
-        description: "A abertura tem de ser antes do fechamento, no sábado também.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (retiradaDias.length === 0) {
-      toast({
-        title: "Escolha ao menos um dia de retirada",
-        description: "Sem nenhum dia, nenhuma data de retirada ou devolução seria aceita.",
-        variant: "destructive",
-      });
-      return;
+    if (podeEditarClausula4a) {
+      if (rAbertura === null || rFechamento === null || rSabado === null) {
+        toast({
+          title: "Horário de retirada inválido",
+          description: "Informe as três horas no formato 10:30.",
+          variant: "destructive",
+        });
+        return;
+      }
+      // A mesma parede do servidor, e no sábado também: sem isso o expediente
+      // salvaria invertido e nenhuma retirada seria aceita depois.
+      if (rAbertura >= rFechamento || rAbertura >= rSabado) {
+        toast({
+          title: "Horário de retirada inválido",
+          description: "A abertura tem de ser antes do fechamento, no sábado também.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (retiradaDias.length === 0) {
+        toast({
+          title: "Escolha ao menos um dia de retirada",
+          description: "Sem nenhum dia, nenhuma data de retirada ou devolução seria aceita.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     const a = Number(abertura);
     const f = Number(fechamento);
@@ -343,10 +358,16 @@ export default function ConfigAtendimentos() {
           atendimentoFechamentoHora: f,
           diasFuncionamento: [...dias].sort((x, y) => x - y),
           // E222 — o segundo expediente (cláusula 4ª), salvo no mesmo gesto.
-          retiradaAberturaMinutos: rAbertura,
-          retiradaFechamentoMinutos: rFechamento,
-          retiradaFechamentoSabadoMinutos: rSabado,
-          retiradaDias: [...retiradaDias].sort((x, y) => x - y),
+          // S-C221: só entra no corpo com `contratos.editar` — este PUT é
+          // upsert parcial, e campo ausente preserva o gravado.
+          ...(podeEditarClausula4a
+            ? {
+                retiradaAberturaMinutos: rAbertura!,
+                retiradaFechamentoMinutos: rFechamento!,
+                retiradaFechamentoSabadoMinutos: rSabado!,
+                retiradaDias: [...retiradaDias].sort((x, y) => x - y),
+              }
+            : {}),
         },
       });
       // Salvou: o que estava sujo virou o valor do servidor. Sem este reset o
@@ -572,6 +593,15 @@ export default function ConfigAtendimentos() {
                     (cláusula 4ª) trata isso separado das provas. Fora deste expediente, o
                     contrato recusa a data e diz o porquê.
                   </p>
+                  {/* S-C221: quem não decide sobre contrato vê e não mexe — o
+                      servidor recusaria com 403, e oferecer o campo seria
+                      oferecer o erro. */}
+                  {!podeEditarClausula4a && (
+                    <p className="text-xs text-muted-foreground" data-testid="clausula-4a-so-leitura">
+                      Este expediente é cláusula do contrato — mudá-lo pede permissão de editar
+                      contratos.
+                    </p>
+                  )}
                 </div>
                 <div className="flex flex-wrap items-end gap-3">
                   <div className="space-y-1.5">
@@ -581,6 +611,7 @@ export default function ConfigAtendimentos() {
                       type="time"
                       className="w-32"
                       data-testid="retirada-abertura"
+                      disabled={!podeEditarClausula4a}
                       {...form.register("retiradaAbertura")}
                     />
                   </div>
@@ -591,6 +622,7 @@ export default function ConfigAtendimentos() {
                       type="time"
                       className="w-32"
                       data-testid="retirada-fechamento"
+                      disabled={!podeEditarClausula4a}
                       {...form.register("retiradaFechamento")}
                     />
                   </div>
@@ -605,6 +637,7 @@ export default function ConfigAtendimentos() {
                       type="time"
                       className="w-32"
                       data-testid="retirada-fechamento-sabado"
+                      disabled={!podeEditarClausula4a}
                       {...form.register("retiradaFechamentoSabado")}
                     />
                   </div>
@@ -626,6 +659,7 @@ export default function ConfigAtendimentos() {
                               variant={aberto ? "default" : "outline"}
                               aria-pressed={aberto}
                               data-testid={`dia-retirada-${n}`}
+                              disabled={!podeEditarClausula4a}
                               onClick={() =>
                                 field.onChange(
                                   aberto

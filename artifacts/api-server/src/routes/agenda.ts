@@ -41,6 +41,10 @@ import {
   CreateAusenciaResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
+// S-C221 — a pergunta do middleware, feita à mão no único ponto em que um
+// corpo de agenda carrega uma cláusula de CONTRATO (o expediente da 4ª).
+import { getPermissoes } from "../lib/auth";
+import { podeNoModulo } from "../lib/permissoes";
 import {
   recusaDeMover,
   ausenciaQueCobre,
@@ -1322,6 +1326,49 @@ router.put("/lojas/:lojaId/disponibilidade/regras", async (req, res): Promise<vo
   if (!parsed.success) {
     res.status(400).json(erroDeValidacao(parsed.error));
     return;
+  }
+
+  /**
+   * **S-C221 — o expediente da cláusula 4ª exige `contratos.editar`, e o resto
+   * da regra continua sendo da agenda** (decisão da dona, 14/08/2026:
+   * restringir — quem muda o expediente de retirada muda o que o contrato
+   * PROMETE, porque é contra ele que o `POST`/`PATCH` de contrato recusam data
+   * desde o E222).
+   *
+   * Medido antes: o prefixo (`:262`, `requireModulo("agenda")`) deriva
+   * `editar` do PUT, e a **Costureira** do seed (`agenda: TUDO,
+   * contratos: NADA` — `configuracao-inicial.ts:159`) e a **Recepção**
+   * (`:153`, o mesmo par) gravavam os quatro campos da 4ª. A sobra citava só a
+   * Costureira; a Recepção passava pela mesma porta.
+   *
+   * O fecho é pela PERMISSÃO, não por perfil: a mesma pergunta do middleware
+   * (`getPermissoes` + `podeNoModulo`), feita aqui porque o gate por prefixo
+   * não tem grão de CAMPO — e mover o PUT inteiro para `contratos` tiraria da
+   * Recepção o expediente de ATENDIMENTO, que é trabalho dela. Nenhuma
+   * migração de perfil: os perfis ficam como estão, a porta é que passa a
+   * perguntar a coisa certa. Recusa ANTES de validar/gravar qualquer campo:
+   * corpo misto não grava a metade da agenda e cala a outra.
+   */
+  const CAMPOS_DA_CLAUSULA_4A = [
+    "retiradaAberturaMinutos",
+    "retiradaFechamentoMinutos",
+    "retiradaFechamentoSabadoMinutos",
+    "retiradaDias",
+  ] as const;
+  const mexeNaClausula4a = CAMPOS_DA_CLAUSULA_4A.some((c) => parsed.data[c] !== undefined);
+  if (mexeNaClausula4a && !req.usuario!.isSuperAdmin) {
+    const permissoes = await getPermissoes(req.usuario!.id, lojaId, false);
+    if (!permissoes || !podeNoModulo(permissoes, "contratos", "editar")) {
+      res.status(403).json({
+        error: "ACESSO_NEGADO_MODULO",
+        modulo: "contratos",
+        acao: "editar",
+        detalhe:
+          "O expediente de retirada e devolução é a cláusula 4ª do contrato de locação — " +
+          "mudá-lo muda o que o contrato aceita, e isso pede permissão de editar contratos.",
+      });
+      return;
+    }
   }
 
   /**

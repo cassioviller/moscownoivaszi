@@ -122,3 +122,44 @@ tranca lê o retrato de ANTES do recebimento (MVCC), o CAS `isNull(recebidoEm)` 
 vira zero linhas em silêncio, e o par diverge: **ficha R$ 150,00 · carnê PAGO de R$ 250,00**,
 exatamente os "dois números para uma decisão só" do E186, agora com dinheiro no meio.
 Restaurada a tranca: **sc77 2 passed · sc11 17 passed**.
+
+---
+
+## S-C221 — o expediente da cláusula 4ª fecha pela permissão de contrato
+
+**Decisão da dona (14/08/2026): restringir — quem muda o expediente muda o que o contrato
+promete.**
+
+**Medição de QUAL permissão dá o acesso hoje:** o `PUT /disponibilidade/regras` inteiro vivia
+sob o `requireModulo("agenda")` do prefixo (`agenda.ts:258` na base; a rota em `:1319`), e PUT
+deriva `editar` (`permissoes.ts:acaoDoMetodo`). **A sobra citava a Costureira; a Recepção
+passava pela mesma porta** — os dois perfis do seed têm `agenda: TUDO, contratos: NADA`
+(`configuracao-inicial.ts:153` e `:159`).
+
+**O fecho, pela permissão e não por perfil:** o corpo que traz qualquer campo da 4ª
+(`retiradaAberturaMinutos/FechamentoMinutos/FechamentoSabadoMinutos/retiradaDias`) exige
+TAMBÉM `contratos.editar`, perguntado com as mesmas funções do middleware
+(`getPermissoes` + `podeNoModulo`), ANTES de validar ou gravar qualquer campo — corpo misto
+recusa inteiro. O gate por prefixo não tem grão de CAMPO, e mover o PUT inteiro para
+`contratos` tiraria da Recepção o expediente de ATENDIMENTO, que é trabalho dela.
+**Nenhuma migração de perfil**: os perfis ficam como estão; a porta é que passa a perguntar
+a coisa certa — por isso não há SQL para rodar (a lição do E172 não se aplica: nada mudou no
+seed).
+
+**A tela acompanhou** (`atendimentos/config.tsx`): os quatro campos da 4ª aparecem
+desabilitados sem `contratos.editar`, com a frase dizendo por quê
+(`data-testid="clausula-4a-so-leitura"`), e o `salvarHorario` **não os manda** — o PUT é
+upsert parcial e campo ausente preserva. A `s36-gate-da-tela-unit` segue verde: a tela agora
+gateia por `[agenda, contratos]` e escreve em `agenda`.
+
+**O manual:** o da costureira **não cita** o expediente (zero ocorrências, medido) — nada a
+mudar. O da RECEPÇÃO cita (`recepcao.html:308` e a seção 8), e ganhou duas frases dizendo que
+o bloco de retirada é só-leitura para ela. **ATENÇÃO DO INTEGRADOR: `recepcao.html` é área do
+agente C neste lote** — a edição é de duas frases na seção 8; se houver conflito de
+cherry-pick, a minha metade é a menor.
+
+**Vermelho antes (literal):** `Error: expected 403 "Forbidden", got 200 "OK"` — a
+costureira-fixture (perfil na letra do seed) gravava `retiradaFechamentoMinutos` — e no corpo
+misto `expected 403 "Forbidden", got 422` (a parede de horário respondia antes da permissão).
+Depois: **s-c221 4 passed**, e o lote s-c221 + e222-expediente + varredura-manuais (3
+arquivos, 15) + s36-gate: **42 + 15 passed**, typecheck verde nos 5 projetos.
