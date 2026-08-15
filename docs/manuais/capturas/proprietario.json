@@ -1,0 +1,31 @@
+{
+  "manual": "proprietario",
+  "gerado": "2026-08-15T19:15:07.402Z",
+  "loja": "demo-manuais-loja",
+  "sessao": "helena@moscownoivas.com",
+  "ambiente": {
+    "locale": "pt-BR",
+    "timezone": "America/Sao_Paulo",
+    "viewport": "1280×860 @2×",
+    "tema": "claro"
+  },
+  "capturas": [
+    "proprietario-menu.png",
+    "proprietario-seu-dia.png",
+    "proprietario-financeiro.png",
+    "proprietario-receber.png",
+    "proprietario-receber-dialogo.png",
+    "proprietario-contrato-instrumento.png",
+    "proprietario-cobranca.png",
+    "proprietario-conciliacao.png",
+    "proprietario-folha.png",
+    "proprietario-folha-despesa.png",
+    "proprietario-dre.png",
+    "proprietario-comissoes.png",
+    "proprietario-equipe.png",
+    "proprietario-permissoes.png",
+    "proprietario-dados-da-loja.png",
+    "proprietario-privacidade.png",
+    "proprietario-auditoria.png"
+  ]
+}

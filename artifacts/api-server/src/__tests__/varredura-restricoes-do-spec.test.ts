@@ -266,7 +266,7 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
    * as chamadas peneiradas; a garantia de que nenhuma escapou é da
    * `varredura-datas-nao-aceitam-nulo`, que mede por EFEITO.
    */
-  it("927 datas coercidas — todas peneiradas pelo `dataDoCorpo()`, que recusa o `null`", () => {
+  it("928 datas coercidas — todas peneiradas pelo `dataDoCorpo()`, que recusa o `null`", () => {
     // E228: 892 → 910. O `orfaoSeguraAte` (S-C60) entrou no `BloqueioVestido`,
     // que viaja em 18 respostas — uma coluna nova num schema compartilhado
     // multiplica pelo número de portas que o serializam. Todas são SAÍDA
@@ -292,7 +292,9 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
       // E235: 926 → 927. `MovimentoDoSistema.conciliadoEm` (`date-time`, nullable) na
       // RESPOSTA do `listMovimentosConciliacao` — `dataDoCorpo().nullable()`, e o `null`
       // é o valor legítimo ("ainda não conferido"); a guarda do V12 não muda.
-    ).toBe(927);
+      // E236: 927 → 928. `ManualDeUso.atualizadoEm` (`date-time`, nullable) na RESPOSTA
+      // do `listManuais` — o mtime do PDF versionado; `null` = a instalação subiu sem ele.
+    ).toBe(928);
 
     // S-C281 — e nenhuma sobrou crua. O hook do `orval.config.ts` é um gesto
     // que se pode desligar; se alguém o desligar, o número acima continua 916

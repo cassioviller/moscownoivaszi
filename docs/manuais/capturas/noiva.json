@@ -1,0 +1,20 @@
+{
+  "manual": "noiva",
+  "gerado": "2026-08-15T19:17:00.188Z",
+  "loja": "demo-manuais-loja",
+  "sessao": "admin do banco",
+  "ambiente": {
+    "locale": "pt-BR",
+    "timezone": "America/Sao_Paulo",
+    "viewport": "1280×860 @2×",
+    "tema": "claro"
+  },
+  "capturas": [
+    "noiva-proposta.png",
+    "noiva-portal.png",
+    "noiva-portal-contrato.png",
+    "noiva-portal-parcelas.png",
+    "noiva-portal-clausulas.png",
+    "noiva-lookbook.png"
+  ]
+}

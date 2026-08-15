@@ -160,6 +160,14 @@ tamanho.
 | **3** | **Recepção** | Muito se apoia no que a vendedora já explicou; é sobretudo agenda. | ✅ 2026-08-12 — `recepcao.html`; achou a **S-O41**, o par da S-O40 |
 | **4** | **Proprietário** | O maior, e o único que pode se apoiar nos quatro anteriores em vez de repeti-los. O financeiro inteiro é dele. | ✅ 2026-08-12 — `proprietario.html`; **o plano está EXECUTADO** |
 
+**2026-08-15 — E236: os cinco manuais ganharam o passo a passo em prints (75
+capturas, na sessão de cada perfil) e passaram a morar DENTRO do sistema** —
+`Manuais`, no rodapé do menu, lista os cinco com o PDF para baixar
+(`GET /manuais/:qual.pdf`, PDFs versionados em `docs/manuais/pdf/`). As
+páginas abaixo continuam de pé como endereço externo, mas envelhecem: o lugar
+canônico agora é o sistema. Relatório em
+`docs/revisao/2026-08-13-contrato-de-papel/execucao/E236.md`.
+
 As cinco páginas publicadas, para quem precisar do endereço:
 
 | Manual | Fonte no repo | Página |

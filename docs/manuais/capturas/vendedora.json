@@ -1,6 +1,6 @@
 {
   "manual": "vendedora",
-  "gerado": "2026-08-12T02:13:38.376Z",
+  "gerado": "2026-08-15T19:14:00.001Z",
   "loja": "demo-manuais-loja",
   "sessao": "camila@moscownoivas.com",
   "ambiente": {
@@ -33,6 +33,12 @@
     "vendedora-contrato-carne.png",
     "vendedora-mensagens.png",
     "vendedora-funil.png",
-    "vendedora-provas.png"
+    "vendedora-provas.png",
+    "vendedora-reservas.png",
+    "vendedora-reserva-ficha.png",
+    "vendedora-contrato-pecas.png",
+    "vendedora-contrato-receber.png",
+    "vendedora-minha-comissao.png",
+    "vendedora-vestidos.png"
   ]
 }

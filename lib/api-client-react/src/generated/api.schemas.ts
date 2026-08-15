@@ -2959,6 +2959,23 @@ export interface MovimentoDoSistema {
   conciliadoEm: string | null;
 }
 
+/**
+ * E236 — um manual de uso do catálogo, com o estado do PDF no servidor
+ */
+export interface ManualDeUso {
+  /** a chave — o nome do arquivo sem extensão */
+  qual: string;
+  titulo: string;
+  paraQuem: string;
+  descricao: string;
+  /** o PDF está no servidor */
+  disponivel: boolean;
+  /** @nullable */
+  bytes: number | null;
+  /** @nullable */
+  atualizadoEm: string | null;
+}
+
 export interface Pagamento {
   id: string;
   lojaId: string;

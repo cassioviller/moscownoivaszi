@@ -165,6 +165,7 @@ import type {
   Lookbook,
   LookbookInput,
   LookbookPublico,
+  ManualDeUso,
   MarcarConciliadoInput,
   MarcarConciliadoResultado,
   MembroEquipe,
@@ -15802,6 +15803,161 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getBaixarEstornoComissaoMutationOptions(options));
     }
+
+export const getListManuaisUrl = () => {
+
+
+
+
+  return `/api/manuais`
+}
+
+/**
+ * E236 — os cinco manuais (proprietário, vendedora, recepção, costureira e o guia da noiva), com o passo a passo em prints. Os PDFs são versionados em `docs/manuais/pdf/` e servidos por `GET /manuais/{qual}.pdf`. Só sessão, sem loja: o manual é o mesmo para toda loja e é de quem está logado.
+ * @summary Os manuais de uso, para baixar dentro do sistema
+ */
+export const listManuais = async ( options?: RequestInit): Promise<ManualDeUso[]> => {
+
+  return customFetch<ManualDeUso[]>(getListManuaisUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListManuaisQueryKey = () => {
+    return [
+    `/api/manuais`
+    ] as const;
+    }
+
+
+export const getListManuaisQueryOptions = <TData = Awaited<ReturnType<typeof listManuais>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listManuais>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListManuaisQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listManuais>>> = ({ signal }) => listManuais({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listManuais>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListManuaisQueryResult = NonNullable<Awaited<ReturnType<typeof listManuais>>>
+export type ListManuaisQueryError = ErrorType<void>
+
+
+/**
+ * @summary Os manuais de uso, para baixar dentro do sistema
+ */
+
+export function useListManuais<TData = Awaited<ReturnType<typeof listManuais>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listManuais>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListManuaisQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getBaixarManualUrl = (qual: string,) => {
+
+
+
+
+  return `/api/manuais/${qual}.pdf`
+}
+
+/**
+ * @summary O PDF de um manual, como download
+ */
+export const baixarManual = async (qual: string, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getBaixarManualUrl(qual),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getBaixarManualQueryKey = (qual: string,) => {
+    return [
+    `/api/manuais/${qual}.pdf`
+    ] as const;
+    }
+
+
+export const getBaixarManualQueryOptions = <TData = Awaited<ReturnType<typeof baixarManual>>, TError = ErrorType<void>>(qual: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof baixarManual>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getBaixarManualQueryKey(qual);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof baixarManual>>> = ({ signal }) => baixarManual(qual, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: qual !== null && qual !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof baixarManual>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type BaixarManualQueryResult = NonNullable<Awaited<ReturnType<typeof baixarManual>>>
+export type BaixarManualQueryError = ErrorType<void>
+
+
+/**
+ * @summary O PDF de um manual, como download
+ */
+
+export function useBaixarManual<TData = Awaited<ReturnType<typeof baixarManual>>, TError = ErrorType<void>>(
+ qual: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof baixarManual>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getBaixarManualQueryOptions(qual,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetDashboardUrl = (lojaId: string,) => {
 

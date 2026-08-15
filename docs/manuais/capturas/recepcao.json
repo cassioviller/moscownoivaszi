@@ -1,0 +1,27 @@
+{
+  "manual": "recepcao",
+  "gerado": "2026-08-15T19:16:00.522Z",
+  "loja": "demo-manuais-loja",
+  "sessao": "renata@moscownoivas.com",
+  "ambiente": {
+    "locale": "pt-BR",
+    "timezone": "America/Sao_Paulo",
+    "viewport": "1280×860 @2×",
+    "tema": "claro"
+  },
+  "capturas": [
+    "recepcao-menu.png",
+    "recepcao-agenda.png",
+    "recepcao-agenda-semana.png",
+    "recepcao-agendar-tipo.png",
+    "recepcao-agendar-horarios.png",
+    "recepcao-fila.png",
+    "recepcao-fila-filtros.png",
+    "recepcao-mensagens.png",
+    "recepcao-noivas.png",
+    "recepcao-nova-noiva.png",
+    "recepcao-ficha.png",
+    "recepcao-cabines-horario.png",
+    "recepcao-provas.png"
+  ]
+}

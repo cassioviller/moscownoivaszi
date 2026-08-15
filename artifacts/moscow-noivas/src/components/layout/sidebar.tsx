@@ -205,6 +205,19 @@ export function Sidebar({ onNavigate, onBuscar }: { onNavigate?: () => void; onB
             <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
           </div>
         </div>
+        {/* E236 — os manuais de uso, para baixar dentro do sistema. Fica no rodapé,
+            fora dos grupos do MENU: não é módulo, é de todo perfil — e por isso não
+            entra na conta que a `varredura-manuais` faz do menu de cada manual. */}
+        <Button
+          asChild
+          variant="ghost"
+          className="w-full justify-start text-muted-foreground hover:text-foreground mb-1"
+        >
+          <Link to={`${base}/manuais`} onClick={onNavigate} data-testid="link-manuais">
+            <BookOpen className="h-4 w-4 mr-2" />
+            Manuais
+          </Link>
+        </Button>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"

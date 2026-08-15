@@ -89,6 +89,7 @@ const AdminConsole = lazy(() => import("@/pages/admin"));
 const AdminPerfis = lazy(() => import("@/pages/admin/perfis"));
 const Comissoes = lazy(() => import("@/pages/comissoes"));
 const MinhaComissao = lazy(() => import("@/pages/minha-comissao"));
+const Manuais = lazy(() => import("@/pages/manuais"));
 const Equipe = lazy(() => import("@/pages/equipe"));
 const Configuracoes = lazy(() => import("@/pages/configuracoes"));
 
@@ -334,6 +335,8 @@ export const rotas = createRoutesFromElements(
       <Route path="financeiro/conciliacao" element={<Conciliacao />} />
       <Route path="comissoes" element={<Comissoes />} />
       <Route path="minha-comissao" element={<MinhaComissao />} />
+      {/* E236 — os manuais de uso, para baixar dentro do sistema. */}
+      <Route path="manuais" element={<Manuais />} />
       <Route path="equipe" element={<Equipe />} />
       <Route path="permissoes" element={<Permissoes />} />
       <Route path="configuracoes" element={<Configuracoes />} />

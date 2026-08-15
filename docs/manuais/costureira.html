@@ -214,6 +214,12 @@
   .caixa li { margin: 0; font-size: 14.5px; padding: 3px 9px; border-radius: 5px; background: var(--chip-fundo); }
   .caixa.naove li { color: var(--tinta-fraca); text-decoration: line-through; text-decoration-color: var(--linha-forte); }
 
+  /* ── Os prints ─────────────────────────────────────────────────────────
+     A página web não os carrega: `scripts/prints-dos-manuais.ts` preenche
+     estas âncoras na hora de imprimir o PDF. Vazia, a figura não ocupa
+     espaço — sem isto o `<figure>` do navegador deixaria um vão de 1em. */
+  figure.print:empty { display: none; margin: 0; }
+
   /* ── Nota de rodapé de seção ───────────────────────────────────────────── */
   .nota {
     font-size: 15px; color: var(--tinta-fraca);
@@ -266,6 +272,7 @@
       <li><a href="recepcao.html"><span class="num">—</span>Manual da Recepção</a></li>
       <li><a href="noiva.html"><span class="num">—</span>Guia da Noiva</a></li>
     </ol>
+    <p style="font-size:13.5px;margin-top:14px"><strong>Onde eles estão:</strong> dentro do sistema — <span class="btn">Manuais</span>, no rodapé do menu, lista os cinco com o PDF para baixar. Desde 15/08/2026.</p>
   </nav>
 
   <main>
@@ -273,6 +280,7 @@
     <section id="entrar">
       <h2>Como você entra, e o que aparece</h2>
       <p class="resumo">Você entra com e-mail e senha, como todo mundo da loja. <strong>A sua sessão dura 8 horas</strong> — passou disso, o sistema pede a senha de novo: <em>“Sua sessão expirou. Entre de novo.”</em></p>
+      <figure class="print" data-print="menu"></figure>
 
       <div class="fala">
         <span class="rotulo">O seu perfil se chama Costureira</span>
@@ -314,6 +322,8 @@
     <section id="fila">
       <h2><span class="passo">1</span>A fila</h2>
       <p class="resumo">Menu → <span class="btn">Ajustes</span>. Ela responde a pergunta de segunda de manhã: <strong>o que eu costuro até sexta?</strong></p>
+      <figure class="print" data-print="fila"></figure>
+      <figure class="print" data-print="nova-confeccao"></figure>
 
       <p>A fila abre no recorte <strong>“Prazo apertado”</strong>. São três, e ficam no canto direito do título:</p>
       <div class="rolagem">
@@ -363,6 +373,7 @@
       <div class="fala">
         <span class="rotulo">A regra inteira, em uma frase</span>
         <p><strong>O prazo é a próxima prova da noiva. Não havendo prova marcada, é o casamento dela.</strong></p>
+      <figure class="print" data-print="agenda"></figure>
       </div>
 
       <p>É para a prova que a peça precisa estar pronta — é ali que ela veste. O casamento entra quando não há prova nenhuma marcada, e é o caso comum das <strong>confecções</strong>, que muitas vezes nascem sem prova agendada.</p>
@@ -418,6 +429,7 @@
     <section id="ficha">
       <h2><span class="passo">4</span>A ficha do trabalho</h2>
       <p class="resumo">Clique na descrição de qualquer linha da fila. É a tela para levar ao lado da máquina quando o trabalho é grande.</p>
+      <figure class="print" data-print="ficha"></figure>
 
       <p>No topo, o nome do trabalho, o chip <span class="btn">Pendente</span> ou <span class="btn">Concluído</span>, e a linha que diz de que natureza ele é: <em>“Peça nova, feita para a noiva”</em> (confecção) ou <em>“Peça existente que se altera”</em> (ajuste), com o vestido e a noiva ao lado.</p>
 
@@ -435,6 +447,8 @@
     <section id="nasce">
       <h2><span class="passo">5</span>De onde nasce o trabalho</h2>
       <p class="resumo">Ninguém cadastra ajuste pela sua fila. Ele nasce <strong>dentro da prova</strong>, na ficha da reserva do vestido — normalmente pela vendedora, com a noiva ainda vestida.</p>
+      <figure class="print" data-print="provas"></figure>
+      <figure class="print" data-print="reservas"></figure>
 
       <div class="trilha">
         <span>Reserva do vestido</span><i>→</i>
@@ -461,6 +475,8 @@
     <section id="avaria">
       <h2><span class="passo">6</span>O dano que você vê primeiro</h2>
       <p class="resumo">O vestido volta do casamento e alguém confere. <strong>Quem enxerga a barra rasgada e a mancha que não sai costuma ser você</strong> — e o registro daquilo, com foto, é o que sustenta a cobrança. Esta seção existe para uma frase: <strong>o registro não está no seu acesso, e por isso ele depende de você chamar alguém a tempo.</strong></p>
+      <figure class="print" data-print="reserva-avaria"></figure>
+      <figure class="print" data-print="reserva-movimentacao"></figure>
 
       <h3>Onde isso aparece para você</h3>
       <p>Menu → <span class="btn">Reservas</span> → a ficha da reserva do vestido. Bem abaixo do bloco de provas há o bloco <strong>Avarias</strong>. Sem nada registrado, ele diz: <em>“Nenhuma avaria registrada — o vestido voltou como saiu.”</em></p>

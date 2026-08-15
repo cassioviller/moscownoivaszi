@@ -18,11 +18,16 @@ import contratosRouter from "./contratos";
 import financeiroRouter from "./financeiro";
 import comissaoRouter from "./comissao";
 import dashboardRouter from "./dashboard";
+import manuaisRouter from "./manuais";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+// E236 — os manuais só pedem SESSÃO (por rota, sem `router.use` solto), e por
+// isso ficam antes dos routers de domínio: montado depois deles, o `GET
+// /manuais` herdaria o `requireSessaoComLoja` de quem aplica sem path.
+router.use(manuaisRouter);
 // PÚBLICO (aceite de convite, orçamento da noiva) — TEM de vir antes dos
 // routers de domínio: eles aplicam requireSessaoComLoja sem path, e depois
 // deles isto viraria 401.

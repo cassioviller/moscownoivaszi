@@ -215,6 +215,12 @@
   .caixa li { margin: 0; font-size: 14.5px; padding: 3px 9px; border-radius: 5px; background: var(--chip-fundo); }
   .caixa.naove li { color: var(--tinta-fraca); text-decoration: line-through; text-decoration-color: var(--linha-forte); }
 
+  /* ── Os prints ─────────────────────────────────────────────────────────
+     A página web não os carrega: `scripts/prints-dos-manuais.ts` preenche
+     estas âncoras na hora de imprimir o PDF. Vazia, a figura não ocupa
+     espaço — sem isto o `<figure>` do navegador deixaria um vão de 1em. */
+  figure.print:empty { display: none; margin: 0; }
+
   /* ── Nota de rodapé de seção ───────────────────────────────────────────── */
   .nota {
     font-size: 15px; color: var(--tinta-fraca);
@@ -270,6 +276,7 @@
       <li><a href="costureira.html"><span class="num">—</span>Manual da Costureira</a></li>
       <li><a href="noiva.html"><span class="num">—</span>Guia da Noiva</a></li>
     </ol>
+    <p style="font-size:13.5px;margin-top:14px"><strong>Onde eles estão:</strong> dentro do sistema — <span class="btn">Manuais</span>, no rodapé do menu, lista os cinco com o PDF para baixar. Desde 15/08/2026.</p>
   </nav>
 
   <main>
@@ -277,6 +284,7 @@
     <section id="ve">
       <h2>O que você vê</h2>
       <p class="resumo"><strong>Tudo.</strong> As dezenove linhas do menu abrem para o seu perfil, e nenhuma tela do sistema é negada a você.</p>
+      <figure class="print" data-print="menu"></figure>
 
       <div class="colunas inteira" data-perfil="Proprietária">
         <div class="caixa ve" data-menu="ve">
@@ -320,6 +328,7 @@
     <section id="dia">
       <h2><span class="passo">1</span>Seu dia</h2>
       <p class="resumo">A tela de entrada — <em>“Seu dia, Renato”</em>. Quatro números e os avisos.</p>
+      <figure class="print" data-print="seu-dia"></figure>
       <p>Os quatro cartões: <strong>Noivas ativas</strong> · <strong>Atendimentos hoje</strong> · <strong>Orçamentos abertos</strong> · <strong>Contratos fechados</strong>.</p>
       <p>Ao lado do menu, o <strong>sino</strong> reúne os avisos que ninguém precisou pedir: caixa furando, comissão esquecida, noivas esfriando e presenças por confirmar. <strong>Não há rotina noturna nem e-mail</strong> — o sistema conta na hora em que você abre.</p>
 
@@ -339,6 +348,9 @@
     <section id="mapa">
       <h2><span class="passo">2</span>O mapa do financeiro</h2>
       <p class="resumo">São oito telas, e todas penduram em <span class="btn">Financeiro</span>. Uma distinção organiza as oito, e é a única que precisa entrar de cor.</p>
+      <figure class="print" data-print="financeiro"></figure>
+      <figure class="print" data-print="dre"></figure>
+      <figure class="print" data-print="auditoria"></figure>
 
       <div class="trilha">
         <span>Realizado — o que se moveu</span><i>×</i>
@@ -381,6 +393,7 @@
     <section id="contrato">
       <h2><span class="passo">3</span>O que o contrato cobra</h2>
       <p class="resumo">O instrumento de locação que a noiva assina tem <strong>21 cláusulas</strong>, e <strong>oito delas são dinheiro</strong>. Desde 13/08/2026 essas oito têm conta no sistema. Esta seção é a lista do que ele cobra sem lhe perguntar — e do que ele deliberadamente não cobra.</p>
+      <figure class="print" data-print="contrato-instrumento"></figure>
 
       <p>Antes, o contrato era papel e o sistema era outra coisa. A peça voltava rasgada, a noiva atrasava a parcela, a data do casamento mudava — e a conta era feita de cabeça, quando era feita. <strong>Hoje cada uma dessas oito cláusulas tem um número que sai do contrato</strong>, e não do bom senso de quem está atendendo naquele dia.</p>
 
@@ -523,6 +536,8 @@
     <section id="acao">
       <h2><span class="passo">4</span>Receber e pagar</h2>
       <p class="resumo">As duas telas de ação. As duas exportam CSV da janela em vista — a contadora importa sem redigitar.</p>
+      <figure class="print" data-print="receber"></figure>
+      <figure class="print" data-print="receber-dialogo"></figure>
 
       <h3>Contas a receber</h3>
       <p><em>“O que entra das noivas, por contrato.”</em> Cada parcela recebe com valor, data e meio de pagamento. Recebimento parcial é aceito: a parcela fica <strong>Parcialmente paga</strong> e o saldo continua contando.</p>
@@ -538,6 +553,7 @@
     <section id="cobranca">
       <h2><span class="passo">5</span>Cobrança</h2>
       <p class="resumo"><em>“Acompanhe com delicadeza as parcelas em aberto. A mais atrasada vem primeiro.”</em></p>
+      <figure class="print" data-print="cobranca"></figure>
       <p>Três cartões dividem o atraso, e cada um filtra a lista ao ser clicado:</p>
       <div class="rolagem">
         <table>
@@ -557,6 +573,7 @@
     <section id="conferir">
       <h2><span class="passo">6</span>Conferir o banco</h2>
       <p class="resumo">A tela que responde se o que está no sistema é o que está na conta.</p>
+      <figure class="print" data-print="conciliacao"></figure>
       <div class="fala">
         <span class="rotulo">Conciliação</span>
         <p>“Suba o extrato que o seu banco exporta (OFX ou CSV) e confira o banco contra o sistema. <strong>O arquivo é lido aqui mesmo — nada sai do seu computador.</strong>”</p>
@@ -568,6 +585,8 @@
     <section id="mes">
       <h2><span class="passo">7</span>Fechar o mês</h2>
       <p class="resumo">Menu → <span class="btn">Folha do mês</span>. Esta é a tela mais importante deste manual, e a que o sistema desenhou como <strong>roteiro</strong> — não como formulário.</p>
+      <figure class="print" data-print="folha"></figure>
+      <figure class="print" data-print="folha-despesa"></figure>
 
       <p>No topo, escolha a <strong>Competência</strong> (mês/ano). O quadro <strong>“Fechar agosto de 2026”</strong> lista os três passos, cada um com o estado e o link para resolvê-lo:</p>
 
@@ -609,6 +628,7 @@
     <section id="comissoes">
       <h2><span class="passo">8</span>Comissões</h2>
       <p class="resumo"><em>“A faixa que a vendedora alcançar no fim do mês vale para tudo que ela vendeu — bater o próximo degrau compensa até o último dia.”</em></p>
+      <figure class="print" data-print="comissoes"></figure>
 
       <p>Essa frase é a regra inteira, e é o que faz a escada funcionar como incentivo: não é faixa por venda, é <strong>a faixa do mês aplicada ao mês todo</strong>.</p>
 
@@ -631,6 +651,8 @@
     <section id="equipe">
       <h2><span class="passo">9</span>Equipe e permissões</h2>
       <p class="resumo">Duas telas: quem trabalha aqui, e o que cada perfil pode.</p>
+      <figure class="print" data-print="equipe"></figure>
+      <figure class="print" data-print="permissoes"></figure>
 
       <h3>Equipe</h3>
       <p><em>“Vendedoras e demais membros vinculados a esta loja.”</em> O caminho recomendado é o <strong>convite</strong>: a própria pessoa define a senha, e você nunca digita a senha de ninguém. O convite <strong><span class="prazo" data-regua="CONVITE_TTL_MS">vale 7 dias</span></strong>.</p>
@@ -667,6 +689,8 @@
     <section id="loja">
       <h2><span class="passo">10</span>A loja e os dados</h2>
       <p class="resumo">Menu → <span class="btn">Configurações</span> — <em>“O que está valendo na loja — e onde se muda.”</em> A aba é uma: <strong>Loja atual</strong>.</p>
+      <figure class="print" data-print="dados-da-loja"></figure>
+      <figure class="print" data-print="privacidade"></figure>
       <p class="nota">Existe uma segunda aba, <b>Administração</b>, e ela é do <b>superadministrador da rede</b> — quem cuida de várias lojas. Ela não aparece para você, e é de propósito: o que ela abre é o console de todas as lojas, não o da sua.</p>
 
       <h3>Dados da loja</h3>

@@ -1,11 +1,14 @@
 /**
+    // Recicla a página entre capturas (ver acima).
+    await pagina.close().catch(() => undefined);
+    pagina = await ctx.newPage();
  * Os PRINTS dos manuais, e o PDF que sai deles.
  *
  *   # 1. a loja de demonstração (idempotente)
  *   pnpm --filter @workspace/api-server exec tsx ../../scripts/loja-de-demonstracao.ts
  *   # 2. com o app de pé em BASE_URL:
  *   BASE_URL=http://localhost:5173 \
- *     pnpm --filter @workspace/api-server exec tsx ../../scripts/prints-dos-manuais.ts vendedora
+ *     pnpm --filter @workspace/api-server exec tsx ../../scripts/prints-dos-manuais.ts vendedora   # ou: todos
  *
  * Ela NÃO sobe o app — como a `capturar-telas.ts`, espera os dois servidores
  * que o `playwright.config.ts` descreve.
@@ -106,6 +109,8 @@ type Captura = {
   preparar?: Gesto[];
   /** As caixas numeradas, na ordem em que a legenda as conta. */
   realces?: Realce[];
+  /** E236: a altura do viewport desta captura — formulário mais alto que 860px saía cortado no recorte. */
+  altura?: number;
   /** Espera extra depois do networkidle, para animação de entrada. */
   esperaMs?: number;
   /** Rota pública — sem sessão. */
@@ -383,18 +388,558 @@ const MANUAIS: Record<string, Manual> = {
         alvo: "main",
         legenda: "Provas: quem vem provar, da mais próxima à mais distante.",
       },
+      // ── E236: o que nasceu depois dos 24 primeiros prints (12/08) ──────
+      {
+        nome: "reservas",
+        rota: `/loja/${LOJA}/reservas`,
+        alvo: "main",
+        legenda: "Reservas: cada peça com a noiva dela, por mês do casamento. “Provas & ajustes” abre a ficha da reserva.",
+      },
+      {
+        nome: "reserva-ficha",
+        rota: `/loja/${LOJA}/reservas/demo-bloqueio-beatriz`,
+        alvo: "main",
+        legenda: "A ficha da reserva: de quem é a peça, a movimentação (retirada e devolução reais), as avarias e as provas — tudo o que o contrato cobra passa por aqui.",
+        realces: [
+          { alvo: "[data-testid='trocar-noiva-da-reserva']", nota: "“Trocar a noiva” — quando a peça muda de mãos antes do contrato.", numeroEm: "topo-direita" },
+          { alvo: "button:has-text('Registrar retirada')", nota: "“Registrar retirada” — a peça saiu com a noiva; a partir daqui conta o prazo de devolução (cláusula 10ª).", numeroEm: "topo-direita" },
+          { alvo: "text=Agendar prova", nota: "“Agendar prova” — já com a noiva e a reserva preenchidas.", numeroEm: "topo-direita" },
+        ],
+      },
+      {
+        nome: "contrato-pecas",
+        rota: `/loja/${LOJA}/contratos/demo-contrato-beatriz`,
+        alvo: "[data-testid='pecas-do-contrato']",
+        folga: 40,
+        preparar: [{ rolarAte: "[data-testid='pecas-do-contrato']" }],
+        legenda: "As peças do contrato: é aqui que se troca uma peça (cláusula 17ª) — em até 7 dias do fecho, e nunca em sexta ou sábado.",
+      },
+      {
+        nome: "contrato-receber",
+        rota: `/loja/${LOJA}/contratos/demo-contrato-beatriz`,
+        alvo: "[role='dialog']",
+        folga: 40,
+        preparar: [{ rolarAte: "text=Plano de pagamento" }, { clicar: "button:has-text('Receber')" }],
+        esperaMs: 1_200,
+        legenda: "Receber uma parcela pelo contrato: valor, data e forma — vencida, a mora da cláusula 9ª já vem somada, e dá para perdoar.",
+      },
+      {
+        nome: "minha-comissao",
+        rota: `/loja/${LOJA}/minha-comissao`,
+        esperaMs: 2_500,
+        legenda: "Minha comissão: o seu extrato — o mês corrente e os fechados. Só o seu, não o da loja.",
+      },
+      {
+        nome: "vestidos",
+        rota: `/loja/${LOJA}/vestidos`,
+        alvo: "main",
+        legenda: "Vestidos: o acervo com o estado de cada peça — disponível, reservada, na rua, em reparo.",
+      },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // E236 — os quatro manuais que eram só prosa ganham o passo a passo com
+  // prints, na sessão de quem os protagoniza (a loja de demonstração ganhou a
+  // dona, a recepção e a costureira). Cada captura é uma tela QUE A PESSOA VÊ,
+  // recortada no pedaço que a seção do manual descreve, com os realces
+  // numerados na ordem em que a legenda os conta.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  proprietario: {
+    arquivo: "proprietario.html",
+    email: "helena@moscownoivas.com",
+    senha: "demo-dos-manuais",
+    capturas: [
+      // ── O que ela vê ────────────────────────────────────────────────────
+      {
+        nome: "menu",
+        rota: `/loja/${LOJA}/dashboard`,
+        legenda: "A tela de entrada da dona: as dezenove linhas do menu abrem para o seu perfil.",
+        realces: [
+          { alvo: "aside >> text=Financeiro", nota: "Financeiro — o mapa do dinheiro, e a porta das telas do mês.", numeroEm: "esquerda" },
+          { alvo: "aside >> text=Folha do mês", nota: "Folha do mês — o roteiro de fechar o mês, em três passos.", numeroEm: "esquerda" },
+          { alvo: "aside >> text=Comissões", nota: "Comissões — as regras e o fechamento por competência.", numeroEm: "esquerda" },
+          { alvo: "aside >> text=Equipe", nota: "Equipe e Permissões — quem entra, e com que perfil.", numeroEm: "esquerda" },
+          { alvo: "aside >> text=Configurações", nota: "Configurações — os dados da loja que saem no contrato.", numeroEm: "esquerda" },
+        ],
+      },
+      // ── 1. Seu dia ─────────────────────────────────────────────────────
+      {
+        nome: "seu-dia",
+        rota: `/loja/${LOJA}/dashboard`,
+        alvo: "main",
+        legenda: "“Seu dia”: os cards do topo são o que pede atenção agora; os de baixo, o resumo da loja.",
+        realces: [
+          { alvo: "[data-testid='card-aceitos-sem-contrato']", nota: "O aceite que espera contrato — dinheiro parado, com o valor na frente." },
+          { alvo: "text=A receber — próximos 30 dias", nota: "O que entra nos próximos 30 dias; o card ao lado é o que sai.", numeroEm: "topo-direita" },
+          { alvo: "text=Hoje na loja", nota: "Quem vem hoje, e o botão de iniciar o atendimento." },
+        ],
+      },
+      // ── 2. O mapa do financeiro ────────────────────────────────────────
+      {
+        nome: "financeiro",
+        rota: `/loja/${LOJA}/financeiro`,
+        alvo: "main",
+        legenda: "Financeiro: o caixa realizado da janela, e as seis portas para o resto (Projeção, Resultado, Cobrança, Folha, Auditoria, Conciliação).",
+        realces: [
+          { alvo: "text=Projeção de caixa →", nota: "Projeção de caixa — o saldo para a frente, pelo vencimento.", numeroEm: "topo-direita" },
+          { alvo: "text=Conciliação →", nota: "Conciliação — o extrato do banco contra o sistema.", numeroEm: "topo-direita" },
+          { alvo: "[data-testid='recebimentos-por-forma']", nota: "Entradas por meio — Pix, cartão e dinheiro, para conferir com o caixa físico." },
+          { alvo: "#fluxo-ini", nota: "A janela: mude as datas e tudo na tela acompanha." },
+        ],
+      },
+      // ── 4. Receber e pagar ─────────────────────────────────────────────
+      {
+        nome: "receber",
+        rota: `/loja/${LOJA}/financeiro/receber`,
+        alvo: "main",
+        legenda: "Contas a receber: as parcelas de todos os contratos, com o filtro por situação e o botão de receber em cada linha.",
+        realces: [
+          { alvo: "button:has-text('Atrasadas')", nota: "“Atrasadas” — a lista de quem precisa de cobrança, num clique.", numeroEm: "topo-direita" },
+          { alvo: "[data-testid='input-busca-receber']", nota: "A busca pela noiva." },
+          { alvo: "button:has-text('Receber')", nota: "“Receber” abre o diálogo com o valor, a data e a forma de pagamento.", numeroEm: "topo-direita" },
+        ],
+      },
+      {
+        nome: "receber-dialogo",
+        rota: `/loja/${LOJA}/financeiro/receber`,
+        alvo: "[role='dialog']",
+        folga: 40,
+        preparar: [{ clicar: "button:has-text('Receber')" }],
+        esperaMs: 1_200,
+        legenda: "O diálogo de receber: o valor vem preenchido com o que falta; a data e a forma são o que o banco vai mostrar depois.",
+      },
+      {
+        nome: "contrato-instrumento",
+        rota: `/loja/${LOJA}/contratos/demo-contrato-beatriz`,
+        alvo: "main",
+        legenda: "A tela do contrato, e o botão que imprime o INSTRUMENTO: as 21 cláusulas com os números das réguas, quem assina pela loja, o foro e o PIX — tudo do cadastro.",
+        realces: [
+          { alvo: "text=Baixar PDF", nota: "“Baixar PDF” — o contrato de locação, pronto para assinar.", numeroEm: "topo-direita" },
+          { alvo: "[data-testid='text-falta-receber']", nota: "O que falta receber, ao vivo." },
+          { alvo: "[data-testid='pecas-do-contrato']", nota: "As peças deste contrato, e a porta de trocar uma delas (cláusula 17ª)." },
+        ],
+      },
+      // ── 5. Cobrança ────────────────────────────────────────────────────
+      {
+        nome: "cobranca",
+        rota: `/loja/${LOJA}/financeiro/cobranca`,
+        alvo: "main",
+        legenda: "Cobrança: as noivas em atraso, com a mora da cláusula 9ª calculada até hoje e o botão de perdoar.",
+      },
+      // ── 6. Conferir o banco ────────────────────────────────────────────
+      {
+        nome: "conciliacao",
+        rota: `/loja/${LOJA}/financeiro/conciliacao`,
+        alvo: "main",
+        legenda: "Conciliação: suba o extrato (OFX ou CSV) e a tela diz o que bateu, o que só o banco tem e o que só o sistema tem — um movimento por PAGAMENTO desde 15/08/2026.",
+        realces: [
+          { alvo: "button:has-text('Escolher extrato')", nota: "“Escolher extrato” — o arquivo é lido no navegador; nada sai do seu computador." },
+        ],
+      },
+      // ── 7. Fechar o mês ────────────────────────────────────────────────
+      {
+        nome: "folha",
+        rota: `/loja/${LOJA}/financeiro/folha`,
+        alvo: "[data-testid='roteiro-fechar-mes']",
+        folga: 40,
+        legenda: "Folha do mês — o roteiro: cada passo diz o que falta e leva ao lugar de resolver.",
+        realces: [
+          { alvo: "[data-testid='passo-fechar-1']", nota: "Passo 1 — a competência gerada (as recorrências do mês)." },
+          { alvo: "[data-testid='passo-fechar-2']", nota: "Passo 2 — os salários definidos e as despesas lançadas." },
+          { alvo: "[data-testid='passo-fechar-3']", nota: "Passo 3 — declarar o mês para a contadora (o CSV)." },
+        ],
+      },
+      {
+        nome: "folha-despesa",
+        rota: `/loja/${LOJA}/financeiro/folha`,
+        alvo: "#despesa-descricao >> xpath=ancestor::div[contains(@class,'rounded')][1]",
+        folga: 40,
+        preparar: [{ rolarAte: "#despesa-descricao" }],
+        legenda: "Lançar uma despesa do mês: descrição, fornecedor, valor e o dia em que vence.",
+        realces: [
+          { alvo: "#despesa-descricao", nota: "O que é — o nome que aparece no DRE." },
+          { alvo: "#despesa-valor", nota: "O valor, em reais." },
+          { alvo: "#despesa-dia", nota: "O dia do vencimento — é ele que põe a conta na projeção." },
+        ],
+      },
+      {
+        nome: "dre",
+        rota: `/loja/${LOJA}/financeiro/dre`,
+        alvo: "main",
+        legenda: "Resultado do mês (DRE): entradas, saídas por categoria e o resultado, no regime de caixa.",
+      },
+      // ── 8. Comissões ───────────────────────────────────────────────────
+      {
+        nome: "comissoes",
+        rota: `/loja/${LOJA}/comissoes`,
+        alvo: "main",
+        legenda: "Comissões: como está o mês por vendedora, as pendências e a regra em faixas.",
+        realces: [
+          { alvo: "[data-testid='pendencias-comissao']", nota: "O que trava o fechamento — resolve-se antes de fechar." },
+          { alvo: "button:has-text('Fechar competência')", nota: "“Fechar competência” — congela o mês e gera o que pagar.", numeroEm: "topo-direita" },
+          { alvo: "text=Regras de comissão", nota: "As regras: faixas de venda × percentual, com o simulador ao lado." },
+        ],
+      },
+      // ── 9. Equipe e permissões ─────────────────────────────────────────
+      {
+        nome: "equipe",
+        rota: `/loja/${LOJA}/equipe`,
+        alvo: "main",
+        legenda: "Equipe: quem entra na loja, com que perfil, e as duas formas de trazer alguém.",
+        realces: [
+          { alvo: "button:has-text('Convidar por link')", nota: "“Convidar por link” — a pessoa cria a própria senha.", numeroEm: "topo-direita" },
+          { alvo: "button:has-text('Cadastrar com senha')", nota: "“Cadastrar com senha” — você define a senha e entrega.", numeroEm: "topo-direita" },
+          { alvo: "text=Gerenciar permissões desta loja →", nota: "Permissões — o que cada perfil vê e faz, módulo a módulo.", numeroEm: "topo-direita" },
+        ],
+      },
+      {
+        nome: "permissoes",
+        rota: `/loja/${LOJA}/permissoes`,
+        alvo: "main",
+        legenda: "Permissões: uma linha por perfil, uma coluna por módulo — ver, criar, editar. É daqui que sai o menu de cada pessoa.",
+      },
+      // ── 10. A loja e os dados ──────────────────────────────────────────
+      {
+        nome: "dados-da-loja",
+        altura: 1500,
+        rota: `/loja/${LOJA}/configuracoes`,
+        alvo: "#loja-nome >> xpath=ancestor::form",
+        folga: 40,
+        preparar: [{ rolarAte: "#loja-nome" }],
+        legenda: "Dados da loja — três blocos: a loja, quem assina por ela e como a noiva paga. É o que sai impresso no contrato.",
+        realces: [
+          { alvo: "#loja-cnpj", nota: "O CNPJ é conferido pelos dígitos: número que não fecha não grava." },
+          { alvo: "#loja-cidade", nota: "Cidade e UF nomeiam o foro (cláusula 21ª) e a linha de local e data." },
+          { alvo: "#loja-representante-nome", nota: "Quem assina pela loja — nome, RG e CPF saem na identificação das partes." },
+          { alvo: "#loja-pix-chave", nota: "A chave PIX e o titular saem ao pé da assinatura e no recibo." },
+          { alvo: "button:has-text('Salvar dados')", nota: "“Salvar dados” — trava enquanto um CNPJ ou CPF não fechar." },
+        ],
+      },
+      {
+        nome: "privacidade",
+        rota: `/loja/${LOJA}/configuracoes`,
+        alvo: "text=Privacidade (LGPD) >> xpath=ancestor::*[self::section or self::div][1]",
+        folga: 40,
+        preparar: [{ rolarAte: "text=Privacidade (LGPD)" }],
+        legenda: "Privacidade (LGPD): a anonimização das noivas perdidas antigas — um gesto seu, nunca automático.",
+        realces: [{ alvo: "[data-testid='anonimizar-perdidas']", nota: "O botão que anonimiza; a tela diz quantas antes de você confirmar." }],
+      },
+      {
+        nome: "auditoria",
+        rota: `/loja/${LOJA}/financeiro/auditoria`,
+        alvo: "main",
+        legenda: "Auditoria: a linha do tempo de quem mexeu em dinheiro — recebeu, estornou, pagou, perdoou.",
+      },
+    ],
+  },
+
+  recepcao: {
+    arquivo: "recepcao.html",
+    email: "renata@moscownoivas.com",
+    senha: "demo-dos-manuais",
+    capturas: [
+      {
+        nome: "menu",
+        rota: `/loja/${LOJA}/dashboard`,
+        legenda: "A tela de entrada da recepção. O menu mostra só o que o seu perfil abre.",
+        realces: [
+          { alvo: "aside >> text=Agenda", nota: "Agenda — a grade do dia, por cabine.", numeroEm: "esquerda" },
+          { alvo: "aside >> text=Atendimentos", nota: "Atendimentos — a fila: quem chega, quem faltou, quem está sendo atendida.", numeroEm: "esquerda" },
+          { alvo: "aside >> text=Mensagens de hoje", nota: "Mensagens de hoje — o que confirmar e a quem lembrar.", numeroEm: "esquerda" },
+          { alvo: "aside >> text=Noivas", nota: "Noivas — para cadastrar quem ligou e corrigir um telefone.", numeroEm: "esquerda" },
+        ],
+      },
+      // ── 1. A agenda do dia ─────────────────────────────────────────────
+      {
+        nome: "agenda",
+        rota: `/loja/${LOJA}/agenda`,
+        alvo: "main",
+        legenda: "A agenda do dia: uma coluna por cabine, meia hora por linha. O horário ocupado aparece com o nome da noiva.",
+        realces: [
+          { alvo: "text=Novo agendamento", nota: "“Novo agendamento” — abre o formulário já no dia que você está vendo.", numeroEm: "topo-direita" },
+          { alvo: "text=Semana →", nota: "“Semana” — a mesma agenda, sete dias de uma vez.", numeroEm: "topo-direita" },
+          { alvo: "[data-testid='grade-agenda']", nota: "A grade — clique num horário livre para marcar ali." },
+        ],
+      },
+      {
+        nome: "agenda-semana",
+        rota: `/loja/${LOJA}/agenda/semana`,
+        alvo: "main",
+        legenda: "A semana: para achar um horário livre sem virar dia por dia.",
+      },
+      // ── 2. Marcar ──────────────────────────────────────────────────────
+      {
+        nome: "agendar-tipo",
+        rota: `/loja/${LOJA}/atendimentos/novo`,
+        alvo: "form",
+        folga: 56,
+        legenda: "Marcar: o tipo decide o resto do formulário — atendimento pede a noiva; prova pede também a reserva.",
+        realces: [
+          { alvo: "text=Tipo", nota: "O tipo — “Atendimento” é a visita comum; “Prova” exige a reserva do vestido." },
+          { alvo: "text=Noiva", nota: "A noiva — busque pelo nome; a lista deixa cadastrar uma nova sem sair daqui." },
+        ],
+      },
+      {
+        nome: "agendar-horarios",
+        rota: `/loja/${LOJA}/atendimentos/novo`,
+        alvo: "form",
+        folga: 56,
+        preparar: [{ rolarAte: "text=Cabine" }],
+        legenda: "Escolhidas a cabine, a vendedora e a data, o sistema acende só os horários que existem — o expediente e as ausências já estão descontados.",
+      },
+      // ── 4. A fila do atendimento ───────────────────────────────────────
+      {
+        nome: "fila",
+        rota: `/loja/${LOJA}/atendimentos`,
+        alvo: "main",
+        legenda: "A fila do dia: quem vem, com o telefone e os três gestos de cada linha.",
+        realces: [
+          { alvo: "text=Confirmar por WhatsApp", nota: "“Confirmar por WhatsApp” — abre a conversa com a mensagem pronta.", numeroEm: "topo-direita" },
+          { alvo: "button:has-text('Iniciar atendimento')", nota: "“Iniciar atendimento” — quando a noiva chega; passa a vez para a vendedora.", numeroEm: "topo-direita" },
+          { alvo: "button:has-text('Marcou falta')", nota: "“Marcou falta” — a noiva não veio; a agenda libera e a ficha registra.", numeroEm: "topo-direita" },
+        ],
+      },
+      {
+        nome: "fila-filtros",
+        rota: `/loja/${LOJA}/atendimentos`,
+        alvo: "main",
+        legenda: "Os filtros do topo: por vendedora, por situação, e a aba de provas ao lado da de atendimentos.",
+        realces: [
+          { alvo: "button:has-text('Provas')", nota: "A aba de provas — a mesma fila, só as provas.", numeroEm: "topo-direita" },
+          { alvo: "button:has-text('Todas as vendedoras')", nota: "Filtre por vendedora quando uma delas perguntar “quem é minha hoje?”." },
+        ],
+      },
+      // ── 6. Mensagens de hoje ───────────────────────────────────────────
+      {
+        nome: "mensagens",
+        rota: `/loja/${LOJA}/mensagens`,
+        alvo: "main",
+        legenda: "Mensagens de hoje: cada bloco é um motivo — presença a confirmar, cobrança, contato que esfriou. O botão abre o WhatsApp com o texto pronto.",
+      },
+      // ── 7. A noiva que ligou ───────────────────────────────────────────
+      {
+        nome: "noivas",
+        rota: `/loja/${LOJA}/noivas`,
+        alvo: "main",
+        legenda: "Noivas: a lista, a busca e o botão de cadastrar quem acabou de ligar.",
+        realces: [
+          { alvo: "[data-testid='button-adicionar-noiva']", nota: "“Adicionar noiva” — nome e origem bastam para começar.", numeroEm: "topo-direita" },
+          { alvo: "[data-testid='input-busca-noiva']", nota: "A busca — pelo nome, para achar a ficha de quem está ao telefone." },
+        ],
+      },
+      {
+        nome: "nova-noiva",
+        rota: `/loja/${LOJA}/noivas/nova`,
+        alvo: "form",
+        folga: 56,
+        preparar: [
+          { preencher: "[data-testid='input-noiva-nome']", com: "Marina Castro" },
+          { escolher: "[data-testid='select-noiva-origem']", opcao: "Instagram" },
+          { digitar: "[data-testid='input-noiva-whatsapp']", com: "11961114522" },
+        ],
+        legenda: "Cadastrar quem ligou: nome, origem e o WhatsApp — o resto a vendedora completa no atendimento.",
+        realces: [
+          { alvo: "[data-testid='input-noiva-nome']", nota: "O nome — obrigatório." },
+          { alvo: "[data-testid='select-noiva-origem']", nota: "A origem — obrigatória: é ela que responde de onde vêm as noivas." },
+          { alvo: "[data-testid='input-noiva-whatsapp']", nota: "Só os números; o campo põe a máscara. Faltando o DDD, o sistema não salva." },
+        ],
+      },
+      {
+        nome: "ficha",
+        rota: `/loja/${LOJA}/noivas/demo-lead-ana`,
+        alvo: "main",
+        legenda: "A ficha da noiva: a faixa do topo diz em que ponto ela está — é o que você lê quando ela liga perguntando.",
+      },
+      // ── 8. Cabines & horário ───────────────────────────────────────────
+      {
+        nome: "cabines-horario",
+        altura: 1400,
+        rota: `/loja/${LOJA}/atendimentos/config`,
+        alvo: "main",
+        legenda: "Cabines & horário: o expediente da loja, a duração da prova, as cabines e as ausências da equipe — é isto que decide que horários a agenda acende.",
+        realces: [
+          { alvo: "#abertura", nota: "Abre e fecha — o expediente. Fora dele, a agenda não oferece horário." },
+          { alvo: "[data-testid='duracao-prova']", nota: "A duração da prova, em minutos." },
+          { alvo: "#ausencia-pessoa", nota: "Ausências: quem está de férias sai da agenda naqueles dias." },
+        ],
+      },
+      {
+        nome: "provas",
+        rota: `/loja/${LOJA}/provas`,
+        alvo: "main",
+        legenda: "Provas: quem vem provar, da mais próxima à mais distante — o selo avisa quando a prova está fora da janela do casamento.",
+      },
+    ],
+  },
+
+  costureira: {
+    arquivo: "costureira.html",
+    email: "dona.lourdes@moscownoivas.com",
+    senha: "demo-dos-manuais",
+    capturas: [
+      {
+        nome: "menu",
+        rota: `/loja/${LOJA}/dashboard`,
+        legenda: "Como você entra: o menu do seu perfil — Ajustes é a sua fila; Provas e Reservas, de onde o trabalho nasce.",
+        realces: [
+          { alvo: "aside >> text=Ajustes", nota: "Ajustes — a sua fila, com o prazo de cada trabalho.", numeroEm: "esquerda" },
+          { alvo: "aside >> text=Provas", nota: "Provas — quem vem provar, e o que a prova pode gerar.", numeroEm: "esquerda" },
+          { alvo: "aside >> text=Reservas", nota: "Reservas — a ficha da peça com a noiva: retirada, devolução, dano.", numeroEm: "esquerda" },
+        ],
+      },
+      // ── 1. A fila ──────────────────────────────────────────────────────
+      {
+        nome: "fila",
+        rota: `/loja/${LOJA}/ajustes`,
+        alvo: "main",
+        legenda: "A fila: cada card é um trabalho, com a noiva, a peça e o prazo. Os filtros separam o apertado do resto.",
+        realces: [
+          { alvo: "button:has-text('Prazo apertado')", nota: "“Prazo apertado” — o que vence primeiro, pela data da retirada.", numeroEm: "topo-direita" },
+          { alvo: "button:has-text('Concluídos')", nota: "“Concluídos” — o que já saiu da fila.", numeroEm: "topo-direita" },
+          { alvo: "[data-testid='abrir-nova-confeccao']", nota: "“Nova confecção” — trabalho que não nasce de prova: uma peça feita do zero.", numeroEm: "topo-direita" },
+        ],
+      },
+      // ── 3/4. Marcar o que ficou pronto · a ficha do trabalho ───────────
+      {
+        nome: "ficha",
+        rota: `/loja/${LOJA}/ajustes/demo-ajuste-1`,
+        alvo: "main",
+        legenda: "A ficha do trabalho: o checklist do que fazer, o botão de dar por feito, e de onde ele veio (a prova, a noiva, a peça, a reserva).",
+        realces: [
+          { alvo: "text=O trabalho", nota: "O trabalho — o checklist; marque cada item conforme termina." },
+          { alvo: "button:has-text('Marcar feito')", nota: "“Marcar feito” — o item sai da lista; com todos feitos, o trabalho está pronto.", numeroEm: "topo-direita" },
+          { alvo: "text=De onde veio", nota: "De onde veio — a noiva, a peça e a ficha da reserva, num clique." },
+        ],
+      },
+      {
+        nome: "nova-confeccao",
+        rota: `/loja/${LOJA}/ajustes`,
+        alvo: "[role='dialog']",
+        folga: 40,
+        preparar: [{ clicar: "[data-testid='abrir-nova-confeccao']" }],
+        esperaMs: 1_200,
+        legenda: "Nova confecção: a noiva, o que vai ser feito e o prazo — nasce direto na sua fila.",
+      },
+      // ── 5. De onde nasce o trabalho ────────────────────────────────────
+      {
+        nome: "provas",
+        rota: `/loja/${LOJA}/provas`,
+        alvo: "main",
+        legenda: "Provas: a prova é onde o ajuste nasce — a vendedora anota o que a costureira vai fazer, e ele aparece na sua fila.",
+        realces: [{ alvo: "text=Abrir reserva", nota: "“Abrir reserva” — a ficha da peça com a noiva.", numeroEm: "topo-direita" }],
+      },
+      {
+        nome: "reservas",
+        rota: `/loja/${LOJA}/reservas`,
+        alvo: "main",
+        legenda: "Reservas: cada peça com a noiva dela, por mês do casamento. “Provas & ajustes” abre a ficha.",
+      },
+      // ── 6. O dano que você vê primeiro ─────────────────────────────────
+      {
+        nome: "reserva-avaria",
+        rota: `/loja/${LOJA}/reservas/demo-bloqueio-beatriz`,
+        alvo: "section:has(h2:text-is('Avarias'))",
+        folga: 40,
+        preparar: [{ rolarAte: "section:has(h2:text-is('Avarias'))" }],
+        legenda: "O bloco Avarias, na ficha da reserva, como VOCÊ o vê: sem botão nenhum. Você lê o que foi registrado (a descrição, a cláusula, o reparo, a foto) — e quem registra é quem pode criar em Vestidos. O que só você faz: chamar essa pessoa com a peça ainda na mão.",
+      },
+      {
+        nome: "reserva-movimentacao",
+        rota: `/loja/${LOJA}/reservas/demo-bloqueio-beatriz`,
+        alvo: "section:has(h2:text-is('Movimentação'))",
+        folga: 40,
+        preparar: [{ rolarAte: "section:has(h2:text-is('Movimentação'))" }],
+        legenda: "Movimentação: a retirada e a devolução reais da peça — é o que decide o prazo do seu trabalho. Você lê; quem registra é a vendedora ou a dona.",
+      },
+      {
+        nome: "agenda",
+        rota: `/loja/${LOJA}/agenda`,
+        alvo: "main",
+        legenda: "A agenda também é sua: “Ajustes pendentes” lista o que está na fila ao lado dos atendimentos do dia.",
+        realces: [{ alvo: "text=Ajustes pendentes", nota: "Ajustes pendentes — a fila, vista da agenda." }],
+      },
+    ],
+  },
+
+  noiva: {
+    arquivo: "noiva.html",
+    // O guia é da EQUIPE sobre o que a noiva vê: as telas são públicas, sem sessão.
+    email: null,
+    senha: "",
+    capturas: [
+      // ── Os três links ─────────────────────────────────────────────────
+      {
+        nome: "proposta",
+        rota: "/orcamento/demo-proposta-ana-paula",
+        publica: true,
+        legenda: "O primeiro link — a proposta: o que a noiva abre pelo WhatsApp, sem login, no celular dela. A conta inteira, o desconto e o botão de aceitar.",
+      },
+      {
+        nome: "portal",
+        rota: "/noiva/demo-portal-beatriz",
+        publica: true,
+        legenda: "O segundo link — o portal: um link só para tudo dela. O topo diz o vestido, a data e o que falta.",
+        realces: [
+          { alvo: "[data-testid='falar-com-a-loja']", nota: "“Falar no WhatsApp” — abre a conversa com a loja, já se apresentando.", numeroEm: "topo-direita" },
+        ],
+      },
+      {
+        nome: "portal-contrato",
+        rota: "/noiva/demo-portal-beatriz",
+        publica: true,
+        alvo: "text=Seu contrato >> xpath=ancestor::section[1]",
+        folga: 40,
+        preparar: [{ rolarAte: "text=Seu contrato" }],
+        legenda: "“Seu contrato”: o total, o que já pagou e o botão que baixa o instrumento em PDF — o mesmo que a loja imprime.",
+        realces: [{ alvo: "[data-testid='baixar-contrato-portal']", nota: "“Baixar o contrato em PDF” — as 21 cláusulas, com os números da loja.", numeroEm: "topo-direita" }],
+      },
+      {
+        nome: "portal-parcelas",
+        rota: "/noiva/demo-portal-beatriz",
+        publica: true,
+        alvo: "text=Suas parcelas >> xpath=ancestor::section[1]",
+        folga: 40,
+        preparar: [{ rolarAte: "text=Suas parcelas" }],
+        legenda: "“Suas parcelas”: o carnê como ela vê — a paga riscada, a próxima com a data. Vencida, aparece com a mora da cláusula 9ª.",
+      },
+      {
+        nome: "portal-clausulas",
+        rota: "/noiva/demo-portal-beatriz",
+        publica: true,
+        alvo: "[data-testid='clausulas-do-contrato']",
+        folga: 40,
+        preparar: [{ rolarAte: "[data-testid='clausulas-do-contrato']" }],
+        legenda: "“O que o seu contrato prevê”: os prazos e as regras que mexem com ela, na língua dela — a troca, a devolução, o dano, o cancelamento.",
+      },
+      {
+        nome: "lookbook",
+        rota: "/lookbook/demo-lookbook-ana-paula",
+        publica: true,
+        legenda: "O terceiro link — o lookbook: as peças que a vendedora separou para ela, com foto, para ela olhar em casa.",
+      },
     ],
   },
 };
 
-const qual = process.argv[2] ?? "vendedora";
-const manual = MANUAIS[qual];
-if (!manual) {
-  console.error(
-    `prints-dos-manuais: manual desconhecido "${qual}". Conhecidos: ${Object.keys(MANUAIS).join(", ")}`,
-  );
-  process.exit(1);
+/**
+ * E236 — `todos` roda os cinco manuais em série, na mesma sessão de Chromium
+ * por manual (cada um com a SUA sessão de perfil). `qual`/`manual` são o manual
+ * DA VEZ: as funções abaixo os leem como estado do módulo, e o laço no fim do
+ * arquivo os avança.
+ */
+const PEDIDO = process.argv[2] ?? "vendedora";
+const PEDIDOS = PEDIDO === "todos" ? Object.keys(MANUAIS) : [PEDIDO];
+for (const p of PEDIDOS) {
+  if (!MANUAIS[p]) {
+    console.error(`prints-dos-manuais: manual desconhecido "${p}". Conhecidos: ${Object.keys(MANUAIS).join(", ")}, todos`);
+    process.exit(1);
+  }
 }
+let qual = PEDIDOS[0]!;
+let manual = MANUAIS[qual]!;
+
 
 /**
  * O mesmo Chromium do `playwright.config.ts` e da `capturar-telas.ts`: o que o
@@ -420,9 +965,9 @@ mkdirSync(DESTINO_PDF, { recursive: true });
  * vez de 5 MB. O modo que existe justamente para não recapturar não pode
  * começar destruindo o que ele ia reusar.
  */
-if (!SO_INJETAR) {
+function limparCapturasDe(q: string): void {
   for (const arquivo of readdirSync(DESTINO_IMAGENS)) {
-    if (arquivo.startsWith(`${qual}-`) && arquivo.endsWith(".png")) {
+    if (arquivo.startsWith(`${q}-`) && arquivo.endsWith(".png")) {
       unlinkSync(path.join(DESTINO_IMAGENS, arquivo));
     }
   }
@@ -488,23 +1033,45 @@ async function capturar(): Promise<void> {
         : [],
     },
   });
-  const pagina = await ctx.newPage();
+  // E236: uma PÁGINA por captura. O diálogo aberto de um print derrubava a página
+  // no `goto` seguinte ("Target page, context or browser has been closed" — as
+  // duas capturas depois de `contrato-receber`, em duas rodadas de três); página
+  // nova a cada print isola o estado, e o custo é de milissegundos.
+  let pagina = await ctx.newPage();
 
   const feitas: string[] = [];
   for (const c of manual.capturas) {
     const destino = path.join(DESTINO_IMAGENS, `${qual}-${c.nome}.png`);
     try {
+      if (pagina.isClosed()) pagina = await ctx.newPage();
+      await pagina.setViewportSize({ width: 1280, height: c.altura ?? 860 });
       await pagina.goto(c.rota, { waitUntil: "networkidle", timeout: 45_000 });
       await pagina.waitForTimeout(c.esperaMs ?? 1_000);
       for (const gesto of c.preparar ?? []) await executar(pagina, gesto);
+      // E236: o `main` do app rola POR DENTRO (`overflow-y-auto`), então a rolagem
+      // que o recorte faz depois moveria o conteúdo e deixaria as caixas no lugar
+      // errado — medido: os realces de "dados-da-loja" saíram ~700px abaixo do
+      // campo. A rolagem final acontece AQUI, antes de desenhar.
+      if (c.alvo) {
+        await pagina.locator(c.alvo).first().scrollIntoViewIfNeeded();
+        await pagina.waitForTimeout(220);
+      }
       if (c.realces?.length) await desenharRealces(pagina, c.realces);
       await pagina.waitForTimeout(180);
       await recortar(pagina, c, destino);
+      // E236: um diálogo aberto (o print de "receber", por exemplo) derrubava o
+      // navegador no `goto` seguinte — medido: as duas capturas depois de
+      // `contrato-receber` saíam "browser has been closed". Fecha antes de seguir.
+      await pagina.keyboard.press("Escape").catch(() => undefined);
+      await pagina.waitForTimeout(250);
       feitas.push(`${qual}-${c.nome}.png`);
       console.log(`  ✓ ${qual}-${c.nome}.png${c.realces?.length ? ` (${c.realces.length} realces)` : ""}`);
     } catch (erro) {
       console.error(`  ✗ ${qual}-${c.nome}.png — ${(erro as Error).message.split("\n")[0]}`);
     }
+    // Recicla a página entre capturas (ver acima).
+    await pagina.close().catch(() => undefined);
+    pagina = await ctx.newPage();
   }
 
   await gerarPdf(pagina);
@@ -830,14 +1397,28 @@ const CSS_DE_IMPRESSAO = `
  * Quem mudou a TELA continua rodando o script inteiro: print velho é mentira
  * do mesmo jeito que prosa velha, e esta bandeira não sabe a diferença.
  */
-if (SO_INJETAR) {
-  const html = montarHtmlComImagens();
-  console.log(
-    `prints-dos-manuais: ${qual} · injetadas ${manual.capturas.length} capturas versionadas ` +
-      `· ${(html.length / 1_000_000).toFixed(1)} MB em docs/manuais/pdf/${qual}.html ` +
-      `(sem app no ar — para recapturar, rode sem --so-injetar)`,
-  );
-} else {
-  console.log(`prints-dos-manuais: ${qual} · ${manual.capturas.length} capturas · sessão ${manual.email ?? "admin"}`);
-  await capturar();
+/**
+ * E236 — o `--so-injetar` também IMPRIME o PDF. Ele precisa do Chromium e não
+ * do app (`setContent` sobre o HTML já montado), então republicar os cinco
+ * depois de reescrever um parágrafo custa ~10 s e nenhuma sessão.
+ */
+let navegadorParaInjetar: Awaited<ReturnType<typeof chromium.launch>> | null = null;
+for (const p of PEDIDOS) {
+  qual = p;
+  manual = MANUAIS[p]!;
+  if (SO_INJETAR) {
+    navegadorParaInjetar ??= await chromium.launch({ executablePath: EXECUTAVEL });
+    const pagina = await navegadorParaInjetar.newPage();
+    await gerarPdf(pagina);
+    await pagina.close();
+    console.log(
+      `prints-dos-manuais: ${qual} · injetadas ${manual.capturas.length} capturas versionadas ` +
+        `em docs/manuais/pdf/${qual}.{html,pdf} (sem app no ar — para recapturar, rode sem --so-injetar)`,
+    );
+  } else {
+    limparCapturasDe(qual);
+    console.log(`prints-dos-manuais: ${qual} · ${manual.capturas.length} capturas · sessão ${manual.email ?? "pública"}`);
+    await capturar();
+  }
 }
+await navegadorParaInjetar?.close();

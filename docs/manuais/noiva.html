@@ -214,6 +214,12 @@
   .caixa li { margin: 0; font-size: 14.5px; padding: 3px 9px; border-radius: 5px; background: var(--chip-fundo); }
   .caixa.naove li { color: var(--tinta-fraca); text-decoration: line-through; text-decoration-color: var(--linha-forte); }
 
+  /* ── Os prints ─────────────────────────────────────────────────────────
+     A página web não os carrega: `scripts/prints-dos-manuais.ts` preenche
+     estas âncoras na hora de imprimir o PDF. Vazia, a figura não ocupa
+     espaço — sem isto o `<figure>` do navegador deixaria um vão de 1em. */
+  figure.print:empty { display: none; margin: 0; }
+
   /* ── Nota de rodapé de seção ───────────────────────────────────────────── */
   .nota {
     font-size: 15px; color: var(--tinta-fraca);
@@ -265,6 +271,7 @@
       <li><a href="recepcao.html"><span class="num">—</span>Manual da Recepção</a></li>
       <li><a href="costureira.html"><span class="num">—</span>Manual da Costureira</a></li>
     </ol>
+    <p style="font-size:13.5px;margin-top:14px"><strong>Onde eles estão:</strong> dentro do sistema — <span class="btn">Manuais</span>, no rodapé do menu, lista os cinco com o PDF para baixar. Desde 15/08/2026.</p>
   </nav>
 
   <main>
@@ -272,6 +279,8 @@
     <section id="links">
       <h2>Os três links, e o que cada um abre</h2>
       <p class="resumo">A noiva nunca faz login. Tudo o que ela enxerga do sistema chega por um endereço que <strong>você</strong> gera e cola no WhatsApp dela.</p>
+      <figure class="print" data-print="proposta"></figure>
+      <figure class="print" data-print="lookbook"></figure>
 
       <div class="rolagem">
         <table>
@@ -309,6 +318,9 @@
     <section id="portal">
       <h2><span class="passo">1</span>O portal, seção a seção</h2>
       <p class="resumo">No topo, o nome da loja e a linha <em>“O lugar de Ana Paula”</em>. Abaixo, as seções — e <strong>cada uma só aparece quando existe</strong>: sem contrato não há extrato, sem lookbook não há galeria. A página não promete o que não tem.</p>
+      <figure class="print" data-print="portal"></figure>
+      <figure class="print" data-print="portal-contrato"></figure>
+      <figure class="print" data-print="portal-parcelas"></figure>
 
       <h3>“Sua proposta”</h3>
       <p>Os itens um a um, e a conta que fecha: <strong>Soma dos itens</strong>, <strong>Desconto</strong> e <strong>Total</strong> — o desconto sai sempre como a diferença real, nunca como um número que não bate com a subtração. Suas observações aparecem embaixo, do jeito que você escreveu.</p>
@@ -327,7 +339,7 @@
       <p>As fotos do lookbook, com o preço e as características de cada peça.</p>
 
       <h3>“Seu contrato”</h3>
-      <p>Aparece só depois do contrato fechado, com <em>“Fechado em …”</em>, os itens congelados no fechamento (não o orçamento vivo), o total, a data do casamento e o botão <span class="btn">Baixar o contrato em PDF</span>.</p>
+      <p>Aparece só depois do contrato fechado, com <em>“Fechado em …”</em>, os itens congelados no fechamento (não o orçamento vivo), o total, a data do casamento e o botão <span class="btn">Baixar o contrato em PDF</span> — e o que ela baixa é o instrumento inteiro, as 21 cláusulas com os números da loja, o mesmo papel que a loja imprime.</p>
       <p class="nota"><b>Contrato cancelado não desce por aqui.</b> O papel que ela guarda tem de ser o que vale — se ela precisar do documento do cancelamento, quem baixa é você, pela tela da loja.</p>
 
       <h3>“O seu vestido”</h3>
@@ -379,6 +391,7 @@
     <section id="contrato">
       <h2><span class="passo">2</span>O que o contrato cobra dela</h2>
       <p class="resumo">São <strong>seis</strong> situações em que o instrumento que ela assinou cobra dinheiro além do aluguel. O sistema calcula todas — e só a primeira chega sozinha até ela. <strong>As outras cinco quem diz é você</strong>, e o momento de dizer é <em>antes</em>.</p>
+      <figure class="print" data-print="portal-clausulas"></figure>
 
       <div class="fala">
         <span class="rotulo">A regra desta seção inteira</span>

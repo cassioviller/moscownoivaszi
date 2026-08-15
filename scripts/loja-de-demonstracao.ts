@@ -68,6 +68,10 @@ import {
 
 export const LOJA_DEMO_ID = "demo-manuais-loja";
 export const VENDEDORA_EMAIL = "camila@moscownoivas.com";
+// E236 — os manuais dos outros dois perfis também saem da sessão de quem os protagoniza.
+export const RECEPCAO_EMAIL = "renata@moscownoivas.com";
+export const COSTUREIRA_EMAIL = "dona.lourdes@moscownoivas.com";
+export const DONA_EMAIL = "helena@moscownoivas.com";
 /** Senha só desta loja de demonstração, e ela nunca sai daqui. */
 export const SENHA_DEMO = "demo-dos-manuais";
 const ADMIN_EMAIL = "admin@moscownoivas.com";
@@ -251,21 +255,35 @@ async function main(): Promise<void> {
   }
 
   // ── A loja ────────────────────────────────────────────────────────────────
+  /**
+   * E236 — a loja de demonstração NASCE DE NOVO a cada rodada.
+   *
+   * "Idempotente por ID fixo" era verdade para a existência das linhas e
+   * mentira para as DATAS: tudo aqui é `hoje + N`, mas o `onConflictDoNothing`
+   * só grava na primeira semeadura. Medido em 15/08: os dois atendimentos "de
+   * hoje" estavam em **12/08** (o dia da primeira rodada) e a fila os mostrava
+   * como "Atrasados" — o print de hoje ensinaria a tela errada. Apagar a loja
+   * cascateia as 34 FKs (E106) e leva junto tudo o que é dela; as PESSOAS
+   * (`usuarios`) ficam, porque não são da loja — o vínculo é refeito abaixo.
+   */
+  await db.delete(lojasTable).where(eq(lojasTable.id, LOJA_DEMO_ID));
   await db
     .insert(lojasTable)
     .values({
       id: LOJA_DEMO_ID,
       nome: "Moscow Noivas",
+      // E233/E234 — o cadastro inteiro que o instrumento imprime, com valores
+      // de exemplo que fecham os dígitos (é a P3 feita na loja de demonstração).
+      cnpj: "11.222.333/0001-81",
       endereco: "Rua das Palmeiras, 412 — Higienópolis, São Paulo",
       telefone: "(11) 3062-4400",
-    })
-    .onConflictDoUpdate({
-      target: lojasTable.id,
-      set: {
-        nome: "Moscow Noivas",
-        endereco: "Rua das Palmeiras, 412 — Higienópolis, São Paulo",
-        telefone: "(11) 3062-4400",
-      },
+      cidade: "São Paulo",
+      uf: "SP",
+      representanteNome: "Helena Moscow",
+      representanteRg: "12.345.678-9",
+      representanteCpf: "390.533.447-05",
+      pixChave: "11222333000181",
+      pixTitular: "Moscow Noivas Ltda.",
     });
 
   // O admin do banco entra na loja com o perfil de proprietária, que é o
@@ -317,6 +335,32 @@ async function main(): Promise<void> {
       target: [usuariosLojasTable.usuarioId, usuariosLojasTable.lojaId],
       set: { perfilId: perfilVendedora.id },
     });
+
+  /**
+   * E236 — a DONA, a RECEPÇÃO e a COSTUREIRA da demonstração, pela mesma razão da
+   * vendedora: os prints do manual de cada perfil saem da sessão daquele
+   * perfil, e o menu que aparece é o que a pessoa vê de verdade. Antes só a
+   * vendedora tinha prints; os outros quatro manuais eram só prosa.
+   */
+  for (const p of [
+    { id: "demo-usuario-dona", nome: "Helena Moscow", email: DONA_EMAIL, perfil: "Proprietária" },
+    { id: "demo-usuario-recepcao", nome: "Renata Prado", email: RECEPCAO_EMAIL, perfil: "Recepção" },
+    { id: "demo-usuario-costureira", nome: "Lourdes Bastos", email: COSTUREIRA_EMAIL, perfil: "Costureira" },
+  ]) {
+    const [perfil] = await db.select().from(perfisTable).where(eq(perfisTable.nome, p.perfil));
+    if (!perfil) throw new Error(`loja-de-demonstracao: perfil '${p.perfil}' não existe no banco`);
+    await db
+      .insert(usuariosTable)
+      .values({ id: p.id, nome: p.nome, email: p.email, senhaHash, ativo: true })
+      .onConflictDoUpdate({ target: usuariosTable.id, set: { nome: p.nome, senhaHash, ativo: true } });
+    await db
+      .insert(usuariosLojasTable)
+      .values({ usuarioId: p.id, lojaId: LOJA_DEMO_ID, perfilId: perfil.id })
+      .onConflictDoUpdate({
+        target: [usuariosLojasTable.usuarioId, usuariosLojasTable.lojaId],
+        set: { perfilId: perfil.id },
+      });
+  }
 
   // ── Cabines e expediente ──────────────────────────────────────────────────
   for (const [i, nome] of ["Cabine 1", "Cabine 2", "Cabine 3"].entries()) {
@@ -570,7 +614,7 @@ async function main(): Promise<void> {
       .values({
         ...resto,
         lojaId: LOJA_DEMO_ID,
-        vendedoraId: admin.id,
+        vendedoraId: "demo-usuario-vendedora",
         inicio: emDias(dias, hora, 0),
         ...(desfecho ? { desfecho, atendidoEm: emDias(dias, hora, 6) } : {}),
       })

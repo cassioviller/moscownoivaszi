@@ -262,6 +262,7 @@ export * from './lookbookPublicoFoto';
 export * from './lookbookPublicoVestido';
 export * from './lookbookPublicoVestidoAtributosItem';
 export * from './lookbookVestidosItem';
+export * from './manualDeUso';
 export * from './marcarConciliadoInput';
 export * from './marcarConciliadoResultado';
 export * from './membroAtividade';

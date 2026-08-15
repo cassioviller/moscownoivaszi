@@ -48,7 +48,7 @@ describe("S13 — a árvore de rotas sobrevive ao data router", () => {
     // 59 é a contagem do `App.tsx` antes da migração — o número que a sobra
     // dizia que "toca todas". A 60ª é `/ajustes/:ajusteId`, criada DEPOIS
     // (S-A17): rota nova de propósito passa por aqui, rota perdida também.
-    expect(todos).toHaveLength(60);
+    expect(todos).toHaveLength(61);
     expect(todos).toContain("/loja/:lojaId/ajustes/:ajusteId");
   });
 

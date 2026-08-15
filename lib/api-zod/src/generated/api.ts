@@ -9147,6 +9147,32 @@ export const BaixarEstornoComissaoResponse = zod.object({
 })
 
 
+/**
+ * E236 — os cinco manuais (proprietário, vendedora, recepção, costureira e o guia da noiva), com o passo a passo em prints. Os PDFs são versionados em `docs/manuais/pdf/` e servidos por `GET /manuais/{qual}.pdf`. Só sessão, sem loja: o manual é o mesmo para toda loja e é de quem está logado.
+ * @summary Os manuais de uso, para baixar dentro do sistema
+ */
+export const ListManuaisResponseItem = zod.object({
+  "qual": zod.string().describe('a chave — o nome do arquivo sem extensão'),
+  "titulo": zod.string(),
+  "paraQuem": zod.string(),
+  "descricao": zod.string(),
+  "disponivel": zod.boolean().describe('o PDF está no servidor'),
+  "bytes": zod.number().nullable(),
+  "atualizadoEm": dataDoCorpo().nullable()
+}).describe('E236 — um manual de uso do catálogo, com o estado do PDF no servidor')
+export const ListManuaisResponse = zod.array(ListManuaisResponseItem)
+
+
+/**
+ * @summary O PDF de um manual, como download
+ */
+export const BaixarManualParams = zod.object({
+  "qual": zod.coerce.string()
+})
+
+export const BaixarManualResponse = zod.unknown()
+
+
 export const GetDashboardParams = zod.object({
   "lojaId": zod.coerce.string()
 })

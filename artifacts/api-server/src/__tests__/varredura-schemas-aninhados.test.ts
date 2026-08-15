@@ -77,7 +77,7 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
    * acrescenta um objeto aninhado a um schema de resposta, e é aí que a régua
    * serve — obriga a perguntar quem vai preenchê-lo.
    */
-  it("212 operações · 153 com schema de resposta · 74 com relação · 273 pares na fronteira", () => {
+  it("214 operações · 154 com schema de resposta · 74 com relação · 273 pares na fronteira", () => {
     /**
      * E221: 200 → 203, e as três são do recibo da cláusula 7ª — `listRecibos`,
      * `getReciboPdf` e `getPortalReciboPdf`. **Só uma acrescenta par à
@@ -121,7 +121,12 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
      * seis campos, montados por extenso em `lib/conciliacao-do-sistema.ts`), sem
      * relação — nenhum par novo na fronteira.
      */
-    expect(c.operacoes, "operação nova no spec: confira quem monta a resposta dela e atualize esta contagem").toBe(212);
+    /**
+     * E236: 212 → 214. `listManuais` (`ManualDeUso`, raso, seis campos montados por
+     * extenso em `lib/manuais.ts`) e `baixarManual` (PDF binário, sem schema de
+     * resposta). Nenhum par novo na fronteira.
+     */
+    expect(c.operacoes, "operação nova no spec: confira quem monta a resposta dela e atualize esta contagem").toBe(214);
     // E221: 143 → 144. Só o `listRecibos` entra — as outras duas devolvem PDF.
     // E212: 144 → 146. As duas novas são a prévia e a cobrança do atraso da
     // cláusula 16ª, e as duas devolvem o MESMO `CobrancaDeAtraso` — de
@@ -142,7 +147,8 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // E223: 151 → 152. O `trocarPecaDoContrato` devolve `TrocarPecaResponse`,
     // raso — os dois ids da troca; o contrato mudado se lê pelo GET de sempre.
     // E235: 152 → 153. O `listMovimentosConciliacao` (`MovimentoDoSistema`, raso).
-    expect(c.comSchemaDeResposta).toBe(153);
+    // E236: 153 → 154. O `listManuais` (`ManualDeUso`, raso).
+    expect(c.comSchemaDeResposta).toBe(154);
     // E212: 70 → 72. `CobrancaDeAtraso` aninha `CobrancaDeAtrasoLinha` — a conta
     // é uma linha POR PEÇA, que é o §2º da cláusula 16ª ("aplicados
     // proporcionalmente a trajes e/ou acessórios avulsos") virando forma.

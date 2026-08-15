@@ -246,17 +246,28 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   é o TTL, que é o mesmo ciclo do poll do sino, e a fila é aviso e não decisão —
   quem cobra passa pela porta que lê o banco. A conta caiu de 9 para 7 na
   S-C280: `pecasAtrasadasDoContrato` rebuscava a regra da loja POR CONTRATO.
-- **Republicar um manual não exige subir o app** (15/08):
-  `node --experimental-strip-types scripts/prints-dos-manuais.ts vendedora --so-injetar`
-  reconstrói `docs/manuais/pdf/<qual>.html` (o arquivo que se publica, com as
-  imagens em base64) sobre as **capturas versionadas**, em ~1 s e sem
-  `BASE_URL`. É o caminho da reescrita de manual, que acontece ao fim de cada
-  onda; **quem mudou a TELA continua rodando o script inteiro**, porque print
-  velho é mentira do mesmo jeito que prosa velha. Sem essa bandeira, o custo de
-  republicar um parágrafo era semear a loja de demonstração e dirigir 24 telas —
-  e o custo fazia a página envelhecer: em 15/08 a publicada ainda era a de
-  11/08, quatro ondas atrás. **Só o manual da vendedora tem prints** (24); os
-  outros quatro publicam o `docs/manuais/*.html` direto.
+- **Os manuais moram DENTRO do sistema, e os cinco têm prints** (E236, 15/08):
+  `Manuais`, no rodapé do menu, lista os cinco com o PDF para baixar
+  (`GET /manuais` · `GET /manuais/:qual.pdf`, só sessão; catálogo em
+  `api-server/src/lib/manuais.ts`). Os PDFs são **versionados** em
+  `docs/manuais/pdf/*.pdf` — o servidor serve o que está no git e não fabrica
+  nada; instalação sem o PDF responde 410 `MANUAL_SEM_ARQUIVO`, e a página diz
+  isso. Para republicar:
+  1. `pnpm --filter @workspace/api-server exec tsx ../../scripts/loja-de-demonstracao.ts`
+     — a loja de demonstração **renasce** (datas relativas a hoje), com a dona,
+     a vendedora, a recepção e a costureira (senha `demo-dos-manuais`);
+  2. com o app de pé: `BASE_URL=http://localhost:5173 pnpm --filter @workspace/api-server exec tsx ../../scripts/prints-dos-manuais.ts todos`
+     (ou um só: `vendedora`) — 75 capturas em ~5 min, uma página do navegador
+     por captura, realces desenhados DEPOIS da rolagem final (o `main` rola
+     por dentro; `window.scrollY` é sempre 0), `altura` por captura para
+     formulário alto;
+  3. só reescreveu texto? `… prints-dos-manuais.ts todos --so-injetar`
+     reconstrói `docs/manuais/pdf/<qual>.{html,pdf}` sobre as capturas
+     versionadas, **sem app**, em ~10 s — o `.html` é derivado e ignorado no
+     git; o `.pdf` é o que se commita.
+  A `varredura-manuais-prints` (frontend) cobra: toda âncora `data-print` tem
+  captura versionada, nenhuma captura é órfã, o manifesto `<qual>.json` bate
+  com as âncoras (rodou depois da última âncora) e todo manual tem PDF no git.
 - **Três varreduras novas de 15/08**, todas com o par acha-o-plantado /
   ignora-o-que-não-é (molde S-C180): a do **vazio silenciado**
   (`moscow-noivas/src/lib/vazio-silenciado-varredura.test.ts` — frase de vazio

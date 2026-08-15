@@ -71,3 +71,4 @@ docs/revisao/*/capturas/**/*.png
 # Derivado de `scripts/prints-dos-manuais.ts`: o manual com os prints em base64
 # (5 MB). O PDF e os PNGs são versionados; esta cópia HTML é só para publicar.
 docs/manuais/pdf/*.html
+docs/manuais/pdf/*.html

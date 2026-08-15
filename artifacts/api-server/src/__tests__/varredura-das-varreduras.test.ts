@@ -90,7 +90,7 @@ function dizOTamanho(texto: string): boolean {
 }
 
 describe("S-C260 — toda varredura diz o tamanho do que olhou", () => {
-  it("a enumeração cobre as duas grafias e os dois pacotes — o retrato é 31", () => {
+  it("a enumeração cobre as duas grafias e os dois pacotes — o retrato é 32", () => {
     /**
      * Igualdade, e não piso: varredura nova tem de ser JULGADA, e o vermelho
      * aqui é onde alguém escreve que julgou. É o critério que a S-C75 aplicou
@@ -106,15 +106,18 @@ describe("S-C260 — toda varredura diz o tamanho do que olhou", () => {
      * que se conta entre os contados.
      */
     const todas = varreduras();
-    expect(todas.length, `varreduras encontradas:\n${todas.join("\n")}`).toBe(31);
+    // E236: 31 → 32. A `varredura-manuais-prints` (frontend): toda âncora `data-print`
+    // tem captura versionada, nenhuma captura é órfã, o manifesto bate, todo manual
+    // tem PDF no git — a quinta régua de manual, e a primeira sobre as IMAGENS.
+    expect(todas.length, `varreduras encontradas:\n${todas.join("\n")}`).toBe(32);
 
     // E as duas dimensões, nomeadas: a sobra descrevia só a grafia, e o
     // julgamento de 14/08 também tinha perdido as 5 da primeira grafia que
     // moram no frontend.
     const porGrafia = (re: RegExp) => todas.filter((r) => re.test(path.basename(r))).length;
-    expect(porGrafia(/^varredura-/)).toBe(20);
+    expect(porGrafia(/^varredura-/)).toBe(21); // E236: +1, a `varredura-manuais-prints`
     expect(porGrafia(/-varredura\./)).toBe(11);
-    expect(todas.filter((r) => r.startsWith("artifacts/moscow-noivas/")).length).toBe(15);
+    expect(todas.filter((r) => r.startsWith("artifacts/moscow-noivas/")).length).toBe(16); // E236: +1, no frontend
   });
 
   it("nenhuma varredura afirma sobre um conjunto cujo tamanho ela não diz", () => {

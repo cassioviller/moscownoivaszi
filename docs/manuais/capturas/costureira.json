@@ -1,0 +1,23 @@
+{
+  "manual": "costureira",
+  "gerado": "2026-08-15T19:16:36.940Z",
+  "loja": "demo-manuais-loja",
+  "sessao": "dona.lourdes@moscownoivas.com",
+  "ambiente": {
+    "locale": "pt-BR",
+    "timezone": "America/Sao_Paulo",
+    "viewport": "1280×860 @2×",
+    "tema": "claro"
+  },
+  "capturas": [
+    "costureira-menu.png",
+    "costureira-fila.png",
+    "costureira-ficha.png",
+    "costureira-nova-confeccao.png",
+    "costureira-provas.png",
+    "costureira-reservas.png",
+    "costureira-reserva-avaria.png",
+    "costureira-reserva-movimentacao.png",
+    "costureira-agenda.png"
+  ]
+}

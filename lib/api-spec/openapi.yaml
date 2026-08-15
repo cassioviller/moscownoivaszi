@@ -23,6 +23,7 @@ tags:
   - name: financeiro
   - name: comissao
   - name: dashboard
+  - name: manuais
 paths:
   /healthz:
     get:
@@ -5183,6 +5184,49 @@ paths:
               schema:
                 $ref: "#/components/schemas/BaixarEstornoComissaoResultado"
 
+  # ───────────────────────── Manuais de uso (E236) ─────────────────────────
+  /manuais:
+    get:
+      operationId: listManuais
+      tags: [manuais]
+      summary: Os manuais de uso, para baixar dentro do sistema
+      description: >
+        E236 — os cinco manuais (proprietário, vendedora, recepção, costureira e o
+        guia da noiva), com o passo a passo em prints. Os PDFs são versionados em
+        `docs/manuais/pdf/` e servidos por `GET /manuais/{qual}.pdf`. Só sessão,
+        sem loja: o manual é o mesmo para toda loja e é de quem está logado.
+      responses:
+        "200":
+          description: Os manuais, na ordem do catálogo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ManualDeUso"
+        "401":
+          description: Sem sessão
+  /manuais/{qual}.pdf:
+    parameters:
+      - name: qual
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: baixarManual
+      tags: [manuais]
+      summary: O PDF de um manual, como download
+      responses:
+        "200":
+          description: O PDF, como download
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        "404":
+          description: Manual desconhecido (MANUAL_DESCONHECIDO)
+        "410":
+          description: A instalação subiu sem o PDF versionado (MANUAL_SEM_ARQUIVO)
+
   # ───────────────────────── Dashboard ─────────────────────────
   /lojas/{lojaId}/dashboard:
     parameters:
@@ -7925,6 +7969,18 @@ components:
         valor: { type: number, description: "reais, sempre positivo" }
         tipo: { type: string, enum: [recebimento, pagamento] }
         conciliadoEm: { type: ["string", "null"], format: date-time }
+    ManualDeUso:
+      type: object
+      required: [qual, titulo, paraQuem, descricao, disponivel, bytes, atualizadoEm]
+      description: "E236 — um manual de uso do catálogo, com o estado do PDF no servidor"
+      properties:
+        qual: { type: string, description: "a chave — o nome do arquivo sem extensão" }
+        titulo: { type: string }
+        paraQuem: { type: string }
+        descricao: { type: string }
+        disponivel: { type: boolean, description: "o PDF está no servidor" }
+        bytes: { type: ["integer", "null"] }
+        atualizadoEm: { type: ["string", "null"], format: date-time }
     Pagamento:
       type: object
       required: [id, lojaId, data, valorPago]
