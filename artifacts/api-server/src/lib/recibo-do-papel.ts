@@ -231,6 +231,43 @@ export function recibosDaParcela(
     };
   });
 
+  /**
+   * **S-C72 — dentro de cada ato, os dois destinos têm de fechar com o pago.**
+   *
+   * A S-C50 conferiu a soma dos atos contra o `valorRecebido` da PARCELA — um
+   * andar acima. Dentro de um ato ninguém conferia nada: a porta divide o que
+   * entrou em `aoPrincipal` (o que fica na parcela) e `aMora` (o que vira linha
+   * própria da 9ª), e por construção `aoPrincipalC + aMoraC === entrandoC`
+   * (`contratos.ts:2550-2551`). Mas a construção é de UM lado; a leitura é do
+   * outro, e nada as amarrava.
+   *
+   * Um terceiro destino do mesmo pagamento — uma taxa, um arredondamento, uma
+   * fatia que fosse para outro lugar — entraria **calado**: o recibo mostraria
+   * o valor pago inteiro, a parcela receberia só a sua parte, e a diferença não
+   * apareceria em lugar nenhum. É a classe exata da S-C50, um andar abaixo.
+   *
+   * **Falha FECHADA**, como a guarda logo abaixo: se os destinos não fecham,
+   * `confere` é falso e a divisão não acontece — a parcela entra no caixa como
+   * uma linha só, datada pelo `recebidoEm`, que é o comportamento de antes da
+   * S-C31. Dividir com base numa conta que não fecha seria espalhar o erro por
+   * várias datas em vez de mantê-lo numa.
+   *
+   * Só vale para o ato que TEM a divisão: antes do E213 o `detalhe` não trazia
+   * `aoPrincipal`, e o pagamento foi inteiro para a parcela — é o que era
+   * verdade, e exigir a soma de campos que não existem reprovaria a história.
+   */
+  const atoQueNaoFecha = atos.find((l) => {
+    const d = (l.detalhe ?? {}) as Record<string, unknown>;
+    if (d.aoPrincipal === undefined) return false;
+    const num = (v: unknown) => (typeof v === "number" ? v : Number(v ?? 0));
+    return (
+      centavos(num(d.aoPrincipal)) + centavos(num(d.aMora)) !== centavos(num(d.valorRecebido))
+    );
+  });
+  if (atoQueNaoFecha) {
+    return { recibos: [], confere: false, somaC: 0, recebidoC: centavos(parcela.valorRecebido ?? 0) };
+  }
+
   // S-C50: o que se compara com o `valorRecebido` da parcela é o que os atos
   // puseram NELA. O valor pago é maior sempre que a cláusula 9ª incidiu, e a
   // diferença está viva noutra linha do carnê — não é dinheiro que sumiu.

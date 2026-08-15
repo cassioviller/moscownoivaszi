@@ -15,10 +15,10 @@ import { comArquivoSintetico } from "./populacao-da-varredura";
  *
  * |  | `varredura-*` | `*-varredura` |
  * |---|---|---|
- * | `api-server` | 14 | 1 |
+ * | `api-server` | 15 | 1 |
  * | `moscow-noivas` | 5 | 10 |
  *
- * **São 30, e o julgamento cobriu uma célula.** O que escapou não foi só a
+ * **São 31, e o julgamento cobriu uma célula.** O que escapou não foi só a
  * segunda grafia: as 5 da PRIMEIRA grafia que moram no frontend também nunca
  * foram julgadas, e nenhuma sobra falava delas. Enumerar por uma grafia é a
  * S-C79 ao vivo — *"onze arquivos entraram em dois dias sob um piso verde"* —,
@@ -90,7 +90,7 @@ function dizOTamanho(texto: string): boolean {
 }
 
 describe("S-C260 — toda varredura diz o tamanho do que olhou", () => {
-  it("a enumeração cobre as duas grafias e os dois pacotes — o retrato é 30", () => {
+  it("a enumeração cobre as duas grafias e os dois pacotes — o retrato é 31", () => {
     /**
      * Igualdade, e não piso: varredura nova tem de ser JULGADA, e o vermelho
      * aqui é onde alguém escreve que julgou. É o critério que a S-C75 aplicou
@@ -106,13 +106,13 @@ describe("S-C260 — toda varredura diz o tamanho do que olhou", () => {
      * que se conta entre os contados.
      */
     const todas = varreduras();
-    expect(todas.length, `varreduras encontradas:\n${todas.join("\n")}`).toBe(30);
+    expect(todas.length, `varreduras encontradas:\n${todas.join("\n")}`).toBe(31);
 
     // E as duas dimensões, nomeadas: a sobra descrevia só a grafia, e o
     // julgamento de 14/08 também tinha perdido as 5 da primeira grafia que
     // moram no frontend.
     const porGrafia = (re: RegExp) => todas.filter((r) => re.test(path.basename(r))).length;
-    expect(porGrafia(/^varredura-/)).toBe(19);
+    expect(porGrafia(/^varredura-/)).toBe(20);
     expect(porGrafia(/-varredura\./)).toBe(11);
     expect(todas.filter((r) => r.startsWith("artifacts/moscow-noivas/")).length).toBe(15);
   });
