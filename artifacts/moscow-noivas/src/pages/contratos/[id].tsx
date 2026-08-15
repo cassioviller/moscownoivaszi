@@ -472,14 +472,15 @@ export default function ContratoDetail() {
         lojaId: activeLojaId!,
         contratoId: id!,
         data: {
-          dataRetirada: localParaISO(retiradaEditada) ?? undefined,
-          dataDevolucao: localParaISO(devolucaoEditada) ?? undefined,
-          // S-C211: só manda quando preenchido — o `ContratoUpdate` do spec não
-          // aceita `null`, então o campo vazio deixa o gravado como está (ver
-          // "Visto de passagem" do E227: apagar o prazo pede spec).
-          ...(prazoEditado.trim() !== "" && !Number.isNaN(Number(prazoEditado))
-            ? { prazoDevolucaoReservaDias: Number(prazoEditado) }
-            : {}),
+          // S-C232 — o campo esvaziado manda `null` DE PROPÓSITO, e agora é
+          // verdade: o spec aceita nullable e a porta apaga (antes o zod
+          // convertia `null` em 01/01/1970 e a 4ª recusava por acidente).
+          dataRetirada: localParaISO(retiradaEditada) ?? null,
+          dataDevolucao: localParaISO(devolucaoEditada) ?? null,
+          prazoDevolucaoReservaDias:
+            prazoEditado.trim() !== "" && !Number.isNaN(Number(prazoEditado))
+              ? Number(prazoEditado)
+              : null,
         },
       });
       await queryClient.invalidateQueries({
