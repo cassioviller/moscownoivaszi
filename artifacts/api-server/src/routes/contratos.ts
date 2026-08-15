@@ -83,6 +83,9 @@ import {
   reancorarDataDeNegocio,
   STATUS_ABERTO,
   temCarne,
+  // E219 — o veto da 17ª (7 dias do fecho; nem sextas nem sábados). A mesma
+  // função que a tela usa para avisar antes do clique.
+  vetoDaTroca17a,
 } from "@workspace/financeiro-core";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { vendedoraNaLoja } from "../lib/escopo-loja";
@@ -2120,6 +2123,24 @@ router.post("/lojas/:lojaId/contratos/:contratoId/trocar-peca", async (req, res)
     return;
   }
 
+  /**
+   * E219 — a guarda da 17ª mora nesta porta: sem troca após 7 dias da locação
+   * (contados do FECHO — a convenção está declarada em `troca.ts` e na frase,
+   * e a P5 pede a confirmação da dona), nem às sextas e sábados (§1º). O
+   * `hoje` vem de `relogio.agora()` porque regra que decide pelo dia da
+   * semana precisa de relógio que o teste alcance (S-O119).
+   */
+  const agora = relogio.agora();
+  const veto = vetoDaTroca17a({ fechadoEm: contrato.fechadoEm, hoje: agora });
+  if (veto) {
+    res.status(422).json({
+      error: veto.error,
+      detalhe: veto.detalhe,
+      campos: [{ campo: "bloqueioId", motivo: "A cláusula 17ª veda esta troca" }],
+    });
+    return;
+  }
+
   const [vinculo] = await db.select().from(contratoBloqueiosTable)
     .where(and(
       eq(contratoBloqueiosTable.contratoId, contratoId),
@@ -2165,8 +2186,6 @@ router.post("/lojas/:lojaId/contratos/:contratoId/trocar-peca", async (req, res)
     });
     return;
   }
-
-  const agora = relogio.agora();
 
   const desfecho = await db.transaction(async (tx) => {
     /**

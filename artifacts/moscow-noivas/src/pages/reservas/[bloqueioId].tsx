@@ -97,7 +97,14 @@ import {
 import { donaDaFicha, temReservaMae } from "@/lib/dona-da-ficha-da-reserva";
 // E214: a faixa das cláusulas 14ª/15ª vem da MESMA conta do servidor.
 import { faixaDaAvariaRegistrada, faixaNaTela } from "@/lib/faixa-da-avaria";
-import { explicacaoDaFaixa, PRAZO_DA_COBRANCA_DE_REPARO_DIAS, type TipoDeAvaria } from "@workspace/financeiro-core";
+import {
+  explicacaoDaFaixa,
+  PRAZO_DA_COBRANCA_DE_REPARO_DIAS,
+  // E219 — o veto da 17ª (prazo de 7 dias, sextas e sábados): a MESMA régua
+  // que a porta aplica, importada — a tela avisa antes do clique (E211).
+  vetoDaTroca17a,
+  type TipoDeAvaria,
+} from "@workspace/financeiro-core";
 
 /**
  * Detalhe da reserva (porte da /reservas/[bloqueioId] do feat/orcamentos) — o
@@ -238,6 +245,12 @@ export default function ReservaDetalhe() {
   });
   const presoPorEsteContrato =
     !!bloqueioId && (contratoDetalhe.data?.bloqueioVestidoIds ?? []).includes(bloqueioId);
+  // E219 — o veto se calcula ANTES de oferecer o botão: numa sexta, ou num
+  // contrato de mais de 7 dias, a seção mostra a frase da cláusula no lugar
+  // do gesto que o servidor recusaria com o MESMO veto (é a mesma função).
+  const vetoDaTroca = contratoDetalhe.data?.fechadoEm
+    ? vetoDaTroca17a({ fechadoEm: contratoDetalhe.data.fechadoEm, hoje: new Date() })
+    : null;
   const [trocandoPeca, setTrocandoPeca] = useState(false);
   const [pecaEscolhida, setPecaEscolhida] = useState<string | null>(null);
   // O acervo só desce quando o diálogo abre — a ficha não paga a lista à toa.
@@ -982,7 +995,12 @@ export default function ReservaDetalhe() {
           <h2 className="text-xs uppercase tracking-wider text-muted-foreground">Peça do contrato</h2>
           <Card>
             <CardContent className="pt-6 space-y-3">
-              {trocandoPeca ? (
+              {vetoDaTroca ? (
+                // E219 — a cláusula fala antes do clique, sem 422 no meio.
+                <p className="text-sm text-muted-foreground" data-testid="troca-vedada">
+                  {vetoDaTroca.detalhe}
+                </p>
+              ) : trocandoPeca ? (
                 <>
                   <p className="text-sm">
                     A troca liberta esta reserva, prende a peça nova com a mesma régua de

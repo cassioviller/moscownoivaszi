@@ -1,6 +1,8 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { db, auditLogTable, bloqueioVestidosTable, contratoBloqueiosTable, contratoItensTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
+import { relogio } from "../lib/relogio";
+import { diaDaSemana, diaLocal } from "@workspace/financeiro-core";
 import {
   criarFixture,
   criarLead,
@@ -37,9 +39,21 @@ describe("E223 — a troca de peça do contrato", () => {
   beforeAll(async () => {
     f = await criarFixture();
     agent = await loginComLoja(f.vendedoraEmail, f.lojaId);
+    /**
+     * E219 — a 17ª §1º veda troca às sextas e aos sábados, e este arquivo
+     * prova a MECÂNICA da porta, não o calendário (o calendário é do
+     * `e219-troca-com-prazo` e do `troca.test.ts`). O relógio da rota fica
+     * pregado na próxima quarta-feira: sem isto a suíte ficava verde cinco
+     * dias por semana e vermelha dois — a classe exata da S-O119, medida
+     * aqui numa sexta real ao ligar a guarda.
+     */
+    let quarta = new Date();
+    while (diaDaSemana(diaLocal(quarta)) !== 3) quarta = new Date(quarta.getTime() + 86_400_000);
+    vi.spyOn(relogio, "agora").mockReturnValue(quarta);
   });
 
   afterAll(async () => {
+    vi.restoreAllMocks();
     await limparFixture(f);
     await fecharPool();
   });
