@@ -63,6 +63,13 @@ export function NovaConfeccao({ podeCriar }: { podeCriar: boolean }) {
   const [atendimentoId, setAtendimentoId] = useState<string>("");
   const [descricao, setDescricao] = useState("");
   const [custo, setCusto] = useState("");
+  /**
+   * E240/S-O50 (decisão da dona, 15/08/2026) — o PRAZO PRÓPRIO, opcional.
+   * Vazio é "vale a régua derivada" (a próxima prova, senão o casamento); com
+   * um dia, a fila e a ficha passam a contar por ele. `<input type="date">`
+   * já entrega AAAA-MM-DD, que é a grafia da coluna e do contrato.
+   */
+  const [prazoProprio, setPrazoProprio] = useState("");
 
   /**
    * Os atendimentos DELA, sem janela: a confecção costuma ser combinada num
@@ -85,6 +92,7 @@ export function NovaConfeccao({ podeCriar }: { podeCriar: boolean }) {
     setAtendimentoId("");
     setDescricao("");
     setCusto("");
+    setPrazoProprio("");
   };
 
   const salvar = async () => {
@@ -107,6 +115,7 @@ export function NovaConfeccao({ podeCriar }: { podeCriar: boolean }) {
           descricao: descricao.trim(),
           tipo: "CONFECCAO",
           ...(valor !== null ? { custo: valor } : {}),
+          ...(prazoProprio ? { prazoProprio } : {}),
         },
       });
       await queryClient.invalidateQueries({ queryKey: getListAjustesQueryKey(activeLojaId!) });
@@ -143,7 +152,7 @@ export function NovaConfeccao({ podeCriar }: { podeCriar: boolean }) {
           <DialogTitle>Nova confecção</DialogTitle>
           <DialogDescription>
             Peça nova, feita para a noiva — sem vestido do acervo. Ela entra na fila com o prazo do
-            casamento dela.
+            casamento dela, a não ser que você fixe um prazo próprio.
           </DialogDescription>
         </DialogHeader>
 
@@ -223,6 +232,21 @@ export function NovaConfeccao({ podeCriar }: { podeCriar: boolean }) {
             />
             <p className="text-xs text-muted-foreground">
               É o que o orçamento cobra da noiva por esta peça.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="confeccao-prazo">Prazo próprio (opcional)</Label>
+            <Input
+              id="confeccao-prazo"
+              type="date"
+              value={prazoProprio}
+              onChange={(e) => setPrazoProprio(e.target.value)}
+              data-testid="confeccao-prazo-proprio"
+            />
+            <p className="text-xs text-muted-foreground">
+              O dia em que esta peça precisa estar pronta. Em branco, vale o casamento da noiva —
+              e a prova marcada manda sobre os dois.
             </p>
           </div>
         </div>

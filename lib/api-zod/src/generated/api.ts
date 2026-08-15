@@ -3427,6 +3427,7 @@ export const ListAjustesResponseItem = zod.object({
 }),zod.null()]).optional()
 }).optional(),
   "proximaProva": dataDoCorpo().nullish(),
+  "prazoProprio": zod.string().nullish(),
   "pecaDoAcervo": zod.union([zod.object({
   "id": zod.string(),
   "codigo": zod.string(),
@@ -3444,13 +3445,15 @@ export const createAjusteBodyDescricaoMax = 1000;
 
 export const createAjusteBodyCustoMin = 0;
 
+export const createAjusteBodyPrazoProprioRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 
 
 export const CreateAjusteBody = zod.object({
   "atendimentoId": zod.string(),
   "descricao": zod.string().min(1).max(createAjusteBodyDescricaoMax),
   "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
-  "custo": zod.number().min(createAjusteBodyCustoMin).optional()
+  "custo": zod.number().min(createAjusteBodyCustoMin).optional(),
+  "prazoProprio": zod.string().regex(createAjusteBodyPrazoProprioRegExp).optional()
 })
 
 
@@ -3617,6 +3620,7 @@ export const CreateAjusteResponse = zod.object({
 }),zod.null()]).optional()
 }).optional(),
   "proximaProva": dataDoCorpo().nullish(),
+  "prazoProprio": zod.string().nullish(),
   "pecaDoAcervo": zod.union([zod.object({
   "id": zod.string(),
   "codigo": zod.string(),
@@ -3634,13 +3638,15 @@ export const updateAjusteBodyDescricaoMax = 1000;
 
 export const updateAjusteBodyCustoMin = 0;
 
+export const updateAjusteBodyPrazoProprioRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 
 
 export const UpdateAjusteBody = zod.object({
   "descricao": zod.string().min(1).max(updateAjusteBodyDescricaoMax).optional(),
   "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
   "custo": zod.number().min(updateAjusteBodyCustoMin).nullish(),
-  "status": zod.enum(['PENDENTE', 'FEITO']).optional()
+  "status": zod.enum(['PENDENTE', 'FEITO']).optional(),
+  "prazoProprio": zod.string().regex(updateAjusteBodyPrazoProprioRegExp).nullish()
 })
 
 
@@ -3807,6 +3813,7 @@ export const UpdateAjusteResponse = zod.object({
 }),zod.null()]).optional()
 }).optional(),
   "proximaProva": dataDoCorpo().nullish(),
+  "prazoProprio": zod.string().nullish(),
   "pecaDoAcervo": zod.union([zod.object({
   "id": zod.string(),
   "codigo": zod.string(),
@@ -4003,8 +4010,7 @@ export const ListReservasParams = zod.object({
 })
 
 export const ListReservasQueryParams = zod.object({
-  "leadId": zod.coerce.string().optional().describe('Filtra as reservas de uma noiva só — `reservas.lead_id` é NOT NULL, então aqui não há a ambiguidade de dono que o bloqueio tem'),
-  "futuras": zod.enum(['true', 'false']).optional().describe('Recorta por casamentoData contra hoje, em dia LOCAL America\/Sao_Paulo (E87) — \'true\' = casamentos de hoje em diante (asc), \'false\' = já realizados (desc)')
+  "leadId": zod.coerce.string().optional().describe('Filtra as reservas de uma noiva só — `reservas.lead_id` é NOT NULL, então aqui não há a ambiguidade de dono que o bloqueio tem')
 })
 
 

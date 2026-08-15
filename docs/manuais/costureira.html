@@ -361,7 +361,7 @@
       <p>O botão <span class="btn">Nova confecção</span> fica no alto da fila, ao lado dos recortes. Ele existe para o trabalho que <strong>não tem peça do acervo</strong> — o vestido feito para a noiva, que por definição não tem reserva nem bloqueio, e por isso não nasce pela ficha de nenhuma peça.</p>
       <ul>
         <li>Você escolhe a <strong>noiva</strong> e, depois, <strong>um atendimento dela</strong>. A lista de atendimentos não tem janela: uma confecção se combina num atendimento que já passou, e é assim que costuma acontecer</li>
-        <li><strong>O prazo não se digita</strong> — ele vem do casamento da noiva, pela mesma regra da seção seguinte</li>
+        <li><strong>O prazo próprio é opcional</strong> (desde 15/08/2026). Em branco, o prazo vem do casamento da noiva, pela regra da seção seguinte; com um dia preenchido — <em>“esta eu preciso para o dia 10”</em> — a fila e a ficha passam a contar por ele</li>
         <li>Se faltar alguma coisa, a tela diz <strong>antes</strong> de você clicar, e não depois</li>
       </ul>
       <p>Ajuste de peça que já existe continua nascendo onde sempre nasceu: na ficha da reserva, no bloco de provas.</p>
@@ -372,11 +372,13 @@
 
       <div class="fala">
         <span class="rotulo">A regra inteira, em uma frase</span>
-        <p><strong>O prazo é a próxima prova da noiva. Não havendo prova marcada, é o casamento dela.</strong></p>
+        <p><strong>O prazo é a próxima prova da noiva. Não havendo prova marcada, é o prazo próprio da confecção, quando você fixou um. Sem os dois, é o casamento dela.</strong></p>
       <figure class="print" data-print="agenda"></figure>
       </div>
 
       <p>É para a prova que a peça precisa estar pronta — é ali que ela veste. O casamento entra quando não há prova nenhuma marcada, e é o caso comum das <strong>confecções</strong>, que muitas vezes nascem sem prova agendada.</p>
+
+      <p><strong>A confecção pode ter prazo próprio</strong> — decisão da dona em <strong>15/08/2026</strong>. Você o preenche no diálogo <span class="btn">Nova confecção</span> (campo <em>“Prazo próprio (opcional)”</em>), e ele manda sobre o casamento: uma confecção com casamento em março e prazo próprio para o dia 10 conta pelo dia 10. A prova marcada continua mandando sobre os dois. A ficha do trabalho mostra o prazo próprio como fato, mesmo quando é a prova que está contando.</p>
 
       <p>As palavras do prazo são sempre estas:</p>
       <div class="rolagem">
@@ -385,15 +387,17 @@
           <tbody>
             <tr><td>“prova hoje” · “prova amanhã” · “prova em 5 dias”</td><td>Há prova marcada — este é o prazo</td></tr>
             <tr><td><strong>“prova atrasada”</strong></td><td>A prova já passou e o trabalho segue pendente</td></tr>
-            <tr><td>“casamento hoje” · “casamento amanhã” · “casamento em 12 dias”</td><td>Não há prova marcada; o prazo é o casamento</td></tr>
+            <tr><td>“prazo hoje” · “prazo amanhã” · “prazo em 9 dias”</td><td>Não há prova marcada; o prazo é o que você fixou na confecção</td></tr>
+            <tr><td><strong>“prazo passou”</strong></td><td>O prazo próprio já passou e o trabalho segue pendente</td></tr>
+            <tr><td>“casamento hoje” · “casamento amanhã” · “casamento em 12 dias”</td><td>Não há prova marcada nem prazo próprio; o prazo é o casamento</td></tr>
             <tr><td><strong>“casamento passou”</strong></td><td>A data do casamento já passou e o trabalho segue pendente</td></tr>
-            <tr><td>“sem prazo definido”</td><td>Não há prova nem casamento marcado. Esta linha fica no fim da fila</td></tr>
+            <tr><td>“sem prazo definido”</td><td>Não há prova, nem prazo próprio, nem casamento marcado. Esta linha fica no fim da fila</td></tr>
           </tbody>
         </table>
       </div>
 
       <h3>Quando o prazo fica vermelho</h3>
-      <p><strong>Prova em 7 dias ou menos</strong> (ou atrasada). Sem prova marcada, <strong>casamento em 14 dias ou menos</strong>.</p>
+      <p><strong>Prova em <span class="prazo" data-regua="PROVA_APERTADA_DIAS">7 dias ou menos</span></strong> (ou atrasada). Sem prova marcada, <strong>prazo próprio ou casamento em <span class="prazo" data-regua="CASAMENTO_APERTADO_DIAS">14 dias ou menos</span></strong>.</p>
 
       <div class="fala">
         <span class="rotulo">O vermelho e a aba dizem a mesma coisa</span>
@@ -570,7 +574,7 @@
         <table>
           <thead><tr><th>O que</th><th>Quanto vale</th></tr></thead>
           <tbody>
-            <tr><td>Recorte “Prazo apertado” — e o vermelho, que é a mesma régua</td><td class="prazo">prova em 7 dias ou menos; sem prova, casamento em 14 dias ou menos — atrasados incluídos</td></tr>
+            <tr><td>Recorte “Prazo apertado” — e o vermelho, que é a mesma régua</td><td class="prazo"><span class="prazo" data-regua="PROVA_APERTADA_DIAS">prova em 7 dias ou menos</span>; sem prova, <span class="prazo" data-regua="CASAMENTO_APERTADO_DIAS">prazo próprio ou casamento em 14 dias ou menos</span> — atrasados incluídos</td></tr>
             <tr><td>Sua sessão (login)</td><td class="prazo" data-regua="SESSAO_TTL_MS">8 horas</td></tr>
           </tbody>
         </table>
@@ -579,12 +583,10 @@
 
     <section id="verdade">
       <h2>O que ainda não existe, e é bom você saber</h2>
-      <p class="resumo">Uma coisa. As outras três saíram daqui em <strong>12/08/2026</strong>, e ficam registradas porque quem leu a versão anterior pode estar trabalhando em cima delas.</p>
-      <ul>
-        <li><strong>A confecção não tem prazo próprio.</strong> Ele vem sempre do casamento da noiva. Não há como dizer <em>“esta eu preciso para o dia 10”</em> quando o casamento é em março — se isso fizer falta, é pedido para a dona, porque muda o banco de dados</li>
-      </ul>
+      <p class="resumo">Nada, hoje. As quatro coisas que já estiveram aqui saíram — três em <strong>12/08/2026</strong> e a última em <strong>15/08/2026</strong> — e ficam registradas porque quem leu a versão anterior pode estar trabalhando em cima delas.</p>
       <p><strong>O que saiu daqui:</strong></p>
       <ul>
+        <li><strong>A confecção não tinha prazo próprio</strong> — vinha sempre do casamento da noiva. Desde 15/08/2026 tem: o campo <em>“Prazo próprio (opcional)”</em> no <span class="btn">Nova confecção</span>, e a regra está na seção <a href="#prazo">Quem manda no prazo</a></li>
         <li><strong>Não havia perfil “Costureira”</strong> e você entrava como Recepção, enxergando a carteira de noivas e os contratos da loja. O perfil foi criado, e o que ele abre é o que está no começo desta página</li>
         <li><strong>A confecção sem peça do acervo não tinha formulário.</strong> Agora tem: <span class="btn">Nova confecção</span>, no alto da fila</li>
         <li><strong>O vermelho e o recorte divergiam</strong> quando o prazo vinha do casamento — 14 dias contra 7. Hoje são a mesma régua, e a aba mudou de nome junto</li>

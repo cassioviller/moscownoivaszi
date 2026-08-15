@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { janelaDeProvaDoDia } from "@workspace/agenda-core";
 import {
   contarProvasForaDaJanela,
   janelaDeProva,
@@ -7,10 +8,11 @@ import {
 
 /**
  * S-O97 — os números deste arquivo são os MESMOS do teste de API
- * (`so97-prova-nao-segue-a-data-api.test.ts`), de propósito: a janela é escrita
- * dos dois lados da borda (aqui e em `disponibilidade.ts:janelaDeProvaPrevista`)
- * e é o par de testes que a prende. A régua que compara as duas sozinha é a
- * S-O116.
+ * (`so97-prova-nao-segue-a-data-api.test.ts`), de propósito: até o E240 a
+ * janela era escrita dos dois lados da borda (aqui e em
+ * `disponibilidade.ts:janelaDeProvaPrevista`) e este par de testes era o que a
+ * prendia. **E240/S-O116: a conta é uma só, em `@workspace/agenda-core`**, e os
+ * números ficam porque continuam sendo a cena da loja.
  */
 const REGRA = { provaDiasAntes: 14, usoDiasAntes: 3 };
 
@@ -32,6 +34,34 @@ describe("a janela de prova, com a régua de fábrica", () => {
 
   it("não existe quando a régua não deixa dia nenhum (S-A23)", () => {
     expect(janelaDeProva("2028-09-05T12:00:00-03:00", { provaDiasAntes: 3, usoDiasAntes: 3 })).toBeNull();
+  });
+
+  /**
+   * E240/S-O116 — **a conta é UMA, e é a do servidor.**
+   *
+   * A régua da tela e a do servidor eram duas escritas da mesma aritmética,
+   * presas só pelos números acima. A tela ainda convertia o casamento com
+   * `diaLocal` — instante — sobre uma data de NEGÓCIO: com o casamento
+   * gravado à meia-noite UTC (a grafia legada que a S-O117 descreveu),
+   * `2028-09-05T00:00:00Z` virava 04/09 em São Paulo e a janela andava um dia.
+   *
+   * Vermelho medido antes do conserto, com a régua antiga da tela:
+   * `expected { inicio: '2028-08-21', fim: '2028-08-31' } to deeply equal
+   * { inicio: '2028-08-22', fim: '2028-09-01' }` — o servidor
+   * (`janelaDeProvaPrevista("2028-09-05")`) dizia 22/08–01/09.
+   */
+  it("o casamento à meia-noite UTC dá a MESMA janela que o servidor — a tela lê dia de negócio", () => {
+    expect(janelaDeProva("2028-09-05T00:00:00Z", REGRA)).toEqual({
+      inicio: "2028-08-22",
+      fim: "2028-09-01",
+    });
+    // A âncora ao meio-dia (a grafia de hoje) continua dando o mesmo.
+    expect(janelaDeProva("2028-09-05T15:00:00.000Z", REGRA)).toEqual({
+      inicio: "2028-08-22",
+      fim: "2028-09-01",
+    });
+    // E a conta que os dois lados importam é a do `agenda-core`.
+    expect(janelaDeProva("2028-09-05T15:00:00.000Z", REGRA)).toEqual(janelaDeProvaDoDia("2028-09-05", REGRA));
   });
 });
 

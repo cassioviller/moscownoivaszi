@@ -21,4 +21,9 @@ export interface AjusteUpdate {
      */
   custo?: number | null;
   status?: AjusteUpdateStatus;
+  /**
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  prazoProprio?: string | null;
 }

@@ -632,7 +632,11 @@ importers:
         specifier: 'catalog:'
         version: 3.25.76
 
-  lib/agenda-core: {}
+  lib/agenda-core:
+    dependencies:
+      '@workspace/financeiro-core':
+        specifier: workspace:*
+        version: link:../financeiro-core
 
   lib/api-client-react:
     dependencies:

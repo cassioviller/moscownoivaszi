@@ -24,5 +24,7 @@ export interface Ajuste {
   atendimento?: AjusteAtendimento;
   /** @nullable */
   proximaProva?: Date | null;
+  /** @nullable */
+  prazoProprio?: string | null;
   pecaDoAcervo?: AjustePecaDoAcervo | null;
 }

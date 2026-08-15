@@ -210,27 +210,53 @@ export function parseQuantidade(texto: string): number | null {
  * caminho legítimo "crio com o desconto combinado, lanço os itens depois". Só a
  * regra do percentual vale sem itens.
  */
+export type MotivoDaRecusaDeDesconto = "PERCENTUAL_ACIMA_DE_100" | "VALOR_ACIMA_DO_BRUTO";
+
+/**
+ * E240/S-O85 — **a DECISÃO, separada do TEXTO.**
+ *
+ * `recusaDeDesconto` montava a frase para quem só queria o sim/não: a lista de
+ * itens presos pelo desconto (`itensPresosPeloDesconto`, E187) chama a régua
+ * uma vez por item, e cada chamada que recusa paga dois `toLocaleString` para
+ * um `detalhe` que ninguém mostra. Medido em 15/08 (Node 24, 20 mil passadas
+ * de 8 itens todos presos, duas rodadas): **frase 413–430 µs · veredito
+ * 1,0–1,15 µs** — a frase custa ~400× o veredito, a mesma ordem que a sobra
+ * media (862 × 2,0 = 430×).
+ *
+ * Esta é a régua; `recusaDeDesconto` é ela mais a frase. Não há segunda
+ * grafia da conta: quem quer o texto passa por aqui também.
+ */
+export function motivoDaRecusaDeDesconto(
+  tipo: string | null | undefined,
+  valor: number | null | undefined,
+  brutoCentavos: number | null,
+): MotivoDaRecusaDeDesconto | null {
+  if (typeof valor !== "number") return null;
+  if (tipo === "PERCENTUAL" && valor > 100) return "PERCENTUAL_ACIMA_DE_100";
+  if (tipo === "VALOR" && brutoCentavos != null && centavos(valor) > brutoCentavos) return "VALOR_ACIMA_DO_BRUTO";
+  return null;
+}
+
 export function recusaDeDesconto(
   tipo: string | null | undefined,
   valor: number | null | undefined,
   brutoCentavos: number | null,
 ): { error: string; detalhe: string } | null {
-  if (typeof valor !== "number") return null;
-  if (tipo === "PERCENTUAL" && valor > 100) {
+  const motivo = motivoDaRecusaDeDesconto(tipo, valor, brutoCentavos);
+  if (motivo === null) return null;
+  if (motivo === "PERCENTUAL_ACIMA_DE_100") {
     return {
       error: "DESCONTO_INVALIDO",
       detalhe: "Desconto percentual não passa de 100 — para um valor em reais, troque o tipo para VALOR.",
     };
   }
-  if (tipo === "VALOR" && brutoCentavos != null && centavos(valor) > brutoCentavos) {
-    return {
-      error: "DESCONTO_INVALIDO",
-      detalhe:
-        `Desconto de ${brlSimples(valor)} é maior que os itens do orçamento ` +
-        `(${brlSimples(reais(brutoCentavos))}) — o total sairia zerado.`,
-    };
-  }
-  return null;
+  // O veredito só é VALOR_ACIMA_DO_BRUTO com `valor` numérico e `brutoCentavos` não nulo.
+  return {
+    error: "DESCONTO_INVALIDO",
+    detalhe:
+      `Desconto de ${brlSimples(valor as number)} é maior que os itens do orçamento ` +
+      `(${brlSimples(reais(brutoCentavos as number))}) — o total sairia zerado.`,
+  };
 }
 
 /**

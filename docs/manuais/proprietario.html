@@ -181,6 +181,10 @@
   }
   tr:last-child td { border-bottom: none; }
   td.prazo { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+  /* E240/S-O95: a coluna "#" das tabelas de passos e pendências NÃO é prazo —
+     ela usava a classe só pelo estilo, e a varredura de prazos a contava como
+     célula não anotada. */
+  td.rotulo { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
 
   /* ── O caminho, em uma olhada ──────────────────────────────────────────── */
   .trilha {
@@ -596,17 +600,17 @@
           <thead><tr><th>#</th><th>O passo</th><th>Quando ele reclama</th></tr></thead>
           <tbody>
             <tr>
-              <td class="prazo">1</td>
+              <td class="rotulo">1</td>
               <td><strong>Comissões da competência fechadas</strong></td>
               <td>“Há vendedoras com venda no mês sem fechamento.” → <span class="btn">Fechar em Comissões →</span></td>
             </tr>
             <tr>
-              <td class="prazo">2</td>
+              <td class="rotulo">2</td>
               <td><strong>Contas da competência pagas</strong></td>
               <td>“3 contas em aberto no mês.” → <span class="btn">Pagar →</span></td>
             </tr>
             <tr>
-              <td class="prazo">3</td>
+              <td class="rotulo">3</td>
               <td><strong>Período enviado à contabilidade</strong></td>
               <td>“5 movimentos do período ainda não enviados — o envio é aqui embaixo, em <em>Fechar com a contabilidade</em>.”</td>
             </tr>
@@ -751,27 +755,27 @@
           <thead><tr><th>#</th><th>O que espera</th><th>O que muda em cada resposta</th></tr></thead>
           <tbody>
             <tr>
-              <td class="prazo">P1</td>
+              <td class="rotulo">P1</td>
               <td><strong>A página 6 do molde do contrato traz o CNPJ de outra empresa.</strong> Sai o <strong>31.897.111/0001-76</strong>; entra o <strong>37.771.644/0001-93</strong></td>
               <td><strong>Não é erro de digitação, e é isso que o torna sério:</strong> os dois números são CNPJs válidos, com dígito verificador certo. Nenhuma conferência automática pegaria — o molde simplesmente qualifica a locadora errada. <strong>Corrigir é trocar a página do modelo</strong></td>
             </tr>
             <tr>
-              <td class="prazo">P2</td>
+              <td class="rotulo">P2</td>
               <td><strong>Os contratos que já foram assinados com aquela página 6.</strong> Quantos são, e o que fazer com eles</td>
               <td><strong>É decisão jurídica, não de sistema.</strong> Eles carregam a inscrição errada e já estão assinados. O sistema não sabe quais são — o molde é papel. A pergunta é se vale aditivo, recontratação ou nada</td>
             </tr>
             <tr>
-              <td class="prazo">P3</td>
+              <td class="rotulo">P3</td>
               <td><strong>Os dados reais da loja ainda não foram preenchidos.</strong> O banco tem o exemplo da instalação</td>
               <td><strong>Esta é a única das oito que você resolve sozinho em cinco minutos</strong>, e o lugar é a tela: <a href="#loja">Configurações → Dados da loja</a>. Enquanto não for, o portal da noiva mostra “Rua das Noivas, 123”. <strong>Não peça para mexerem no código:</strong> ele é parametrizado de propósito, e o valor certo é o que você digitar</td>
             </tr>
             <tr>
-              <td class="prazo">P4</td>
+              <td class="rotulo">P4</td>
               <td><strong>Qual índice corrige a parcela vencida</strong> (cláusula 9ª) — <em>respondida em 15/08/2026: IPCA, e feita no mesmo dia</em></td>
               <td><strong>IPCA, pelos meses cheios de atraso, com o número informado por você</strong> em Configurações → Índices. Falta digitar: enquanto um mês não tiver o número, as parcelas vencidas naquele mês continuam sem correção e a fila diz qual mês falta. Multa (2%) e juros (1% ao mês) seguem como antes, sobre o saldo.</td>
             </tr>
             <tr>
-              <td class="prazo">P5</td>
+              <td class="rotulo">P5</td>
               <td><strong>Os “7 dias da data da locação” da 17ª contam de quê?</strong> (a troca de traje) — <em>confirmada em 15/08/2026: do FECHO do contrato</em></td>
               <td>A cláusula não define “data da locação”, e as duas leituras — o fecho do contrato ou a retirada da peça — dão janelas diferentes. <strong>O sistema conta do fecho</strong>, que é a leitura coerente (depois da retirada a troca de modelo nem existe), e a frase da recusa diz isso na letra para ninguém adivinhar. Se a sua leitura for outra, muda-se a âncora da conta, não a régua — mas confirme antes que alguém discuta um prazo com noiva na frente</td>
             </tr>
@@ -789,12 +793,12 @@
           <thead><tr><th>#</th><th>A pergunta</th><th>O que muda em cada resposta</th></tr></thead>
           <tbody>
             <tr>
-              <td class="prazo">D4</td>
+              <td class="rotulo">D4</td>
               <td><strong>O PDF do sistema deve virar o instrumento, com as 21 cláusulas dentro?</strong> <em>(desenhado em 15/08 — confirmar)</em></td>
               <td><strong>Sim (o que está feito):</strong> os números das cláusulas saem do código — a mesma faixa da 14ª que a tela confere é a que o papel promete, e as duas não podem mais divergir. A qualificação da noiva está guardada desde 13/08 e impressa desde 15/08, e a P1 deixa de existir, porque não há mais página 6 para errar. <strong>Não:</strong> o molde de papel volta a ser a verdade, e cada mudança de número tem de ser feita duas vezes</td>
             </tr>
             <tr>
-              <td class="prazo">D7</td>
+              <td class="rotulo">D7</td>
               <td><strong>O representante legal e a chave PIX entram no cadastro da loja?</strong> (Renato como representante; o CPF da Karina como chave) — <em>respondida SIM em 15/08/2026, e feita no mesmo dia: os sete campos estão em <a href="#loja">Configurações → Dados da loja</a></em></td>
               <td><strong>Sim (feito):</strong> o contrato sai com quem assina pela loja, com a chave de pagamento e com a cidade do foro impressas, sem ninguém redigitar — <b>assim que você preencher os campos</b>; até lá as três linhas saem em branco. <strong>Não:</strong> os dois continuam sendo escritos à mão em cada contrato, que é onde nascem as divergências. É a mesma pergunta da P3, um degrau adiante: <strong>o que é da loja mora no cadastro da loja</strong></td>
             </tr>

@@ -17,4 +17,6 @@ export interface AjusteInput {
   tipo?: AjusteInputTipo;
   /** @minimum 0 */
   custo?: number;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  prazoProprio?: string;
 }

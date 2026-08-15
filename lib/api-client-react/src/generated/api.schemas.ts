@@ -1473,6 +1473,8 @@ export interface Ajuste {
   atendimento?: AjusteAtendimento;
   /** @nullable */
   proximaProva?: string | null;
+  /** @nullable */
+  prazoProprio?: string | null;
   pecaDoAcervo?: AjustePecaDoAcervo | null;
 }
 
@@ -1513,6 +1515,8 @@ export interface AjusteInput {
   tipo?: AjusteInputTipo;
   /** @minimum 0 */
   custo?: number;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  prazoProprio?: string;
 }
 
 export type AjusteUpdateTipo = typeof AjusteUpdateTipo[keyof typeof AjusteUpdateTipo];
@@ -1544,6 +1548,11 @@ export interface AjusteUpdate {
      */
   custo?: number | null;
   status?: AjusteUpdateStatus;
+  /**
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  prazoProprio?: string | null;
 }
 
 export interface RegraDisponibilidade {
@@ -3784,19 +3793,7 @@ export type ListReservasParams = {
  * Filtra as reservas de uma noiva só — `reservas.lead_id` é NOT NULL, então aqui não há a ambiguidade de dono que o bloqueio tem
  */
 leadId?: string;
-/**
- * Recorta por casamentoData contra hoje, em dia LOCAL America/Sao_Paulo (E87) — 'true' = casamentos de hoje em diante (asc), 'false' = já realizados (desc)
- */
-futuras?: ListReservasFuturas;
 };
-
-export type ListReservasFuturas = typeof ListReservasFuturas[keyof typeof ListReservasFuturas];
-
-
-export const ListReservasFuturas = {
-  true: 'true',
-  false: 'false',
-} as const;
 
 export type ListBloqueiosParams = {
 /**

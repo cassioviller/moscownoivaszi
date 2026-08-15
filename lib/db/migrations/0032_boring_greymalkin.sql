@@ -1,0 +1,1 @@
+ALTER TABLE "ajustes" ADD COLUMN "prazo_proprio" date;

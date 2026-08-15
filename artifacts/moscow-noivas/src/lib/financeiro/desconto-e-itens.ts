@@ -24,7 +24,7 @@
  * percentual não depende dos itens — `recusaDeDesconto` só o compara com 100 —,
  * então a resposta é a mesma que o servidor daria em todo estado gravável.
  */
-import { brutoEmCentavos, recusaDeDesconto } from "./dinheiro";
+import { brutoEmCentavos, motivoDaRecusaDeDesconto, recusaDeDesconto } from "./dinheiro";
 
 /** O mínimo que a régua precisa de um item — o `OrcamentoItem` do cliente serve. */
 export interface ItemComPreco {
@@ -78,11 +78,22 @@ export function recusaAoRemoverItem(
  * mudança não são 862 µs a cada tecla digitada no formulário de item ao lado.
  * A régua continua sendo a do servidor (regra 26) — a mesma que o diálogo
  * chama para dizer a frase inteira.
+ *
+ * **E240/S-O85 — e agora ela pergunta só o VEREDITO.** A conta é a mesma
+ * (`motivoDaRecusaDeDesconto` é o que `recusaDeDesconto` chama antes de
+ * montar o texto), sem os dois `toLocaleString` por item preso: medido em
+ * 15/08, a passada de 8 itens todos presos caiu de **413–430 µs para
+ * 1,0–1,15 µs**. O `useMemo` do chamador fica — barato duas vezes não é
+ * motivo para recalcular a cada tecla.
  */
 export function itensPresosPeloDesconto(orcamento: OrcamentoComDesconto): Set<string> {
   const presos = new Set<string>();
-  for (const it of orcamento.itens ?? []) {
-    if (recusaAoRemoverItem(orcamento, it.id)) presos.add(it.id);
+  const itens = orcamento.itens ?? [];
+  for (const it of itens) {
+    const semEste = itens.filter((i) => i.id !== it.id);
+    if (motivoDaRecusaDeDesconto(orcamento.descontoTipo, orcamento.descontoValor, brutoEmCentavos(semEste))) {
+      presos.add(it.id);
+    }
   }
   return presos;
 }

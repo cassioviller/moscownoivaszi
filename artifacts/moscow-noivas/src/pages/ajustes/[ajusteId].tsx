@@ -10,8 +10,8 @@ import { NaoEncontrado, Erro } from "@/components/estado";
 import { diasAteCasamento } from "../noivas/helpers";
 import {
   casamentoDeReferencia,
-  rotuloCasamento,
-  rotuloProva,
+  referenciaDoPrazo,
+  rotuloDoPrazo,
   urgenteAjuste,
 } from "@/lib/ajustes-prazo";
 import { podeVirarPecaDoAcervo } from "@/lib/confeccao-no-acervo";
@@ -75,9 +75,12 @@ export default function AjusteDetalhe() {
   // E170/A05.5 — a MESMA referência da fila: o casamento da noiva quando não há
   // bloqueio. A ficha calculava só `bloqueio?.casamentoData` e dizia "Sem prazo
   // definido" para toda confecção, enquanto a fila já a ordena pelo prazo.
+  // E240/S-O50 — prova → prazo próprio → casamento, e o rótulo pela origem;
+  // a mesma `referenciaDoPrazo` que a fila e o painel leem.
+  const referencia = referenciaDoPrazo(a);
+  const diasPrazo = referencia ? diasAteCasamento(referencia.data) : null;
+  // O casamento continua na ficha como FATO, mesmo quando não é ele o prazo.
   const casamento = casamentoDeReferencia(a);
-  const diasProva = a.proximaProva ? diasAteCasamento(a.proximaProva) : null;
-  const diasCasamento = casamento ? diasAteCasamento(casamento) : null;
   /**
    * S-O27 — agora é MESMO a régua da fila, e não só na frase.
    *
@@ -154,18 +157,22 @@ export default function AjusteDetalhe() {
                 <p className="font-medium">{brl(a.custo)}</p>
               </div>
             )}
+            {/* E240/S-O50: o prazo que a costureira fixou é FATO da ficha, mesmo
+                quando a prova marcada manda sobre ele. */}
+            {a.prazoProprio && (
+              <div>
+                <span className="text-muted-foreground text-sm">Prazo próprio</span>
+                <p className="font-medium" data-testid="prazo-proprio">{diaMesAbrevAno(a.prazoProprio)}</p>
+              </div>
+            )}
             <div>
               <span className="text-muted-foreground text-sm">Prazo</span>
-              {diasProva !== null ? (
-                <p className={`font-medium ${urgente ? "text-destructive" : ""}`}>
-                  {rotuloProva(diasProva)} · {diaMesAbrevAno(a.proximaProva!)}
-                </p>
-              ) : diasCasamento !== null ? (
-                <p className={`font-medium ${urgente ? "text-destructive" : ""}`}>
-                  {rotuloCasamento(diasCasamento)} · {diaMesAbrevAno(casamento!)}
+              {referencia && diasPrazo !== null ? (
+                <p className={`font-medium ${urgente ? "text-destructive" : ""}`} data-testid="prazo-do-trabalho">
+                  {rotuloDoPrazo(referencia, diasPrazo)} · {diaMesAbrevAno(referencia.data)}
                 </p>
               ) : (
-                <p className="text-muted-foreground text-sm">Sem prazo definido — sem prova nem casamento marcado.</p>
+                <p className="text-muted-foreground text-sm">Sem prazo definido — sem prova, sem prazo próprio e sem casamento marcado.</p>
               )}
             </div>
             {/* E156: uma vez no acervo, a ficha mostra a PEÇA — a mesma

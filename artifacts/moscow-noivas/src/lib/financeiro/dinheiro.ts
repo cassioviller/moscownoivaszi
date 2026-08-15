@@ -29,3 +29,5 @@ export type { LinhaDeDesconto } from "@workspace/financeiro-core";
  * do clique com a frase que o 422 traria depois.
  */
 export { parseQuantidade, recusaDeDesconto } from "@workspace/financeiro-core";
+// E240/S-O85 — o VEREDITO sem a frase, para quem só quer o sim/não.
+export { motivoDaRecusaDeDesconto } from "@workspace/financeiro-core";

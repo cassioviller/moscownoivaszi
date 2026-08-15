@@ -503,7 +503,7 @@
         <li><strong>“Pediram para remarcar”</strong> — vem primeiro porque não é mensagem a enviar: <strong>é um horário preso</strong> que a loja pode devolver. Quanto antes remarcar, mais chance de outra noiva usar aquela hora</li>
         <li><strong>“Procurar para confirmar — próximas 48h”</strong> — a fila do dia seguinte. Clicar abre o WhatsApp e registra que você procurou</li>
         <li><strong>“Aceites esperando contrato”</strong> — noivas que já disseram sim pelo link. <strong>É informação, não tarefa sua</strong>: quem fecha o contrato é a vendedora</li>
-        <li><strong>“Orçamentos vencendo — próximas 72h”</strong> — o lembrete antes de a validade passar em silêncio. Também é da vendedora</li>
+        <li><strong>“Orçamentos vencendo — próximos 3 dias”</strong> — o lembrete antes de a validade passar em silêncio. Também é da vendedora</li>
       </ul>
       <p class="nota">O bloco de valores em aberto é do financeiro e <b>não aparece para você</b> — cobrança não é da recepção.</p>
     </section>
@@ -670,11 +670,11 @@
         <table>
           <thead><tr><th>O que</th><th>Quanto vale</th></tr></thead>
           <tbody>
-            <tr><td>Malha da grade</td><td class="prazo">30 minutos por linha</td></tr>
+            <tr><td>Malha da grade</td><td class="prazo" data-regua="SLOT_MINUTOS">30 minutos por linha</td></tr>
             <tr><td>Duração da prova</td><td class="prazo">configurável — a loja escolhe</td></tr>
-            <tr><td>Confirmação de presença</td><td class="prazo">próximas 48 horas</td></tr>
-            <tr><td>Aviso de orçamento vencendo</td><td class="prazo">próximas 72 horas</td></tr>
-            <tr><td>Prova “iminente” (vermelho)</td><td class="prazo">7 dias ou menos</td></tr>
+            <tr><td>Confirmação de presença</td><td class="prazo" data-regua="JANELA_CONFIRMACAO_MS">próximas 48 horas</td></tr>
+            <tr><td>Aviso de orçamento vencendo</td><td class="prazo" data-regua="JANELA_ORCAMENTO_DIAS">vence hoje ou nos próximos 3 dias</td></tr>
+            <tr><td>Prova “iminente” (vermelho)</td><td class="prazo" data-regua="JANELA_IMINENTE_DIAS">7 dias ou menos</td></tr>
             <tr><td>Sua sessão (login)</td><td class="prazo" data-regua="SESSAO_TTL_MS">8 horas</td></tr>
           </tbody>
         </table>

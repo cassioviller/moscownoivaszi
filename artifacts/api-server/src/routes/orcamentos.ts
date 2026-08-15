@@ -108,6 +108,13 @@ async function marcarOrcamentoAberto(lojaId: string, leadId: string): Promise<vo
  * loja é épico próprio, não uma coluna nova enfiada aqui.
  */
 const VALIDADE_PADRAO_DIAS = 30;
+/**
+ * E240/S-O94 — o piso do link da proposta (S-O39/E176): o link dura o que a
+ * proposta durar, e nunca menos que UM dia, para a proposta que vence hoje não
+ * nascer com o link morto. Era `const umDia` dentro do handler; ganhou nome de
+ * módulo para o manual poder pregá-lo (`varredura-manuais-prazos`).
+ */
+const PISO_DO_LINK_MS = 24 * 60 * 60 * 1000;
 
 /** Aceita o `db` global ou a transação em curso — mesmo idioma do E56/E94. */
 type Cliente = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -1429,9 +1436,8 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", requireModulo("orcame
      * foi gerado.
      */
     const validadeVigente = validadeNova ?? sobTranca.validade;
-    const umDia = 24 * 60 * 60 * 1000;
     const expiraEm = validadeVigente
-      ? new Date(Math.max(validadeVigente.getTime(), Date.now() + umDia))
+      ? new Date(Math.max(validadeVigente.getTime(), Date.now() + PISO_DO_LINK_MS))
       : new Date(Date.now() + CONVITE_TTL_MS);
 
     await tx.update(orcamentosTable)

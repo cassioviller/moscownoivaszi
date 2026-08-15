@@ -12,8 +12,9 @@
  * regras saíram da tela para cá, e as duas passaram a derivar delas.
  *
  * As janelas são as do E69 e continuam sendo decisão de produto: 48h para
- * confirmar presença (dá tempo de a noiva remarcar), 72h para o orçamento que
- * vence (dá tempo de ela decidir).
+ * confirmar presença (dá tempo de a noiva remarcar), 3 DIAS para o orçamento
+ * que vence (dá tempo de ela decidir — era "72h", e a S-M25 a pôs em dias).
+ * E240/S-O94: as duas têm nome porque os manuais as pregam.
  */
 
 export const JANELA_CONFIRMACAO_MS = 48 * 3_600_000;

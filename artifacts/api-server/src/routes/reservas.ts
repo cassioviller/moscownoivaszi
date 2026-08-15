@@ -181,21 +181,21 @@ router.get("/lojas/:lojaId/reservas", async (req, res): Promise<void> => {
     res.status(400).json({ error: "FILTRO_INVALIDO" });
     return;
   }
-  const { leadId, futuras } = query.data;
-  const hoje = inicioDoDia(diaLocal(new Date()));
+  // E240/S-O99 — o recorte `futuras` SAIU desta porta: nasceu no E185 ao lado
+  // do `leadId` e ficou três sessões com ZERO chamadores fora da própria régua
+  // (0 em `artifacts/`, 0 em `e2e/`). Futuro/passado é pergunta do livro de
+  // reservas, que lista por PEÇA em `GET /bloqueios?futuras=`; esta é o
+  // AGREGADO por noiva, e a ficha dela (`?leadId=`) é quem a chama.
+  const { leadId } = query.data;
   const reservas = await db.query.reservasTable.findMany({
     where: and(
       eq(reservasTable.lojaId, lojaId),
       ...(leadId ? [eq(reservasTable.leadId, leadId)] : []),
-      ...(futuras === "true" ? [gte(reservasTable.casamentoData, hoje)] : []),
-      ...(futuras === "false" ? [lt(reservasTable.casamentoData, hoje)] : []),
     ),
     with: RESERVA_COM_TUDO,
-    // `casamentoData` é NOT NULL aqui — ao contrário do bloqueio, nenhuma linha
-    // escapa do recorte por ser nula. Passadas saem da mais recente para a mais
-    // antiga; o resto mantém a ordem histórica (asc), para não mudar o contrato
-    // de quem já lia sem recorte.
-    orderBy: futuras === "false" ? [desc(reservasTable.casamentoData)] : [asc(reservasTable.casamentoData)],
+    // Ordem histórica (asc), a mesma de antes do E185 — o contrato de quem lê
+    // sem recorte não muda.
+    orderBy: [asc(reservasTable.casamentoData)],
   });
   res.json(ListReservasResponse.parse(reservas.map(reservaComDonos)));
 });

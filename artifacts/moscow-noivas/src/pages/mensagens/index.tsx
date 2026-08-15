@@ -60,7 +60,7 @@ import { brl, instanteDiaHora, instanteDiaMes } from "@/lib/formatos";
  * recepcionista desce clicando: as noivas das próximas 48h que ainda não foram
  * procuradas (carimba `contatadoEm` ao abrir o wa.me — E97 separou isso da
  * confirmação DELA), as noivas em atraso com a mensagem que cita a dívida (E29)
- * e os orçamentos enviados vencendo em 72h.
+ * e os orçamentos enviados vencendo nos próximos 3 dias (`JANELA_ORCAMENTO_DIAS`; era "72h" no rótulo até o E240).
  * É o máximo de automação possível sem API externa — o clique é humano, a
  * preparação é toda do sistema.
  */
@@ -255,7 +255,7 @@ export default function MensagensDoDia() {
     return particionaPorCobranca(inadimplentes, new Map([...persistentes, ...marcas]));
   }, [inadimplentes, marcas]);
 
-  // Orçamentos ENVIADOS com validade nas próximas 72h (ainda não vencidos).
+  // Orçamentos ENVIADOS com validade de hoje a `JANELA_ORCAMENTO_DIAS` dias (ainda não vencidos).
   const orcamentosVencendo = useMemo(
     () => orcamentosVencendoNaJanela(orcamentos.data?.itens ?? [], hojeLocal()),
     [orcamentos.data],
@@ -660,7 +660,7 @@ export default function MensagensDoDia() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <FileClock className="h-5 w-5 text-primary" />
-              Orçamentos vencendo — próximas 72h
+              Orçamentos vencendo — próximos 3 dias
             </CardTitle>
             <CardDescription>
               O lembrete gentil antes de a validade passar em silêncio.

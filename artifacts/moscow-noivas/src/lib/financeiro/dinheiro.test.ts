@@ -6,6 +6,7 @@ import {
   liquidoEmCentavos,
   parseQuantidade,
   parseValor,
+  motivoDaRecusaDeDesconto,
   reais,
   recusaDeDesconto,
   somaCentavos,
@@ -153,6 +154,28 @@ describe("recusaDeDesconto — o teto dos dois tipos, numa régua só", () => {
   it("sem valor não há o que recusar", () => {
     expect(recusaDeDesconto("VALOR", null, BRUTO)).toBeNull();
     expect(recusaDeDesconto(null, 6000, BRUTO)).toBeNull();
+  });
+
+  /**
+   * E240/S-O85 — a DECISÃO saiu da FRASE, e esta é a prova de equivalência
+   * (regra 30 do METODO): em toda célula da grade, o veredito é nulo exatamente
+   * quando a recusa é nula, e o motivo nomeia a mesma cláusula que a frase.
+   * Medido: 4 tipos × 8 valores × 3 brutos = 96 células, zero divergência.
+   */
+  it("motivoDaRecusaDeDesconto é o veredito de recusaDeDesconto, sem a frase — 96 células, zero divergência", () => {
+    const tipos = ["PERCENTUAL", "VALOR", null, undefined];
+    const valores = [null, undefined, 0, 50, 100, 100.01, 5000, 5000.01];
+    const brutos = [null, 0, BRUTO];
+    let celulas = 0;
+    for (const tipo of tipos) for (const valor of valores) for (const bruto of brutos) {
+      celulas++;
+      const motivo = motivoDaRecusaDeDesconto(tipo, valor, bruto);
+      const recusa = recusaDeDesconto(tipo, valor, bruto);
+      expect(motivo === null, `${tipo} ${valor} ${bruto}`).toBe(recusa === null);
+      if (motivo === "PERCENTUAL_ACIMA_DE_100") expect(recusa?.detalhe).toContain("não passa de 100");
+      if (motivo === "VALOR_ACIMA_DO_BRUTO") expect(recusa?.detalhe).toContain("é maior que os itens");
+    }
+    expect(celulas).toBe(96);
   });
 });
 

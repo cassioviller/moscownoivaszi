@@ -176,6 +176,20 @@ export const ajustesTable = pgTable("ajustes", {
    * cobra, não o que a noiva paga (isso é o item do orçamento).
    */
   custo: decimal("custo", { precision: 10, scale: 2, mode: "number" }),
+  /**
+   * E240/S-O50 (decisão da dona, 15/08/2026) — **a confecção ganha prazo
+   * próprio.** Até aqui o prazo de todo trabalho de agulha era derivado: a
+   * próxima prova quando há, senão o casamento da noiva (`casamentoDeReferencia`,
+   * E170). A costureira não tinha como dizer *"esta eu preciso para o dia 10"*
+   * quando o casamento é em março — a coluna não existia. Medido no `heliumdb`
+   * em 15/08: **7 ajustes, 5 confecções**, todas com o prazo saindo do
+   * casamento.
+   *
+   * `date` e não `timestamptz`, pela mesma razão das férias: prazo é DIA no
+   * fuso da loja. Nulo é "vale a régua derivada" — todo ajuste comum e toda
+   * confecção antiga ficam como estavam.
+   */
+  prazoProprio: date("prazo_proprio"),
   status: ajusteStatusEnum("status").notNull().default("PENDENTE"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

@@ -225,6 +225,13 @@
       "when": 1786825095176,
       "tag": "0031_violet_gateway",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1786830503431,
+      "tag": "0032_boring_greymalkin",
+      "breakpoints": true
     }
   ]
 }

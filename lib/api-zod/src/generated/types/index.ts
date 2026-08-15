@@ -255,7 +255,6 @@ export * from './listParcelasParams';
 export * from './listParcelasStatus';
 export * from './listPortais200Item';
 export * from './listRecibos200';
-export * from './listReservasFuturas';
 export * from './listReservasParams';
 export * from './locacaoDoLead';
 export * from './loginInput';

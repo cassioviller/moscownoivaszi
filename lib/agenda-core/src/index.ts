@@ -16,3 +16,6 @@ export * from "./mover";
 // já existia governa atendimento, e está certo para provas; este governa a peça
 // saindo e voltando. O ateliê tem dois calendários, e o modelo tinha um.
 export * from "./expediente-retirada";
+// E240/S-O116 — a janela de PROVA, num lugar só: servidor e tela importam a
+// mesma conta em vez de escrevê-la duas vezes.
+export * from "./janela-de-prova";

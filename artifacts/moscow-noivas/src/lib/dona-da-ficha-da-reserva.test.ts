@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { donaDaFicha, temReservaMae } from "./dona-da-ficha-da-reserva";
+import { casamentoDaDona, donaDaFicha, pecaForaDaDataDaNoiva, temReservaMae } from "./dona-da-ficha-da-reserva";
 
 /**
  * S-O54/E185 — a ficha da reserva passa a perguntar à reserva-mãe.
@@ -49,5 +49,48 @@ describe("de quem é a peça que a ficha da reserva desenha", () => {
     expect(temReservaMae({ reservaId: "r1" })).toBe(true);
     expect(temReservaMae({ reservaId: null })).toBe(false);
     expect(temReservaMae(undefined)).toBe(false);
+  });
+});
+
+/**
+ * E240/S-O98 — a ficha da PEÇA passa a saber que a noiva mudou de data.
+ *
+ * Vermelho medido antes do conserto: não havia função — a ficha lia
+ * `reserva.casamentoData` e desenhava, e nenhuma linha comparava com o
+ * casamento da dona (`grep -c casamentoData reservas/[bloqueioId].tsx` = 2,
+ * as duas desenhando o dia da peça).
+ */
+describe("a peça ficou em outro dia que a noiva (E240/S-O98)", () => {
+  it("própria: a noiva casa em 03/10 e a peça ficou em 12/09 — a ficha avisa os dois dias", () => {
+    const bloqueio = {
+      leadId: "n1",
+      casamentoData: "2028-09-12T15:00:00.000Z",
+      lead: { noivaNome: "Ana", casamentoData: "2028-10-03T15:00:00.000Z" },
+    };
+    expect(pecaForaDaDataDaNoiva(bloqueio, null)).toEqual({ diaDaNoiva: "2028-10-03", diaDaPeca: "2028-09-12" });
+  });
+
+  it("o mesmo dia em duas grafias de instante NÃO diverge — a pergunta é sobre o DIA", () => {
+    const bloqueio = {
+      leadId: "n1",
+      casamentoData: "2028-09-12T15:00:00Z",
+      lead: { noivaNome: "Ana", casamentoData: "2028-09-12T15:00:00.000Z" },
+    };
+    expect(pecaForaDaDataDaNoiva(bloqueio, null)).toBeNull();
+  });
+
+  it("herdada: o véu pendurado na mãe compara com o casamento da noiva DA MÃE", () => {
+    const veu = { leadId: null, reservaId: "r1", donoLeadId: "n2", casamentoData: "2028-09-12T15:00:00.000Z", lead: null };
+    const mae = { leadId: "n2", lead: { noivaNome: "Bia", casamentoData: "2028-09-19T15:00:00.000Z" } };
+    expect(casamentoDaDona(veu, mae)).toBe("2028-09-19T15:00:00.000Z");
+    expect(pecaForaDaDataDaNoiva(veu, mae)).toEqual({ diaDaNoiva: "2028-09-19", diaDaPeca: "2028-09-12" });
+    // Enquanto a mãe não voltou da rede não há data para comparar — e não há aviso falso.
+    expect(pecaForaDaDataDaNoiva(veu, undefined)).toBeNull();
+  });
+
+  it("sem dona, ou sem data de um dos lados, não há o que dizer", () => {
+    expect(pecaForaDaDataDaNoiva({ leadId: null, casamentoData: "2028-09-12T15:00:00.000Z" }, null)).toBeNull();
+    expect(pecaForaDaDataDaNoiva({ leadId: "n1", casamentoData: null, lead: { casamentoData: "2028-09-12T15:00:00.000Z" } }, null)).toBeNull();
+    expect(pecaForaDaDataDaNoiva({ leadId: "n1", casamentoData: "2028-09-12T15:00:00.000Z", lead: { casamentoData: null } }, null)).toBeNull();
   });
 });

@@ -64,3 +64,67 @@ export function donaDaFicha(bloqueio: BloqueioDaFicha | null | undefined, mae: R
 export function temReservaMae(bloqueio: BloqueioDaFicha | null | undefined): boolean {
   return !!bloqueio?.reservaId;
 }
+
+/**
+ * E240/S-O98 — **a ficha da reserva era a única tela que não sabia que a
+ * noiva mudou de data.**
+ *
+ * O aviso da data (S-O74/E189, `reservasForaDaData`) vive na ficha da NOIVA:
+ * ela compara o casamento da ficha com o de cada reserva dela e oferece o
+ * gesto de mover. Quem abre a ficha da PEÇA (`/reservas/:bloqueioId`) lia o
+ * `casamentoData` do bloqueio sem nada dizer que a noiva já casa em outro
+ * dia — a peça está errada e a tela dela era a única que não sabia. Medido em
+ * 15/08: `casamentoData` aparece 2 vezes em `reservas/[bloqueioId].tsx`, as
+ * duas desenhando o dia da PEÇA; nenhuma linha o comparava com o da dona.
+ *
+ * O caminho barato é o que a sobra apontou: a dona já está resolvida aqui
+ * (`donaDaFicha`), e as duas pontas que a nomeiam — `bloqueio.lead` na própria,
+ * `mae.lead` na herdada — carregam o `casamentoData` dela no mesmo payload.
+ * O que faltava era a pergunta.
+ *
+ * Régua PURA, como a irmã: compara DIA DE NEGÓCIO, porque `casamentoData` é
+ * data ancorada ao meio-dia e comparar o instante cru acusaria divergência
+ * entre `…T15:00:00.000Z` e `…T15:00:00Z`.
+ */
+export type CasamentoDivergente = {
+  /** O dia que a ficha da noiva diz (YYYY-MM-DD) — para onde a peça deveria ir. */
+  diaDaNoiva: string;
+  /** O dia em que a peça ficou (YYYY-MM-DD). */
+  diaDaPeca: string;
+};
+
+type BloqueioComCasamento = BloqueioDaFicha & {
+  casamentoData?: string | Date | null;
+  lead?: { noivaNome?: string | null; casamentoData?: string | Date | null } | null;
+};
+
+type ReservaMaeComCasamento = {
+  leadId?: string | null;
+  lead?: { noivaNome?: string | null; casamentoData?: string | Date | null } | null;
+} | null | undefined;
+
+const diaDeNegocio = (v: string | Date): string => new Date(v).toISOString().slice(0, 10);
+
+/** O casamento da DONA — pela mesma ponta que dá o nome dela. */
+export function casamentoDaDona(
+  bloqueio: BloqueioComCasamento | null | undefined,
+  mae: ReservaMaeComCasamento,
+): string | Date | null {
+  const dona = donaDaFicha(bloqueio, mae);
+  if (dona.origem === "propria") return bloqueio?.lead?.casamentoData ?? null;
+  if (dona.origem === "herdada") return mae?.lead?.casamentoData ?? null;
+  return null;
+}
+
+/** `null` quando não há o que dizer — sem dona, sem data de um dos lados, ou o mesmo dia. */
+export function pecaForaDaDataDaNoiva(
+  bloqueio: BloqueioComCasamento | null | undefined,
+  mae: ReservaMaeComCasamento,
+): CasamentoDivergente | null {
+  const daNoiva = casamentoDaDona(bloqueio, mae);
+  const daPeca = bloqueio?.casamentoData;
+  if (!daNoiva || !daPeca) return null;
+  const diaDaNoiva = diaDeNegocio(daNoiva);
+  const diaDaPeca = diaDeNegocio(daPeca);
+  return diaDaNoiva === diaDaPeca ? null : { diaDaNoiva, diaDaPeca };
+}

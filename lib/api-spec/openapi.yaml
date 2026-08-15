@@ -2195,12 +2195,13 @@ paths:
           required: false
           description: "Filtra as reservas de uma noiva só — `reservas.lead_id` é NOT NULL, então aqui não há a ambiguidade de dono que o bloqueio tem"
           schema: { type: string }
-        # String enum, não boolean: zod.coerce.boolean() engoliria "false" como true.
-        - name: futuras
-          in: query
-          required: false
-          description: "Recorta por casamentoData contra hoje, em dia LOCAL America/Sao_Paulo (E87) — 'true' = casamentos de hoje em diante (asc), 'false' = já realizados (desc)"
-          schema: { type: string, enum: ["true", "false"] }
+        # E240/S-O99 — o recorte `futuras` SAIU daqui. Ele nasceu no E185 ao
+        # lado do `leadId` e ficou três sessões sem um único chamador (0 em
+        # `artifacts/`, 0 em `e2e/`; só a própria régua o exercitava). A
+        # pergunta "quais reservas futuras/passadas" é do LIVRO DE RESERVAS, que
+        # lista por PEÇA e usa `GET /bloqueios?futuras=` — é lá que a coluna e
+        # o chamador estão. Esta listagem é o AGREGADO por noiva: quem a chama
+        # é a ficha dela (`?leadId=`), e é o único recorte que ela promete.
       responses:
         "200":
           description: List of reservas
@@ -6457,6 +6458,12 @@ components:
         # depois da prova que criou o ajuste — é para ela que o ajuste precisa
         # estar pronto. Null = sem prova marcada (o casamento vira a referência).
         proximaProva: { type: ["string", "null"], format: date-time }
+        # E240/S-O50 (decisão da dona, 15/08/2026): o PRAZO PRÓPRIO da
+        # confecção — dia local AAAA-MM-DD, como as férias. Nulo é "vale a
+        # régua derivada" (prova → casamento). Quando existe, ele manda sobre o
+        # casamento na fila e na ficha; a prova marcada continua mandando sobre
+        # os dois, porque é para ela que a peça precisa estar pronta.
+        prazoProprio: { type: ["string", "null"] }
         # E156: a peça do acervo que ESTE trabalho virou. Null enquanto não
         # virou — e é o que troca o gesto "virou peça do acervo" pelo link para
         # a peça, na mesma linha da fila.
@@ -6516,6 +6523,11 @@ components:
         descricao: { type: string, minLength: 1, maxLength: 1000 }
         tipo: { type: string, enum: [AJUSTE, CONFECCAO] }
         custo: { type: number, minimum: 0 }
+        # E240/S-O50: dia local, opcional. String enum de padrão e não
+        # `format: date`, porque o codegen zod não valida format.
+        prazoProprio:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
     AjusteUpdate:
       type: object
       properties:
@@ -6523,6 +6535,10 @@ components:
         tipo: { type: string, enum: [AJUSTE, CONFECCAO] }
         custo: { type: ["number", "null"], minimum: 0 }
         status: { type: string, enum: [PENDENTE, FEITO] }
+        # E240/S-O50: `null` limpa o prazo próprio (volta à régua derivada).
+        prazoProprio:
+          type: ["string", "null"]
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
     RegraDisponibilidade:
       type: object
       required: [lojaId, provaDiasAntes, provaDuracao, usoDiasAntes, usoDiasDepois, lavagemDiasDepois, estoqueLavagemDiasDepois, atendimentoAberturaHora, atendimentoFechamentoHora, diasFuncionamento]

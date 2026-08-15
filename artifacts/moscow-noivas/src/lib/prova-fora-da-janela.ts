@@ -31,7 +31,8 @@
  * era a pergunta.
  */
 
-import { addDias, diaLocal } from "@/lib/financeiro/datas";
+import { janelaDeProvaDoDia } from "@workspace/agenda-core";
+import { diaDeNegocio, diaLocal } from "@/lib/financeiro/datas";
 
 /** O que basta saber sobre o atendimento para responder à pergunta. */
 export type AtendimentoParaJanela = {
@@ -52,19 +53,24 @@ export type RegraDaJanela = {
  * D − usoDiasAntes − 1]`. `null` quando a régua não deixa dia nenhum — é a
  * S-A23, e ali a pergunta desta lib não tem resposta útil.
  *
- * É a mesma conta de `api-server/src/lib/disponibilidade.ts:janelaDeProvaPrevista`,
- * escrita do lado da tela porque o servidor não a manda mastigada. As duas
- * estão presas pelos MESMOS números nos dois testes (S-O116 pede a régua que as
- * compare sozinha).
+ * **E240/S-O116 — era a mesma conta de
+ * `api-server/src/lib/disponibilidade.ts:janelaDeProvaPrevista`, escrita uma
+ * segunda vez aqui** porque o servidor não a manda mastigada, e as duas só
+ * estavam presas pelos MESMOS números nos dois testes. Agora as duas importam
+ * `janelaDeProvaDoDia` do `@workspace/agenda-core`; o que sobra deste lado é
+ * a conversão do casamento para DIA — e ela era o defeito armado: a régua
+ * fazia `diaLocal` sobre uma data de NEGÓCIO, e `2028-09-05T00:00:00Z` dava
+ * 04/09 (janela 21/08–31/08) onde o servidor dizia 22/08–01/09. Zero linhas
+ * desancoradas no banco desde o E197 — armado, não disparado.
  */
 export function janelaDeProva(
   casamento: string | Date,
   regra: RegraDaJanela,
 ): { inicio: string; fim: string } | null {
-  const dia = diaLocal(casamento);
-  const inicio = addDias(dia, -(regra.provaDiasAntes ?? 0));
-  const fim = addDias(dia, -(regra.usoDiasAntes ?? 0) - 1);
-  return inicio <= fim ? { inicio, fim } : null;
+  return janelaDeProvaDoDia(diaDeNegocio(casamento), {
+    provaDiasAntes: regra.provaDiasAntes ?? 0,
+    usoDiasAntes: regra.usoDiasAntes ?? 0,
+  });
 }
 
 /**
@@ -85,8 +91,9 @@ export function provaForaDaJanela(
   const casamento = a.bloqueio?.casamentoData;
   if (!casamento || !a.inicio) return null;
 
+  // A prova é INSTANTE (dia local); o casamento é data de NEGÓCIO (S-O117).
   const diaProva = diaLocal(a.inicio);
-  const diaCasamento = diaLocal(casamento);
+  const diaCasamento = diaDeNegocio(casamento);
   if (diaProva > diaCasamento) return "DEPOIS_DO_CASAMENTO";
 
   const janela = janelaDeProva(casamento, regra);

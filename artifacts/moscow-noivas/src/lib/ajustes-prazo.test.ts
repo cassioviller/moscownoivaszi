@@ -3,8 +3,13 @@ import { ancoraDeNegocio } from "@workspace/financeiro-core";
 import {
   ajustesComPrazoApertado,
   casamentoDeReferencia,
+  CASAMENTO_APERTADO_DIAS,
   prazoDias,
+  PROVA_APERTADA_DIAS,
+  referenciaDoPrazo,
   rotuloCasamento,
+  rotuloDoPrazo,
+  rotuloPrazoProprio,
   rotuloProva,
   prazoApertado,
   urgenteAjuste,
@@ -151,6 +156,67 @@ describe("ajustesComPrazoApertado — o cartão do painel conta o que a fila mos
     expect(rotuloCasamento(0)).toBe("casamento hoje");
     expect(rotuloCasamento(1)).toBe("casamento amanhã");
     expect(rotuloCasamento(14)).toBe("casamento em 14 dias");
+  });
+});
+
+/**
+ * E240/S-O50 (decisão da dona, 15/08/2026) — **a confecção ganha prazo
+ * próprio, e ele entra ENTRE a prova e o casamento.**
+ *
+ * Antes do E240 a régua era `proximaProva ?? casamento` e o campo não existia:
+ * a costureira não tinha como dizer "esta eu preciso para o dia 10" com o
+ * casamento em março. Vermelho medido antes do conserto, com a régua antiga:
+ * a confecção com `prazoProprio` a 3 dias e casamento a 40 dava
+ * `prazoDias = 40` e ficava FORA do recorte (`expected 40 to be 3`).
+ */
+describe("referenciaDoPrazo — prova → prazo próprio → casamento (E240/S-O50)", () => {
+  it("o prazo próprio manda sobre o casamento: 3 dias, não 40, e ENTRA no recorte", () => {
+    const c = {
+      status: "PENDENTE",
+      prazoProprio: emDias(3),
+      atendimento: { bloqueio: null, lead: { casamentoData: emDiasISO(40) } },
+    };
+    expect(prazoDias(c)).toBe(3);
+    expect(referenciaDoPrazo(c)).toEqual({ data: emDias(3), origem: "PRAZO_PROPRIO" });
+    expect(prazoApertado(c)).toBe(true);
+    expect(urgenteAjuste(c)).toBe(true);
+    expect(ajustesComPrazoApertado([c])).toEqual([c]);
+  });
+
+  it("a prova marcada continua mandando sobre o prazo próprio — é para ela que a peça tem de estar pronta", () => {
+    const c = {
+      status: "PENDENTE",
+      proximaProva: emDiasISO(2),
+      prazoProprio: emDias(20),
+      atendimento: { bloqueio: null, lead: { casamentoData: emDiasISO(40) } },
+    };
+    expect(referenciaDoPrazo(c)?.origem).toBe("PROVA");
+    expect(prazoDias(c)).toBe(2);
+  });
+
+  it("o limiar do prazo próprio é o do casamento (14), não o da prova (7)", () => {
+    const noLimiar = { status: "PENDENTE", prazoProprio: emDias(CASAMENTO_APERTADO_DIAS) };
+    const umDepois = { status: "PENDENTE", prazoProprio: emDias(CASAMENTO_APERTADO_DIAS + 1) };
+    expect(prazoApertado(noLimiar)).toBe(true);
+    expect(prazoApertado(umDepois)).toBe(false);
+    // E a prova continua no seu: 7 entra, 8 não.
+    expect(prazoApertado({ status: "PENDENTE", proximaProva: emDiasISO(PROVA_APERTADA_DIAS) })).toBe(true);
+    expect(prazoApertado({ status: "PENDENTE", proximaProva: emDiasISO(PROVA_APERTADA_DIAS + 1) })).toBe(false);
+  });
+
+  it("nulo é \"vale a régua derivada\": sem prazo próprio, tudo como era", () => {
+    const c = { status: "PENDENTE", prazoProprio: null, atendimento: { bloqueio: null, lead: { casamentoData: emDiasISO(5) } } };
+    expect(referenciaDoPrazo(c)).toEqual({ data: emDiasISO(5), origem: "CASAMENTO" });
+  });
+
+  it("o rótulo segue a origem, e o do prazo próprio cobre passado, hoje, amanhã e o plural", () => {
+    expect(rotuloPrazoProprio(-1)).toBe("prazo passou");
+    expect(rotuloPrazoProprio(0)).toBe("prazo hoje");
+    expect(rotuloPrazoProprio(1)).toBe("prazo amanhã");
+    expect(rotuloPrazoProprio(9)).toBe("prazo em 9 dias");
+    expect(rotuloDoPrazo({ data: "2027-01-01", origem: "PRAZO_PROPRIO" }, 9)).toBe("prazo em 9 dias");
+    expect(rotuloDoPrazo({ data: "2027-01-01", origem: "PROVA" }, 9)).toBe("prova em 9 dias");
+    expect(rotuloDoPrazo({ data: "2027-01-01", origem: "CASAMENTO" }, 9)).toBe("casamento em 9 dias");
   });
 });
 

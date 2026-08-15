@@ -99,6 +99,30 @@ const REGUAS = {
     arquivo: "artifacts/api-server/src/lib/disponibilidade.ts",
     unidade: "dias",
   },
+
+  /**
+   * **E240/S-O94 — os prazos que moram na TELA (e em dois cores), que a régua
+   * não sabia ler.** A sobra media 9 de 31 células cobertas e apontava as que
+   * eram anotáveis: *"7 dias amarelo · 14 vermelho"*, *"próximas 48 horas"*, o
+   * vermelho da prova e do casamento, a malha da grade. Faltava o código
+   * exportar cada número com um nome — e é o que este bloco cobra: a fonte
+   * pode ser `.tsx`, `.ts` de tela ou pacote `lib/`; a leitura é a mesma.
+   *
+   * O que a extensão achou, medido em 15/08: os dois manuais escreviam
+   * **"próximas 72 horas"** para uma janela que é `JANELA_ORCAMENTO_DIAS = 3`
+   * desde a S-M25 (a régua conta DIAS, e a tela dizia "72h" também). Manual e
+   * tela passaram a dizer "3 dias" no mesmo commit.
+   */
+  SLOT_MINUTOS: { arquivo: "lib/agenda-core/src/slots.ts", unidade: "minutos" },
+  JANELA_CONFIRMACAO_MS: { arquivo: "artifacts/moscow-noivas/src/lib/mensagens-do-dia.ts", unidade: "horas" },
+  JANELA_ORCAMENTO_DIAS: { arquivo: "artifacts/moscow-noivas/src/lib/mensagens-do-dia.ts", unidade: "dias" },
+  JANELA_IMINENTE_DIAS: { arquivo: "artifacts/moscow-noivas/src/pages/provas/index.tsx", unidade: "dias" },
+  CASAMENTO_URGENTE_DIAS: { arquivo: "artifacts/moscow-noivas/src/pages/noivas/helpers.ts", unidade: "dias" },
+  DIAS_ATENCAO: { arquivo: "lib/funil-core/src/parado.ts", unidade: "dias" },
+  DIAS_CRITICO: { arquivo: "lib/funil-core/src/parado.ts", unidade: "dias" },
+  PROVA_APERTADA_DIAS: { arquivo: "artifacts/moscow-noivas/src/lib/ajustes-prazo.ts", unidade: "dias" },
+  CASAMENTO_APERTADO_DIAS: { arquivo: "artifacts/moscow-noivas/src/lib/ajustes-prazo.ts", unidade: "dias" },
+  PISO_DO_LINK_MS: { arquivo: "artifacts/api-server/src/routes/orcamentos.ts", unidade: "dias" },
 } as const;
 
 type NomeDaRegua = keyof typeof REGUAS;
@@ -185,7 +209,11 @@ describe("varredura — o prazo que o manual promete é o que o código decide (
     // eram **9** e são **69**. O piso subiu junto, porque piso que não sobe é a
     // S-C46 — *"trava a contagem, mas com folga"* — e um piso de 9 sobre 69
     // deixaria sumir sete oitavos das promessas sem uma reprova.
-    expect(citadas.length, "as anotações `data-regua` sumiram dos manuais").toBeGreaterThanOrEqual(69);
+    // E240/S-O94 (15/08): eram 69 e são **97** — as 28 novas são as células
+    // que saem de constante da TELA e de dois cores (e a coluna "#" do
+    // proprietário, que usava a classe só pelo estilo, virou `rotulo`). O piso
+    // sobe junto, pela mesma razão de sempre.
+    expect(citadas.length, "as anotações `data-regua` sumiram dos manuais").toBeGreaterThanOrEqual(97);
   });
 
   /**

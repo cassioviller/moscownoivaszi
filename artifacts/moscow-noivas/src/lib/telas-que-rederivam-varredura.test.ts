@@ -169,6 +169,14 @@ describe("S-O16 — a tela que a noiva abre não afirma o dado da consulta", () 
  * função, uma linha acima (`casamentoData!` sob o `agruparPorMes` de quem tem
  * data, `proximaProva!` sob o `&&` dela, `compParam!` sob `competenciaValida`),
  * e nenhuma delas entrega o dado a uma soma. A 24ª fica vermelha aqui.
+ *
+ * **E240 (15/08): 23 → 19.** As quatro que saíram eram as da fila da costureira
+ * e da ficha do trabalho — `proximaProva!` e `casamento!`, duas em cada —,
+ * e saíram porque a régua do prazo passou a devolver a REFERÊNCIA inteira
+ * (`referenciaDoPrazo`: data + origem) em vez de dois escalares afirmados
+ * cada um sob o seu `&&`. Ninguém as caçou: o E240 foi ao arquivo pelo prazo
+ * próprio da confecção (S-O50), e a asserção some quando o dado sai da consulta
+ * para uma const — a frase do teste de cima, acontecendo. O retrato desce.
  */
 const GARANTIDOS_PELO_ROTEADOR = new Set(["activeLojaId", "id", "leadId", "bloqueioId", "token"]);
 
@@ -214,13 +222,6 @@ describe("S-O66 — afirmar e passar adiante é a mesma classe, um arquivo mais 
    * linha exata que mudou.
    */
   const JULGADAS_UMA_A_UMA: readonly string[] = [
-    // `diasProva !== null` (ficha) e `diasCasamento !== null` — o `!` é sobre a
-    // data de que o número acima foi derivado, dentro do mesmo ternário.
-    "pages/ajustes/[ajusteId].tsx → casamento! ×1",
-    "pages/ajustes/[ajusteId].tsx → proximaProva! ×1",
-    // A mesma dupla na fila de ajustes: o `&&` de cima é o `diasProva !== null`.
-    "pages/ajustes/index.tsx → casamento! ×1",
-    "pages/ajustes/index.tsx → proximaProva! ×1",
     // O botão de baixar o estorno só existe sob `!!linha.estornoPendente`, três
     // linhas acima; o `!` repete a guarda para o tipo do diálogo.
     "pages/comissoes/index.tsx → estornoPendente! ×1",
@@ -262,12 +263,14 @@ describe("S-O66 — afirmar e passar adiante é a mesma classe, um arquivo mais 
     "pages/reservas/index.tsx → casamentoData! ×3",
   ];
 
-  it("as asserções do recorte novo são as 23 julgadas uma a uma — nem uma a mais, nem uma a menos", () => {
+  it("as asserções do recorte novo são as 19 julgadas uma a uma — nem uma a mais, nem uma a menos", () => {
     const contagem = new Map<string, number>();
     for (const a of arquivosDeTela().flatMap(assercoesPassadasAdiante)) contagem.set(a, (contagem.get(a) ?? 0) + 1);
     const hoje = [...contagem].map(([sitio, n]) => `${sitio} ×${n}`).sort();
     expect(hoje).toEqual([...JULGADAS_UMA_A_UMA].sort());
-    expect(JULGADAS_UMA_A_UMA.reduce((s, l) => s + Number(/×(\d+)$/.exec(l)![1]), 0)).toBe(23);
+    // E240 tirou as quatro das telas de ajustes (a régua do prazo passou a devolver a data já
+    // derivada — `referenciaDoPrazo`), então as 23 do E238 são 19 na integração.
+    expect(JULGADAS_UMA_A_UMA.reduce((s, l) => s + Number(/×(\d+)$/.exec(l)![1]), 0)).toBe(19);
   });
 
   it("os cinco nomes dispensados são a maioria esmagadora — a lista é curta por medida", () => {

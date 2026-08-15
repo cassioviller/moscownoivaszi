@@ -22,6 +22,8 @@ import { diasAteCasamento } from "@/pages/noivas/helpers";
 type AjusteComPrazo = {
   status?: string;
   proximaProva?: string | null;
+  /** E240/S-O50 — o dia (AAAA-MM-DD) que a costureira fixou para a confecção. */
+  prazoProprio?: string | null;
   atendimento?: {
     bloqueio?: { casamentoData?: string | Date | null } | null;
     lead?: { casamentoData?: string | Date | null } | null;
@@ -50,10 +52,50 @@ export function casamentoDeReferencia(a: AjusteComPrazo): string | null {
   return data instanceof Date ? data.toISOString() : data;
 }
 
-export function prazoDias(a: AjusteComPrazo): number | null {
-  const referencia = a.proximaProva ?? casamentoDeReferencia(a);
-  return referencia ? diasAteCasamento(referencia) : null;
+/**
+ * E240/S-O50 (decisão da dona, 15/08/2026) — **a confecção ganha prazo
+ * próprio, e a régua ganha um degrau no meio.**
+ *
+ * A referência do prazo era `proximaProva ?? casamento`. Agora é
+ * **prova → prazo próprio → casamento**, nesta ordem, e a ordem é o que se
+ * decide aqui: a prova marcada continua mandando sobre tudo, porque é para ela
+ * que a peça precisa estar pronta; o prazo que a costureira fixou manda sobre
+ * o casamento, porque foi para isso que ela o fixou. Medido no `heliumdb` em
+ * 15/08: 7 ajustes, 5 confecções, todas com o prazo saindo do casamento — o
+ * campo nasce vazio para todas elas, e nada muda até alguém preenchê-lo.
+ *
+ * A ORIGEM viaja junto porque o rótulo depende dela ("prova em 3 dias",
+ * "prazo em 3 dias", "casamento em 3 dias" são três frases), e porque o limiar
+ * de atenção também: prova é ≤ `PROVA_APERTADA_DIAS`; prazo próprio e
+ * casamento são ≤ `CASAMENTO_APERTADO_DIAS` — os dois são o dia em que a peça
+ * tem de estar PRONTA, e a folga maior é a que o E175 já explicava.
+ */
+export type OrigemDoPrazo = "PROVA" | "PRAZO_PROPRIO" | "CASAMENTO";
+
+export type ReferenciaDoPrazo = { data: string; origem: OrigemDoPrazo };
+
+export function referenciaDoPrazo(a: AjusteComPrazo): ReferenciaDoPrazo | null {
+  if (a.proximaProva) return { data: a.proximaProva, origem: "PROVA" };
+  if (a.prazoProprio) return { data: a.prazoProprio, origem: "PRAZO_PROPRIO" };
+  const casamento = casamentoDeReferencia(a);
+  return casamento ? { data: casamento, origem: "CASAMENTO" } : null;
 }
+
+export function prazoDias(a: AjusteComPrazo): number | null {
+  const referencia = referenciaDoPrazo(a);
+  return referencia ? diasAteCasamento(referencia.data) : null;
+}
+
+/**
+ * E240/S-O94 — os dois limiares com NOME, para o manual da costureira poder
+ * pregá-los (`varredura-manuais-prazos`): até aqui eram o `7` e o `14` escritos
+ * dentro de `dentroDoPrazoDeAtencao`, e a célula do manual que os cita não
+ * tinha de onde sair.
+ */
+/** Prova marcada a até N dias acende a fila (e entra no recorte padrão). */
+export const PROVA_APERTADA_DIAS = 7;
+/** Sem prova: prazo próprio ou casamento a até N dias acende a fila. */
+export const CASAMENTO_APERTADO_DIAS = 14;
 
 /**
  * **A ÚNICA expressão de "está apertado" do módulo** — prova marcada manda
@@ -68,11 +110,10 @@ export function prazoDias(a: AjusteComPrazo): number | null {
  * `urgenteAjuste`, e as duas descem para cá.
  */
 function dentroDoPrazoDeAtencao(a: AjusteComPrazo): boolean {
-  const dias = a.proximaProva ? diasAteCasamento(a.proximaProva) : null;
-  if (dias !== null) return dias <= 7;
-  const casamento = casamentoDeReferencia(a);
-  if (!casamento) return false;
-  return diasAteCasamento(casamento) <= 14;
+  const referencia = referenciaDoPrazo(a);
+  if (!referencia) return false;
+  const dias = diasAteCasamento(referencia.data);
+  return dias <= (referencia.origem === "PROVA" ? PROVA_APERTADA_DIAS : CASAMENTO_APERTADO_DIAS);
 }
 
 /**
@@ -144,4 +185,22 @@ export function rotuloCasamento(dias: number): string {
   if (dias === 0) return "casamento hoje";
   if (dias === 1) return "casamento amanhã";
   return `casamento em ${dias} dias`;
+}
+
+/** E240/S-O50 — o prazo que a costureira fixou, nas mesmas palavras dos outros dois. */
+export function rotuloPrazoProprio(dias: number): string {
+  if (dias < 0) return "prazo passou";
+  if (dias === 0) return "prazo hoje";
+  if (dias === 1) return "prazo amanhã";
+  return `prazo em ${dias} dias`;
+}
+
+/**
+ * O rótulo pela ORIGEM — a fila e a ficha desenham o mesmo prazo com a mesma
+ * frase, e a escolha da frase mora aqui e não em cada tela (S-A17, de novo).
+ */
+export function rotuloDoPrazo(referencia: ReferenciaDoPrazo, dias: number): string {
+  if (referencia.origem === "PROVA") return rotuloProva(dias);
+  if (referencia.origem === "PRAZO_PROPRIO") return rotuloPrazoProprio(dias);
+  return rotuloCasamento(dias);
 }

@@ -94,7 +94,7 @@ import {
   FOTO_ACIMA_DO_TETO,
   FOTO_MAX_BYTES,
 } from "@/lib/limites";
-import { donaDaFicha, temReservaMae } from "@/lib/dona-da-ficha-da-reserva";
+import { donaDaFicha, pecaForaDaDataDaNoiva, temReservaMae } from "@/lib/dona-da-ficha-da-reserva";
 // E214: a faixa das cláusulas 14ª/15ª vem da MESMA conta do servidor.
 import { faixaDaAvariaRegistrada, faixaNaTela } from "@/lib/faixa-da-avaria";
 import {
@@ -180,6 +180,14 @@ export default function ReservaDetalhe() {
     },
   });
   const dona = donaDaFicha(reserva, mae.data);
+  /**
+   * E240/S-O98 — a peça ficou num dia e a noiva casa em outro. A ficha da
+   * NOIVA já avisa e oferece o gesto de mover (S-O74/E189); esta era a única
+   * das cinco telas que leem o casamento da reserva sem saber. A régua é pura
+   * e compara o DIA (`lib/dona-da-ficha-da-reserva.ts`); o gesto continua
+   * morando na ficha dela, porque mover é sobre TODAS as reservas da noiva.
+   */
+  const foraDaDataDaNoiva = pecaForaDaDataDaNoiva(reserva, mae.data);
 
   // E71: as avarias deste bloqueio + o contrato ATIVO da noiva (para o custo
   // do reparo poder virar parcela cobrável).
@@ -902,6 +910,30 @@ export default function ReservaDetalhe() {
               : <>(em aberto, peça ainda fora).</>}
           </p>
         </section>
+      )}
+
+      {foraDaDataDaNoiva && (
+        <div
+          className="border-amber-500/40 bg-amber-500/10 rounded-md border p-3 text-sm"
+          data-testid="aviso-peca-fora-da-data-da-noiva"
+        >
+          <p className="font-medium">
+            Esta peça ficou em {diaMesAbrevAno(foraDaDataDaNoiva.diaDaPeca)}, e a noiva casa em{" "}
+            {diaMesAbrevAno(foraDaDataDaNoiva.diaDaNoiva)}.
+          </p>
+          <p className="text-muted-foreground">
+            A data do casamento mudou na ficha dela e a reserva não acompanhou.{" "}
+            {dona.leadId ? (
+              <>
+                Na{" "}
+                <Link to={`/loja/${lojaId}/noivas/${dona.leadId}`} className="underline">
+                  ficha da noiva
+                </Link>{" "}
+                dá para mover as reservas dela para o dia certo — as peças e o contrato ativo vão junto.
+              </>
+            ) : null}
+          </p>
+        </div>
       )}
 
       {/* S-O11 — de quem é esta reserva, e como consertar quando é de outra.

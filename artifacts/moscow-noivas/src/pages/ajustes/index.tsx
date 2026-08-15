@@ -11,11 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { diasAteCasamento } from "../noivas/helpers";
 import {
-  casamentoDeReferencia,
   prazoApertado,
   prazoDias,
-  rotuloCasamento,
-  rotuloProva,
+  referenciaDoPrazo,
+  rotuloDoPrazo,
   urgenteAjuste,
 } from "@/lib/ajustes-prazo";
 import { podeVirarPecaDoAcervo } from "@/lib/confeccao-no-acervo";
@@ -106,7 +105,7 @@ export default function Ajustes() {
           <h1 className="text-3xl font-serif">Ajustes</h1>
           <p className="text-sm text-muted-foreground mt-1">
             A fila da costureira, do prazo mais apertado ao mais folgado — a próxima prova é o
-            prazo; sem prova marcada, vale o casamento.
+            prazo; sem prova marcada, vale o prazo próprio da confecção, e sem ele, o casamento.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -178,9 +177,9 @@ export default function Ajustes() {
           <ul className="divide-y">
             {pendentes.map((a) => {
               const bloqueio = a.atendimento?.bloqueio;
-              const diasProva = a.proximaProva ? diasAteCasamento(a.proximaProva) : null;
-              const casamento = casamentoDeReferencia(a);
-              const diasCasamento = casamento ? diasAteCasamento(casamento) : null;
+              // E240/S-O50 — prova → prazo próprio → casamento, rótulo pela origem.
+              const referencia = referenciaDoPrazo(a);
+              const diasPrazo = referencia ? diasAteCasamento(referencia.data) : null;
               /**
                * S-O27 — a cor vem de `urgenteAjuste`, um lugar só.
                *
@@ -243,23 +242,14 @@ export default function Ajustes() {
                           </span>
                         </>
                       )}
-                      {diasProva !== null ? (
+                      {referencia && diasPrazo !== null ? (
                         <>
                           <span>·</span>
                           <span className={urgente ? "text-destructive font-medium" : undefined}>
-                            {rotuloProva(diasProva)}
+                            {rotuloDoPrazo(referencia, diasPrazo)}
                           </span>
                           <span>·</span>
-                          <span>{diaMesAbrevAno(a.proximaProva!)}</span>
-                        </>
-                      ) : diasCasamento !== null ? (
-                        <>
-                          <span>·</span>
-                          <span className={urgente ? "text-destructive font-medium" : undefined}>
-                            {rotuloCasamento(diasCasamento)}
-                          </span>
-                          <span>·</span>
-                          <span>{diaMesAbrevAno(casamento!)}</span>
+                          <span>{diaMesAbrevAno(referencia.data)}</span>
                         </>
                       ) : (
                         <>

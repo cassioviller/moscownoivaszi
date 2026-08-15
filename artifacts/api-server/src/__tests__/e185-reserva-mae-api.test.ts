@@ -199,22 +199,25 @@ describe("E185 — de quem é o bloqueio, dito fora de reservas.ts, e a listagem
     expect(daB.body.map((r: { id: string }) => r.id)).toEqual([reservaDaB]);
   });
 
-  it("S-O55 — ?futuras= recorta por casamento contra HOJE, em dia local", async () => {
+  /**
+   * E240/S-O99 — o recorte `futuras` SAIU de `GET /reservas`. Ele nasceu aqui
+   * no E185 e ficou três sessões com zero chamadores fora deste arquivo; a
+   * pergunta futuro/passado é do livro de reservas, por PEÇA
+   * (`GET /bloqueios?futuras=`, E87). O que se prega agora é que o parâmetro
+   * é IGNORADO como qualquer chave desconhecida — a loja inteira vem, e a
+   * reserva passada continua na lista, porque este é o agregado sem recorte
+   * de tempo.
+   */
+  it("E240/S-O99 — ?futuras= não é mais recorte desta porta: a lista vem inteira", async () => {
     const passada = await criarReserva(f, { leadId: noivaA, casamentoData: dataFutura(-4000) });
 
-    const futuras = await agent.get(`/api/lojas/${f.lojaId}/reservas?futuras=true`).expect(200);
-    const idsFuturas = futuras.body.map((r: { id: string }) => r.id);
-    expect(idsFuturas).toContain(reservaDaB);
-    expect(idsFuturas).not.toContain(passada.id);
-
-    const realizadas = await agent.get(`/api/lojas/${f.lojaId}/reservas?futuras=false`).expect(200);
-    const idsRealizadas = realizadas.body.map((r: { id: string }) => r.id);
-    expect(idsRealizadas).toContain(passada.id);
-    expect(idsRealizadas).not.toContain(reservaDaB);
+    const comChaveMorta = await agent.get(`/api/lojas/${f.lojaId}/reservas?futuras=true`).expect(200);
+    const ids = comChaveMorta.body.map((r: { id: string }) => r.id);
+    expect(ids).toContain(reservaDaB);
+    expect(ids).toContain(passada.id);
   });
 
-  it("S-O55 — recorte inválido é 400, e SEM recorte a loja inteira continua vindo", async () => {
-    await agent.get(`/api/lojas/${f.lojaId}/reservas?futuras=talvez`).expect(400);
+  it("S-O55 — SEM recorte a loja inteira continua vindo", async () => {
     const todas = await agent.get(`/api/lojas/${f.lojaId}/reservas`).expect(200);
     expect(todas.body.map((r: { id: string }) => r.id)).toContain(reservaDaB);
   });

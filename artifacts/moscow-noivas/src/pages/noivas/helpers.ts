@@ -48,9 +48,16 @@ export function rotuloContagem(dias: number): string {
   return `Faltam ${dias} dias`;
 }
 
+/**
+ * E240/S-O94 — o limiar com NOME, para o manual da vendedora pregá-lo
+ * (`varredura-manuais-prazos`): a célula *"14 dias ou menos"* não tinha de
+ * onde sair enquanto o número morava dentro da função.
+ */
+export const CASAMENTO_URGENTE_DIAS = 14;
+
 /** Casamento a ≤14 dias pede atenção (mesmo limiar do orcamentos). */
 export function casamentoUrgente(dias: number): boolean {
-  return dias >= 0 && dias <= 14;
+  return dias >= 0 && dias <= CASAMENTO_URGENTE_DIAS;
 }
 
 // S35: `isoParaDia` morava aqui com o corpo LITERALMENTE igual ao de

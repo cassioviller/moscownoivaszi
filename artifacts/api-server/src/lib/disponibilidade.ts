@@ -19,6 +19,7 @@
  */
 import { and, eq, gte, isNotNull, isNull, lt, ne, not, or, type SQL } from "drizzle-orm";
 import { diaDeNegocio } from "@workspace/financeiro-core";
+import { janelaDeProvaDoDia } from "@workspace/agenda-core";
 import {
   db,
   bloqueioVestidosTable,
@@ -212,14 +213,18 @@ export function addDias(dia: string, n: number): string {
  * trás quando a reserva muda de data (`reservas.ts`). Extrair em vez de copiar é
  * a regra 26 na letra: duas cópias desta conta divergiriam no dia em que a loja
  * mexesse na regra, e a divergência apareceria como aviso que não aparece.
+ *
+ * **E240/S-O116 — e a segunda cópia existia mesmo assim, do outro lado da
+ * rede** (`moscow-noivas/src/lib/prova-fora-da-janela.ts`), presa a esta só
+ * pelos números escritos à mão nos dois testes. A conta saiu para o
+ * `@workspace/agenda-core` (`janelaDeProvaDoDia`) e os dois lados a importam;
+ * este nome fica porque três chamadores e os testes o conhecem.
  */
 export function janelaDeProvaPrevista(
   dataCasamento: string,
   regra: RegraJanelas,
 ): { inicio: string; fim: string } | null {
-  const inicio = addDias(dataCasamento, -regra.provaDiasAntes);
-  const fim = addDias(addDias(dataCasamento, -regra.usoDiasAntes), -1);
-  return inicio <= fim ? { inicio, fim } : null;
+  return janelaDeProvaDoDia(dataCasamento, regra);
 }
 
 export function janelasDoBloqueio(
