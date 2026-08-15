@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
 import { conciliacaoDeRecebimentosTable, db, parcelasTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { conciliarExtrato, type MovimentoSistema, type TransacaoExtrato } from "@workspace/financeiro-core";
+import { addDias, ancoraDeNegocio, conciliarExtrato, hojeLocal, type MovimentoSistema, type TransacaoExtrato } from "@workspace/financeiro-core";
 import {
   criarContrato,
   criarFixture,
@@ -166,5 +166,35 @@ describe("E235 — a conciliação enxerga cada pagamento", () => {
       [`parcela:${umAto}`, "2027-05-03", 500],
       [`parcela:${semAto}`, "2027-05-20", 300],
     ]);
+  });
+
+  it("S-C310: o PIX que pagou parcela + multa é UM movimento, no valor PAGO — e casa com a linha do banco", async () => {
+    // O caso da 9ª: R$ 500,00 vencidos há 30 dias → multa R$ 10,00 + juros R$ 5,00 = R$ 515,00 (E213).
+    const lead = await criarLead(f);
+    const contrato = await criarContrato(f, { leadId: lead.id, valorTotal: 500, fechadoEm: new Date() });
+    const pid = randomUUID();
+    await db.insert(parcelasTable).values({
+      id: pid, lojaId: f.lojaId, contratoId: contrato.id, numero: 1, origem: "PLANO", valorPrevisto: 500,
+      vencimento: ancoraDeNegocio(addDias(hojeLocal(), -30)),
+    });
+    const hoje = hojeLocal();
+    await dona.post(`/api/lojas/${f.lojaId}/parcelas/${pid}/receber`)
+      .send({ valorRecebido: 515, recebidoEm: `${hoje}T12:00:00-03:00`, formaRecebimento: "PIX" }).expect(200);
+    // O carnê tem DUAS linhas (a parcela e a MORA, S-C50) — o banco viu UM PIX.
+    const linhas = await db.select().from(parcelasTable).where(eq(parcelasTable.contratoId, contrato.id));
+    expect(linhas.map((l) => [l.origem, Number(l.valorRecebido)]).sort()).toEqual([["MORA", 15], ["PLANO", 500]]);
+
+    const ms = (await movimentos(hoje, hoje)).filter((m) => m.id.endsWith(pid) || m.descricao.includes("9ª") || m.id.includes(linhas.find((l) => l.origem === "MORA")!.id));
+    expect(ms.map((m) => [m.id.split(":")[0], m.valor, m.descricao])).toEqual([["parcela", 515, "Parcela 1 · inclui multa e juros da 9ª"]]);
+
+    const extrato: TransacaoExtrato[] = [{ data: hoje, descricao: "PIX RECEBIDO", valor: 515 }];
+    const r = conciliarExtrato(extrato, ms.map(semCarimbo));
+    expect([r.casadas.length, r.soExtrato.length, r.soSistema.length]).toEqual([1, 0, 0]);
+    // ANTES do conserto (medido): R$ 500,00 + R$ 15,00 contra R$ 515,00 → [0, 1, 2].
+    const antes = conciliarExtrato(extrato, [
+      { id: `parcela:${pid}`, data: hoje, valor: 500, tipo: "recebimento", descricao: "Parcela 1" },
+      { id: "parcela:mora", data: hoje, valor: 15, tipo: "recebimento", descricao: "Multa e juros" },
+    ]);
+    expect([antes.casadas.length, antes.soExtrato.length, antes.soSistema.length]).toEqual([0, 1, 2]);
   });
 });

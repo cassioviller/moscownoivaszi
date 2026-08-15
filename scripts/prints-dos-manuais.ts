@@ -663,6 +663,26 @@ const MANUAIS: Record<string, Manual> = {
           { alvo: "[data-testid='grade-agenda']", nota: "A grade — clique num horário livre para marcar ali." },
         ],
       },
+      // ── 3. Remarcar (S-C321) ───────────────────────────────────────────
+      {
+        nome: "remarcar-card",
+        rota: `/loja/${LOJA}/agenda`,
+        alvo: "[data-testid='coluna-agenda-demo-cabine-1']",
+        folga: 24,
+        legenda: "Remarcar, primeiro caminho: o card na grade se arrasta pela alça para outra cabine ou horário; o segundo é o relógio no canto do card, que abre o diálogo de reagendar.",
+        realces: [
+          { alvo: "[data-testid='reagendar-demo-atend-1']", nota: "O relógio — abre o diálogo de reagendar (é o caminho do teclado e do celular).", numeroEm: "topo-direita" },
+        ],
+      },
+      {
+        nome: "remarcar-dialogo",
+        rota: `/loja/${LOJA}/agenda`,
+        alvo: "[role='dialog']",
+        folga: 40,
+        preparar: [{ clicar: "[data-testid='reagendar-demo-atend-1']" }],
+        esperaMs: 1_200,
+        legenda: "O diálogo de reagendar: hora e cabine numa lista — só os horários que existem. Deu certo, o sistema confirma com o destino (“Carolina Nunes → Cabine 2, 14:30”); não deu, ele diz por quê.",
+      },
       {
         nome: "agenda-semana",
         rota: `/loja/${LOJA}/agenda/semana`,
@@ -1224,6 +1244,23 @@ async function recortar(pagina: Page, c: Captura, destino: string): Promise<void
   await pagina.waitForTimeout(220);
   const caixa = await alvo.boundingBox();
   if (!caixa) throw new Error(`alvo sem caixa na tela: ${c.alvo}`);
+  /**
+   * S-C320 — o recorte termina no CONTEÚDO, não na caixa do alvo. `main` é
+   * `flex-1` e mede a altura do viewport mesmo com três cards em cima; a ficha
+   * do ajuste saía 40% vazia. O fundo do último filho visível manda, e a folga
+   * entra depois. Só encurta — nunca alarga além do alvo.
+   */
+  const fundoDoConteudo = await alvo.evaluate((el) => {
+    let fundo = 0;
+    for (const filho of Array.from(el.children)) {
+      const r = filho.getBoundingClientRect();
+      if (r.height > 0) fundo = Math.max(fundo, r.bottom);
+    }
+    return fundo;
+  });
+  if (fundoDoConteudo > caixa.y && fundoDoConteudo < caixa.y + caixa.height) {
+    caixa.height = fundoDoConteudo - caixa.y;
+  }
   const folga = c.folga ?? 24;
   const largura = pagina.viewportSize()?.width ?? 1280;
   const altura = pagina.viewportSize()?.height ?? 860;

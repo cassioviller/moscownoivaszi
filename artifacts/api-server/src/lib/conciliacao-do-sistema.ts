@@ -1,4 +1,4 @@
-import { conciliacaoDeRecebimentosTable, db, pagamentosTable, parcelasTable } from "@workspace/db";
+import { auditLogTable, conciliacaoDeRecebimentosTable, db, pagamentosTable, parcelasTable } from "@workspace/db";
 import { and, eq, gte, inArray, lt } from "drizzle-orm";
 import { addDias, diaLocal, inicioDoDia } from "@workspace/financeiro-core";
 import { realizadoPorRecebimento, recebidasNaJanela } from "./recibos-do-banco";
@@ -77,6 +77,7 @@ export async function movimentosDoSistema(
         numero: true,
         descricao: true,
         status: true,
+        origem: true,
         recebidoEm: true,
         valorRecebido: true,
         formaRecebimento: true,
@@ -110,19 +111,72 @@ export async function movimentosDoSistema(
     for (const l of linhas) carimboDoAto.set(l.atoId, l.conciliadoEm);
   }
 
+
+  /**
+   * **S-C310 — para o banco, o pedaço vale o que a noiva PAGOU.**
+   *
+   * O PIX de R$ 715,00 que pagou R$ 700,00 de parcela e R$ 15,00 de multa
+   * (cláusula 9ª) é UMA linha no extrato. No sistema são duas coisas: o ato
+   * (`aoPrincipal` 700, `aMora` 15, `valorRecebido` 715) e a linha de `MORA`
+   * que o E213 cria PAGA na mesma transação. Antes deste conserto a conciliação
+   * mostrava R$ 700,00 + R$ 15,00 e nenhum casava com os R$ 715,00 do banco —
+   * a S-C51 um andar abaixo. Aqui o movimento do ato vale o PAGO e a linha de
+   * MORA que ELE criou não entra como movimento próprio (ela é o mesmo
+   * dinheiro, visto do carnê). O caixa (`porRecebimento`) continua dividindo em
+   * principal + MORA — lá a pergunta é "quanto entrou na parcela"; aqui é
+   * "quanto passou pelo banco".
+   *
+   * A ligação é a que a porta grava: `PARCELA_RECEBIDA.detalhe.moraParcelaId`.
+   * Para o ato DIVIDIDO (`recibo:`), o pago é o `valorRecebido` da linha da
+   * trilha; para a parcela de um ato só (`parcela:`), é o `valorRecebido` da
+   * parcela mais a soma das linhas de MORA que os atos dela criaram.
+   */
+  const idsDeParcela = divididas.map((d) => d.parcelaId);
+  const trilhaDosAtos = idsDeParcela.length
+    ? await db
+        .select({ id: auditLogTable.id, parcelaId: auditLogTable.entidadeId, detalhe: auditLogTable.detalhe })
+        .from(auditLogTable)
+        .where(and(eq(auditLogTable.lojaId, lojaId), eq(auditLogTable.acao, "PARCELA_RECEBIDA"), inArray(auditLogTable.entidadeId, [...new Set(idsDeParcela)])))
+    : [];
+  const num = (v: unknown) => (typeof v === "number" ? v : Number(v ?? 0));
+  /** ato → { pago, moraParcelaId } */
+  const doAto = new Map<string, { pago: number; moraParcelaId: string | null }>();
+  /** parcela de origem → soma da mora dos atos dela (para a parcela que não se divide). */
+  const moraDaParcela = new Map<string, number>();
+  /** linha de MORA → a parcela de origem (só absorvida se a origem entrar na janela). */
+  const origemDaMora = new Map<string, string>();
+  for (const l of trilhaDosAtos) {
+    const d = (l.detalhe ?? {}) as Record<string, unknown>;
+    const moraParcelaId = typeof d.moraParcelaId === "string" ? d.moraParcelaId : null;
+    doAto.set(l.id, { pago: num(d.valorRecebido), moraParcelaId });
+    if (moraParcelaId && num(d.aMora) > 0) {
+      moraDaParcela.set(l.parcelaId, (moraDaParcela.get(l.parcelaId) ?? 0) + num(d.aMora));
+      origemDaMora.set(moraParcelaId, l.parcelaId);
+    }
+  }
+  const naJanela = (d: { recebidoEm?: Date | string | null; valorRecebido?: number | null }) => {
+    if (!d.recebidoEm || !d.valorRecebido) return false;
+    const dia = diaLocal(d.recebidoEm);
+    return dia >= deYMD && dia <= ateYMD;
+  };
+  const parcelasEmitidas = new Set(divididas.filter((d) => d.origem !== "MORA" && naJanela(d)).map((d) => d.parcelaId));
   const movimentos: MovimentoDoSistema[] = [];
   for (const d of divididas) {
     if (!d.recebidoEm || !d.valorRecebido) continue;
+    // A linha de MORA criada por um ato que está nesta janela é o mesmo dinheiro.
+    if (d.origem === "MORA" && parcelasEmitidas.has(origemDaMora.get(d.parcelaId) ?? "")) continue;
     const dia = diaLocal(d.recebidoEm);
     if (dia < deYMD || dia > ateYMD) continue;
     const ehAto = d.id !== d.parcelaId;
+    const moraJunto = ehAto ? (doAto.get(d.id)?.pago ?? Number(d.valorRecebido)) - Number(d.valorRecebido) : (moraDaParcela.get(d.parcelaId) ?? 0);
+    const valorPago = Number(d.valorRecebido) + Math.max(0, moraJunto);
     const rotulo = `${d.numero === 0 ? "Entrada" : `Parcela ${d.numero}`}${d.descricao ? ` · ${d.descricao}` : ""}`;
     movimentos.push({
       id: ehAto ? `recibo:${d.id}` : `parcela:${d.id}`,
       data: dia,
-      valor: Number(d.valorRecebido),
+      valor: valorPago,
       tipo: "recebimento",
-      descricao: rotulo,
+      descricao: moraJunto > 0 ? `${rotulo} · inclui multa e juros da 9ª` : rotulo,
       // A parcela inteira carimbada ANTES do E235 cobre os pedaços dela.
       conciliadoEm: iso(ehAto ? (carimboDoAto.get(d.id) ?? d.conciliadoEm) : d.conciliadoEm),
     });

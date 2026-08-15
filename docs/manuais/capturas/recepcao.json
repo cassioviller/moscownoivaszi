@@ -1,6 +1,6 @@
 {
   "manual": "recepcao",
-  "gerado": "2026-08-15T19:16:00.522Z",
+  "gerado": "2026-08-15T19:52:13.366Z",
   "loja": "demo-manuais-loja",
   "sessao": "renata@moscownoivas.com",
   "ambiente": {
@@ -12,6 +12,8 @@
   "capturas": [
     "recepcao-menu.png",
     "recepcao-agenda.png",
+    "recepcao-remarcar-card.png",
+    "recepcao-remarcar-dialogo.png",
     "recepcao-agenda-semana.png",
     "recepcao-agendar-tipo.png",
     "recepcao-agendar-horarios.png",
