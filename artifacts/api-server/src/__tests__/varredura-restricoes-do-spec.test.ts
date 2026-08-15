@@ -160,7 +160,13 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
       // O terceiro sítio, `Contrato.prazoDevolucaoReservaDias` na RESPOSTA, é
       // `type: ["integer", "null"]` — a forma em array não casa com este
       // regex (`type: integer` literal), e por isso não conta aqui.
-    ).toBe(133);
+      //
+      // S-C232: 133 → 132. O `ContratoUpdate.prazoDevolucaoReservaDias` virou
+      // `type: ["integer", "null"]` (apagar o prazo da 18ª é gesto legítimo, e
+      // `null` passou a APAGAR), então ele saiu deste regex pelo MESMO motivo
+      // do parágrafo acima. A guarda de entrada não mudou: o `PATCH` continua
+      // gravando por `...parsed.data`, agora inclusive o `null`.
+    ).toBe(132);
 
     // A outra ponta: se um dia o gerador aprender `.int()`, este número deixa
     // de ser zero e a régua acima vira ruído — é o sinal de trocar a varredura

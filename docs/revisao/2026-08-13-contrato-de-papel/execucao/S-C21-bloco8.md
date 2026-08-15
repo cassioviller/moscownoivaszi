@@ -95,3 +95,208 @@ e o prazo vira `prazoEditado.trim() === "" ? null : Number(prazoEditado)` (o com
 S-C211 dali já dizia que apagar o prazo "pede spec" — o spec agora aceita). O cliente gerado
 já tipa `Date | null`, então a edição compila no dia em que for feita. Sem ela, a porta
 aceita o gesto que o diálogo ainda não manda — a sobra fecha DE VERDADE com essas três linhas.
+
+---
+
+## S-C77 — a corrida do par avarias+parcelas, exercitada de verdade
+
+**Decisão da dona (14/08/2026): SIM, barato — o molde das corridas sm7.**
+
+**Correção de âncora:** a sobra aponta `reservas.ts:2340` e a transação que tranca o par mora
+no **PATCH `/avarias/:id`** (S-C11), hoje em `reservas.ts:2919` — o primeiro `FOR UPDATE` na
+avaria (`:2932`) e o segundo, **condicional a `avaria.parcelaId`**, na parcela (`:2948`). A
+linha 2340 de hoje é um comentário da prévia da cobrança de atraso; a transação andou.
+
+**A cena** (`sc77-corrida-avaria-parcela-api.test.ts`, molde do sm7 — determinística, nada de
+sleep-e-reza): avaria de **R$ 250,00 cobrada** (parcela viva pelo vínculo do E97); a segunda
+conexão segura um **recebimento não commitado** na parcela (o UPDATE tranca a linha); o PATCH
+da correção para **R$ 150,00** dispara (o `Test` do supertest é lazy — S33) e fica pendurado
+no `FOR UPDATE` condicional; 300 ms; COMMIT. A rota acorda, relê a linha fresca, vê o
+dinheiro e recusa: **409 `AVARIA_COM_RECEBIMENTO`**, e o invariante é medido no banco —
+avaria R$ 250,00 · parcela R$ 250,00 PAGA, o par intacto. O segundo `it` prova o caminho sem
+corrida: 200 e a parcela viva segue o número (150/150).
+
+**Vermelho antes (regra 34, código quebrado de propósito — o `.for("update")` da parcela
+removido e depois restaurado):** `AssertionError: expected 200 to be 409` — o SELECT sem
+tranca lê o retrato de ANTES do recebimento (MVCC), o CAS `isNull(recebidoEm)` do repasse
+vira zero linhas em silêncio, e o par diverge: **ficha R$ 150,00 · carnê PAGO de R$ 250,00**,
+exatamente os "dois números para uma decisão só" do E186, agora com dinheiro no meio.
+Restaurada a tranca: **sc77 2 passed · sc11 17 passed**.
+
+---
+
+## S-C221 — o expediente da cláusula 4ª fecha pela permissão de contrato
+
+**Decisão da dona (14/08/2026): restringir — quem muda o expediente muda o que o contrato
+promete.**
+
+**Medição de QUAL permissão dá o acesso hoje:** o `PUT /disponibilidade/regras` inteiro vivia
+sob o `requireModulo("agenda")` do prefixo (`agenda.ts:258` na base; a rota em `:1319`), e PUT
+deriva `editar` (`permissoes.ts:acaoDoMetodo`). **A sobra citava a Costureira; a Recepção
+passava pela mesma porta** — os dois perfis do seed têm `agenda: TUDO, contratos: NADA`
+(`configuracao-inicial.ts:153` e `:159`).
+
+**O fecho, pela permissão e não por perfil:** o corpo que traz qualquer campo da 4ª
+(`retiradaAberturaMinutos/FechamentoMinutos/FechamentoSabadoMinutos/retiradaDias`) exige
+TAMBÉM `contratos.editar`, perguntado com as mesmas funções do middleware
+(`getPermissoes` + `podeNoModulo`), ANTES de validar ou gravar qualquer campo — corpo misto
+recusa inteiro. O gate por prefixo não tem grão de CAMPO, e mover o PUT inteiro para
+`contratos` tiraria da Recepção o expediente de ATENDIMENTO, que é trabalho dela.
+**Nenhuma migração de perfil**: os perfis ficam como estão; a porta é que passa a perguntar
+a coisa certa — por isso não há SQL para rodar (a lição do E172 não se aplica: nada mudou no
+seed).
+
+**A tela acompanhou** (`atendimentos/config.tsx`): os quatro campos da 4ª aparecem
+desabilitados sem `contratos.editar`, com a frase dizendo por quê
+(`data-testid="clausula-4a-so-leitura"`), e o `salvarHorario` **não os manda** — o PUT é
+upsert parcial e campo ausente preserva. A `s36-gate-da-tela-unit` segue verde: a tela agora
+gateia por `[agenda, contratos]` e escreve em `agenda`.
+
+**O manual:** o da costureira **não cita** o expediente (zero ocorrências, medido) — nada a
+mudar. O da RECEPÇÃO cita (`recepcao.html:308` e a seção 8), e ganhou duas frases dizendo que
+o bloco de retirada é só-leitura para ela. **ATENÇÃO DO INTEGRADOR: `recepcao.html` é área do
+agente C neste lote** — a edição é de duas frases na seção 8; se houver conflito de
+cherry-pick, a minha metade é a menor.
+
+**Vermelho antes (literal):** `Error: expected 403 "Forbidden", got 200 "OK"` — a
+costureira-fixture (perfil na letra do seed) gravava `retiradaFechamentoMinutos` — e no corpo
+misto `expected 403 "Forbidden", got 422` (a parede de horário respondia antes da permissão).
+Depois: **s-c221 4 passed**, e o lote s-c221 + e222-expediente + varredura-manuais (3
+arquivos, 15) + s36-gate: **42 + 15 passed**, typecheck verde nos 5 projetos.
+
+---
+
+## S-C89 — o custo da fila medido, o cache de 5 min por loja, e a régua que trava a conta
+
+**Decisão da dona (14/08/2026): cache de 5 min por loja no SERVIDOR, Map com TTL, sem
+dependência nova.**
+
+**Medição do custo atual — e a sobra contava errado:** ela dizia *"1 consulta larga + 2 por
+contrato atrasado"*. Medido com um contador em cima de `pool.query` (filtrado pelas tabelas
+da fila — o middleware de sessão também consulta o banco, e contá-lo mediria autenticação):
+são **2 fixas** (a regra da loja + a varredura larga) **+ 3 por contrato atrasado**
+(`buscarRegra` DE NOVO dentro de `pecasAtrasadasDoContrato`, os bloqueios do contrato, o
+aluguel de cada peça no rol) **+ 1 pelas órfãs** — e **4 por contrato** quando o atraso já
+virou parcela (a `cobrancaViva`). Com 2 contratos de 1 peça: **9 consultas por GET**, pagas
+de novo a cada poll de 5 min do sino, em CADA tela aberta.
+
+**O que mudou:**
+
+- `lib/fila-de-atrasos-cache.ts` (novo) — Map por loja, TTL de 5 min (o MESMO poll do sino:
+  o pior atraso de aviso que o cache adiciona é um ciclo que o sino já tinha), com
+  `lerFilaDeAtrasos`/`guardarFilaDeAtrasos`/`derrubarFilaDeAtrasos`.
+- O `GET /contratos-com-atraso` responde do cache; o `.parse` do contrato de resposta roda
+  nas DUAS vias.
+- **As portas que derrubam o cache da loja — enumeradas pelas TABELAS que a fila lê, não
+  pelo palpite** (a sobra sugeria "receber, perdoar, cobrar"; **receber não muda a fila** —
+  cobrança viva é `status !== CANCELADA`, e PAGA segue viva — e **perdoar mora é da carteira
+  da 9ª, não desta fila**):
+  1. `POST .../cobranca-de-atraso` (reservas.ts) — o `jaCobrada`;
+  2. `PATCH /bloqueios/:id` — retirada/devolução real e datas;
+  3. `DELETE /bloqueios/:id` — a linha some;
+  4. `PATCH /reservas/:id` — mover a data move a janela de uso;
+  5. `DELETE /reservas/:id` — cancela os bloqueios;
+  6. `POST /contratos` (contratos.ts) — a órfã adotada vira item;
+  7. `POST /contratos/:id/cancelar` — o item vira órfã e a parcela do atraso morre;
+  8. `POST /contratos/:id/trocar-peca` — troca o bloqueio apontado;
+  9. `POST /parcelas/:id/estornar` e `DELETE /parcelas/:id` — a cobrança viva muda;
+  10. `PUT /disponibilidade/regras` (agenda.ts) — `usoDiasDepois` é o divisor da janela.
+- **A régua** (`s-c89-cache-da-fila-api.test.ts`): pino de IGUALDADE no custo (9 no cenário
+  de 2 contratos — a lição da S-C46: piso `>=` deixa a prosa envelhecer), **ZERO consultas
+  de fila no GET seguinte**, e dois casos provando a invalidação POR PORTA (cobrar → o
+  próximo GET diz `jaCobrada`; devolução registrada no prazo → a linha sai).
+- **Fixture direta não passa por porta**: os três arquivos que medem a fila depois de
+  `db.insert` cru (`s-c32`, `s-c80`, `e231`) derrubam o cache no próprio helper `fila()`,
+  com o porquê escrito — eles pregam a CONTA; o cache tem régua própria.
+
+**Vermelho antes (regra 34, cache desligado de propósito na rota e religado):**
+`AssertionError: expected 9 to be +0` — sem o cache, o segundo GET paga as 9 consultas de
+novo. E um vermelho MEU que virou nota no próprio teste: o primeiro desenho esperava a linha
+sumir com a devolução registrada HOJE de uma peça atrasada — `expected true to be false` —
+e a fila está CERTA em mantê-la: devolvida fora do prazo, a cobrança continua devida; o que
+sai da fila é a devolução DENTRO do prazo (backdatada para o dia real da volta).
+Depois: **s-c89 3 · s-c32 12 · s-c80 · e231 · e212 — 46 passed nos 5 arquivos**, typecheck
+verde.
+
+**Correção que fica para o rastreador:** o custo real é `2 + 3·atrasados (+1 se cobrado) + 1`,
+não `1 + 2·atrasados`. E o `buscarRegra` duplicado (uma vez na fila, uma vez POR CONTRATO
+dentro de `pecasAtrasadasDoContrato`) é 1 consulta evitável por contrato — fica como sobra
+proposta (S-C280), não como conserto daqui: mexer na assinatura de
+`pecasAtrasadasDoContrato` toca a prévia e o POST do E212, e o cache já paga o grosso.
+
+---
+
+## S-C87 — a fila age: o registro de contato abre de cada linha
+
+**Decisão da dona (14/08/2026): SIM, agir — é o MESMO diálogo da ficha, aberto da fila.**
+
+**Medição do componente certo:** o "registro de contato da ficha" já existe EXTRAÍDO —
+`components/historico-contato.tsx` (E27, extraído no E32 exatamente para a ficha e a
+Cobrança usarem o MESMO widget). O POST dele (`useCreateRegistroCobranca`, gate
+`leads.criar` no endpoint) é o que zera o relógio do "parado há N dias" do funil. Nenhuma
+segunda grafia nasceu (regra 26): o novo `pages/contratos/contato-da-fila.tsx` é um
+Collapsible de 50 linhas que MONTA o widget compartilhado, lazy como na Cobrança
+(`enabled: aberto` + montagem sob `jaAbriu` — a fila não paga uma request por linha).
+
+**Onde ele entra** (`contratos/index.tsx`): nas DUAS listas — cada linha cobrável
+(`i.leadId`, sempre presente) e a órfã COM dona (`o.leadId ? … : null`; a sem dona é gesto
+de balcão sem noiva — não há a quem ligar nem ficha onde carimbar). O gesto de COBRAR (a
+parcela da 16ª) continua na ficha da reserva, onde o E212 o pôs — o que a fila ganhou foi o
+telefonema, que era o ida-e-volta da sobra.
+
+**Vermelho (regra 34, literal):** o teste do componente sozinho é verde mesmo com a fila sem
+gesto — que é exatamente o defeito da sobra —, então o arquivo tem uma varredura de FIAÇÃO
+que lê `index.tsx` e cobra as duas âncoras. Com o `<ContatoDaFila>` removido de propósito
+das duas listas (e recolocado): `AssertionError: expected false to be true`. E o caso jsdom
+prova o lazy e o leadId entregue ao widget mockado. **contato-da-fila 2 passed**, typecheck
+verde.
+
+**O que o E2E cobraria e este worktree não pode rodar:** o clique real na fila com o
+formulário do histórico gravando — fica dito para o integrador.
+
+---
+
+## O que EU errei
+
+1. **Os três `!` da S-C221.** O primeiro desenho do `salvarHorario` guardava o payload da 4ª
+   com `rAbertura!`/`rFechamento!`/`rSabado!`, e a suíte de frontend INTEIRA — só ela —
+   derrubou a varredura S-O66 (`telas-que-rederivam`): `AssertionError: asserções vivas: …
+   pages/atendimentos/config.tsx → rAbertura!` (a dívida está travada em 23). O conserto foi
+   mover o payload para DENTRO da guarda, onde o narrowing dispensa asserção. **Ele entrou no
+   commit da S-C87 como carona declarada** (a mensagem do commit diz), porque o vermelho só
+   aparece na medição de fecho — o integrador que for cherry-pickar a S-C221 sozinha leva o
+   `config.tsx` do commit `a2204add` junto, ou aceita o vermelho da S-O66 até o commit
+   seguinte.
+2. **O primeiro desenho do teste de invalidação (S-C89) esperava o comportamento errado** —
+   linha sumindo com a devolução registrada HOJE de peça atrasada (`expected true to be
+   false`). A fila está certa em mantê-la: devolvida FORA do prazo, a cobrança segue devida.
+   O caso final usa a devolução backdatada para dentro do prazo, e a lição ficou escrita no
+   próprio teste.
+
+## Sobras novas propostas (faixa S-C280–289)
+
+| # | O quê | Severidade |
+|---|---|---|
+| **S-C280** | **`pecasAtrasadasDoContrato` refaz `buscarRegra` POR CONTRATO** (`reservas.ts:2278`): a fila já a buscou uma vez, e cada contrato atrasado paga a consulta de novo — 1 evitável por contrato, nas três chamadas (fila, prévia, POST da 16ª). Medido na régua da S-C89 (o 3º de cada trio). Consertar é passar a regra por parâmetro, tocando as três portas do E212 — por isso não coube no fecho do cache | 🔵 |
+| **S-C281** | **`zod.coerce.date()` converte `null` em 01/01/1970 em TODO campo de data NÃO-nullable do spec** — a classe da S-C232, medida viva além dela: `UpdateContratoBody.safeParse({ dataCasamento: null })` devolve `1970-01-01T00:00:00.000Z` (probe registrado no relatório), e o `PATCH /contratos` com `dataCasamento: null` num contrato SEM bloqueio vinculado **gravaria o casamento em 1970** (`contratos.ts:1541` — `if (parsed.data.dataCasamento)` é verdadeiro para a época; a prova de divergência só roda com bloqueio). O gerado tem **916 `coerce.date()`**; o recorte que importa são os bodies de escrita com data opcional não-nullable. Vale uma varredura: para cada um, ou o spec vira nullable com semântica de apagar (S-C232), ou o campo recusa `null` explícito | 🔵 |
+| **S-C282** | **O cache da S-C89 é por processo, e a invalidação não atravessa réplicas.** Hoje o servidor é um processo só e o TTL de 5 min é o teto do atraso; se um dia houver duas réplicas atrás de um balanceador, o gesto numa derruba só o cache dela — a outra responde velho por até 5 min. Registrado para o dia em que a topologia mudar; a resposta barata é o TTL, que já limita o dano | 🔵 |
+
+## Verificação — as contagens finais, no banco `moscow_wt_bloco8`
+
+- **API: 1713 testes em 241 arquivos — 1711 passed · 2 failed · ZERO skipped** (11,4 min,
+  `Duration 683.87s`). Dos dois vermelhos:
+  1. `backup-download-api.test.ts` — o CONHECIDO de worktree (`.claude/` no caminho):
+     `Error: expected 200 "OK", got 410 "Gone"` — não é meu, e é o formato pós-E178
+     documentado no `replit.md`.
+  2. `varredura-restricoes-do-spec.test.ts` — **meu, da S-C232, e a varredura estava CERTA**:
+     `AssertionError: … expected 132 to be 133` — o `ContratoUpdate.prazoDevolucaoReservaDias`
+     virou `type: ["integer","null"]` e a forma em array sai do regex literal, exatamente como
+     o comentário do próprio teste já explicava para o sítio de RESPOSTA. Contagem baixada
+     para **132** com a razão escrita (commit próprio, rotulado S-C232); o arquivo re-rodado:
+     **6 passed**.
+- **Frontend: 958 testes em 102 arquivos, todos verdes** (base do lote media 943/99 no
+  `main` de 14/08).
+- **Typecheck: verde nos 5 projetos.**
+- **E2E obrigatório e NÃO rodado — worktree não isola porta.** O que ele cobraria deste
+  bloco: o clique real do ContatoDaFila gravando (S-C87), o bloco só-leitura da 4ª para a
+  Recepção (S-C221) e o selo "Peça exclusiva" nas duas páginas públicas (S-C21).
