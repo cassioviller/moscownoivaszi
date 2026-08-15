@@ -74,6 +74,17 @@ para o documento que manda.
    real. As três 🔵 do dia (S-C310/320/321) fecharam em `74e2acb2`; restam
    S-C330 e S-C331, 🔵, nascidas no E237.**
 
+   **E a noite de 15/08 (quinta sessão): a dona mandou fechar as 27 🔵 da ótica
+   dos papéis, e três agentes em paralelo — E238 (`fb845784`, lote A,
+   `comissao.ts`), E239 (`e9ecdc89`, lote B, as varreduras) e E240
+   (`c6235e83`, lote C, o prazo próprio da confecção — a S-O50, que era a
+   única que esperava a dona) — fecharam 26; a S-O93 ficou (medir dois E2E
+   é do integrador). Como toda vez que se mede, nasceram outras: 12 na
+   tabela, **1 🟡 (S-O120: `quitarContas` e o estorno mudam `contas_pagar`
+   sem tranca nem CAS) e 11 🔵**, e a S-O132 foi fundida à S-O93 pelo
+   integrador. A ordem de execução está em
+   [`2026-08-15-as-sobras-do-lote-das-27-plano.md`](docs/propostas/2026-08-15-as-sobras-do-lote-das-27-plano.md):
+   dinheiro primeiro (S-O120), depois cobertura, depois higiene.**
 
    **A lição da segunda metade é de MEDIÇÃO, e ela tem número: SETE das nove
    sobras estavam erradas sobre si mesmas, e todas para MENOS.** A S-C281 dizia
@@ -348,7 +359,7 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | **Ótica dos papéis** | **`2026-08-11-otica-dos-papeis/`** | **EXECUTADA — 149 achados em 14 épicos (E158–E171), as quatro faixas fechadas, mais o **E172** que os manuais fizeram nascer, o **resto das sobras em E173–E188**, a **onda 1 (E189–E192)**, a **onda 2 (E193–E196)** e o **E197** (onda 3). O que resta dela são as sobras S-O da tabela do `EXECUCAO.md` — **25, TODAS 🔵** (contadas em 15/08; esta célula dizia 27, e a única 🟡 que ela citava já fechou); conte lá** |
+   | **Ótica dos papéis** | **`2026-08-11-otica-dos-papeis/`** | **EXECUTADA — 149 achados em 14 épicos (E158–E171), as quatro faixas fechadas, mais o **E172** que os manuais fizeram nascer, o **resto das sobras em E173–E188**, a **onda 1 (E189–E192)**, a **onda 2 (E193–E196)** e o **E197** (onda 3). O que resta dela são as sobras S-O da tabela do `EXECUCAO.md` — **12 depois do lote das 27 (E238–E240): 1 🟡 (S-O120) e 11 🔵**; conte lá** |
    | Revisão max | `2026-08-10-revisao-max/` | fechada como fila — 18 sobras da rodada 1 (16 fechadas) + 53 da rodada 2 (10 épicos). **Resta 1 🟡**: a S-M17, que espera dados de banco real. A **S-M10 fechou no E169** (`fe8afdd`) |
    | Rodada 6 | `2026-07-25-rodada-6/` | fechada — **ZERO sobras abertas.** Era o backlog mais pesado do repositório |
    | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — **ZERO sobras abertas** |
@@ -359,7 +370,7 @@ para o documento que manda.
    S-A2 (as fotos que faltam do caderno) e S-A27 (classificar as peças com a
    dona; o acervo tem 132 peças do legado em `moscow_base`, todas sem "Tipo de
    peça"). Toda linha de código aberta hoje está na tabela de Sobras da trilha
-   da ótica dos papéis — **conte lá, são 25, todas 🔵** (contadas em 15/08; a linha dizia 27 desde 2026-08-12, e é a S-A5 pela quarta vez).
+   da ótica dos papéis — **conte lá, são 12 depois do lote das 27: a S-O120 🟡 e 11 🔵** (contadas na noite de 15/08; a linha dizia 25, e é a S-A5 pela quinta vez).
 
    **O E197 (onda 3) fechou a S-O117, que era a única 🟡 aberta — e a que restou
    nasceu dele, pela mesma confusão do outro lado.** A sobra apontava a leitura;
