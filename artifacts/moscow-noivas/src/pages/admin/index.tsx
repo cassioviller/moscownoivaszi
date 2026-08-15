@@ -3,7 +3,22 @@ import { Link } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { cnpjValido } from "@workspace/financeiro-core";
+import { cnpjValido, cpfValido } from "@workspace/financeiro-core";
+
+// E234 — os campos de texto do cadastro da loja, vazios.
+const LOJA_VAZIA = {
+  nome: "",
+  cnpj: "",
+  endereco: "",
+  telefone: "",
+  cidade: "",
+  uf: "",
+  representanteNome: "",
+  representanteRg: "",
+  representanteCpf: "",
+  pixChave: "",
+  pixTitular: "",
+};
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -78,6 +93,16 @@ const editarLojaSchema = z.object({
   }),
   endereco: z.string(),
   telefone: z.string(),
+  // E234 — os sete do instrumento; o CPF do representante pela régua do E233.
+  cidade: z.string(),
+  uf: z.string().max(2),
+  representanteNome: z.string(),
+  representanteRg: z.string(),
+  representanteCpf: z.string().refine((v) => !v.trim() || cpfValido(v), {
+    message: "Os dígitos verificadores deste CPF não fecham — confira o número.",
+  }),
+  pixChave: z.string(),
+  pixTitular: z.string(),
   ativo: z.boolean(),
 });
 type EditarLojaValues = z.infer<typeof editarLojaSchema>;
@@ -194,7 +219,7 @@ export default function AdminConsole() {
   });
   const formEditarLoja = useForm<EditarLojaValues>({
     resolver: zodResolver(editarLojaSchema),
-    defaultValues: { nome: "", cnpj: "", endereco: "", telefone: "", ativo: true },
+    defaultValues: { ...LOJA_VAZIA, ativo: true },
   });
   const formEditarUsuario = useForm<EditarUsuarioValues>({
     resolver: zodResolver(editarUsuarioSchema),
@@ -207,6 +232,13 @@ export default function AdminConsole() {
       cnpj: loja.cnpj ?? "",
       endereco: loja.endereco ?? "",
       telefone: loja.telefone ?? "",
+      cidade: loja.cidade ?? "",
+      uf: loja.uf ?? "",
+      representanteNome: loja.representanteNome ?? "",
+      representanteRg: loja.representanteRg ?? "",
+      representanteCpf: loja.representanteCpf ?? "",
+      pixChave: loja.pixChave ?? "",
+      pixTitular: loja.pixTitular ?? "",
       ativo: loja.ativo,
     });
     setLojaEmEdicao(loja);
@@ -595,6 +627,104 @@ export default function AdminConsole() {
                   </FormItem>
                 )}
               />
+              {/* E234 — os sete que o instrumento imprime da LOCADORA. */}
+              <div className="grid grid-cols-3 gap-4">
+                <FormField
+                  control={formEditarLoja.control}
+                  name="cidade"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2">
+                      <FormLabel>Cidade (foro)</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={formEditarLoja.control}
+                  name="uf"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>UF</FormLabel>
+                      <FormControl>
+                        <Input maxLength={2} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={formEditarLoja.control}
+                name="representanteNome"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Representante legal — nome</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={formEditarLoja.control}
+                  name="representanteRg"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Representante — RG</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={formEditarLoja.control}
+                  name="representanteCpf"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Representante — CPF</FormLabel>
+                      <FormControl>
+                        <Input placeholder="000.000.000-00" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={formEditarLoja.control}
+                  name="pixChave"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Chave PIX</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={formEditarLoja.control}
+                  name="pixTitular"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Titular da chave</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <FormField
                 control={formEditarLoja.control}
                 name="ativo"

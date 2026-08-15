@@ -53,6 +53,20 @@ export interface Loja {
   endereco?: string | null;
   /** @nullable */
   telefone?: string | null;
+  /** @nullable */
+  cidade?: string | null;
+  /** @nullable */
+  uf?: string | null;
+  /** @nullable */
+  representanteNome?: string | null;
+  /** @nullable */
+  representanteRg?: string | null;
+  /** @nullable */
+  representanteCpf?: string | null;
+  /** @nullable */
+  pixChave?: string | null;
+  /** @nullable */
+  pixTitular?: string | null;
   ativo: boolean;
   createdAt: string;
 }
@@ -78,6 +92,15 @@ export interface LojaInput {
   cnpj?: string;
   endereco?: string;
   telefone?: string;
+  cidade?: string;
+  /** @maxLength 2 */
+  uf?: string;
+  representanteNome?: string;
+  representanteRg?: string;
+  /** CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); gravado como 000.000.000-00. (E233/E234) */
+  representanteCpf?: string;
+  pixChave?: string;
+  pixTitular?: string;
 }
 
 export interface LojaUpdate {
@@ -87,6 +110,15 @@ export interface LojaUpdate {
   cnpj?: string;
   endereco?: string;
   telefone?: string;
+  cidade?: string;
+  /** @maxLength 2 */
+  uf?: string;
+  representanteNome?: string;
+  representanteRg?: string;
+  /** CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); gravado como 000.000.000-00. (E233/E234) */
+  representanteCpf?: string;
+  pixChave?: string;
+  pixTitular?: string;
   ativo?: boolean;
 }
 
@@ -98,6 +130,15 @@ export interface DadosDaLojaInput {
   endereco?: string;
   /** Vazio é permitido (a loja pode não ter WhatsApp). Preenchido, tem de render um link de wa.me — o servidor recusa com TELEFONE_SEM_WHATSAPP o que `linkWhatsApp` transformaria em null, porque nesse caso o botão do portal da noiva some sem erro e sem aviso. */
   telefone?: string;
+  cidade?: string;
+  /** @maxLength 2 */
+  uf?: string;
+  representanteNome?: string;
+  representanteRg?: string;
+  /** CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); gravado como 000.000.000-00. (E233/E234) */
+  representanteCpf?: string;
+  pixChave?: string;
+  pixTitular?: string;
 }
 
 export interface AcoesModulo {

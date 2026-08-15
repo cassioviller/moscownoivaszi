@@ -24,7 +24,7 @@ import { usuarioNaLoja } from "../lib/escopo-loja";
 import { registrarAuditoria } from "../lib/auditoria";
 import { hashSenha, gerarTokenConvite, encerrarSessoesDoUsuario, CONVITE_TTL_MS } from "../lib/auth";
 import { erroDeValidacao } from "../lib/erros";
-import { cnpjNaPorta } from "../lib/documento-na-porta";
+import { cnpjNaPorta, cpfNaPorta, vaziosViramNulo } from "../lib/documento-na-porta";
 import { randomUUID } from "node:crypto";
 
 const router: IRouter = Router();
@@ -62,7 +62,20 @@ function viraLinkDeWhatsApp(telefone: string): boolean {
   return digitos.length >= 12 && digitos.length <= 13 && digitos.startsWith("55");
 }
 
-const CAMPOS_DA_LOJA = ["nome", "cnpj", "endereco", "telefone"] as const;
+// E234: os sete do instrumento entram aqui — a dona os edita em Dados da loja.
+const CAMPOS_DA_LOJA = [
+  "nome",
+  "cnpj",
+  "endereco",
+  "telefone",
+  "cidade",
+  "uf",
+  "representanteNome",
+  "representanteRg",
+  "representanteCpf",
+  "pixChave",
+  "pixTitular",
+] as const;
 
 router.patch("/lojas/:lojaId/dados", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
@@ -103,6 +116,12 @@ router.patch("/lojas/:lojaId/dados", async (req, res): Promise<void> => {
     res.status(422).json(cnpj.recusa);
     return;
   }
+  // E234: quem assina pela loja também sai impresso — o CPF pela régua do E233.
+  const cpfRep = cpfNaPorta(parsed.data.representanteCpf, "representanteCpf");
+  if (cpfRep.recusa) {
+    res.status(422).json(cpfRep.recusa);
+    return;
+  }
 
   const { telefone } = parsed.data;
   // Vazio é permitido — a loja pode não ter WhatsApp — e vira NULL, não "".
@@ -121,6 +140,8 @@ router.patch("/lojas/:lojaId/dados", async (req, res): Promise<void> => {
     .set({
       ...parsed.data,
       ...(cnpj.valor !== undefined ? { cnpj: cnpj.valor } : {}),
+      ...(cpfRep.valor !== undefined ? { representanteCpf: cpfRep.valor } : {}),
+      ...vaziosViramNulo(parsed.data, ["cidade", "uf", "representanteNome", "representanteRg", "pixChave", "pixTitular"]),
       ...(telefone !== undefined ? { telefone: telefone.trim() === "" ? null : telefone } : {}),
     })
     .where(eq(lojasTable.id, lojaId))

@@ -46,7 +46,10 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
-import { cnpjNaPorta } from "../lib/documento-na-porta";
+import { cnpjNaPorta, cpfNaPorta, vaziosViramNulo } from "../lib/documento-na-porta";
+
+// E234: os campos livres do cadastro da loja que "vazio apaga".
+const LIVRES_DA_LOJA = ["cidade", "uf", "representanteNome", "representanteRg", "pixChave", "pixTitular"] as const;
 
 const router: IRouter = Router();
 
@@ -96,10 +99,17 @@ router.post("/admin/lojas", async (req, res): Promise<void> => {
     res.status(422).json(cnpj.recusa);
     return;
   }
+  const cpfRep = cpfNaPorta(parsed.data.representanteCpf, "representanteCpf");
+  if (cpfRep.recusa) {
+    res.status(422).json(cpfRep.recusa);
+    return;
+  }
   const [loja] = await db.insert(lojasTable).values({
     id: randomUUID(),
     ...parsed.data,
     ...(cnpj.valor !== undefined ? { cnpj: cnpj.valor } : {}),
+    ...(cpfRep.valor !== undefined ? { representanteCpf: cpfRep.valor } : {}),
+    ...vaziosViramNulo(parsed.data, LIVRES_DA_LOJA),
   }).returning();
   res.status(201).json(CreateLojaResponse.parse(loja));
 });
@@ -120,8 +130,18 @@ router.patch("/admin/lojas/:lojaId", async (req, res): Promise<void> => {
     res.status(422).json(cnpj.recusa);
     return;
   }
+  const cpfRep = cpfNaPorta(parsed.data.representanteCpf, "representanteCpf");
+  if (cpfRep.recusa) {
+    res.status(422).json(cpfRep.recusa);
+    return;
+  }
   const [loja] = await db.update(lojasTable)
-    .set({ ...parsed.data, ...(cnpj.valor !== undefined ? { cnpj: cnpj.valor } : {}) })
+    .set({
+      ...parsed.data,
+      ...(cnpj.valor !== undefined ? { cnpj: cnpj.valor } : {}),
+      ...(cpfRep.valor !== undefined ? { representanteCpf: cpfRep.valor } : {}),
+      ...vaziosViramNulo(parsed.data, LIVRES_DA_LOJA),
+    })
     .where(eq(lojasTable.id, params.data.lojaId))
     .returning();
   if (!loja) {

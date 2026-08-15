@@ -14,4 +14,13 @@ export interface DadosDaLojaInput {
   endereco?: string;
   /** Vazio é permitido (a loja pode não ter WhatsApp). Preenchido, tem de render um link de wa.me — o servidor recusa com TELEFONE_SEM_WHATSAPP o que `linkWhatsApp` transformaria em null, porque nesse caso o botão do portal da noiva some sem erro e sem aviso. */
   telefone?: string;
+  cidade?: string;
+  /** @maxLength 2 */
+  uf?: string;
+  representanteNome?: string;
+  representanteRg?: string;
+  /** CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); gravado como 000.000.000-00. (E233/E234) */
+  representanteCpf?: string;
+  pixChave?: string;
+  pixTitular?: string;
 }

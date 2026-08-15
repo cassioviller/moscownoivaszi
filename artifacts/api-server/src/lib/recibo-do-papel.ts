@@ -1,7 +1,7 @@
 import type { Contrato, Lead, Loja, Parcela, AuditLog } from "@workspace/db";
 import { centavos } from "@workspace/financeiro-core";
 import { desenharPdf, montadorDeTokens, type Token } from "./pdf-desenhista";
-import { brl, dataBR, dataBRInstante, rotuloForma, slug } from "./contrato-do-papel";
+import { brl, dataBR, dataBRInstante, pixDaLoja, rotuloForma, slug } from "./contrato-do-papel";
 
 /**
  * E221 — o RECIBO da cláusula 7ª.
@@ -356,6 +356,9 @@ function montarTokensDoRecibo(d: DadosDoRecibo): Token[] {
   dado("CNPJ", loja.cnpj ?? undefined);
   dado("Endereco", loja.endereco ?? undefined);
   dado("Telefone", loja.telefone ?? undefined);
+  // E234: o recibo é o papel do PAGAMENTO, e a chave é onde se paga — sai
+  // quando o cadastro a tem; sem chave, a linha não sai (não é lacuna do molde).
+  if (loja.pixChave) dado("PIX", pixDaLoja(loja));
   dado("Lancado por", recibo.lancadoPor);
   vazio();
 

@@ -49,7 +49,9 @@ const { gerarContratoPdf } = await import("../lib/contrato-pdf");
 // As linhas DESENHADAS, emendadas: o paginador quebra a frase por largura, e a
 // régua lê o que a página mostra, não o stream cru (lição da S-C170).
 const texto = (bytes: Uint8Array) =>
-  [...Buffer.from(bytes).toString("latin1").matchAll(/\((.*)\) Tj/g)].map((m) => m[1]!.trim()).join(" ");
+  [...Buffer.from(bytes).toString("latin1").matchAll(/\((.*)\) Tj/g)]
+    .map((m) => m[1]!.trim().replace(/\\([()])/g, "$1"))
+    .join(" ");
 const brl = (v: number) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const DADOS = {
@@ -150,5 +152,30 @@ describe("E220 — os números do instrumento são as réguas, não cópias dela
     expect(txt).toContain("INSTRUMENTO PARTICULAR DE LOCAÇÃO DE VESTUÁRIO");
     // O desenhista traduz o travessão para hífen (P14) — a régua lê o que a página mostra.
     expect(txt).toContain("Ana - LOCATÁRIO");
+  });
+});
+
+describe("E234 — o que é da loja mora no cadastro da loja, e o papel o imprime", () => {
+  it("com representante, cidade/UF e PIX o instrumento nomeia os três; sem eles, a lacuna", () => {
+    const cheio = texto(
+      gerarContratoPdf({
+        lojaNome: "Moscow Noivas",
+        noivaNome: "Ana",
+        lojaRepresentante: "Renato Nascimento de Brito, Carteira de Identidade nº 42.909.064-x, CPF nº 333.486.478-27",
+        lojaCidade: "São José dos Campos",
+        lojaUf: "SP",
+        lojaPix: "23723482805 (KARINA SHABALINA)",
+        dataContrato: "15/08/2026",
+      }),
+    );
+    expect(cheio).toContain("neste ato representada por Renato Nascimento de Brito, Carteira de Identidade nº 42.909.064-x, CPF nº 333.486.478-27");
+    expect(cheio).toContain("foro da comarca deste município de SÃO JOSÉ DOS CAMPOS");
+    expect(cheio).toContain("São José dos Campos - SP, 15/08/2026.");
+    expect(cheio).toContain("PIX: 23723482805 (KARINA SHABALINA)");
+
+    const vazio = texto(gerarContratoPdf({ lojaNome: "Moscow Noivas", noivaNome: "Ana" }));
+    expect(vazio).toContain("neste ato representada por ________________________________");
+    expect(vazio).toContain("foro da comarca do município da sede da LOCADORA");
+    expect(vazio).not.toContain("PIX:");
   });
 });

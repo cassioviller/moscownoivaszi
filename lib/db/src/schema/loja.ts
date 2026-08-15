@@ -8,6 +8,29 @@ export const lojasTable = pgTable("lojas", {
   cnpj: text("cnpj"),
   endereco: text("endereco"),
   telefone: text("telefone"),
+  /**
+   * E234 (D7, respondida SIM em 15/08/2026) — o que o INSTRUMENTO imprime da
+   * LOCADORA e não cabia em `endereco`: a cidade e a UF do foro (21ª) e do
+   * fecho, quem assina pela loja (1ª página: nome, RG, CPF) e como a noiva paga
+   * (a linha do PIX, ao pé da assinatura). Todas nulas por padrão: a instalação
+   * existente não muda até alguém preencher, e o papel imprime a lacuna.
+   *
+   * `endereco` continua uma string livre e a cidade NÃO se concatena a ele no
+   * papel — as duas lojas reais já a carregam dentro do endereço; a cidade
+   * nova serve ao foro e ao "Local, data".
+   *
+   * LGPD: `representante_cpf` é dado pessoal de gente da LOJA, não da noiva —
+   * a `varredura-expurgo-lgpd` enumera `leads`, e esta coluna fica fora do
+   * expurgo por decisão: o representante é parte do contrato, não titular a
+   * esquecer.
+   */
+  cidade: text("cidade"),
+  uf: text("uf"),
+  representanteNome: text("representante_nome"),
+  representanteRg: text("representante_rg"),
+  representanteCpf: text("representante_cpf"),
+  pixChave: text("pix_chave"),
+  pixTitular: text("pix_titular"),
   ativo: boolean("ativo").notNull().default(true),
   // Captação externa (E19): o token é a credencial do formulário do site/
   // Instagram para criar leads sem sessão. Null = captação desligada;

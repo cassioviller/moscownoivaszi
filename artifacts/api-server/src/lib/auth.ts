@@ -115,6 +115,16 @@ export async function buscarLojasUsuario(usuarioId: string, isSuperAdmin: boolea
       cnpj: lojasTable.cnpj,
       endereco: lojasTable.endereco,
       telefone: lojasTable.telefone,
+      // E234: a tela Dados da loja lê a loja da SESSÃO — os sete do instrumento
+      // têm de descer por aqui, senão o formulário abre vazio para quem não é
+      // superadmin e "salvar" apaga o que já estava gravado.
+      cidade: lojasTable.cidade,
+      uf: lojasTable.uf,
+      representanteNome: lojasTable.representanteNome,
+      representanteRg: lojasTable.representanteRg,
+      representanteCpf: lojasTable.representanteCpf,
+      pixChave: lojasTable.pixChave,
+      pixTitular: lojasTable.pixTitular,
       ativo: lojasTable.ativo,
       createdAt: lojasTable.createdAt,
       perfilId: usuariosLojasTable.perfilId,

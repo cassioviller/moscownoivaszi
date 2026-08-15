@@ -59,10 +59,13 @@ export type DadosContrato = {
   lojaCnpj?: string;
   lojaEndereco?: string;
   lojaTelefone?: string;
-  /** D7 aberta: o cadastro ainda não guarda o representante; ausente = lacuna. */
+  /** E234 — quem assina pela loja ("Nome, Carteira de Identidade nº …, CPF nº …"); ausente = lacuna. */
   lojaRepresentante?: string;
-  /** D7 aberta: o cadastro não tem cidade; ausente = a 21ª remete à sede. */
+  /** E234 — a cidade do foro (21ª) e do fecho; ausente = a 21ª remete à sede. */
   lojaCidade?: string;
+  lojaUf?: string;
+  /** E234 — a linha do PIX ao pé da assinatura ("chave (titular)"); ausente = não sai. */
+  lojaPix?: string;
   noivaNome: string;
   /**
    * P10: a tarja do contrato cancelado — desenhada GRANDE, logo abaixo do
@@ -238,12 +241,17 @@ function montarTokens(d: DadosContrato): Token[] {
     [
       { text: FECHO_DO_INSTRUMENTO, size: 10 },
       { text: " ", size: 11 },
-      { text: `${ou(d.lojaCidade, "____________________")}, ${ou(d.dataContrato, "____ de ____________ de ______")}.`, size: 10 },
+      {
+        text: `${ou(d.lojaCidade, "____________________")}${d.lojaCidade && d.lojaUf ? ` - ${d.lojaUf.toUpperCase()}` : ""}, ${ou(d.dataContrato, "____ de ____________ de ______")}.`,
+        size: 10,
+      },
       { text: " ", size: 11 },
       { text: " ", size: 11 },
       { text: "__________________________________", size: 11 },
       { text: `${d.lojaNome} — LOCADORA`, size: 11 },
       { text: `CNPJ ${ou(d.lojaCnpj, "____________")}`, size: 10 },
+      // E234: a linha do PIX, como no molde ("PIX: chave (titular)"); sem chave não sai.
+      ...(d.lojaPix ? [{ text: `PIX: ${d.lojaPix}`, size: 10 }] : []),
       { text: " ", size: 11 },
       { text: " ", size: 11 },
       { text: "__________________________________", size: 11 },

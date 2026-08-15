@@ -440,6 +440,15 @@ export const LOJA_PADRAO = {
   cnpj: CNPJ_DE_EXEMPLO,
   endereco: "Rua das Noivas, 123, São Paulo - SP",
   telefone: "(11) 99999-9999",
+  // E234 — o instrumento inteiro na instalação de exemplo: quem assina, o PIX,
+  // o foro. Valores claramente de exemplo (o CPF fecha os dígitos).
+  cidade: "São Paulo",
+  uf: "SP",
+  representanteNome: "Representante de Exemplo",
+  representanteRg: "12.345.678-9",
+  representanteCpf: "390.533.447-05",
+  pixChave: "39053344705",
+  pixTitular: "Representante de Exemplo",
 } as const;
 
 export const DONA_PADRAO = {
@@ -450,7 +459,21 @@ export const DONA_PADRAO = {
 } as const;
 
 export type OpcoesConfiguracao = {
-  loja: { id: string; nome: string; cnpj?: string | null; endereco?: string | null; telefone?: string | null };
+  loja: {
+    id: string;
+    nome: string;
+    cnpj?: string | null;
+    endereco?: string | null;
+    telefone?: string | null;
+    // E234 — os sete do instrumento; opcionais para quem semeia sem eles.
+    cidade?: string | null;
+    uf?: string | null;
+    representanteNome?: string | null;
+    representanteRg?: string | null;
+    representanteCpf?: string | null;
+    pixChave?: string | null;
+    pixTitular?: string | null;
+  };
   dona: { id: string; nome: string; email: string; senha: string; superAdmin: boolean };
   /** Escada de comissão e recorrências. Desligado, a loja fica sem valor nenhum. */
   comExemplosFinanceiros: boolean;
@@ -500,6 +523,13 @@ export function configuracaoDoAmbiente(env: NodeJS.ProcessEnv = process.env): Op
       cnpj: texto("SEED_LOJA_CNPJ", LOJA_PADRAO.cnpj),
       endereco: texto("SEED_LOJA_ENDERECO", LOJA_PADRAO.endereco),
       telefone: texto("SEED_LOJA_TELEFONE", LOJA_PADRAO.telefone),
+      cidade: texto("SEED_LOJA_CIDADE", LOJA_PADRAO.cidade),
+      uf: texto("SEED_LOJA_UF", LOJA_PADRAO.uf),
+      representanteNome: texto("SEED_LOJA_REPRESENTANTE_NOME", LOJA_PADRAO.representanteNome),
+      representanteRg: texto("SEED_LOJA_REPRESENTANTE_RG", LOJA_PADRAO.representanteRg),
+      representanteCpf: texto("SEED_LOJA_REPRESENTANTE_CPF", LOJA_PADRAO.representanteCpf),
+      pixChave: texto("SEED_LOJA_PIX_CHAVE", LOJA_PADRAO.pixChave),
+      pixTitular: texto("SEED_LOJA_PIX_TITULAR", LOJA_PADRAO.pixTitular),
     },
     dona: {
       id: texto("SEED_DONA_ID", DONA_PADRAO.id),
@@ -549,6 +579,13 @@ export async function aplicarConfiguracaoInicial(opts: OpcoesConfiguracao): Prom
       cnpj: loja.cnpj ?? null,
       endereco: loja.endereco ?? null,
       telefone: loja.telefone ?? null,
+      cidade: loja.cidade ?? null,
+      uf: loja.uf ?? null,
+      representanteNome: loja.representanteNome ?? null,
+      representanteRg: loja.representanteRg ?? null,
+      representanteCpf: loja.representanteCpf ?? null,
+      pixChave: loja.pixChave ?? null,
+      pixTitular: loja.pixTitular ?? null,
       ativo: true,
     })
     .onConflictDoNothing()

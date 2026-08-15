@@ -35,3 +35,44 @@ test.describe("Configurações", () => {
     await expect(page.getByText(/\b2 min\b/)).not.toBeVisible();
   });
 });
+
+/**
+ * E234 — o que é da loja mora no cadastro da loja. A tela Dados da loja ganhou
+ * os sete campos que o instrumento imprime da LOCADORA (cidade/UF do foro, quem
+ * assina, o PIX). A cena preenche pela tela, recarrega, e confere que a sessão
+ * devolveu o que gravou — o achado da execução foi justamente a sessão não
+ * trazer os campos, e o formulário abrir vazio.
+ */
+test.describe("Configurações — Dados da loja (E234)", () => {
+  test("os sete campos do instrumento salvam pela tela e voltam preenchidos", async ({ page }) => {
+    await page.goto("/configuracoes");
+    await page.waitForLoadState("networkidle");
+    // O CPF que não fecha os dígitos avisa e trava o botão (E233, a mesma função do core).
+    await page.locator("#loja-representante-cpf").fill("123.456.789-00");
+    await expect(page.getByTestId("aviso-cpf-representante-invalido")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Salvar dados/ })).toBeDisabled();
+
+    await page.locator("#loja-representante-cpf").fill("333.486.478-27");
+    await expect(page.getByTestId("aviso-cpf-representante-invalido")).not.toBeVisible();
+    // O cliente que JÁ INSTALOU carrega o CNPJ de exemplo anterior ao E233
+    // (12.345.678/0001-99, que não fecha) — o seed é idempotente e não corrige
+    // loja existente, e desde o E234 o botão trava também pelo CNPJ. É a P3 no
+    // gesto real: a dona corrige o CNPJ ANTES de os sete campos poderem entrar.
+    // (Medido no primeiro E2E do E234: 60 s esperando um botão desabilitado.)
+    await page.locator("#loja-cnpj").fill("11.222.333/0001-81");
+    await page.locator("#loja-cidade").fill("São José dos Campos");
+    await page.locator("#loja-uf").fill("SP");
+    await page.locator("#loja-representante-nome").fill("Renato Nascimento de Brito");
+    await page.locator("#loja-representante-rg").fill("42.909.064-x");
+    await page.locator("#loja-pix-chave").fill("23723482805");
+    await page.locator("#loja-pix-titular").fill("Karina Shabalina");
+    await page.getByRole("button", { name: /Salvar dados/ }).click();
+    await expect(page.getByText("Dados da loja salvos")).toBeVisible();
+
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator("#loja-representante-nome")).toHaveValue("Renato Nascimento de Brito");
+    await expect(page.locator("#loja-cidade")).toHaveValue("São José dos Campos");
+    await expect(page.locator("#loja-pix-chave")).toHaveValue("23723482805");
+  });
+});

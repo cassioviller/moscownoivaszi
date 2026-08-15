@@ -183,8 +183,12 @@ export function pdfDoContrato(contrato: ContratoComPapel, expediente?: string): 
     lojaCnpj: contrato.loja.cnpj ?? undefined,
     lojaEndereco: contrato.loja.endereco ?? undefined,
     lojaTelefone: contrato.loja.telefone ?? undefined,
-    // D7 aberta: representante e cidade não existem no cadastro — o papel sai
-    // com a lacuna e a 21ª remete à sede. Quando a D7 fechar, é aqui que entram.
+    // E234 (D7 respondida SIM): quem assina pela loja, a cidade do foro e o PIX
+    // vêm do cadastro; ausentes, o papel imprime a lacuna do molde.
+    lojaRepresentante: representanteDaLoja(contrato.loja),
+    lojaCidade: contrato.loja.cidade?.trim() || undefined,
+    lojaUf: contrato.loja.uf?.trim() || undefined,
+    lojaPix: pixDaLoja(contrato.loja),
     expediente,
     noivaNome: contrato.lead?.noivaNome ?? "",
     tarja:
@@ -264,4 +268,25 @@ export function pdfDoContrato(contrato: ContratoComPapel, expediente?: string): 
 /** O nome do arquivo, também o mesmo dos dois lados. */
 export function nomeDoArquivo(contrato: ContratoComPapel): string {
   return `contrato-${slug(contrato.lead?.noivaNome ?? "")}.pdf`;
+}
+
+/**
+ * E234 — as duas frases da LOCADORA que o instrumento imprime a partir do
+ * cadastro. Cada uma é `undefined` quando o cadastro não tem o dado, e o papel
+ * imprime a lacuna do molde; parcial imprime o que há e "-" no que falta.
+ */
+export function representanteDaLoja(loja: {
+  representanteNome?: string | null;
+  representanteRg?: string | null;
+  representanteCpf?: string | null;
+}): string | undefined {
+  if (!loja.representanteNome?.trim()) return undefined;
+  const rg = loja.representanteRg?.trim() || "-";
+  const cpf = loja.representanteCpf?.trim() || "-";
+  return `${loja.representanteNome.trim()}, Carteira de Identidade nº ${rg}, CPF nº ${cpf}`;
+}
+
+export function pixDaLoja(loja: { pixChave?: string | null; pixTitular?: string | null }): string | undefined {
+  if (!loja.pixChave?.trim()) return undefined;
+  return loja.pixTitular?.trim() ? `${loja.pixChave.trim()} (${loja.pixTitular.trim()})` : loja.pixChave.trim();
 }

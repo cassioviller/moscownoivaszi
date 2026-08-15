@@ -13,4 +13,13 @@ export interface LojaInput {
   cnpj?: string;
   endereco?: string;
   telefone?: string;
+  cidade?: string;
+  /** @maxLength 2 */
+  uf?: string;
+  representanteNome?: string;
+  representanteRg?: string;
+  /** CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); gravado como 000.000.000-00. (E233/E234) */
+  representanteCpf?: string;
+  pixChave?: string;
+  pixTitular?: string;
 }

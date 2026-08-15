@@ -50,3 +50,22 @@ function conferir(
 
 export const cpfNaPorta = (valor: string | null | undefined, campo = "cpf") => conferir("CPF", campo, valor);
 export const cnpjNaPorta = (valor: string | null | undefined, campo = "cnpj") => conferir("CNPJ", campo, valor);
+
+/**
+ * E234 — os campos de texto livre do cadastro da loja: string vazia APAGA
+ * (vira `null`), como o telefone já fazia; `undefined` é "não mexi". Sem isto,
+ * limpar o campo na tela gravaria `""` e o papel imprimiria uma linha em branco
+ * onde deveria imprimir a lacuna do molde.
+ */
+export function vaziosViramNulo<T extends Record<string, unknown>, K extends keyof T & string>(
+  dados: T,
+  campos: readonly K[],
+): Partial<Record<K, string | null>> {
+  const out: Partial<Record<K, string | null>> = {};
+  for (const c of campos) {
+    const v = dados[c];
+    if (v === undefined) continue;
+    out[c] = typeof v === "string" && v.trim() === "" ? null : (v as string | null);
+  }
+  return out;
+}

@@ -15,6 +15,20 @@ export interface Loja {
   endereco?: string | null;
   /** @nullable */
   telefone?: string | null;
+  /** @nullable */
+  cidade?: string | null;
+  /** @nullable */
+  uf?: string | null;
+  /** @nullable */
+  representanteNome?: string | null;
+  /** @nullable */
+  representanteRg?: string | null;
+  /** @nullable */
+  representanteCpf?: string | null;
+  /** @nullable */
+  pixChave?: string | null;
+  /** @nullable */
+  pixTitular?: string | null;
   ativo: boolean;
   createdAt: Date;
 }

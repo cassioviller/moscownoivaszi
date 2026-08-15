@@ -11,7 +11,39 @@ import { useToast } from "@/hooks/use-toast";
 import { mensagemApi } from "@/lib/erro-api";
 import { useConfirmarSaida, sujoParaConfirmar } from "@/hooks/use-confirmar-saida";
 import { linkWhatsApp } from "@/lib/whatsapp";
-import { cnpjValido } from "@workspace/financeiro-core";
+import { cnpjValido, cpfValido } from "@workspace/financeiro-core";
+
+/**
+ * E234 — os onze campos que a dona edita: os quatro de sempre e os sete que o
+ * INSTRUMENTO imprime da LOCADORA (quem assina, o PIX, a cidade do foro). Tudo
+ * texto; vazio apaga na porta.
+ */
+type DadosDaLojaForm = {
+  nome: string;
+  cnpj: string;
+  endereco: string;
+  telefone: string;
+  cidade: string;
+  uf: string;
+  representanteNome: string;
+  representanteRg: string;
+  representanteCpf: string;
+  pixChave: string;
+  pixTitular: string;
+};
+const VAZIO: DadosDaLojaForm = {
+  nome: "",
+  cnpj: "",
+  endereco: "",
+  telefone: "",
+  cidade: "",
+  uf: "",
+  representanteNome: "",
+  representanteRg: "",
+  representanteCpf: "",
+  pixChave: "",
+  pixTitular: "",
+};
 
 /**
  * S17 — os dados da loja, editáveis por quem administra a loja.
@@ -41,14 +73,21 @@ export function DadosDaLoja() {
   const loja = session?.lojas?.find((l) => l.id === activeLojaId);
   const salvar = useUpdateDadosDaLoja();
 
-  const form = useForm<{ nome: string; cnpj: string; endereco: string; telefone: string }>({
-    defaultValues: { nome: "", cnpj: "", endereco: "", telefone: "" },
+  const form = useForm<DadosDaLojaForm>({
+    defaultValues: VAZIO,
     values: loja
       ? {
           nome: loja.nome,
           cnpj: loja.cnpj ?? "",
           endereco: loja.endereco ?? "",
           telefone: loja.telefone ?? "",
+          cidade: loja.cidade ?? "",
+          uf: loja.uf ?? "",
+          representanteNome: loja.representanteNome ?? "",
+          representanteRg: loja.representanteRg ?? "",
+          representanteCpf: loja.representanteCpf ?? "",
+          pixChave: loja.pixChave ?? "",
+          pixTitular: loja.pixTitular ?? "",
         }
       : undefined,
     // O mesmo D13/E93 da tela de horário: campo intocado acompanha o servidor,
@@ -63,18 +102,16 @@ export function DadosDaLoja() {
   // e a API recusa depois; nenhuma das duas copia a outra.
   const cnpj = form.watch("cnpj");
   const cnpjFecha = !cnpj.trim() || cnpjValido(cnpj);
+  // E234: o CPF de quem assina pela loja, pela mesma régua.
+  const cpfRep = form.watch("representanteCpf");
+  const cpfRepFecha = !cpfRep.trim() || cpfValido(cpfRep);
   const telefoneVira = !telefone.trim() || linkWhatsApp(telefone, "") !== null;
 
-  async function onSubmit(valores: { nome: string; cnpj: string; endereco: string; telefone: string }) {
+  async function onSubmit(valores: DadosDaLojaForm) {
     try {
       await salvar.mutateAsync({
         lojaId: activeLojaId!,
-        data: {
-          nome: valores.nome,
-          cnpj: valores.cnpj,
-          endereco: valores.endereco,
-          telefone: valores.telefone,
-        },
+        data: { ...valores },
       });
       // A sessão é a fonte: invalidar `/auth/me` é o que faz o card e o rodapé
       // do portal passarem a ver o valor novo.
@@ -144,7 +181,68 @@ export function DadosDaLoja() {
                 </p>
               )}
             </div>
-            <Button type="submit" disabled={form.formState.isSubmitting || !telefoneVira}>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="loja-cidade">Cidade</Label>
+                <Input id="loja-cidade" placeholder="São José dos Campos" {...form.register("cidade")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="loja-uf">UF</Label>
+                <Input id="loja-uf" placeholder="SP" maxLength={2} {...form.register("uf")} />
+              </div>
+            </div>
+            <p className="text-muted-foreground text-sm">
+              A cidade e a UF nomeiam o foro do contrato (cláusula 21ª) e a linha de local e data.
+              O endereço acima continua saindo por inteiro na identificação da loja.
+            </p>
+
+            {/* E234 — quem assina pela loja: sai na 1ª página do instrumento. */}
+            <h3 className="pt-2 text-sm font-medium">Quem assina pela loja</h3>
+            <p className="text-muted-foreground text-sm">
+              O representante legal, como sai na identificação das partes do contrato. Em branco, o
+              papel imprime a lacuna para preencher à mão.
+            </p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5 sm:col-span-3">
+                <Label htmlFor="loja-representante-nome">Nome</Label>
+                <Input id="loja-representante-nome" {...form.register("representanteNome")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="loja-representante-rg">RG</Label>
+                <Input id="loja-representante-rg" placeholder="00.000.000-0" {...form.register("representanteRg")} />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="loja-representante-cpf">CPF</Label>
+                <Input id="loja-representante-cpf" placeholder="000.000.000-00" {...form.register("representanteCpf")} />
+                {!cpfRepFecha && (
+                  <p className="text-aviso text-sm" data-testid="aviso-cpf-representante-invalido">
+                    Os dígitos verificadores deste CPF não fecham — confira o número.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* E234 — como a noiva paga: a linha do PIX ao pé da assinatura, no contrato e no recibo. */}
+            <h3 className="pt-2 text-sm font-medium">Como a noiva paga</h3>
+            <p className="text-muted-foreground text-sm">
+              A chave PIX e o titular saem ao pé da assinatura do contrato e no recibo de cada
+              pagamento. Sem chave, a linha não sai.
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="loja-pix-chave">Chave PIX</Label>
+                <Input id="loja-pix-chave" placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" {...form.register("pixChave")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="loja-pix-titular">Titular da chave</Label>
+                <Input id="loja-pix-titular" {...form.register("pixTitular")} />
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={form.formState.isSubmitting || !telefoneVira || !cnpjFecha || !cpfRepFecha}
+            >
               {form.formState.isSubmitting ? "Salvando…" : "Salvar dados"}
             </Button>
           </form>

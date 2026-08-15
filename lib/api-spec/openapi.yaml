@@ -5240,6 +5240,14 @@ components:
         cnpj: { type: ["string", "null"] }
         endereco: { type: ["string", "null"] }
         telefone: { type: ["string", "null"] }
+        # E234 (D7) — o que o instrumento imprime da LOCADORA. Nulos até alguém preencher.
+        cidade: { type: ["string", "null"] }
+        uf: { type: ["string", "null"] }
+        representanteNome: { type: ["string", "null"] }
+        representanteRg: { type: ["string", "null"] }
+        representanteCpf: { type: ["string", "null"] }
+        pixChave: { type: ["string", "null"] }
+        pixTitular: { type: ["string", "null"] }
         ativo: { type: boolean }
         createdAt: { type: string, format: date-time }
     LojaInput:
@@ -5250,6 +5258,14 @@ components:
         cnpj: { type: string, description: "CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000/0000-00. Vazio apaga. (E233)" }
         endereco: { type: string }
         telefone: { type: string }
+        # E234 (D7) — os sete do instrumento. `representanteCpf` passa pela régua do E233 (422 CPF_INVALIDO). Vazio apaga.
+        cidade: { type: string }
+        uf: { type: string, maxLength: 2 }
+        representanteNome: { type: string }
+        representanteRg: { type: string }
+        representanteCpf: { type: string, description: "CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); gravado como 000.000.000-00. (E233/E234)" }
+        pixChave: { type: string }
+        pixTitular: { type: string }
     LojaUpdate:
       type: object
       properties:
@@ -5257,6 +5273,14 @@ components:
         cnpj: { type: string, description: "CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000/0000-00. Vazio apaga. (E233)" }
         endereco: { type: string }
         telefone: { type: string }
+        # E234 (D7) — os sete do instrumento. `representanteCpf` passa pela régua do E233 (422 CPF_INVALIDO). Vazio apaga.
+        cidade: { type: string }
+        uf: { type: string, maxLength: 2 }
+        representanteNome: { type: string }
+        representanteRg: { type: string }
+        representanteCpf: { type: string, description: "CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); gravado como 000.000.000-00. (E233/E234)" }
+        pixChave: { type: string }
+        pixTitular: { type: string }
         ativo: { type: boolean }
     # S17 — o que a DONA edita da própria loja, sem passar pelo console de
     # superadmin. É o `LojaUpdate` menos o `ativo`: desativar a própria loja é
@@ -5276,6 +5300,14 @@ components:
             render um link de wa.me — o servidor recusa com TELEFONE_SEM_WHATSAPP
             o que `linkWhatsApp` transformaria em null, porque nesse caso o botão
             do portal da noiva some sem erro e sem aviso.
+        # E234 (D7) — os sete do instrumento. `representanteCpf` passa pela régua do E233 (422 CPF_INVALIDO). Vazio apaga.
+        cidade: { type: string }
+        uf: { type: string, maxLength: 2 }
+        representanteNome: { type: string }
+        representanteRg: { type: string }
+        representanteCpf: { type: string, description: "CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); gravado como 000.000.000-00. (E233/E234)" }
+        pixChave: { type: string }
+        pixTitular: { type: string }
 
     # Acessos por MÓDULO × AÇÃO. Era plano (`{leads: true}`), que só respondia
     # "entra ou não entra" — não dava para ver o financeiro sem poder mexer

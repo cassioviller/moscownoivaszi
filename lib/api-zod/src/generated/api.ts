@@ -43,6 +43,13 @@ export const LoginResponse = zod.object({
   "cnpj": zod.string().nullish(),
   "endereco": zod.string().nullish(),
   "telefone": zod.string().nullish(),
+  "cidade": zod.string().nullish(),
+  "uf": zod.string().nullish(),
+  "representanteNome": zod.string().nullish(),
+  "representanteRg": zod.string().nullish(),
+  "representanteCpf": zod.string().nullish(),
+  "pixChave": zod.string().nullish(),
+  "pixTitular": zod.string().nullish(),
   "ativo": zod.boolean(),
   "createdAt": dataDoCorpo()
 }).and(zod.object({
@@ -72,6 +79,13 @@ export const GetMeResponse = zod.object({
   "cnpj": zod.string().nullish(),
   "endereco": zod.string().nullish(),
   "telefone": zod.string().nullish(),
+  "cidade": zod.string().nullish(),
+  "uf": zod.string().nullish(),
+  "representanteNome": zod.string().nullish(),
+  "representanteRg": zod.string().nullish(),
+  "representanteCpf": zod.string().nullish(),
+  "pixChave": zod.string().nullish(),
+  "pixTitular": zod.string().nullish(),
   "ativo": zod.boolean(),
   "createdAt": dataDoCorpo()
 }).and(zod.object({
@@ -119,6 +133,13 @@ export const SelecionarLojaResponse = zod.object({
   "cnpj": zod.string().nullish(),
   "endereco": zod.string().nullish(),
   "telefone": zod.string().nullish(),
+  "cidade": zod.string().nullish(),
+  "uf": zod.string().nullish(),
+  "representanteNome": zod.string().nullish(),
+  "representanteRg": zod.string().nullish(),
+  "representanteCpf": zod.string().nullish(),
+  "pixChave": zod.string().nullish(),
+  "pixTitular": zod.string().nullish(),
   "ativo": zod.boolean(),
   "createdAt": dataDoCorpo()
 }).and(zod.object({
@@ -152,6 +173,13 @@ export const ListLojasResponseItem = zod.object({
   "cnpj": zod.string().nullish(),
   "endereco": zod.string().nullish(),
   "telefone": zod.string().nullish(),
+  "cidade": zod.string().nullish(),
+  "uf": zod.string().nullish(),
+  "representanteNome": zod.string().nullish(),
+  "representanteRg": zod.string().nullish(),
+  "representanteCpf": zod.string().nullish(),
+  "pixChave": zod.string().nullish(),
+  "pixTitular": zod.string().nullish(),
   "ativo": zod.boolean(),
   "createdAt": dataDoCorpo()
 })
@@ -159,13 +187,22 @@ export const ListLojasResponse = zod.array(ListLojasResponseItem)
 
 
 
+export const createLojaBodyUfMax = 2;
+
 
 
 export const CreateLojaBody = zod.object({
   "nome": zod.string().min(1),
   "cnpj": zod.string().optional().describe('CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000\/0000-00. Vazio apaga. (E233)'),
   "endereco": zod.string().optional(),
-  "telefone": zod.string().optional()
+  "telefone": zod.string().optional(),
+  "cidade": zod.string().optional(),
+  "uf": zod.string().max(createLojaBodyUfMax).optional(),
+  "representanteNome": zod.string().optional(),
+  "representanteRg": zod.string().optional(),
+  "representanteCpf": zod.string().optional().describe('CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); gravado como 000.000.000-00. (E233\/E234)'),
+  "pixChave": zod.string().optional(),
+  "pixTitular": zod.string().optional()
 })
 
 export const CreateLojaResponse = zod.object({
@@ -174,6 +211,13 @@ export const CreateLojaResponse = zod.object({
   "cnpj": zod.string().nullish(),
   "endereco": zod.string().nullish(),
   "telefone": zod.string().nullish(),
+  "cidade": zod.string().nullish(),
+  "uf": zod.string().nullish(),
+  "representanteNome": zod.string().nullish(),
+  "representanteRg": zod.string().nullish(),
+  "representanteCpf": zod.string().nullish(),
+  "pixChave": zod.string().nullish(),
+  "pixTitular": zod.string().nullish(),
   "ativo": zod.boolean(),
   "createdAt": dataDoCorpo()
 })
@@ -184,6 +228,8 @@ export const UpdateLojaParams = zod.object({
 })
 
 
+export const updateLojaBodyUfMax = 2;
+
 
 
 export const UpdateLojaBody = zod.object({
@@ -191,6 +237,13 @@ export const UpdateLojaBody = zod.object({
   "cnpj": zod.string().optional().describe('CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000\/0000-00. Vazio apaga. (E233)'),
   "endereco": zod.string().optional(),
   "telefone": zod.string().optional(),
+  "cidade": zod.string().optional(),
+  "uf": zod.string().max(updateLojaBodyUfMax).optional(),
+  "representanteNome": zod.string().optional(),
+  "representanteRg": zod.string().optional(),
+  "representanteCpf": zod.string().optional().describe('CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); gravado como 000.000.000-00. (E233\/E234)'),
+  "pixChave": zod.string().optional(),
+  "pixTitular": zod.string().optional(),
   "ativo": zod.boolean().optional()
 })
 
@@ -200,6 +253,13 @@ export const UpdateLojaResponse = zod.object({
   "cnpj": zod.string().nullish(),
   "endereco": zod.string().nullish(),
   "telefone": zod.string().nullish(),
+  "cidade": zod.string().nullish(),
+  "uf": zod.string().nullish(),
+  "representanteNome": zod.string().nullish(),
+  "representanteRg": zod.string().nullish(),
+  "representanteCpf": zod.string().nullish(),
+  "pixChave": zod.string().nullish(),
+  "pixTitular": zod.string().nullish(),
   "ativo": zod.boolean(),
   "createdAt": dataDoCorpo()
 })
@@ -508,13 +568,22 @@ export const UpdateDadosDaLojaParams = zod.object({
 })
 
 
+export const updateDadosDaLojaBodyUfMax = 2;
+
 
 
 export const UpdateDadosDaLojaBody = zod.object({
   "nome": zod.string().min(1).optional(),
   "cnpj": zod.string().optional().describe('CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000\/0000-00. Vazio apaga. (E233)'),
   "endereco": zod.string().optional(),
-  "telefone": zod.string().optional().describe('Vazio é permitido (a loja pode não ter WhatsApp). Preenchido, tem de render um link de wa.me — o servidor recusa com TELEFONE_SEM_WHATSAPP o que `linkWhatsApp` transformaria em null, porque nesse caso o botão do portal da noiva some sem erro e sem aviso.\n')
+  "telefone": zod.string().optional().describe('Vazio é permitido (a loja pode não ter WhatsApp). Preenchido, tem de render um link de wa.me — o servidor recusa com TELEFONE_SEM_WHATSAPP o que `linkWhatsApp` transformaria em null, porque nesse caso o botão do portal da noiva some sem erro e sem aviso.\n'),
+  "cidade": zod.string().optional(),
+  "uf": zod.string().max(updateDadosDaLojaBodyUfMax).optional(),
+  "representanteNome": zod.string().optional(),
+  "representanteRg": zod.string().optional(),
+  "representanteCpf": zod.string().optional().describe('CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); gravado como 000.000.000-00. (E233\/E234)'),
+  "pixChave": zod.string().optional(),
+  "pixTitular": zod.string().optional()
 })
 
 export const UpdateDadosDaLojaResponse = zod.object({
@@ -523,6 +592,13 @@ export const UpdateDadosDaLojaResponse = zod.object({
   "cnpj": zod.string().nullish(),
   "endereco": zod.string().nullish(),
   "telefone": zod.string().nullish(),
+  "cidade": zod.string().nullish(),
+  "uf": zod.string().nullish(),
+  "representanteNome": zod.string().nullish(),
+  "representanteRg": zod.string().nullish(),
+  "representanteCpf": zod.string().nullish(),
+  "pixChave": zod.string().nullish(),
+  "pixTitular": zod.string().nullish(),
   "ativo": zod.boolean(),
   "createdAt": dataDoCorpo()
 })
