@@ -162,9 +162,18 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
      * `PRAZO_ANTES_DA_RETIRADA_DIAS`), então não existe no código a frase
      * inteira que a vendedora lê — existe o pedaço fixo e o resto é dado. É o
      * mesmo caso do `Mover para ${diaMesAno(...)}` que criou este mecanismo.
+     *
+     * **S-C213 subiu para 11, e os dois são a dívida que o lote de S-C96
+     * deixou declarada**: o manual do proprietário descrevia em prosa os dois
+     * recados que não existem como frase contígua no código — o do carnê
+     * depois do prazo tem a constante interpolada (`reserva.ts:152`) e o da
+     * peça fora do rol está partido em três linhas de JSX
+     * (`reservas/[bloqueioId].tsx:1117-1119`). Quatro agentes em paralelo não
+     * podiam subir esta contagem; em série, os dois viraram citação com o
+     * pedaço literal declarado.
      */
     const moldes = todas().filter((c) => c.molde);
-    expect(moldes.length).toBe(9);
+    expect(moldes.length).toBe(11);
     // E o molde tem de ser mais curto que o exibido — senão não é molde, é uma
     // citação literal com um atributo pendurado.
     for (const m of moldes) {
