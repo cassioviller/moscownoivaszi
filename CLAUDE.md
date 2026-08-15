@@ -57,6 +57,17 @@ para o documento que manda.
    E223 → E219 → S-C234 e o lote paralelo dos blocos 5–8) e
    `docs/revisao/2026-08-15-sessao-a-fila-inteira.md` (a segunda metade).
 
+   **E o E236 (`8beeb9d8`, a pedido da dona no fim de 15/08): os cinco manuais
+   ganharam o passo a passo em prints (75 capturas, na sessão de cada perfil —
+   antes só a vendedora tinha 24, de 12/08) e passaram a morar DENTRO do
+   sistema: `Manuais`, no rodapé do menu, lista os cinco com o PDF para baixar
+   (`GET /manuais/:qual.pdf`, PDFs versionados em `docs/manuais/pdf/`). O que
+   a medição achou está no `E236.md`: a loja de demonstração envelhecia por
+   dentro (as datas de "hoje" eram de 12/08), os realces saíam ~700px fora do
+   lugar em tela rolada (o `main` rola por dentro), e o diálogo aberto
+   derrubava o navegador na captura seguinte. Como se republica está no
+   `replit.md`. Sobras: S-C320 e S-C321, 🔵.
+
    **A lição da segunda metade é de MEDIÇÃO, e ela tem número: SETE das nove
    sobras estavam erradas sobre si mesmas, e todas para MENOS.** A S-C281 dizia
    22 campos e eram **113** (a grafia `.optional()` era o grep, não a causa —
@@ -534,8 +545,8 @@ para o documento que manda.
    `git rev-list --count origin/main..main` antes de assumir que ainda está em
    dia — esta linha envelhece a cada commit, e já envelheceu seis vezes.
 
-   Hoje a régua é **API 1779 (256 arquivos) · frontend 998 (107 arquivos) ·
-   E2E 179 · typecheck verde** — as quatro medidas em série no fecho do E235, quarta sessão de 2026-08-15 (a API rodou inteira três vezes na sessão; o E2E, quatro). O parágrafo anterior media 1774 (255) · 998 · 178 no E234, e 1755 (251) · 998 (108) · 177 no fecho da
+   Hoje a régua é **API 1782 (257 arquivos) · frontend 1003 (108 arquivos) ·
+   E2E 179 · typecheck verde** — as quatro medidas em série no fecho do E236, quarta sessão de 2026-08-15 (a API rodou inteira quatro vezes na sessão; o E2E, cinco). O parágrafo anterior media 1779 (256) · 998 · 179 no E235. O parágrafo anterior media 1774 (255) · 998 · 178 no E234, e 1755 (251) · 998 (108) · 177 no fecho da
    segunda metade de 2026-08-15 (a API rodou INTEIRA **seis vezes** na
    sessão; o E2E, **quatro**). O parágrafo anterior media 1726 · 974 na
    madrugada do mesmo dia. O parágrafo abaixo, dos números de
