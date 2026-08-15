@@ -188,7 +188,21 @@ describe("varredura — o que o spec escreve no banco, o hook apaga (S-O101)", (
     ).toEqual([]);
   });
 
-  it("o piso de população, para conjunto vazio não aprovar em silêncio", () => {
+  /**
+   * S-C75 — o critério da S-C46 aplicado aqui: **escrever direto no banco
+   * compartilhado é DÍVIDA, e dívida é RETRATO, não piso.** Este teste dizia
+   * `>= 8` enquanto a própria prosa media 10 — dois specs de folga em que o
+   * 11º e o 12º entrariam sem uma linha de explicação. O retrato é NOMEADO:
+   * o spec novo que inserir direto fica vermelho aqui com o próprio nome, e o
+   * vermelho é o único lugar onde alguém escreve POR QUE ele precisa escrever
+   * por baixo da API.
+   *
+   * A população segue PISO, e é o único do arquivo: spec de E2E nasce toda
+   * semana por motivo que nada tem a ver com escrita direta, e travar 65
+   * cobraria remedida de quem encenou uma tela nova (S-C46). Medido em
+   * 2026-08-15: 65 specs.
+   */
+  it("a população tem piso, e a dívida de quem escreve direto é retrato nomeado", () => {
     const todos = specs();
     // `INSERE.test(...)` seria um defeito silencioso: com a flag `/g` o `test`
     // guarda `lastIndex` entre chamadas e pula um arquivo a cada dois. O
@@ -197,8 +211,18 @@ describe("varredura — o que o spec escreve no banco, o hook apaga (S-O101)", (
     const comEscrita = todos.filter(
       (r) => [...readFileSync(join(RAIZ, r), "utf8").matchAll(INSERE)].length > 0,
     );
-    // Medido em 2026-08-12: 64 specs, 10 deles escrevendo direto no banco.
     expect(todos.length, "specs versionados").toBeGreaterThanOrEqual(60);
-    expect(comEscrita.length, "specs que escrevem direto no banco").toBeGreaterThanOrEqual(8);
+    expect(comEscrita.sort(), "specs que escrevem direto no banco — a dívida, nomeada").toEqual([
+      "e2e/23-prova-data-real.spec.ts",
+      "e2e/26-prova-ocupa-intervalo.spec.ts",
+      "e2e/38-serie-comissao.spec.ts",
+      "e2e/44-sino-e-mensagens.spec.ts",
+      "e2e/45-portal-noiva.spec.ts",
+      "e2e/47-conciliacao.spec.ts",
+      "e2e/48-avaria-vira-parcela.spec.ts",
+      "e2e/52-orcamento-vira-contrato.spec.ts",
+      "e2e/61-link-publico.spec.ts",
+      "e2e/62-avaria-fecha.spec.ts",
+    ]);
   });
 });

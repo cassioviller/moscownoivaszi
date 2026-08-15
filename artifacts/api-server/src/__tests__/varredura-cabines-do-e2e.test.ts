@@ -55,14 +55,31 @@ describe("varredura — spec que cria cabine apaga a sua (S-D25)", () => {
   });
 
   /**
-   * Conjunto vazio aprovaria tudo em silêncio. O piso é o medido em
-   * 2026-08-06 — 61 specs versionados, 8 deles criando cabine — com folga
-   * para baixo.
+   * S-C75 — quem cria cabine é o que esta varredura existe para conter, e o
+   * que ela contém é RETRATO, não piso. O `>= 8` foi medido em 2026-08-06 e em
+   * 2026-08-15 já eram **9** — o nono entrou sem uma linha de explicação, que
+   * é exatamente o formato que a S-C46 descreve: piso não cobra remedida, e a
+   * prosa envelhece calada. O retrato é NOMEADO: o próximo spec que criar
+   * cabine fica vermelho aqui com o próprio nome, e o parágrafo se escreve no
+   * vermelho.
+   *
+   * A população segue piso (S-C46): spec nasce toda semana por motivo que nada
+   * tem a ver com cabine. Medido em 2026-08-15: 65 specs.
    */
-  it("a varredura olha specs de verdade, e acha quem cria", () => {
+  it("a varredura olha specs de verdade, e quem cria cabine é retrato nomeado", () => {
     const todos = specs();
     const comCriacao = todos.filter((r) => CRIA.test(readFileSync(join(RAIZ, r), "utf8")));
     expect(todos.length).toBeGreaterThan(50);
-    expect(comCriacao.length).toBeGreaterThanOrEqual(8);
+    expect(comCriacao.sort(), "specs que criam cabine — cada um chama a limpeza acima").toEqual([
+      "e2e/18-agenda-grade.spec.ts",
+      "e2e/22-atendimento-inicio-real.spec.ts",
+      "e2e/24-dias-funcionamento.spec.ts",
+      "e2e/25-confirmar-presenca.spec.ts",
+      "e2e/49-provas-recorte.spec.ts",
+      "e2e/55-ficha-responde-o-telefone.spec.ts",
+      "e2e/57-confeccao-na-fila.spec.ts",
+      "e2e/59-confeccao-vira-peca.spec.ts",
+      "e2e/60-ficha-do-trabalho.spec.ts",
+    ]);
   });
 });

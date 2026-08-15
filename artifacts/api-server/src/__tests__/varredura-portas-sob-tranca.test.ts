@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { join } from "node:path";
+import { arquivosVersionados } from "./arquivos-versionados";
+import { comArquivoSintetico, diferencaNomeada } from "./populacao-da-varredura";
 import {
   arquivosVarridos,
   colunasDeEstadoDe,
@@ -6,6 +9,7 @@ import {
   ehColunaDeEstado,
   enumerarPortas,
   escritasComTabelaDinamica,
+  escritasComTabelaDinamicaNoTexto,
   excecoesDe,
   portasNoTexto,
   sqlCruEscrevendoEmTabelaQuente,
@@ -374,24 +378,65 @@ const TOTAL_SEM_DISCIPLINA = RETRATO.ABERTA;
 
 describe("varredura — a enumeração das portas de escrita", () => {
   /**
-   * **O ÚNICO PISO do arquivo, e ele é piso de propósito (S-C46).**
+   * **S-C79 — a população se afirma por DIFERENÇA contra o `git ls-files`, não
+   * por tamanho.** O piso `> 200` era o único número do arquivo que NADA
+   * derivava: medido uma vez (304 na S-C46, 2026-08-13) e envelhecendo verde —
+   * em 2026-08-15 a população era **315**, onze arquivos em dois dias sem que
+   * nada cobrasse remedida. Pior: o piso não sentia um RECORTE novo no
+   * enumerador — um quarto `.filter` que apagasse `routes/` inteira passava
+   * com folga, e a justificativa do piso ("o RETRATO cobre a mesma direção")
+   * deixa de valer para qualquer peneira sobre população que não produza porta
+   * nenhuma, como a de SQL cru, que dá zero por desenho.
    *
-   * Arquivo-fonte nasce neste repositório toda semana, por motivo que não tem
-   * nada a ver com disciplina de escrita: travar 304 seria cobrar uma remedida
-   * de quem criou um `helpers/formatar-cpf.ts`. Ele não descreve nada — o que
-   * ele impede é a sonda cegar e seguir verde.
-   *
-   * E a folga que sobra (304 contra 200) não custa nada, porque o RETRATO das
-   * portas cobre a mesma direção com igualdade: um recorte que apagasse
-   * `routes/` da população derruba `portas.length` de 56 muito antes de a
-   * população chegar perto de 200. O piso é o segundo cinto, não o primeiro.
-   *
-   * Medido em 2026-08-13 (S-C46): **304 arquivos-fonte versionados** nas quatro
-   * pastas. Era 303 na S-C33 (`2dc9eec0`), e o único que entrou é
-   * `artifacts/api-server/src/lib/recebimentos-do-caixa.ts`.
+   * O que este teste faz agora: declara AQUI as pastas e os três recortes que
+   * `arquivosVarridos()` promete aplicar, recomputa a referência, e cobra a
+   * diferença VAZIA nas duas direções — com os arquivos nomeados. Recorte
+   * não-declarado no enumerador aparece em `aMenosNaPopulacao`, pasta removida
+   * idem, e o vermelho é uma lista legível em vez de um número que não diz de
+   * onde veio.
    */
-  it("olha para os arquivos versionados, e não para um conjunto vazio", () => {
-    expect(arquivosVarridos().length).toBeGreaterThan(200);
+  it("olha para TODO o versionado das quatro pastas — a diferença é vazia e nomeada", () => {
+    const RAIZ = join(import.meta.dirname, "..", "..", "..", "..");
+    // A promessa do enumerador, escrita uma segunda vez DE PROPÓSITO: é a
+    // cópia daqui que prega a de lá (`portas-de-escrita.ts`, `PASTAS` e
+    // `arquivosVarridos`). Mudou lá sem mudar aqui, a diferença nomeia quem
+    // entrou ou saiu.
+    const referencia = arquivosVersionados(RAIZ, [
+      "artifacts/api-server/src",
+      "artifacts/moscow-noivas/src",
+      "lib",
+      "scripts",
+    ]).filter(
+      (rel) =>
+        /\.tsx?$/.test(rel) &&
+        !rel.includes(".test.") &&
+        !rel.split("/").includes("__tests__") &&
+        !rel.split("/").includes("generated"),
+    );
+    const populacao = arquivosVarridos();
+    expect(diferencaNomeada(populacao, referencia)).toEqual({
+      aMaisNaPopulacao: [],
+      aMenosNaPopulacao: [],
+    });
+    // Zero não é número mágico: referência e população podem esvaziar JUNTAS.
+    expect(populacao.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * S-C182 — a encenação do arquivo plantado, de ponta a ponta: o arquivo no
+   * DISCO não existe para a população (a enumeração é `git ls-files`), passa a
+   * existir com o `git add -N` que a utilitária faz, e sai no desfazer. É o
+   * degrau que três épicos reescreveram de cabeça (S-C33, S-C46, S-C130) e que,
+   * esquecido, deixa a encenação verde por não ter olhado.
+   */
+  it("o arquivo sintético só entra na população pelo index — e sai no desfazer", () => {
+    const RAIZ = join(import.meta.dirname, "..", "..", "..", "..");
+    const rel = "artifacts/api-server/src/zz-sintetico-populacao-s-c182.ts";
+    expect(arquivosVarridos()).not.toContain(rel);
+    comArquivoSintetico(RAIZ, rel, "export const sintetico = true;\n", () => {
+      expect(arquivosVarridos(), "plantado e adicionado ao index, ele é visto").toContain(rel);
+    });
+    expect(arquivosVarridos(), "desfeito, ele some da população").not.toContain(rel);
   });
 
   /**
@@ -506,7 +551,28 @@ describe("varredura — a peneira de SQL cru enxerga, e o nome sai do schema", (
   it("acha o UPDATE cru numa tabela quente — é este achado que ela nunca tinha feito", () => {
     const fonte = "await db.execute(sql`UPDATE contratos SET status = 'CANCELADO' WHERE id = ${id}`);";
     expect(sqlCruNoTexto("sintetico.ts", fonte)).toEqual([
-      "sintetico.ts:1 `UPDATE contratos SET status = 'CANCELADO' WHERE id = ${id}`",
+      "sintetico.ts:1 [contratos] `UPDATE contratos SET status = 'CANCELADO' WHERE id = ${id}`",
+    ]);
+  });
+
+  /**
+   * S-C78 — os dois comportamentos que ninguém tinha escrito, pregados:
+   * a caixa não importa (o Postgres normaliza identificador sem aspas para
+   * minúsculo, então `Contratos` É `contratos` — recusar seria buraco, não
+   * rigor), e o template que cita DUAS quentes é UM sítio com as duas
+   * nomeadas — a forma antiga o listava duas vezes com o mesmo
+   * `arquivo:linha`, e contar linhas da saída como sítios contaria errado.
+   */
+  it("S-C78: `UPDATE Contratos` casa — a leniência de caixa é deliberada e dita", () => {
+    expect(sqlCruNoTexto("sintetico.ts", "await db.execute(sql`UPDATE Contratos SET x = 1`);")).toEqual([
+      "sintetico.ts:1 [contratos] `UPDATE Contratos SET x = 1`",
+    ]);
+  });
+
+  it("S-C78: o template que cita duas quentes é UM sítio, com as duas nomeadas", () => {
+    const fonte = "await db.execute(sql`UPDATE contratos SET x = (SELECT count(*) FROM parcelas)`);";
+    expect(sqlCruNoTexto("sintetico.ts", fonte)).toEqual([
+      "sintetico.ts:1 [contratos, parcelas] `UPDATE contratos SET x = (SELECT count(*) FROM parcelas)`",
     ]);
   });
 
@@ -539,6 +605,38 @@ describe("varredura — a peneira de SQL cru enxerga, e o nome sai do schema", (
 });
 
 /**
+ * S-C76 — `escritasComTabelaDinamica()` nunca tinha se visto achando nada.
+ *
+ * Desde o E171 ela devolvia `[]` sobre o repositório, e `[]` de sonda cega e
+ * `[]` de repositório limpo são o MESMO valor: um refactor da AST que parasse
+ * de reconhecer `db.update(tabelas[i])` deixava a régua verde, e a primeira
+ * escrita dinâmica de verdade nasceria invisível. O par abaixo é o molde da
+ * S-C180 — acha o plantado, ignora o que não é — sobre a versão por texto, que
+ * é a mesma função que a varredura de população chama.
+ */
+describe("varredura — a peneira das escritas dinâmicas enxerga, e ignora o que não é", () => {
+  it("acha a tabela atrás de expressão — é este achado que ela nunca tinha feito", () => {
+    expect(
+      escritasComTabelaDinamicaNoTexto("sintetico.ts", "await db.update(schema.contratosTable).set({ x }).where(w);"),
+    ).toEqual(["sintetico.ts:1 db.update(schema.contratosTable)"]);
+    expect(
+      escritasComTabelaDinamicaNoTexto("sintetico.ts", "await tx.insert(tabelas[i]).values({});"),
+    ).toEqual(["sintetico.ts:1 tx.insert(tabelas[i])"]);
+  });
+
+  it("e ignora o identificador simples, o receptor que não executa e o delete de Map", () => {
+    // Identificador simples é assunto do enumerador de portas, não desta peneira.
+    expect(
+      escritasComTabelaDinamicaNoTexto("s.ts", "await db.update(contratosTable).set({ x }).where(w);"),
+    ).toEqual([]);
+    // Receptor fora de EXECUTORES não é caminho para o banco.
+    expect(escritasComTabelaDinamicaNoTexto("s.ts", "consulta.update(montarSet(x));")).toEqual([]);
+    // O `.delete(chave)` de um Map tem o mesmo verbo e nada a ver com escrita.
+    expect(escritasComTabelaDinamicaNoTexto("s.ts", "mapa.delete(chaves[0]);")).toEqual([]);
+  });
+});
+
+/**
  * S-C33 — a régua medindo a si mesma: `COLUNAS_DE_ESTADO` sai do SCHEMA.
  *
  * A constante era lista escrita à mão, e **coluna de estado nova nascia
@@ -560,13 +658,25 @@ describe("varredura — a peneira de SQL cru enxerga, e o nome sai do schema", (
  * **A troca não mexeu em contagem nenhuma, e é o resultado.** Medido nas duas
  * pontas sobre a mesma base (`2dc9eec0`), com o enumerador antigo e o novo lado
  * a lado: **303 arquivos · 55 portas · 31 TRANCA · 11 CAS · 13 ABERTA**, e o
- * mapa por arquivo idêntico nos quatro nomes. O derivado enxerga **seis colunas
+ * mapa por arquivo idêntico nos quatro nomes. O derivado enxergou **seis colunas
  * que a lista curada não tinha** — `bloqueio_vestidos.lavagemConcluidaEm`,
  * `contratos.comissaoEstornadaEm`, `orcamentos.publicoExpiraEm` e as três
  * `bloqueio_vestidos.*DataReal` — e **nenhuma porta de hoje as repete no `where`
  * nem as projeta na tranca**, então nenhuma porta mudou de disciplina. Não subiu
  * dívida escondida nem se perdoou porta: o que mudou não é o retrato, é que a
  * próxima coluna de estado nasce VISTA.
+ *
+ * **S-C56 — e uma das seis era PRAZO, não fato: saiu.** `publicoExpiraEm`
+ * termina em `Em` e responde *"até quando"*, não *"já aconteceu"* — a linha
+ * nasce com a data no futuro, e a presença dela não diz que ato nenhum
+ * aconteceu. Mantê-la afrouxava na direção que autoriza: a escrita que pusesse
+ * `publico_expira_em` no `where` sem ter lido o valor seria promovida a CAS de
+ * graça. Os sufixos `ExpiraEm`/`VenceEm` saem do critério ANTES da grafia do
+ * fato, e a contagem não se moveu com a exclusão — **60 portas · 36 TRANCA ·
+ * 11 CAS · 13 ABERTA nas duas pontas**, porque nenhuma porta de hoje toca a
+ * coluna. A exclusão é de grafia, não exceção nomeada: exceção sem defeito
+ * medido é a lista curada nascendo pela outra ponta, e o que havia aqui era o
+ * CRITÉRIO aceitando uma pergunta que ele não faz.
  *
  * **O quanto cada metade do critério pesa foi medido tirando-a.** Sem a grafia
  * do fato datado a dívida vai de 13 para **18** (`expected 18 to be 13`) e o CAS
@@ -656,6 +766,13 @@ describe("varredura — as colunas de estado saem do schema, não da mão de que
     // `publicoToken` é texto.
     expect(ehColunaDeEstado("validade", ts(false))).toBe(false);
     expect(ehColunaDeEstado("publicoToken", { columnType: "PgText", notNull: false })).toBe(false);
+    // S-C56 — o PRAZO escrito na grafia do fato: `publicoExpiraEm` termina em
+    // `Em`, é timestamp anulável, e responde "até quando" — fora. As duas
+    // soletrações de prazo do vocabulário caem, e o fato PASSADO do mesmo
+    // radical continua dentro: `expiradaEm` diz "já expirou".
+    expect(ehColunaDeEstado("publicoExpiraEm", ts(false))).toBe(false);
+    expect(ehColunaDeEstado("carneVenceEm", ts(false))).toBe(false);
+    expect(ehColunaDeEstado("expiradaEm", ts(false))).toBe(true);
     // O enum que CLASSIFICA não é o enum que decide estágio: `parcelas.origem` e
     // `bloqueio_vestidos.tipo` nascem com a linha e não mudam.
     expect(ehColunaDeEstado("origem", { columnType: "PgEnumColumn", notNull: true })).toBe(false);
@@ -747,6 +864,23 @@ describe("varredura — o enumerador reconhece a porta certa e a errada", () => 
     const [p] = portasNoTexto("sintetico.ts", fonte);
     expect(p!.disciplina).toBe("CAS");
     expect(p!.casNoWhere).toEqual(["status"]);
+  });
+
+  /**
+   * S-C56 — o PRAZO no `where` não é CAS. Antes da exclusão, esta porta media
+   * `CAS cas=[publicoExpiraEm]`: repetir o prazo do link público no `where` —
+   * que a rota faz para recusar link vencido, sem ter "lido" estado nenhum —
+   * ganhava disciplina de graça. O prazo não arbitra corrida: ele não muda
+   * embaixo de quem leu, ele apenas passa.
+   */
+  it("reprova a escrita que só repete o PRAZO no where — prazo não é a condição lida", () => {
+    const fonte = `
+      import { orcamentosTable } from "@workspace/db";
+      await db.update(orcamentosTable).set({ publicoToken: novo })
+        .where(and(eq(orcamentosTable.id, id), gt(orcamentosTable.publicoExpiraEm, agora)));`;
+    const [p] = portasNoTexto("sintetico.ts", fonte);
+    expect(p!.casNoWhere).toEqual([]);
+    expect(p!.disciplina).toBe("ABERTA");
   });
 
   it("enxerga a tabela importada sob apelido — o buraco clássico da busca por nome", () => {

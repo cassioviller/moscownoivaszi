@@ -199,7 +199,10 @@ export const PAIS: Record<TabelaQuente, readonly string[]> = {
  *    significar alguma coisa: `contratos.fechadoEm` é `notNull` com default,
  *    nasce preenchida e nunca responde "já?"; `parcelas.moraPerdoadaEm` nasce
  *    vazia e a resposta é a presença. `createdAt`/`updatedAt` ficam de fora
- *    pelas duas peneiras — sufixo `At` e `notNull`.
+ *    pelas duas peneiras — sufixo `At` e `notNull`. E o **PRAZO** fica de fora
+ *    por exclusão dita (S-C56): `publicoExpiraEm` termina em `Em` e responde
+ *    *"até quando"*, não *"já aconteceu"* — os sufixos `ExpiraEm`/`VenceEm`
+ *    saem antes da grafia do fato, com o motivo no código.
  *
  * O critério é conservador de propósito na direção que importa. Coluna de
  * estado FORA da lista faz a varredura acusar código certo (E212, E213);
@@ -238,6 +241,13 @@ export type ColunaDoSchema = { columnType: string; notNull: boolean };
  */
 export function ehColunaDeEstado(chave: string, coluna: ColunaDoSchema): boolean {
   if (chave === "status" && coluna.columnType === "PgEnumColumn") return true;
+  // S-C56 — o PRAZO não é o FATO. `orcamentos.publicoExpiraEm` termina em `Em`
+  // e responde "até quando", não "já aconteceu": a linha nasce com a data no
+  // futuro, e a presença dela não é o ato ter acontecido. Incluí-la AFROUXA na
+  // direção que autoriza — uma escrita que repetisse `publico_expira_em` no
+  // `where` sem ter lido o valor seria promovida a CAS de graça. As duas
+  // grafias de prazo do vocabulário deste schema saem do critério.
+  if (/(ExpiraEm|VenceEm)$/.test(chave)) return false;
   return /(Em|DataReal)$/.test(chave) && coluna.columnType === "PgTimestamp" && !coluna.notNull;
 }
 
@@ -756,24 +766,44 @@ export function enumerarPortas(): Porta[] {
  * cobra que continue zero: no dia em que a primeira nascer, ela vira decisão —
  * ou a escrita volta ao identificador simples, ou o enumerador aprende a
  * resolvê-la. O que não pode é passar em silêncio.
+ *
+ * **S-C76 — e zero é o que a peneira daria estando CEGA.** Desde o E171 esta
+ * função devolvia `[]` sobre o repositório e a única régua era
+ * `toEqual([])`: um refactor da AST que parasse de reconhecer
+ * `db.update(tabelas[i])` deixaria a régua verde, e o dia em que a primeira
+ * escrita dinâmica nascesse ela passaria despercebida. É a mesma classe da
+ * S-C55, na peneira ao lado, e o conserto é o mesmo: a versão por texto
+ * (`escritasComTabelaDinamicaNoTexto`) existe para o autoteste plantar a
+ * escrita que a peneira TEM de achar, ao lado das que ela tem de ignorar.
  */
 export function escritasComTabelaDinamica(): string[] {
+  return fontesVarridas().flatMap(escritasDinamicasNaFonte);
+}
+
+/**
+ * A peneira das escritas dinâmicas sobre UM texto-fonte — exportada pelo mesmo
+ * motivo de `sqlCruNoTexto`: sonda que nunca se viu achando alguma coisa não se
+ * distingue de sonda cega (S-C76).
+ */
+export function escritasComTabelaDinamicaNoTexto(caminho: string, texto: string): string[] {
+  return escritasDinamicasNaFonte(ts.createSourceFile(caminho, texto, ts.ScriptTarget.Latest, true));
+}
+
+function escritasDinamicasNaFonte(sf: ts.SourceFile): string[] {
   const achados: string[] = [];
-  for (const sf of fontesVarridas()) {
-    const rel = sf.fileName;
-    const v = (no: ts.Node): void => {
-      if (ts.isCallExpression(no) && ts.isPropertyAccessExpression(no.expression) && VERBOS.has(no.expression.name.text)) {
-        const arg = no.arguments[0];
-        const receptor = raizDoReceptor(no.expression.expression);
-        if (arg && !ts.isIdentifier(arg) && EXECUTORES.has(receptor)) {
-          const linha = sf.getLineAndCharacterOfPosition(no.getStart(sf)).line + 1;
-          achados.push(`${rel}:${linha} ${receptor}.${no.expression.name.text}(${arg.getText(sf).slice(0, 50)})`);
-        }
+  const rel = sf.fileName;
+  const v = (no: ts.Node): void => {
+    if (ts.isCallExpression(no) && ts.isPropertyAccessExpression(no.expression) && VERBOS.has(no.expression.name.text)) {
+      const arg = no.arguments[0];
+      const receptor = raizDoReceptor(no.expression.expression);
+      if (arg && !ts.isIdentifier(arg) && EXECUTORES.has(receptor)) {
+        const linha = sf.getLineAndCharacterOfPosition(no.getStart(sf)).line + 1;
+        achados.push(`${rel}:${linha} ${receptor}.${no.expression.name.text}(${arg.getText(sf).slice(0, 50)})`);
       }
-      no.forEachChild(v);
-    };
-    v(sf);
-  }
+    }
+    no.forEachChild(v);
+  };
+  v(sf);
   return achados;
 }
 
@@ -983,6 +1013,20 @@ export function trancasEmLacoNaoOrdenado(): string[] {
  * de `getTableConfig` (§ `NOMES_NO_BANCO`) e o autoteste com template sintético
  * (`sqlCruNoTexto`) prega que a peneira ENXERGA, que é a metade que a derivação
  * sozinha não compra.
+ *
+ * **S-C78 — os dois comportamentos que ninguém tinha escrito, agora ditos e
+ * pregados:**
+ *
+ * 1. **A caixa não importa, de propósito.** O Postgres normaliza identificador
+ *    sem aspas para minúsculo, então `UPDATE Contratos` e `UPDATE contratos`
+ *    são a MESMA tabela — a peneira casa as duas (`RegExp` com `i`), e recusar
+ *    a maiúscula seria um buraco, não um rigor.
+ * 2. **Um achado por SÍTIO, com as tabelas citadas nomeadas juntas.** A forma
+ *    antiga empurrava um achado por TABELA, e um template que citasse
+ *    `contratos` e `parcelas` aparecia DUAS vezes com o mesmo `arquivo:linha` —
+ *    quem contasse as linhas da saída como sítios contaria errado no dia em que
+ *    o primeiro nascesse. Hoje a linha é uma, `arquivo:linha [contratos,
+ *    parcelas] …`, e contar linhas é contar sítios.
  */
 export function sqlCruEscrevendoEmTabelaQuente(): string[] {
   return fontesVarridas().flatMap(sqlCruNaFonte);
@@ -1005,11 +1049,15 @@ function sqlCruNaFonte(sf: ts.SourceFile): string[] {
     if (ts.isTaggedTemplateExpression(no) && raizDoReceptor(no.tag) === "sql") {
       const txt = no.template.getText(sf);
       if (verbo.test(txt)) {
-        for (const q of TABELAS_QUENTES) {
-          if (new RegExp(`\\b${NOMES_NO_BANCO[q]}\\b`, "i").test(txt)) {
-            const linha = sf.getLineAndCharacterOfPosition(no.getStart(sf)).line + 1;
-            achados.push(`${rel}:${linha} ${txt.replace(/\s+/g, " ").slice(0, 80)}`);
-          }
+        // Todas as quentes citadas entram no MESMO achado: um sítio, uma linha
+        // de saída (S-C78) — e a caixa não importa, porque para o Postgres
+        // `Contratos` sem aspas É `contratos`.
+        const citadas = TABELAS_QUENTES.filter((q) =>
+          new RegExp(`\\b${NOMES_NO_BANCO[q]}\\b`, "i").test(txt),
+        ).map((q) => NOMES_NO_BANCO[q]);
+        if (citadas.length > 0) {
+          const linha = sf.getLineAndCharacterOfPosition(no.getStart(sf)).line + 1;
+          achados.push(`${rel}:${linha} [${citadas.join(", ")}] ${txt.replace(/\s+/g, " ").slice(0, 80)}`);
         }
       }
     }
