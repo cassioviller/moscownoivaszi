@@ -81,6 +81,17 @@ export default function LookbookPublico() {
                   )}
                   <figcaption className="space-y-1 p-3 text-center">
                     <p className="font-serif text-lg">{v.nome}</p>
+                    {/* S-C21 — a marca da 12ª, dita à noiva (decisão da dona,
+                        14/08/2026): argumento de venda, em texto curto e digno.
+                        Cor de texto padrão de propósito — dinheiro e marca não
+                        usam o rosa (E127/E4, medido a 2,68:1 nesta página). */}
+                    {v.exclusiva && (
+                      <p>
+                        <span className="inline-block rounded-full border px-2 py-0.5 text-xs tracking-wide">
+                          Peça exclusiva
+                        </span>
+                      </p>
+                    )}
                     <p className="money-sm">{brl(v.precoBase)}</p>
                     {v.atributos.length > 0 && (
                       <p className="text-xs text-muted-foreground">

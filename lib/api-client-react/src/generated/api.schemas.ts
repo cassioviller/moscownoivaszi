@@ -983,6 +983,7 @@ export interface LookbookPublicoVestido {
   vestidoId: string;
   nome: string;
   precoBase: number;
+  exclusiva: boolean;
   fotos: LookbookPublicoFoto[];
   atributos: LookbookPublicoVestidoAtributosItem[];
 }

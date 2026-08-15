@@ -103,6 +103,13 @@ export type VestidoLookbookPublico = {
   vestidoId: string;
   nome: string;
   precoBase: number;
+  /**
+   * S-C21 — a marca da 12ª (E216) chega à noiva: "peça exclusiva" é argumento
+   * de venda, por decisão da dona (14/08/2026). É o TRAÇO da peça, não o
+   * estado "está no primeiro aluguel" — a distinção está em
+   * `schema/vestidos.ts:105`.
+   */
+  exclusiva: boolean;
   fotos: { ordem: number; atualizadaEm: Date }[];
   atributos: { atributo: string; valor: string }[];
 };
@@ -117,6 +124,7 @@ export async function montarVestidosLookbook(lookbookId: string): Promise<Vestid
       vestidoId: lookbookItensTable.vestidoId,
       nome: vestidosTable.nome,
       precoBase: vestidosTable.precoBase,
+      exclusiva: vestidosTable.exclusiva,
       fotoOrdem: vestidoFotosTable.ordem,
       fotoAtualizadaEm: vestidoFotosTable.updatedAt,
     })
@@ -132,6 +140,7 @@ export async function montarVestidosLookbook(lookbookId: string): Promise<Vestid
       vestidoId: it.vestidoId,
       nome: it.nome,
       precoBase: it.precoBase,
+      exclusiva: it.exclusiva,
       fotos: [],
       atributos: [],
     };

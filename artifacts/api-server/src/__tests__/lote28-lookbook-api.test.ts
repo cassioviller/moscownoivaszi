@@ -85,6 +85,35 @@ describe("Vestidos — lookbook compartilhável (E21)", () => {
     await abrirFoto(criado.token, foraDaSelecao.id).expect(404);
   });
 
+  /**
+   * S-C21 — o lookbook público sabe da marca da 12ª (decisão da dona,
+   * 14/08/2026: mostrar É argumento de venda). O montador é UM
+   * (`montarVestidosLookbook`) e serve DUAS portas — este link e o portal da
+   * noiva (`portal.ts:259`) —, então o campo obrigatório no spec cobre as duas.
+   *
+   * VERMELHO ANTES (spec com `exclusiva` required e montador sem o campo):
+   * `expected 200 "OK", got 500 "Internal Server Error"` — o
+   * `GetLookbookPublicoResponse.parse` derruba a resposta inteira
+   * (RESPOSTA_FORA_DO_CONTRATO), que é a guarda da S-C150 fazendo o serviço.
+   */
+  it("a peça exclusiva chega marcada; a comum chega dizendo que não é", async () => {
+    const lead = await criarLead(f);
+    const soDela = await criarVestido(f, { exclusiva: true });
+    const deTodas = await criarVestido(f);
+
+    const { body: criado } = await criar({
+      leadId: lead.id,
+      vestidoIds: [soDela.id, deTodas.id],
+    }).expect(201);
+    const res = await abrir(criado.token).expect(200);
+
+    const porId = new Map(
+      (res.body.vestidos as { vestidoId: string; exclusiva: boolean }[]).map((v) => [v.vestidoId, v]),
+    );
+    expect(porId.get(soDela.id)?.exclusiva).toBe(true);
+    expect(porId.get(deTodas.id)?.exclusiva).toBe(false);
+  });
+
   it("expirado é 410; revogado é 404; token desconhecido é 404", async () => {
     const lead = await criarLead(f);
     const v = await criarVestido(f);

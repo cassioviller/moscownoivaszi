@@ -438,6 +438,16 @@ export default function NoivaPortal() {
                       )}
                       <figcaption className="space-y-1 p-3 text-center">
                         <p className="font-serif text-lg">{v.nome}</p>
+                        {/* S-C21 — o MESMO selo do gêmeo lookbook-publico.tsx:
+                            a marca da 12ª é argumento de venda (decisão da
+                            dona, 14/08/2026). */}
+                        {v.exclusiva && (
+                          <p>
+                            <span className="inline-block rounded-full border px-2 py-0.5 text-xs tracking-wide">
+                              Peça exclusiva
+                            </span>
+                          </p>
+                        )}
                         {/* E127/E4: o preço vivia em text-primary a 2,68:1 —
                             no celular, ao sol, na tela da NOIVA — invisível
                             para a varredura do E8 porque o prettier separou o

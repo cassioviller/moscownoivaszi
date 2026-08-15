@@ -6019,11 +6019,16 @@ components:
         atualizadaEm: { type: string, format: date-time }
     LookbookPublicoVestido:
       type: object
-      required: [vestidoId, nome, precoBase, fotos, atributos]
+      required: [vestidoId, nome, precoBase, exclusiva, fotos, atributos]
       properties:
         vestidoId: { type: string }
         nome: { type: string }
         precoBase: { type: number }
+        # S-C21 (decisão da dona, 14/08/2026): a marca da 12ª aparece para a
+        # noiva — "peça exclusiva" é argumento de venda, não pressão. O campo é
+        # obrigatório porque o único montador (montarVestidosLookbook) sempre o
+        # tem; opcional seria o caminho do 0-de-735 do E215.
+        exclusiva: { type: boolean }
         fotos:
           type: array
           items:

@@ -1344,6 +1344,7 @@ export const GetLookbookPublicoResponse = zod.object({
   "vestidoId": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "exclusiva": zod.boolean(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
   "atualizadaEm": zod.coerce.date()
@@ -6322,6 +6323,7 @@ export const GetPortalResponse = zod.object({
   "vestidoId": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "exclusiva": zod.boolean(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
   "atualizadaEm": zod.coerce.date()
