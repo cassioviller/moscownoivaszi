@@ -5,10 +5,16 @@ import { arquivosVersionados } from "./arquivos-versionados";
 import * as contratoDeApi from "@workspace/api-client-react";
 import {
   LeadOrigem,
-  AtributoTipo,
-  AtendimentoTipo,
-  OrcamentoItemTipo,
+  LeadInputOrigem,
+  LeadEstadoCivil,
   LeadInputEstadoCivil,
+  AtributoTipo,
+  AtributoInputTipo,
+  AtendimentoTipo,
+  AtendimentoInputTipo,
+  OrcamentoItemTipo,
+  OrcamentoItemInputTipo,
+  CaptacaoLeadInputOrigem,
 } from "@workspace/api-client-react";
 
 /**
@@ -83,9 +89,11 @@ import {
  *   de três enums diferentes (`AtributoTipo`, `AtendimentoTipo`,
  *   `OrcamentoItemTipo`) entre os 98 exportados pelo contrato, e o formulário
  *   não importa nada de `@workspace/api-client-react` — não há de onde derivar
- *   o par. A ponte é declarada, e é PREGADA por três lados: o nome resolve no
- *   barril, resolve para o MESMO objeto que o import trouxe, e termina no nome
- *   do campo em PascalCase.
+ *   o par. A ponte é declarada, e é PREGADA por três lados em CADA uma das duas
+ *   colunas (S-C181): o nome resolve no barril, resolve para o MESMO objeto que
+ *   o import trouxe, e termina no nome do campo em PascalCase — mais a
+ *   conferência de que a entrada é entrada (`Input` no nome) e não a saída
+ *   declarada duas vezes.
  * ✘ Não lê o schema do formulário: a leitura é TEXTUAL de propósito. Importar o
  *   schema exigiria montar o módulo da tela inteira — React, rotas e query —
  *   para conferir uma lista de strings.
@@ -153,6 +161,19 @@ function varrerFormularios(): SitioDeEnum[] {
  * neste arquivo, e ela é conferida dos dois lados — ponte sem sítio reprova
  * ("ponte morta"), sítio sem ponte reprova, e o par declarado é confrontado
  * com o barril.
+ *
+ * ## S-C181 — a ponte tem DUAS colunas, porque o contrato tem duas famílias
+ *
+ * O spec gera, para cada campo, o enum de SAÍDA (`LeadOrigem` — o que o `GET`
+ * devolve) e o de ENTRADA (`LeadInputOrigem` — o que o `POST` aceita), e nada
+ * obriga os dois a dizerem o mesmo: **`CaptacaoLeadInputOrigem` tem 3 valores,
+ * sem `LOJA`**, e é a prova de que o spec sabe estreitar enum de entrada. Até
+ * a S-C181 a ponte declarava UMA família por campo — e misturava: `origem`
+ * conferia contra a saída, `estadoCivil` contra a entrada. No dia em que um
+ * `*Input*` de formulário estreitasse, a paridade contra a saída aprovaria
+ * uma tela oferecendo valor que o `POST` recusa — a vendedora preencheria,
+ * salvaria, e levaria 400 na cara da noiva. Hoje cada linha declara as duas, e
+ * a varredura confere as duas.
  */
 const PONTE = [
   {
@@ -161,6 +182,8 @@ const PONTE = [
     campo: "origem",
     nome: "LeadOrigem",
     doContrato: LeadOrigem,
+    nomeEntrada: "LeadInputOrigem",
+    daEntrada: LeadInputOrigem,
   },
   {
     o_que: "o tipo do atributo do catálogo",
@@ -168,6 +191,8 @@ const PONTE = [
     campo: "tipo",
     nome: "AtributoTipo",
     doContrato: AtributoTipo,
+    nomeEntrada: "AtributoInputTipo",
+    daEntrada: AtributoInputTipo,
   },
   {
     o_que: "o tipo do compromisso na agenda",
@@ -175,6 +200,8 @@ const PONTE = [
     campo: "tipo",
     nome: "AtendimentoTipo",
     doContrato: AtendimentoTipo,
+    nomeEntrada: "AtendimentoInputTipo",
+    daEntrada: AtendimentoInputTipo,
   },
   {
     o_que: "o tipo do item do orçamento",
@@ -182,15 +209,21 @@ const PONTE = [
     campo: "tipo",
     nome: "OrcamentoItemTipo",
     doContrato: OrcamentoItemTipo,
+    nomeEntrada: "OrcamentoItemInputTipo",
+    daEntrada: OrcamentoItemInputTipo,
   },
   {
     // E215 — o quinto par. Ele entrou à mão porque a lista era curada; hoje a
-    // varredura o teria cobrado sozinha, e é isto que a S-C130 comprou.
+    // varredura o teria cobrado sozinha, e é isto que a S-C130 comprou. Até a
+    // S-C181 ele declarava só `LeadInputEstadoCivil` — a ENTRADA no lugar da
+    // família única, o inverso do `origem` logo acima.
     o_que: "o estado civil de quem assina o contrato",
     arquivo: "pages/noivas/noiva-form.tsx",
     campo: "estadoCivil",
-    nome: "LeadInputEstadoCivil",
-    doContrato: LeadInputEstadoCivil,
+    nome: "LeadEstadoCivil",
+    doContrato: LeadEstadoCivil,
+    nomeEntrada: "LeadInputEstadoCivil",
+    daEntrada: LeadInputEstadoCivil,
   },
 ] as const;
 
@@ -210,7 +243,15 @@ describe("S11 — os enums do formulário e os do contrato dizem a mesma coisa",
       // tela não oferece é tão defeito quanto o contrário, e nas duas direções
       // a lista some ou sobra sem ninguém ser avisado.
       expect(ponte, `${chave(sitio)} não tem tipo do contrato declarado em PONTE`).toBeDefined();
-      expect(sitio.valores.slice().sort()).toEqual(Object.values(ponte!.doContrato).sort());
+      const daTela = sitio.valores.slice().sort();
+      expect(daTela, `${chave(sitio)} diverge da SAÍDA (${ponte!.nome})`).toEqual(
+        Object.values(ponte!.doContrato).sort(),
+      );
+      // S-C181 — e contra a ENTRADA, que é a família que o POST julga: valor
+      // que a tela oferece e o input não tem é 400 na cara da noiva.
+      expect(daTela, `${chave(sitio)} diverge da ENTRADA (${ponte!.nomeEntrada})`).toEqual(
+        Object.values(ponte!.daEntrada).sort(),
+      );
     });
   }
 });
@@ -255,15 +296,44 @@ describe("S-C130 — a população dos pares sai do repositório, não da memór
   it("a ponte aponta para o tipo certo — o nome resolve no contrato e termina no nome do campo", () => {
     // A armadilha da S-C55 uma camada acima: trocar `doContrato: LeadOrigem`
     // por `ParcelaOrigem` TYPECHECKA, e a paridade passaria a conferir o enum
-    // de outro domínio. O nome declarado fecha as três frestas.
+    // de outro domínio. O nome declarado fecha as três frestas — e desde a
+    // S-C181 as DUAS colunas passam pela mesma conferência.
     const barril = contratoDeApi as unknown as Record<string, unknown>;
     for (const p of PONTE) {
-      expect(barril[p.nome], `${p.nome} não é exportado pelo contrato de API`).toBeDefined();
-      expect(barril[p.nome], `${chave(p)} declara ${p.nome} e usa outro objeto`).toBe(p.doContrato);
-      expect(p.nome.endsWith(emPascal(p.campo)), `${p.nome} não termina em ${emPascal(p.campo)}`).toBe(
-        true,
-      );
+      for (const [nome, objeto] of [
+        [p.nome, p.doContrato],
+        [p.nomeEntrada, p.daEntrada],
+      ] as const) {
+        expect(barril[nome], `${nome} não é exportado pelo contrato de API`).toBeDefined();
+        expect(barril[nome], `${chave(p)} declara ${nome} e usa outro objeto`).toBe(objeto);
+        expect(nome.endsWith(emPascal(p.campo)), `${nome} não termina em ${emPascal(p.campo)}`).toBe(
+          true,
+        );
+      }
+      // As duas colunas são famílias DIFERENTES: declarar a saída duas vezes
+      // seria a coluna da entrada morta — verde por conferir a coisa errada.
+      expect(p.nomeEntrada, `${chave(p)} declara a mesma família duas vezes`).not.toBe(p.nome);
+      expect(
+        p.nomeEntrada.includes("Input"),
+        `${p.nomeEntrada} não é um tipo de ENTRADA — a família do POST leva Input no nome`,
+      ).toBe(true);
     }
+  });
+
+  /**
+   * S-C181 — a prova de que a coluna da entrada não é redundância: o spec SABE
+   * estreitar enum de ENTRADA, e já o faz. `CaptacaoLeadInputOrigem` — o corpo
+   * do `POST /captacao/leads`, o formulário público — aceita 3 origens e a
+   * saída `LeadOrigem` tem 4: `LOJA` existe no que o sistema devolve e não no
+   * que a captação aceita, porque quem chega pelo site não chegou pela loja.
+   * No dia em que um campo de FORMULÁRIO fizer o mesmo, a paridade contra a
+   * entrada fica vermelha — a antiga, contra a saída, aprovaria a tela
+   * oferecendo o valor que o POST recusa.
+   */
+  it("S-C181: o spec estreita enum de entrada — a captação não aceita LOJA que a saída tem", () => {
+    expect(Object.values(CaptacaoLeadInputOrigem).sort()).toEqual(["INSTAGRAM", "SITE", "WHATSAPP"]);
+    expect(Object.values(LeadOrigem)).toContain("LOJA");
+    expect(Object.values(CaptacaoLeadInputOrigem)).not.toContain("LOJA");
   });
 });
 
