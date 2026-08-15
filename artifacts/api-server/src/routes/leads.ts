@@ -43,6 +43,7 @@ import {
 } from "@workspace/funil-core";
 import { addDias, addMeses, hojeLocal, inicioDoDia, reancorarDataDeNegocio } from "@workspace/financeiro-core";
 import { erroDeValidacao } from "../lib/erros";
+import { cpfNaPorta } from "../lib/documento-na-porta";
 
 const router: IRouter = Router();
 
@@ -200,11 +201,18 @@ router.post("/lojas/:lojaId/leads", async (req, res): Promise<void> => {
       return;
     }
   }
+  // E233: o CPF é o que o contrato congela e imprime — entra conferido.
+  const cpf = cpfNaPorta(parsed.data.cpf);
+  if (cpf.recusa) {
+    res.status(422).json(cpf.recusa);
+    return;
+  }
 
   const [lead] = await db.insert(leadsTable).values({
     id: randomUUID(),
     lojaId,
     ...parsed.data,
+    ...(cpf.valor !== undefined ? { cpf: cpf.valor } : {}),
     // S-O117: a data do casamento é dia de NEGÓCIO, e é ela que a sazonalidade
     // agrupa por `to_char at time zone SP` trinta linhas abaixo. Meia-noite UTC
     // gravada crua cai no mês anterior na virada de mês.
@@ -747,7 +755,14 @@ router.patch("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => 
   // Perder EXIGE o motivo estruturado — o dado só vale se for sempre coletado.
   // Fora do PERDIDO, motivo/detalhe enviados são ignorados (não fazem sentido);
   // ao reviver, os campos ficam como histórico, mesmo espírito do perdidaEm.
+  // E233: a mesma régua do POST — corrigir a ficha é a porta que a Recepção usa.
+  const cpf = cpfNaPorta(parsed.data.cpf);
+  if (cpf.recusa) {
+    res.status(422).json(cpf.recusa);
+    return;
+  }
   const { perdidaMotivo, perdidaDetalhe, ...resto } = parsed.data;
+  if (cpf.valor !== undefined) resto.cpf = cpf.valor;
   const perda: Partial<{ perdidaMotivo: typeof perdidaMotivo; perdidaDetalhe: string | null }> = {};
   if (parsed.data.etapa === "PERDIDO") {
     if (!perdidaMotivo) {

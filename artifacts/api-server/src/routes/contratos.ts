@@ -93,6 +93,7 @@ import { leadsQueCasam } from "../lib/busca-lead";
 import { conteudoEnviado, identidadeDasPecas } from "../lib/conteudo-orcamento";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
+import { cpfNaPorta } from "../lib/documento-na-porta";
 // S-C89 — as portas deste arquivo que mudam um fato lido pela fila de atrasos
 // (status do contrato, vínculo com bloqueio, cobrança viva) derrubam o cache.
 import { derrubarFilaDeAtrasos } from "../lib/fila-de-atrasos-cache";
@@ -1496,6 +1497,15 @@ router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<v
     return;
   }
 
+  // E233: esta é a SEXTA porta do documento — o `cpf` do corpo entra por
+  // `...parsed.data` e sai impresso duas vezes no instrumento. O plano contava
+  // cinco; a medição achou esta.
+  const cpfDoCorpo = cpfNaPorta(parsed.data.cpf);
+  if (cpfDoCorpo.recusa) {
+    res.status(422).json(cpfDoCorpo.recusa);
+    return;
+  }
+
   /**
    * **S-C90 — o § único do objeto vale também na porta em que a retirada se
    * MOVE**, e não só nas duas em que o carnê nasce.
@@ -1674,6 +1684,7 @@ router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<v
     // gravar um instante que a guarda de divergência leia como outro dia.
     .set({
       ...parsed.data,
+      ...(cpfDoCorpo.valor !== undefined ? { cpf: cpfDoCorpo.valor } : {}),
       ...(parsed.data.dataCasamento
         ? { dataCasamento: reancorarDataDeNegocio(parsed.data.dataCasamento) }
         : {}),

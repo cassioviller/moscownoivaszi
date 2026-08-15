@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { mensagemApi } from "@/lib/erro-api";
 import { useConfirmarSaida, sujoParaConfirmar } from "@/hooks/use-confirmar-saida";
 import { linkWhatsApp } from "@/lib/whatsapp";
+import { cnpjValido } from "@workspace/financeiro-core";
 
 /**
  * S17 — os dados da loja, editáveis por quem administra a loja.
@@ -58,6 +59,10 @@ export function DadosDaLoja() {
   useConfirmarSaida(sujoParaConfirmar(form.formState));
 
   const telefone = form.watch("telefone");
+  // E233: a MESMA régua da porta (`cnpjValido` do core) — a tela avisa antes,
+  // e a API recusa depois; nenhuma das duas copia a outra.
+  const cnpj = form.watch("cnpj");
+  const cnpjFecha = !cnpj.trim() || cnpjValido(cnpj);
   const telefoneVira = !telefone.trim() || linkWhatsApp(telefone, "") !== null;
 
   async function onSubmit(valores: { nome: string; cnpj: string; endereco: string; telefone: string }) {
@@ -111,6 +116,12 @@ export function DadosDaLoja() {
               <div className="space-y-1.5">
                 <Label htmlFor="loja-cnpj">CNPJ</Label>
                 <Input id="loja-cnpj" placeholder="00.000.000/0000-00" {...form.register("cnpj")} />
+                {!cnpjFecha && (
+                  <p className="text-aviso text-sm" data-testid="aviso-cnpj-invalido">
+                    Os dígitos verificadores deste CNPJ não fecham — confira o número. Ele sai
+                    impresso no cabeçalho de todo contrato.
+                  </p>
+                )}
               </div>
             </div>
             <div className="space-y-1.5">

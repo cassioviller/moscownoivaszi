@@ -24,6 +24,7 @@ import { usuarioNaLoja } from "../lib/escopo-loja";
 import { registrarAuditoria } from "../lib/auditoria";
 import { hashSenha, gerarTokenConvite, encerrarSessoesDoUsuario, CONVITE_TTL_MS } from "../lib/auth";
 import { erroDeValidacao } from "../lib/erros";
+import { cnpjNaPorta } from "../lib/documento-na-porta";
 import { randomUUID } from "node:crypto";
 
 const router: IRouter = Router();
@@ -95,6 +96,14 @@ router.patch("/lojas/:lojaId/dados", async (req, res): Promise<void> => {
     return;
   }
 
+  // E233: o CNPJ sai impresso no cabeçalho de todo contrato — entra conferido
+  // pelos dígitos e gravado na grafia única.
+  const cnpj = cnpjNaPorta(parsed.data.cnpj);
+  if (cnpj.recusa) {
+    res.status(422).json(cnpj.recusa);
+    return;
+  }
+
   const { telefone } = parsed.data;
   // Vazio é permitido — a loja pode não ter WhatsApp — e vira NULL, não "".
   if (telefone && telefone.trim() !== "" && !viraLinkDeWhatsApp(telefone)) {
@@ -111,6 +120,7 @@ router.patch("/lojas/:lojaId/dados", async (req, res): Promise<void> => {
     .update(lojasTable)
     .set({
       ...parsed.data,
+      ...(cnpj.valor !== undefined ? { cnpj: cnpj.valor } : {}),
       ...(telefone !== undefined ? { telefone: telefone.trim() === "" ? null : telefone } : {}),
     })
     .where(eq(lojasTable.id, lojaId))

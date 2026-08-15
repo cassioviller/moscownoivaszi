@@ -9,6 +9,7 @@
 export interface LojaInput {
   /** @minLength 1 */
   nome: string;
+  /** CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000/0000-00. Vazio apaga. (E233) */
   cnpj?: string;
   endereco?: string;
   telefone?: string;

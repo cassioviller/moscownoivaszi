@@ -42,3 +42,7 @@ export * from "./rescisao";
 // E219 — a troca de traje tem prazo (17ª caput e §1º). A guarda mora na porta
 // do E223; a leitura de "data da locação" (o fecho) está declarada no módulo.
 export * from "./troca";
+
+// E233 — CPF e CNPJ conferidos pelos dígitos verificadores; a mesma função na
+// API e na tela.
+export * from "./documentos";

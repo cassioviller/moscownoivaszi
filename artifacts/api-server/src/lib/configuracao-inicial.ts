@@ -49,7 +49,7 @@ import {
 } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import { ancoraDeNegocio, hojeLocal, primeiroDiaDoMes } from "@workspace/financeiro-core";
+import { CNPJ_DE_EXEMPLO, ancoraDeNegocio, hojeLocal, primeiroDiaDoMes } from "@workspace/financeiro-core";
 import { type AcessosModulos } from "./permissoes";
 
 // ── Os perfis (tabela GLOBAL — perfil não pertence a loja) ────────────────────
@@ -435,7 +435,9 @@ export const RECORRENCIAS_PADRAO: RecorrenciaPadrao[] = [
 export const LOJA_PADRAO = {
   id: "84e539bd-9199-4551-8ae5-7619868f62d3",
   nome: "Moscow Noivas SP",
-  cnpj: "12.345.678/0001-99",
+  // E233: o exemplo anterior (12.345.678/0001-99) não fechava os dígitos e a
+  // porta o recusaria na primeira instalação. Este é o exemplo canônico, válido.
+  cnpj: CNPJ_DE_EXEMPLO,
   endereco: "Rua das Noivas, 123, São Paulo - SP",
   telefone: "(11) 99999-9999",
 } as const;

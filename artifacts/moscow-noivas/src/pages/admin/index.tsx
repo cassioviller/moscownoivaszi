@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { cnpjValido } from "@workspace/financeiro-core";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -71,7 +72,10 @@ type NovoUsuarioValues = z.infer<typeof novoUsuarioSchema>;
 
 const editarLojaSchema = z.object({
   nome: z.string().min(1, "Informe o nome da loja"),
-  cnpj: z.string(),
+  // E233: a mesma régua da porta — vazio passa, errado não.
+  cnpj: z.string().refine((v) => !v.trim() || cnpjValido(v), {
+    message: "Os dígitos verificadores deste CNPJ não fecham — confira o número.",
+  }),
   endereco: z.string(),
   telefone: z.string(),
   ativo: z.boolean(),

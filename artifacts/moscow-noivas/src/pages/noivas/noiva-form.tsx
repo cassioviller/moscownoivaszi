@@ -1,5 +1,6 @@
 import { useConfirmarSaida, sujoParaConfirmar } from "@/hooks/use-confirmar-saida";
 import { useForm, type DefaultValues } from "react-hook-form";
+import { cpfValido } from "@workspace/financeiro-core";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { formatarWhatsApp, whatsappUtilizavel } from "@/lib/whatsapp";
@@ -58,7 +59,14 @@ const noivaSchema = z.object({
    * fazer falta — no molde do E218, onde a entrada de 40% avisa em vez de
    * recusar.
    */
-  cpf: z.string().optional(),
+  // E233: vazio passa (a régua da presença é do FECHO); preenchido, tem de
+  // fechar os dígitos — a mesma função que a porta usa para recusar.
+  cpf: z
+    .string()
+    .optional()
+    .refine((v) => !v || !v.trim() || cpfValido(v), {
+      message: "Os dígitos verificadores deste CPF não fecham — confira o número.",
+    }),
   rg: z.string().optional(),
   // Uma linha só, e não é estilo: a `enums-do-contrato` lê este `z.enum`
   // TEXTUALMENTE (importar o schema exigiria montar a tela inteira), e o regex

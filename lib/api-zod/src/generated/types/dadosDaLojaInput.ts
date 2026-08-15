@@ -9,6 +9,7 @@
 export interface DadosDaLojaInput {
   /** @minLength 1 */
   nome?: string;
+  /** CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000/0000-00. Vazio apaga. (E233) */
   cnpj?: string;
   endereco?: string;
   /** Vazio é permitido (a loja pode não ter WhatsApp). Preenchido, tem de render um link de wa.me — o servidor recusa com TELEFONE_SEM_WHATSAPP o que `linkWhatsApp` transformaria em null, porque nesse caso o botão do portal da noiva some sem erro e sem aviso. */

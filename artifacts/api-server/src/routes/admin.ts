@@ -46,6 +46,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
+import { cnpjNaPorta } from "../lib/documento-na-porta";
 
 const router: IRouter = Router();
 
@@ -89,9 +90,16 @@ router.post("/admin/lojas", async (req, res): Promise<void> => {
     res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
+  // E233: as duas portas do console também escrevem `cnpj` — mesma régua.
+  const cnpj = cnpjNaPorta(parsed.data.cnpj);
+  if (cnpj.recusa) {
+    res.status(422).json(cnpj.recusa);
+    return;
+  }
   const [loja] = await db.insert(lojasTable).values({
     id: randomUUID(),
     ...parsed.data,
+    ...(cnpj.valor !== undefined ? { cnpj: cnpj.valor } : {}),
   }).returning();
   res.status(201).json(CreateLojaResponse.parse(loja));
 });
@@ -107,8 +115,13 @@ router.patch("/admin/lojas/:lojaId", async (req, res): Promise<void> => {
     res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
+  const cnpj = cnpjNaPorta(parsed.data.cnpj);
+  if (cnpj.recusa) {
+    res.status(422).json(cnpj.recusa);
+    return;
+  }
   const [loja] = await db.update(lojasTable)
-    .set(parsed.data)
+    .set({ ...parsed.data, ...(cnpj.valor !== undefined ? { cnpj: cnpj.valor } : {}) })
     .where(eq(lojasTable.id, params.data.lojaId))
     .returning();
   if (!loja) {

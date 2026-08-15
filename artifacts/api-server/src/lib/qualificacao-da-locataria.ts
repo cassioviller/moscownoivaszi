@@ -28,6 +28,7 @@
  * campo vazio; acrescentar onze opcionais teria produzido onze colunas vazias.
  */
 import type { Lead } from "@workspace/db";
+import { cpfValido } from "@workspace/financeiro-core";
 
 /**
  * Os treze campos da qualificação, na ordem em que o papel os pede.
@@ -87,12 +88,19 @@ function faltando(valor: unknown): boolean {
 export function faltasDaQualificacao(
   ficha: Partial<QualificacaoDaFicha>,
 ): { campo: string; motivo: string }[] {
-  return CAMPOS_DA_QUALIFICACAO
+  const faltas = CAMPOS_DA_QUALIFICACAO
     .filter((c) => c.obrigatorio && faltando(ficha[c.campo]))
     .map((c) => ({
       campo: c.campo,
       motivo: `${c.rotulo} não está na ficha da noiva`,
     }));
+  // E233: CPF presente e ERRADO também é falta — o fecho congela o que a ficha
+  // tem, e o instrumento o imprime duas vezes. As portas da ficha já recusam;
+  // esta é a rede para a ficha antiga (medido em 15/08: 50 de 50 passam).
+  if (!faltando(ficha.cpf) && !cpfValido(ficha.cpf)) {
+    faltas.push({ campo: "cpf", motivo: "CPF da ficha não é válido: os dígitos verificadores não fecham" });
+  }
+  return faltas;
 }
 
 /**

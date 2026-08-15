@@ -673,7 +673,7 @@
 
       <div class="fala aviso">
         <span class="rotulo">E hoje eles ainda são o exemplo</span>
-        <p>O banco tem <strong>“12.345.678/0001-99”</strong> e <strong>“Rua das Noivas, 123”</strong> — o exemplo que veio na instalação. O endereço de verdade está no contrato de papel: <strong>Rua Luis Jacinto 297, Centro, São José dos Campos, CEP 12243-260</strong>.</p>
+        <p>O banco tem o CNPJ de exemplo da instalação e <strong>“Rua das Noivas, 123”</strong> — o exemplo que veio na instalação. O endereço de verdade está no contrato de papel: <strong>Rua Luis Jacinto 297, Centro, São José dos Campos, CEP 12243-260</strong>.</p>
         <p><strong>O lugar de corrigir é esta tela, não o código.</strong> Cinco minutos, e é o que falta para o portal da noiva parar de exibir uma loja que não existe. É a pendência <strong>P3</strong> da lista no fim deste manual.</p>
       </div>
 
@@ -715,7 +715,7 @@
 
     <section id="decisoes">
       <h2>O que espera uma decisão sua</h2>
-      <p class="resumo">São <strong>oito</strong>, e <strong>nenhuma se resolve escrevendo código</strong>. Cinco vieram da leitura do contrato de papel, duas são sobre o PDF do contrato (uma delas já respondida pelo gesto, à espera da sua confirmação), e uma é escolha de produto. As que estavam nesta lista antes você já decidiu — estão no fim, para conferência, inclusive a rodada inteira de 14/08.</p>
+      <p class="resumo">São <strong>oito</strong>, e <strong>nenhuma se resolve escrevendo código</strong>. Cinco vieram da leitura do contrato de papel, duas são sobre o PDF do contrato (as duas já respondidas em 15/08 — ficam aqui para conferência até o trabalho entrar), e uma é escolha de produto. As que estavam nesta lista antes você já decidiu — estão no fim, para conferência, inclusive a rodada inteira de 14/08.</p>
 
       <h3>O contrato de papel — cinco pendências</h3>
       <p>Em 13/08/2026 as 21 cláusulas do instrumento foram lidas uma a uma contra o que o sistema faz, e a fila de código que nasceu dali <strong>terminou em 15/08</strong> — dos doze épicos, os doze estão no sistema — o último, o PDF como instrumento, saiu em 15/08 (as duas decisões abaixo dizem o que ainda falta nele). <strong>Cinco coisas são suas.</strong></p>
@@ -753,7 +753,7 @@
         </table>
       </div>
 
-      <p class="nota">Sobre a <b>P1</b> e a <b>P3</b>, uma coisa que o sistema hoje <b>não</b> faz: <b>não existe validação de CNPJ em lugar nenhum dele</b>. O campo em Dados da loja aceita o que for digitado, e o CNPJ que sai impresso em todo contrato entra sem conferência. O PDF novo já saiu (abaixo); a validação é a fatia seguinte do mesmo trabalho, ainda por fazer.</p>
+      <p class="nota">Sobre a <b>P1</b> e a <b>P3</b>: desde 15/08/2026 <b>o sistema confere o CNPJ da loja e o CPF da noiva pelos dígitos verificadores</b> — a tela de Dados da loja avisa embaixo do campo, e a gravação recusa o número que não fecha. É aritmética, não consulta à Receita: <b>os dois CNPJs do molde passam</b> (o certo e o da página 6, que é de outra empresa), e é por isso que a P1 continua sendo sua. O exemplo que vinha na instalação (12.345.678/0001-99) não fechava e foi trocado por um que fecha.</p>
 
       <h3>O PDF do contrato — o instrumento já sai do sistema; falta o que é da loja</h3>
       <p><strong>Desde 15/08/2026 o PDF que o sistema gera É o instrumento:</strong> as 21 cláusulas, a identificação das partes com a qualificação da noiva congelada no fechamento, a tabela do objeto e o fecho inteiro — e os números das cláusulas (a faixa da 14ª, os 40% da reserva, os 10 dias do extravio) saem do mesmo lugar de onde as telas os cobram, então papel e sistema não divergem mais. O que o papel ainda imprime <b>em branco</b> é o que o cadastro da loja não guarda: o <b>representante legal</b>, a <b>chave PIX</b> e a <b>cidade</b> (a 21ª, do foro, sai por remissão à sede enquanto não houver cidade no cadastro). É a D7, logo abaixo. A D4 ficou respondida pelo desenho; se a resposta for <em>não</em>, é o desenho que volta atrás, não o dado.</p>
@@ -769,7 +769,7 @@
             </tr>
             <tr>
               <td class="prazo">D7</td>
-              <td><strong>O representante legal e a chave PIX entram no cadastro da loja?</strong> (Renato como representante; o CPF da Karina como chave)</td>
+              <td><strong>O representante legal e a chave PIX entram no cadastro da loja?</strong> (Renato como representante; o CPF da Karina como chave) — <em>respondida SIM em 15/08/2026, os sete campos; o trabalho está na fila</em></td>
               <td><strong>Sim:</strong> o contrato sai com quem assina pela loja, com a chave de pagamento e com a cidade do foro impressas, sem ninguém redigitar — hoje as três linhas saem em branco no PDF. <strong>Não:</strong> os dois continuam sendo escritos à mão em cada contrato, que é onde nascem as divergências. É a mesma pergunta da P3, um degrau adiante: <strong>o que é da loja mora no cadastro da loja</strong></td>
             </tr>
           </tbody>
@@ -828,7 +828,7 @@
       <p class="nota">As demais da rodada fecharam <b>por decisão escrita</b>, sem código — os contratos antigos ficam como nasceram, o “véu” pendurado na reserva-mãe continua existindo, e o resto está registrado na trilha de revisão com a sua resposta ao lado.</p>
 
       <h3>15/08 — a fila do que restava, e o que dela chega até você</h3>
-      <p>No dia seguinte à rodada, a fila de sobras da trilha do contrato foi executada inteira. <strong>Sobraram três</strong>: duas esperam gente (a conciliação e a D7, as duas listadas acima nesta mesma seção) e uma é código — a validação de CNPJ, a fatia seguinte do PDF. O que mudou na tela:</p>
+      <p>No dia seguinte à rodada, a fila de sobras da trilha do contrato foi executada inteira. <strong>Sobraram três</strong>: a conciliação espera a contadora, a D7 você respondeu <em>sim</em> na tarde de 15/08 (vira código: os sete campos entram no cadastro da loja), e a terceira — a validação de CNPJ e CPF — <b>já está no sistema</b> desde a tarde do mesmo dia. O que mudou na tela:</p>
       <div class="rolagem">
         <table>
           <thead><tr><th>Onde</th><th>O que passou a existir</th></tr></thead>

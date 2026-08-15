@@ -163,7 +163,7 @@ export const ListLojasResponse = zod.array(ListLojasResponseItem)
 
 export const CreateLojaBody = zod.object({
   "nome": zod.string().min(1),
-  "cnpj": zod.string().optional(),
+  "cnpj": zod.string().optional().describe('CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000\/0000-00. Vazio apaga. (E233)'),
   "endereco": zod.string().optional(),
   "telefone": zod.string().optional()
 })
@@ -188,7 +188,7 @@ export const UpdateLojaParams = zod.object({
 
 export const UpdateLojaBody = zod.object({
   "nome": zod.string().min(1).optional(),
-  "cnpj": zod.string().optional(),
+  "cnpj": zod.string().optional().describe('CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000\/0000-00. Vazio apaga. (E233)'),
   "endereco": zod.string().optional(),
   "telefone": zod.string().optional(),
   "ativo": zod.boolean().optional()
@@ -512,7 +512,7 @@ export const UpdateDadosDaLojaParams = zod.object({
 
 export const UpdateDadosDaLojaBody = zod.object({
   "nome": zod.string().min(1).optional(),
-  "cnpj": zod.string().optional(),
+  "cnpj": zod.string().optional().describe('CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000\/0000-00. Vazio apaga. (E233)'),
   "endereco": zod.string().optional(),
   "telefone": zod.string().optional().describe('Vazio é permitido (a loja pode não ter WhatsApp). Preenchido, tem de render um link de wa.me — o servidor recusa com TELEFONE_SEM_WHATSAPP o que `linkWhatsApp` transformaria em null, porque nesse caso o botão do portal da noiva some sem erro e sem aviso.\n')
 })
@@ -1464,7 +1464,7 @@ export const CreateLeadBody = zod.object({
   "casamentoHorario": zod.string().optional(),
   "casamentoLocal": zod.string().optional(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']).optional(),
-  "cpf": zod.string().optional(),
+  "cpf": zod.string().optional().describe('CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); qualquer grafia entra e é gravada como 000.000.000-00. (E233)'),
   "rg": zod.string().optional(),
   "estadoCivil": zod.enum(['SOLTEIRA', 'CASADA', 'DIVORCIADA', 'VIUVA', 'SEPARADA', 'UNIAO_ESTAVEL']).optional(),
   "profissao": zod.string().optional(),
@@ -1733,7 +1733,7 @@ export const UpdateLeadBody = zod.object({
   "perdidaMotivo": zod.enum(['PRECO', 'DATA_INDISPONIVEL', 'CONCORRENTE', 'DESISTENCIA', 'SEM_RETORNO', 'OUTRO']).optional().describe('Obrigatório quando etapa vira PERDIDO; ignorado nas demais'),
   "perdidaDetalhe": zod.string().optional(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']).optional().describe('Corrigível enquanto o lead não converteu (CONTRATO_FECHADO ou além)'),
-  "cpf": zod.string().nullish(),
+  "cpf": zod.string().nullish().describe('CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); qualquer grafia entra e é gravada como 000.000.000-00. (E233) Null apaga.'),
   "rg": zod.string().nullish(),
   "estadoCivil": zod.union([zod.literal('SOLTEIRA'),zod.literal('CASADA'),zod.literal('DIVORCIADA'),zod.literal('VIUVA'),zod.literal('SEPARADA'),zod.literal('UNIAO_ESTAVEL'),zod.literal(null)]).nullish(),
   "profissao": zod.string().nullish(),
@@ -7106,7 +7106,7 @@ export const UpdateContratoParams = zod.object({
 })
 
 export const UpdateContratoBody = zod.object({
-  "cpf": zod.string().optional(),
+  "cpf": zod.string().optional().describe('CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); qualquer grafia entra e é gravada como 000.000.000-00. (E233)'),
   "vestidoDescricao": zod.string().optional(),
   "formaPagamento": zod.enum(['PIX', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'DINHEIRO', 'BOLETO', 'TRANSFERENCIA', 'OUTRO']).optional(),
   "dataCasamento": dataDoCorpo().optional(),

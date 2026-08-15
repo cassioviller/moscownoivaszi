@@ -18,6 +18,7 @@ export interface LeadInput {
   casamentoHorario?: string;
   casamentoLocal?: string;
   origem?: LeadInputOrigem;
+  /** CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); qualquer grafia entra e é gravada como 000.000.000-00. (E233) */
   cpf?: string;
   rg?: string;
   estadoCivil?: LeadInputEstadoCivil;

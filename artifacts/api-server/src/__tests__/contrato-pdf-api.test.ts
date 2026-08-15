@@ -41,7 +41,9 @@ describe("PDF do contrato", () => {
     const lead = await criarLead(f, {
       noivaNome: "Ana Lima",
       whatsapp: "11999990000",
-      cpf: "123.456.789-00",
+      // E233: o CPF de fixture tem de fechar os dígitos — o fecho agora recusa
+      // ficha com CPF inválido (o anterior, 123.456.789-00, não fechava).
+      cpf: "123.456.789-09",
     });
     const orcamento = await criarOrcamento(f, { leadId: lead.id, status: "APROVADO" });
     await criarOrcamentoItem(f, { orcamentoId: orcamento.id, descricao: "Vestido Sereia", valorUnitario: 3000 });
@@ -80,7 +82,7 @@ describe("PDF do contrato", () => {
     expect(txt.trimEnd().endsWith("%%EOF")).toBe(true);
     // O documento carrega loja, noiva, item, forma e o plano (entrada = nº 0).
     expect(txt).toContain("Ana Lima");
-    expect(txt).toContain("123.456.789-00");
+    expect(txt).toContain("123.456.789-09");
     expect(txt).toContain("Vestido Sereia");
     expect(txt).toContain("Pix");
     expect(txt).toContain("Entrada");

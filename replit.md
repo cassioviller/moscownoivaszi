@@ -796,6 +796,14 @@ rode o codegen.
   EFEITO: mocka cada constante e cobra que o texto troque junto. **O que ainda
   sai em branco é o que `lojas` não guarda** — representante, PIX, cidade
   (D7). Para ver o papel: `pdftotext -layout <arquivo> -` lê o texto de volta.
+- **CPF e CNPJ entram conferidos pelos dígitos verificadores** (E233):
+  `financeiro-core/src/documentos.ts` (`cpfValido`, `cnpjValido`, formatadores
+  da grafia única, `CNPJ_DE_EXEMPLO`), a mesma função na API
+  (`lib/documento-na-porta.ts` → 422 `CPF_INVALIDO`/`CNPJ_INVALIDO`, valor
+  gravado normalizado) e nas telas. Seis portas: `PATCH /lojas/:id/dados`,
+  `POST/PATCH /admin/lojas`, `POST/PATCH /leads`, `PATCH /contratos/:id`; e o
+  fecho recusa ficha com CPF que não fecha. Aritmética, não cadastro: os dois
+  CNPJs do papel passam. O seed usa `11.222.333/0001-81`.
 - **Financeiro** — `/financeiro` é o fluxo de caixa (realizado), com recortes
   (**DRE de CAIXA**, projeção de saldo) e telas de ação (receber, pagar com
   saída multi-conta, cobrança por faixa de atraso). Conciliação por extrato

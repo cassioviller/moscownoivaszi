@@ -74,6 +74,7 @@ export interface Sessao {
 export interface LojaInput {
   /** @minLength 1 */
   nome: string;
+  /** CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000/0000-00. Vazio apaga. (E233) */
   cnpj?: string;
   endereco?: string;
   telefone?: string;
@@ -82,6 +83,7 @@ export interface LojaInput {
 export interface LojaUpdate {
   /** @minLength 1 */
   nome?: string;
+  /** CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000/0000-00. Vazio apaga. (E233) */
   cnpj?: string;
   endereco?: string;
   telefone?: string;
@@ -91,6 +93,7 @@ export interface LojaUpdate {
 export interface DadosDaLojaInput {
   /** @minLength 1 */
   nome?: string;
+  /** CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000/0000-00. Vazio apaga. (E233) */
   cnpj?: string;
   endereco?: string;
   /** Vazio é permitido (a loja pode não ter WhatsApp). Preenchido, tem de render um link de wa.me — o servidor recusa com TELEFONE_SEM_WHATSAPP o que `linkWhatsApp` transformaria em null, porque nesse caso o botão do portal da noiva some sem erro e sem aviso. */
@@ -733,6 +736,7 @@ export interface LeadInput {
   casamentoHorario?: string;
   casamentoLocal?: string;
   origem?: LeadInputOrigem;
+  /** CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); qualquer grafia entra e é gravada como 000.000.000-00. (E233) */
   cpf?: string;
   rg?: string;
   estadoCivil?: LeadInputEstadoCivil;
@@ -826,7 +830,10 @@ export interface LeadUpdate {
   perdidaDetalhe?: string;
   /** Corrigível enquanto o lead não converteu (CONTRATO_FECHADO ou além) */
   origem?: LeadUpdateOrigem;
-  /** @nullable */
+  /**
+     * CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); qualquer grafia entra e é gravada como 000.000.000-00. (E233) Null apaga.
+     * @nullable
+     */
   cpf?: string | null;
   /** @nullable */
   rg?: string | null;
@@ -2677,6 +2684,7 @@ export const ContratoUpdateFormaPagamento = {
 } as const;
 
 export interface ContratoUpdate {
+  /** CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); qualquer grafia entra e é gravada como 000.000.000-00. (E233) */
   cpf?: string;
   vestidoDescricao?: string;
   formaPagamento?: ContratoUpdateFormaPagamento;

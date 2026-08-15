@@ -5247,14 +5247,14 @@ components:
       required: [nome]
       properties:
         nome: { type: string, minLength: 1 }
-        cnpj: { type: string }
+        cnpj: { type: string, description: "CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000/0000-00. Vazio apaga. (E233)" }
         endereco: { type: string }
         telefone: { type: string }
     LojaUpdate:
       type: object
       properties:
         nome: { type: string, minLength: 1 }
-        cnpj: { type: string }
+        cnpj: { type: string, description: "CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000/0000-00. Vazio apaga. (E233)" }
         endereco: { type: string }
         telefone: { type: string }
         ativo: { type: boolean }
@@ -5267,7 +5267,7 @@ components:
       additionalProperties: false
       properties:
         nome: { type: string, minLength: 1 }
-        cnpj: { type: string }
+        cnpj: { type: string, description: "CNPJ conferido na rota pelos dígitos verificadores (422 CNPJ_INVALIDO); qualquer grafia entra e é gravada como 00.000.000/0000-00. Vazio apaga. (E233)" }
         endereco: { type: string }
         telefone:
           type: string
@@ -5838,7 +5838,7 @@ components:
         origem: { type: string, enum: [LOJA, WHATSAPP, SITE, INSTAGRAM] }
         # E215 — a qualificação de quem assina. Opcionais aqui de propósito: o
         # cadastro nasce de uma ligação perguntando preço, e a régua é do FECHO.
-        cpf: { type: string }
+        cpf: { type: string, description: "CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); qualquer grafia entra e é gravada como 000.000.000-00. (E233)" }
         rg: { type: string }
         estadoCivil: { type: string, enum: [SOLTEIRA, CASADA, DIVORCIADA, VIUVA, SEPARADA, UNIAO_ESTAVEL] }
         profissao: { type: string }
@@ -5883,7 +5883,7 @@ components:
         # `POST /contratos` recusa o que falta, e a ficha é onde se preenche.
         # Aceitam `null` para APAGAR, que os irmãos acima não aceitam — dado
         # pessoal errado tem de poder sair sem esperar o expurgo de 24 meses.
-        cpf: { type: ["string", "null"] }
+        cpf: { type: ["string", "null"], description: "CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); qualquer grafia entra e é gravada como 000.000.000-00. (E233) Null apaga." }
         rg: { type: ["string", "null"] }
         estadoCivil:
           type: ["string", "null"]
@@ -7514,7 +7514,7 @@ components:
     ContratoUpdate:
       type: object
       properties:
-        cpf: { type: string }
+        cpf: { type: string, description: "CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); qualquer grafia entra e é gravada como 000.000.000-00. (E233)" }
         vestidoDescricao: { type: string }
         formaPagamento: { type: string, enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO] }
         dataCasamento: { type: string, format: date-time }

@@ -24,7 +24,10 @@ export interface LeadUpdate {
   perdidaDetalhe?: string;
   /** Corrigível enquanto o lead não converteu (CONTRATO_FECHADO ou além) */
   origem?: LeadUpdateOrigem;
-  /** @nullable */
+  /**
+     * CPF conferido na rota pelos dígitos verificadores (422 CPF_INVALIDO); qualquer grafia entra e é gravada como 000.000.000-00. (E233) Null apaga.
+     * @nullable
+     */
   cpf?: string | null;
   /** @nullable */
   rg?: string | null;
