@@ -1699,21 +1699,46 @@ router.get("/lojas/:lojaId/bloqueios/:bloqueioId/avarias", async (req, res): Pro
         .from(bloqueioVestidosTable)
         .where(eq(bloqueioVestidosTable.id, bloqueioId as string))
     : [undefined];
+  /**
+   * S-C82 — o N+1 desta listagem, fechado sem mudar a conta.
+   *
+   * Era **uma consulta por avaria**: cada volta chamava
+   * `aluguelQueRegeAAvaria`, que vai ao banco. E as avarias desta rota são
+   * todas do MESMO bloqueio, então a resposta só varia com uma coisa — o
+   * contrato que cobra o reparo (ou `null`, quando não há cobrança viva). Duas
+   * avarias sem cobrança faziam a MESMA consulta duas vezes.
+   *
+   * A memoização é por requisição e a chave é o que de fato distingue as
+   * respostas, então N consultas viram **uma por contrato distinto**. Numa
+   * ficha com quatro avarias e nenhuma cobrada, quatro consultas viram uma.
+   *
+   * Não é cache: nasce e morre dentro da requisição, e por isso não tem o
+   * problema de invalidação que a S-C89 teve de resolver.
+   */
+  const aluguelPorContrato = new Map<string, Promise<number | null>>();
+  const aluguelDe = (contratoQueCobra: string | null) => {
+    const chave = contratoQueCobra ?? "__sem_cobranca__";
+    let pendente = aluguelPorContrato.get(chave);
+    if (!pendente) {
+      pendente = aluguelQueRegeAAvaria(
+        { bloqueio: bloqueioDaLista, contratoQueCobra },
+        lojaId as string,
+      );
+      aluguelPorContrato.set(chave, pendente);
+    }
+    return pendente;
+  };
+
   const linhas = await Promise.all(
     avarias.map(async (l) =>
       avariaMeta(
         l.avaria,
         l.parcelaStatus,
-        await aluguelQueRegeAAvaria(
-          {
-            bloqueio: bloqueioDaLista,
-            // V2/E167 de novo: cobrança viva é status ≠ CANCELADA, nunca
-            // `parcelaId` preenchido. Cancelado o contrato, o teto volta a sair
-            // do ATIVO da dona — que é onde o reparo será recobrado.
-            contratoQueCobra:
-              l.parcelaStatus !== null && l.parcelaStatus !== "CANCELADA" ? l.parcelaContratoId : null,
-          },
-          lojaId as string,
+        // V2/E167 de novo: cobrança viva é status ≠ CANCELADA, nunca
+        // `parcelaId` preenchido. Cancelado o contrato, o teto volta a sair
+        // do ATIVO da dona — que é onde o reparo será recobrado.
+        await aluguelDe(
+          l.parcelaStatus !== null && l.parcelaStatus !== "CANCELADA" ? l.parcelaContratoId : null,
         ),
       ),
     ),

@@ -197,6 +197,15 @@ export default function ContratoDetail() {
   const regraDaLoja = useGetDisponibilidade(activeLojaId!, {
     query: { queryKey: getGetDisponibilidadeQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
+  // S-C93 — a recusa da 4ª sobre o que está digitado, pela MESMA função do
+  // servidor. Enquanto a regra da loja não chegou, não há o que dizer: o
+  // silêncio é o certo, e a frase do expediente logo abaixo já orienta.
+  const recusaDaRetirada = regraDaLoja.data
+    ? recusaDoExpediente(retiradaEditada, regraDaLoja.data)
+    : null;
+  const recusaDaDevolucao = regraDaLoja.data
+    ? recusaDoExpediente(devolucaoEditada, regraDaLoja.data)
+    : null;
   const gerarPlano = useGerarPlanoParcelas();
   const estornar = useEstornarParcela();
   const remover = useRemoveParcela();
@@ -1217,7 +1226,28 @@ export default function ContratoDetail() {
                   value={retiradaEditada}
                   onChange={(e) => setRetiradaEditada(e.target.value)}
                   data-testid="input-data-retirada"
+                  aria-invalid={!!recusaDaRetirada}
                 />
+                {/* S-C93 — a recusa da 4ª ANTES do clique.
+                    O helper `recusaDoExpediente` existia desde o E224, com
+                    teste próprio, e NENHUMA tela o chamava: a vendedora
+                    digitava um sábado às 19h, escrevia o resto e descobria no
+                    422. É o formato do E222 e da S-C210 — a régua pronta sem
+                    gesto — consertado no molde do E211 (o preço antes do
+                    clique) e do E27 (dizer o motivo onde ele se resolve).
+
+                    E é por isso que a sobra pedia "um seletor que conheça o
+                    expediente, não o atributo": a faixa da 4ª MUDA com o dia
+                    da semana — o sábado fecha mais cedo, e há dias em que a
+                    loja não abre —, enquanto os atributos do datetime-local
+                    são absolutos. A régua tem de ser a MESMA função do
+                    servidor, e é: `foraDoExpedienteDeRetirada`, com a mesma
+                    frase da recusa. */}
+                {recusaDaRetirada && (
+                  <p className="text-xs text-amber-600" data-testid="recusa-retirada-4a">
+                    {recusaDaRetirada}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="data-devolucao">Devolução</Label>
@@ -1227,7 +1257,13 @@ export default function ContratoDetail() {
                   value={devolucaoEditada}
                   onChange={(e) => setDevolucaoEditada(e.target.value)}
                   data-testid="input-data-devolucao"
+                  aria-invalid={!!recusaDaDevolucao}
                 />
+                {recusaDaDevolucao && (
+                  <p className="text-xs text-amber-600" data-testid="recusa-devolucao-4a">
+                    {recusaDaDevolucao}
+                  </p>
+                )}
               </div>
             </div>
             <p className="text-muted-foreground text-sm">
