@@ -46,7 +46,7 @@ describe("E106 — apagar uma loja com histórico é recusado", () => {
   const apagar = (lojaId: string) => superAdmin.delete(`/api/admin/lojas/${lojaId}`);
 
   /**
-   * O invariante, medido em `pg_constraint` e não estimado: são as 34 FKs em
+   * O invariante, medido em `pg_constraint` e não estimado: são as 35 FKs em
    * CASCADE que transformam um DELETE numa linha em perda de caixa realizado.
    * Se alguém trocar uma delas por `restrict`, esta contagem cai e o teste
    * pergunta por quê — é o número que justifica a guarda existir.
@@ -57,14 +57,15 @@ describe("E106 — apagar uma loja com histórico é recusado", () => {
    * sonda perguntou nas duas vezes, e as duas respostas são a mesma: tabela
    * nova, não FK trocada. E 33 até o E235, que trouxe
    * `conciliacao_de_recebimentos.loja_id`: o carimbo por ato é da loja como o
-   * da parcela é — terceira vez que a sonda pergunta, mesma resposta.
+   * da parcela é — terceira vez que a sonda pergunta, mesma resposta. E 34 até o
+   * E237, que trouxe `indices_monetarios.loja_id`: o IPCA informado é da loja.
    */
-  it("lojas continua sendo referenciada por 34 FKs em CASCADE — a razão da guarda", async () => {
+  it("lojas continua sendo referenciada por 35 FKs em CASCADE — a razão da guarda", async () => {
     const r = await db.execute(sql`
       SELECT count(*)::int AS n
       FROM pg_constraint
       WHERE contype = 'f' AND confrelid = 'lojas'::regclass AND confdeltype = 'c'`);
-    expect((r.rows[0] as { n: number }).n).toBe(34);
+    expect((r.rows[0] as { n: number }).n).toBe(35);
   });
 
   it("loja inexistente responde 404 — antes respondia 204 sem ter removido nada", async () => {

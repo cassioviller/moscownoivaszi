@@ -4736,6 +4736,48 @@ paths:
               schema:
                 $ref: "#/components/schemas/SaldoReferencia"
 
+  /lojas/{lojaId}/financeiro/indices:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listIndicesMonetarios
+      tags: [financeiro]
+      summary: O IPCA informado por competência (P4/E237)
+      description: >
+        A cláusula 9ª manda corrigir e não nomeia índice; em 15/08/2026 a dona
+        escolheu o IPCA. O sistema não busca o índice em lugar nenhum — a dona o
+        informa aqui, mês a mês, e a mora corrige o saldo pelos meses cheios entre
+        o vencimento e hoje. Mês sem índice é mês sem correção, DITO na frase da
+        mora com o mês que falta.
+      responses:
+        "200":
+          description: As competências informadas, da mais recente à mais antiga
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/IndiceMonetario"
+    put:
+      operationId: gravarIndiceMonetario
+      tags: [financeiro]
+      summary: Grava (ou corrige) o IPCA de uma competência
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IndiceMonetarioInput"
+      responses:
+        "200":
+          description: A competência gravada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndiceMonetario"
+        "400":
+          description: Corpo inválido (competência fora de YYYY-MM, variação fora de -20..50)
+
   # ───────────────────────── Folha / contabilidade ─────────────────────────
   /lojas/{lojaId}/financeiro/recorrencias/gerar:
     parameters:
@@ -7794,6 +7836,10 @@ components:
         multa: { type: number }
         # 1% ao mês, *pro rata die* sobre 30 dias.
         juros: { type: number }
+        # P4/E237 — a correção monetária pelo IPCA informado (Configurações → Índices),
+        # pelos meses CHEIOS entre o vencimento e hoje; 0 quando não há mês cheio ou
+        # falta índice — e a `explicacao` diz qual.
+        correcao: { type: number }
         acrescimo: { type: number }
         # Saldo + acréscimo: o que a noiva deve HOJE.
         total: { type: number }
@@ -7802,8 +7848,9 @@ components:
         # perdão vira invisível e a próxima leitura estranha o saldo.
         perdoada: { type: boolean }
         # A frase única — a tela imprime esta, e a trilha grava esta. Ela diz o
-        # que a conta TEM e o que ela NÃO tem: a correção monetária da cláusula
-        # não é calculada porque o contrato não nomeia índice (P4).
+        # que a conta TEM e o que ela NÃO tem: com o IPCA informado, a correção
+        # e os meses; sem, o mês que falta (P4/E237).
+
         explicacao: { type: string }
     PerdoarMoraInput:
       type: object
@@ -7969,6 +8016,22 @@ components:
         valor: { type: number, description: "reais, sempre positivo" }
         tipo: { type: string, enum: [recebimento, pagamento] }
         conciliadoEm: { type: ["string", "null"], format: date-time }
+    IndiceMonetario:
+      type: object
+      required: [indice, competencia, variacaoPct, atualizadoEm]
+      properties:
+        indice: { type: string, enum: [IPCA] }
+        competencia: { type: string, pattern: '^\d{4}-\d{2}$', description: "YYYY-MM" }
+        variacaoPct: { type: number, description: "a variação do mês, em pontos percentuais (0,42 = 0,42%)" }
+        atualizadoEm: { type: string, format: date-time }
+        atualizadoPor: { type: ["string", "null"] }
+    IndiceMonetarioInput:
+      type: object
+      required: [competencia, variacaoPct]
+      properties:
+        indice: { type: string, enum: [IPCA], default: IPCA }
+        competencia: { type: string, pattern: '^\d{4}-\d{2}$' }
+        variacaoPct: { type: number, minimum: -20, maximum: 50 }
     ManualDeUso:
       type: object
       required: [qual, titulo, paraQuem, descricao, disponivel, bytes, atualizadoEm]

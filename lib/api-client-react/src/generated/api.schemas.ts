@@ -2308,6 +2308,7 @@ export interface MoraDaParcela {
   saldo: number;
   multa: number;
   juros: number;
+  correcao?: number;
   acrescimo: number;
   total: number;
   perdoada: boolean;
@@ -2957,6 +2958,45 @@ export interface MovimentoDoSistema {
   tipo: MovimentoDoSistemaTipo;
   /** @nullable */
   conciliadoEm: string | null;
+}
+
+export type IndiceMonetarioIndice = typeof IndiceMonetarioIndice[keyof typeof IndiceMonetarioIndice];
+
+
+export const IndiceMonetarioIndice = {
+  IPCA: 'IPCA',
+} as const;
+
+export interface IndiceMonetario {
+  indice: IndiceMonetarioIndice;
+  /**
+     * YYYY-MM
+     * @pattern ^\d{4}-\d{2}$
+     */
+  competencia: string;
+  /** a variação do mês, em pontos percentuais (0,42 = 0,42%) */
+  variacaoPct: number;
+  atualizadoEm: string;
+  /** @nullable */
+  atualizadoPor?: string | null;
+}
+
+export type IndiceMonetarioInputIndice = typeof IndiceMonetarioInputIndice[keyof typeof IndiceMonetarioInputIndice];
+
+
+export const IndiceMonetarioInputIndice = {
+  IPCA: 'IPCA',
+} as const;
+
+export interface IndiceMonetarioInput {
+  indice?: IndiceMonetarioInputIndice;
+  /** @pattern ^\d{4}-\d{2}$ */
+  competencia: string;
+  /**
+     * @minimum -20
+     * @maximum 50
+     */
+  variacaoPct: number;
 }
 
 /**

@@ -12,6 +12,7 @@ import { podeNoModulo, resumoAcessos } from "@/lib/permissoes";
 import { CaptacaoExterna } from "./captacao";
 import { DadosDaLoja } from "./dados-da-loja";
 import { PrivacidadeLgpd } from "./privacidade";
+import { IndicesMonetarios } from "./indices";
 import { BackupSistema } from "./backup";
 import { TourAcessoDialog } from "@/components/tour-acesso";
 import { Button } from "@/components/ui/button";
@@ -276,6 +277,9 @@ export default function Configuracoes() {
 
             {/* Captação externa (E19) — só para quem gere a loja. */}
             {podeCaptacao && <CaptacaoExterna />}
+
+            {/* P4/E237 — o IPCA por competência: quem edita a loja informa o índice da 9ª. */}
+            {podeEditarLoja && <IndicesMonetarios />}
 
             {/* Privacidade (E77) — anonimização das perdidas antigas. */}
             {podeCaptacao && <PrivacidadeLgpd />}

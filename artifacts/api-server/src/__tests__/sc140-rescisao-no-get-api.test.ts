@@ -240,7 +240,10 @@ describe("S-C140 — `rescisao` no GET do contrato", () => {
       doHandler.length,
       "a leitura do contrato ficou mais cara — a conta da rescisão tem de caber na consulta relacional que já existia",
     ).toBe(2);
-    expect(sqls.length, "o request inteiro: 2 do guard de sessão + 2 do handler").toBe(4);
+    // E237: +1 — o `GET /contratos/:id` lê o IPCA da loja UMA vez (`ipcaDaLoja`) para a mora das parcelas
+    // corrigir pela decisão da P4. É uma consulta pequena por request, e o "handler" acima continua em 2:
+    // a conta da rescisão segue na consulta relacional que já existia.
+    expect(sqls.length, "o request inteiro: 2 do guard de sessão + 2 do handler + 1 do IPCA (E237)").toBe(5);
     // E as duas metades da 12ª estão DENTRO da relacional, não em query própria:
     // a contagem como subconsulta correlacionada (`ci_outros`) e a marca como
     // `left join lateral` sobre `vestidos`.

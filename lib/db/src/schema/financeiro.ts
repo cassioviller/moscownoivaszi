@@ -308,3 +308,28 @@ export const conciliacaoDeRecebimentosTable = pgTable("conciliacao_de_recebiment
   lojaIdx: index("conciliacao_de_recebimentos_loja_idx").on(t.lojaId),
   parcelaIdx: index("conciliacao_de_recebimentos_parcela_idx").on(t.parcelaId),
 }));
+
+/**
+ * **P4 / E237 (decidida em 15/08/2026: a correção da cláusula 9ª é pelo IPCA)
+ * — o índice INFORMADO por competência.**
+ *
+ * O sistema não tem de onde tirar o IPCA sozinho, e não vai buscar em lugar
+ * nenhum: a dona digita a variação do mês em Configurações → Índices, e a mora
+ * (`financeiro-core/mora.ts`) corrige o saldo pelos meses cheios entre o
+ * vencimento e hoje. Mês que não está aqui é mês sem correção — DITO na frase
+ * com o mês que falta, nunca inventado. Por loja, como tudo o que a dona
+ * configura; `indice` existe para o dia em que houver outro além do IPCA.
+ */
+export const indicesMonetariosTable = pgTable("indices_monetarios", {
+  id: text("id").primaryKey(),
+  lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
+  indice: text("indice").notNull().default("IPCA"),
+  /** "YYYY-MM" — a competência do índice. */
+  competencia: text("competencia").notNull(),
+  /** A variação do mês, em pontos percentuais (0,42 = 0,42%). */
+  variacaoPct: decimal("variacao_pct", { precision: 8, scale: 4, mode: "number" }).notNull(),
+  atualizadoEm: timestamp("atualizado_em", { withTimezone: true }).notNull().defaultNow(),
+  atualizadoPor: text("atualizado_por"),
+}, (t) => ({
+  umPorMes: unique().on(t.lojaId, t.indice, t.competencia),
+}));

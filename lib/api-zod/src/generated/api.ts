@@ -6429,6 +6429,7 @@ export const GetPortalResponse = zod.object({
   "saldo": zod.number(),
   "multa": zod.number(),
   "juros": zod.number(),
+  "correcao": zod.number().optional(),
   "acrescimo": zod.number(),
   "total": zod.number(),
   "perdoada": zod.boolean(),
@@ -6730,6 +6731,7 @@ export const ListContratosResponse = zod.object({
   "saldo": zod.number(),
   "multa": zod.number(),
   "juros": zod.number(),
+  "correcao": zod.number().optional(),
   "acrescimo": zod.number(),
   "total": zod.number(),
   "perdoada": zod.boolean(),
@@ -6929,6 +6931,7 @@ export const CreateContratoResponse = zod.object({
   "saldo": zod.number(),
   "multa": zod.number(),
   "juros": zod.number(),
+  "correcao": zod.number().optional(),
   "acrescimo": zod.number(),
   "total": zod.number(),
   "perdoada": zod.boolean(),
@@ -7094,6 +7097,7 @@ export const GetContratoResponse = zod.object({
   "saldo": zod.number(),
   "multa": zod.number(),
   "juros": zod.number(),
+  "correcao": zod.number().optional(),
   "acrescimo": zod.number(),
   "total": zod.number(),
   "perdoada": zod.boolean(),
@@ -7270,6 +7274,7 @@ export const UpdateContratoResponse = zod.object({
   "saldo": zod.number(),
   "multa": zod.number(),
   "juros": zod.number(),
+  "correcao": zod.number().optional(),
   "acrescimo": zod.number(),
   "total": zod.number(),
   "perdoada": zod.boolean(),
@@ -7492,6 +7497,7 @@ export const CancelarContratoResponse = zod.object({
   "saldo": zod.number(),
   "multa": zod.number(),
   "juros": zod.number(),
+  "correcao": zod.number().optional(),
   "acrescimo": zod.number(),
   "total": zod.number(),
   "perdoada": zod.boolean(),
@@ -7637,6 +7643,7 @@ export const ListParcelasResponseItem = zod.object({
   "saldo": zod.number(),
   "multa": zod.number(),
   "juros": zod.number(),
+  "correcao": zod.number().optional(),
   "acrescimo": zod.number(),
   "total": zod.number(),
   "perdoada": zod.boolean(),
@@ -7696,6 +7703,7 @@ export const ReceberParcelaResponse = zod.object({
   "saldo": zod.number(),
   "multa": zod.number(),
   "juros": zod.number(),
+  "correcao": zod.number().optional(),
   "acrescimo": zod.number(),
   "total": zod.number(),
   "perdoada": zod.boolean(),
@@ -7750,6 +7758,7 @@ export const PerdoarMoraResponse = zod.object({
   "saldo": zod.number(),
   "multa": zod.number(),
   "juros": zod.number(),
+  "correcao": zod.number().optional(),
   "acrescimo": zod.number(),
   "total": zod.number(),
   "perdoada": zod.boolean(),
@@ -7796,6 +7805,7 @@ export const RestabelecerMoraResponse = zod.object({
   "saldo": zod.number(),
   "multa": zod.number(),
   "juros": zod.number(),
+  "correcao": zod.number().optional(),
   "acrescimo": zod.number(),
   "total": zod.number(),
   "perdoada": zod.boolean(),
@@ -7838,6 +7848,7 @@ export const EstornarParcelaResponse = zod.object({
   "saldo": zod.number(),
   "multa": zod.number(),
   "juros": zod.number(),
+  "correcao": zod.number().optional(),
   "acrescimo": zod.number(),
   "total": zod.number(),
   "perdoada": zod.boolean(),
@@ -7901,6 +7912,7 @@ export const GerarPlanoParcelasResponseItem = zod.object({
   "saldo": zod.number(),
   "multa": zod.number(),
   "juros": zod.number(),
+  "correcao": zod.number().optional(),
   "acrescimo": zod.number(),
   "total": zod.number(),
   "perdoada": zod.boolean(),
@@ -7959,6 +7971,7 @@ export const CreateParcelaAvulsaResponse = zod.object({
   "saldo": zod.number(),
   "multa": zod.number(),
   "juros": zod.number(),
+  "correcao": zod.number().optional(),
   "acrescimo": zod.number(),
   "total": zod.number(),
   "perdoada": zod.boolean(),
@@ -8633,6 +8646,59 @@ export const CreateSaldoReferenciaResponse = zod.object({
   "lojaId": zod.string(),
   "dataReferencia": dataDoCorpo().describe('Instante do dia conferido (meio-dia local America\/Sao_Paulo)'),
   "valor": zod.number()
+})
+
+
+/**
+ * A cláusula 9ª manda corrigir e não nomeia índice; em 15/08/2026 a dona escolheu o IPCA. O sistema não busca o índice em lugar nenhum — a dona o informa aqui, mês a mês, e a mora corrige o saldo pelos meses cheios entre o vencimento e hoje. Mês sem índice é mês sem correção, DITO na frase da mora com o mês que falta.
+ * @summary O IPCA informado por competência (P4/E237)
+ */
+export const ListIndicesMonetariosParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const listIndicesMonetariosResponseCompetenciaRegExp = new RegExp('^\\d{4}-\\d{2}$');
+
+
+export const ListIndicesMonetariosResponseItem = zod.object({
+  "indice": zod.enum(['IPCA']),
+  "competencia": zod.string().regex(listIndicesMonetariosResponseCompetenciaRegExp).describe('YYYY-MM'),
+  "variacaoPct": zod.number().describe('a variação do mês, em pontos percentuais (0,42 = 0,42%)'),
+  "atualizadoEm": dataDoCorpo(),
+  "atualizadoPor": zod.string().nullish()
+})
+export const ListIndicesMonetariosResponse = zod.array(ListIndicesMonetariosResponseItem)
+
+
+/**
+ * @summary Grava (ou corrige) o IPCA de uma competência
+ */
+export const GravarIndiceMonetarioParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const gravarIndiceMonetarioBodyIndiceDefault = `IPCA`;
+export const gravarIndiceMonetarioBodyCompetenciaRegExp = new RegExp('^\\d{4}-\\d{2}$');
+export const gravarIndiceMonetarioBodyVariacaoPctMin = -20;
+export const gravarIndiceMonetarioBodyVariacaoPctMax = 50;
+
+
+
+export const GravarIndiceMonetarioBody = zod.object({
+  "indice": zod.enum(['IPCA']).default(gravarIndiceMonetarioBodyIndiceDefault),
+  "competencia": zod.string().regex(gravarIndiceMonetarioBodyCompetenciaRegExp),
+  "variacaoPct": zod.number().min(gravarIndiceMonetarioBodyVariacaoPctMin).max(gravarIndiceMonetarioBodyVariacaoPctMax)
+})
+
+export const gravarIndiceMonetarioResponseCompetenciaRegExp = new RegExp('^\\d{4}-\\d{2}$');
+
+
+export const GravarIndiceMonetarioResponse = zod.object({
+  "indice": zod.enum(['IPCA']),
+  "competencia": zod.string().regex(gravarIndiceMonetarioResponseCompetenciaRegExp).describe('YYYY-MM'),
+  "variacaoPct": zod.number().describe('a variação do mês, em pontos percentuais (0,42 = 0,42%)'),
+  "atualizadoEm": dataDoCorpo(),
+  "atualizadoPor": zod.string().nullish()
 })
 
 

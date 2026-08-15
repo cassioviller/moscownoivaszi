@@ -8,6 +8,7 @@ import {
   recorrenciasTable,
   saldosReferenciaTable,
   auditLogTable,
+  indicesMonetariosTable,
   conciliacaoDeRecebimentosTable,
 } from "@workspace/db";
 import { eq, and, or, inArray, gte, lt, lte, desc, isNull, isNotNull, count, sql } from "drizzle-orm";
@@ -37,6 +38,9 @@ import {
   MarcarConciliadoResponse,
   ListMovimentosConciliacaoQueryParams,
   ListMovimentosConciliacaoResponse,
+  ListIndicesMonetariosResponse,
+  GravarIndiceMonetarioBody,
+  GravarIndiceMonetarioResponse,
   ListAuditoriaQueryParams,
   ListAutoresAuditoriaResponse,
   ExportarAuditoriaQueryParams,
@@ -74,6 +78,7 @@ import {
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { moraDe } from "../lib/mora-da-parcela";
+import { ipcaDaLoja } from "../lib/indices-monetarios";
 import { usuarioNaLoja } from "../lib/escopo-loja";
 import { ultimoContatoPorLead } from "../lib/ultimo-contato";
 // C10/E104: `addDias`/`inicioDoDia` são régua de DATA DE NEGÓCIO e moram no
@@ -169,7 +174,8 @@ router.get("/lojas/:lojaId/financeiro/parcelas", async (req, res): Promise<void>
   // helper que o carnê, o portal e o recebimento usam. Esta é a fila de
   // cobrança: é aqui que a vendedora vê que a parcela de R$ 500,00 já deve
   // R$ 515,00 antes de mandar a mensagem.
-  res.json(ListParcelasResponse.parse(comContato.map((p) => ({ ...p, mora: moraDe(p) }))));
+  const ipca = await ipcaDaLoja(lojaId); // P4
+  res.json(ListParcelasResponse.parse(comContato.map((p) => ({ ...p, mora: moraDe(p, ipca) }))));
 });
 
 router.post("/lojas/:lojaId/financeiro/contas-pagar", async (req, res): Promise<void> => {
@@ -585,6 +591,67 @@ router.post("/lojas/:lojaId/financeiro/pagamentos/:pagamentoId/estornar", async 
     });
   });
   res.status(204).end();
+});
+
+/**
+ * P4/E237 — o IPCA informado por competência. A dona digita; a mora
+ * (`financeiro-core/mora.ts`) corrige pelos meses cheios entre o vencimento e
+ * hoje; mês sem índice fica DITO na frase. O PUT é UPSERT por (loja, índice,
+ * competência): corrigir um número errado é gravar de novo — e a trilha guarda
+ * quem e quando (`INDICE_GRAVADO`), porque o índice muda dinheiro cobrado.
+ */
+router.get("/lojas/:lojaId/financeiro/indices", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const linhas = await db
+    .select()
+    .from(indicesMonetariosTable)
+    .where(eq(indicesMonetariosTable.lojaId, lojaId))
+    .orderBy(desc(indicesMonetariosTable.competencia));
+  res.json(ListIndicesMonetariosResponse.parse(linhas.map((l) => ({ ...l, variacaoPct: Number(l.variacaoPct) }))));
+});
+
+router.put("/lojas/:lojaId/financeiro/indices", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const parsed = GravarIndiceMonetarioBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json(erroDeValidacao(parsed.error));
+    return;
+  }
+  const { competencia, variacaoPct } = parsed.data;
+  const indice = parsed.data.indice ?? "IPCA";
+  const [mes] = competencia.split("-").map(Number).slice(1);
+  if (!mes || mes < 1 || mes > 12) {
+    res.status(400).json({ error: "COMPETENCIA_INVALIDA", detalhe: "Use o formato AAAA-MM, com o mês de 01 a 12." });
+    return;
+  }
+  const linha = await db.transaction(async (tx) => {
+    const [gravada] = await tx
+      .insert(indicesMonetariosTable)
+      .values({
+        id: randomUUID(),
+        lojaId,
+        indice,
+        competencia,
+        variacaoPct,
+        atualizadoEm: new Date(),
+        atualizadoPor: req.usuario!.nome ?? null,
+      })
+      .onConflictDoUpdate({
+        target: [indicesMonetariosTable.lojaId, indicesMonetariosTable.indice, indicesMonetariosTable.competencia],
+        set: { variacaoPct, atualizadoEm: new Date(), atualizadoPor: req.usuario!.nome ?? null },
+      })
+      .returning();
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario: req.usuario!,
+      acao: "INDICE_GRAVADO",
+      entidade: "indice_monetario",
+      entidadeId: `${indice}:${competencia}`,
+      detalhe: { indice, competencia, variacaoPct },
+    });
+    return gravada!;
+  });
+  res.json(GravarIndiceMonetarioResponse.parse({ ...linha, variacaoPct: Number(linha.variacaoPct) }));
 });
 
 /**

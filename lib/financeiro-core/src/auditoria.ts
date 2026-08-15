@@ -171,6 +171,10 @@ export const ACOES_AUDITORIA = [
   // morre CANCELADA (a régua do cancelamento), e quem abrir a trilha DELA
   // precisa ler por que ela morreu — o `MORA_RECEBIDA` já conta por que nasceu.
   "MORA_ESTORNADA",
+  // P4/E237: o IPCA de uma competência foi informado ou corrigido. Muda o que a
+  // 9ª cobra de toda parcela vencida da loja — quem digitou o número, e quando,
+  // é resposta que a noiva que contestar vai pedir.
+  "INDICE_GRAVADO",
   // S-M1: o sexto DELETE cru, que o E115 não alcançou. A cabine é o único cuja
   // cascata leva ATENDIMENTOS inteiros — a guarda nova recusa apagar cabine com
   // agenda, e o rastro cobre a que não tem: depois do DELETE não sobra linha de
@@ -268,6 +272,7 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   AVARIA_EDITADA: "Avaria corrigida",
   ATRASO_COBRADO: "Atraso na devolução cobrado (cláusula 16ª)",
   MORA_PERDOADA: "Multa e juros da parcela vencida perdoados (cláusula 9ª)",
+  INDICE_GRAVADO: "Índice de correção monetária informado (IPCA, cláusula 9ª)",
   MORA_RESTABELECIDA: "Multa e juros da parcela vencida restabelecidos (cláusula 9ª)",
   MORA_RECEBIDA: "Multa e juros recebidos (cláusula 9ª)",
   MORA_ESTORNADA: "Multa e juros devolvidos com o estorno do recebimento (cláusula 9ª)",

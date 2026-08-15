@@ -219,7 +219,8 @@ describe("S-C70/S-C71/S-C90 — o estorno, a frase e o prazo nas portas do contr
       const { contrato, parcela } = await contratoComParcelaVencida();
       await receber(parcela.id, 515);
       const mora = await moraDo(contrato.id);
-      expect(mora.descricao).toContain("Sem correção monetária — o contrato não nomeia índice.");
+      // P4/E237: a frase da ausência mudou de "o contrato não nomeia índice" para o MÊS que falta.
+      expect(mora.descricao).toMatch(/Sem correção monetária — (o IPCA de \d{2}\/\d{4} não foi informado|ainda não há mês cheio de atraso)/);
       expect(mora.descricao!.length).toBeGreaterThan(200);
     });
 
@@ -245,10 +246,13 @@ describe("S-C70/S-C71/S-C90 — o estorno, a frase e o prazo nas portas do contr
       expect((await receber(parcela.id, 13_250)).status).toBe(200);
       const mora = await moraDo(contrato.id);
       expect(mora.valorPrevisto).toBe(750);
-      expect(mora.descricao).toContain("Sem correção monetária — o contrato não nomeia índice.");
+      // P4/E237: a frase da ausência mudou de "o contrato não nomeia índice" para o MÊS que falta.
+      expect(mora.descricao).toMatch(/Sem correção monetária — (o IPCA de \d{2}\/\d{4} não foi informado|ainda não há mês cheio de atraso)/);
       // O tamanho é PREGADO, e não só "maior que 200": é ele que diz quanto o
       // corte antigo comia, e é ele que reprova se a frase encolher de novo.
-      expect(mora.descricao!.length).toBe(221);
+      // E237: era 221 com "— o contrato não nomeia índice."; a frase nova nomeia o mês que falta e o caminho
+      // ("— o IPCA de mm/aaaa não foi informado (Configurações → Índices).") — 254, e o mês tem sempre 7 caracteres.
+      expect(mora.descricao!.length).toBe(254);
     });
   });
 

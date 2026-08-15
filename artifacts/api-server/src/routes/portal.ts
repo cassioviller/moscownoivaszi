@@ -51,6 +51,7 @@ import { erroDeValidacao } from "../lib/erros";
 // E213 — a multa e os juros da cláusula 9ª, derivados no mesmo lugar que a
 // fila de cobrança e o carnê usam.
 import { moraDe } from "../lib/mora-da-parcela";
+import { ipcaDaLoja } from "../lib/indices-monetarios";
 import { brutoEmCentavos, centavos, estaAberta, reais, saldoAberto } from "@workspace/financeiro-core";
 
 /**
@@ -226,6 +227,7 @@ router.get("/portal", async (req, res): Promise<void> => {
       )
     : [];
 
+  const ipca = await ipcaDaLoja(portal.lojaId); // P4
   const abertas = parcelas.filter((p) => estaAberta(p));
   const proxima = [...abertas].sort(
     (a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime(),
@@ -249,7 +251,7 @@ router.get("/portal", async (req, res): Promise<void> => {
    * sem uma segunda régua que pudesse divergir da primeira.
    */
   const devidoC = (p: (typeof parcelas)[number]) =>
-    centavos(moraDe(p)?.total ?? saldoAberto(p));
+    centavos(moraDe(p, ipca)?.total ?? saldoAberto(p));
   const faltaPagarC = abertas.reduce((s, p) => s + devidoC(p), 0);
 
   // As duas montagens são independentes e eram `await`adas em sequência DENTRO
@@ -293,7 +295,7 @@ router.get("/portal", async (req, res): Promise<void> => {
           // E213 — o MESMO helper da fila de cobrança e do carnê. A noiva é a
           // devedora: descobrir a multa só quando a vendedora manda a mensagem
           // é a classe de defeito que o E211 fechou do outro lado.
-          mora: moraDe(p),
+          mora: moraDe(p, ipca),
         })),
       /**
        * E221 — os comprovantes. O que desce é o que o papel precisa para ser

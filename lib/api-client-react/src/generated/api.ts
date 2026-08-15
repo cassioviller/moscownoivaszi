@@ -131,6 +131,8 @@ import type {
   GetUtilizacaoVestidosParams,
   GetVestidoFotoParams,
   HealthStatus,
+  IndiceMonetario,
+  IndiceMonetarioInput,
   ItemEstoque,
   ItemEstoqueInput,
   ItemEstoqueUpdate,
@@ -14452,6 +14454,155 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getCreateSaldoReferenciaMutationOptions(options));
+    }
+
+export const getListIndicesMonetariosUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/financeiro/indices`
+}
+
+/**
+ * A cláusula 9ª manda corrigir e não nomeia índice; em 15/08/2026 a dona escolheu o IPCA. O sistema não busca o índice em lugar nenhum — a dona o informa aqui, mês a mês, e a mora corrige o saldo pelos meses cheios entre o vencimento e hoje. Mês sem índice é mês sem correção, DITO na frase da mora com o mês que falta.
+ * @summary O IPCA informado por competência (P4/E237)
+ */
+export const listIndicesMonetarios = async (lojaId: string, options?: RequestInit): Promise<IndiceMonetario[]> => {
+
+  return customFetch<IndiceMonetario[]>(getListIndicesMonetariosUrl(lojaId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListIndicesMonetariosQueryKey = (lojaId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/financeiro/indices`
+    ] as const;
+    }
+
+
+export const getListIndicesMonetariosQueryOptions = <TData = Awaited<ReturnType<typeof listIndicesMonetarios>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listIndicesMonetarios>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListIndicesMonetariosQueryKey(lojaId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listIndicesMonetarios>>> = ({ signal }) => listIndicesMonetarios(lojaId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listIndicesMonetarios>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListIndicesMonetariosQueryResult = NonNullable<Awaited<ReturnType<typeof listIndicesMonetarios>>>
+export type ListIndicesMonetariosQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary O IPCA informado por competência (P4/E237)
+ */
+
+export function useListIndicesMonetarios<TData = Awaited<ReturnType<typeof listIndicesMonetarios>>, TError = ErrorType<unknown>>(
+ lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listIndicesMonetarios>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListIndicesMonetariosQueryOptions(lojaId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGravarIndiceMonetarioUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/financeiro/indices`
+}
+
+/**
+ * @summary Grava (ou corrige) o IPCA de uma competência
+ */
+export const gravarIndiceMonetario = async (lojaId: string,
+    indiceMonetarioInput: IndiceMonetarioInput, options?: RequestInit): Promise<IndiceMonetario> => {
+
+  return customFetch<IndiceMonetario>(getGravarIndiceMonetarioUrl(lojaId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(indiceMonetarioInput)
+  }
+);}
+
+
+
+
+export const getGravarIndiceMonetarioMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof gravarIndiceMonetario>>, TError,{lojaId: string;data: BodyType<IndiceMonetarioInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof gravarIndiceMonetario>>, TError,{lojaId: string;data: BodyType<IndiceMonetarioInput>}, TContext> => {
+
+const mutationKey = ['gravarIndiceMonetario'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof gravarIndiceMonetario>>, {lojaId: string;data: BodyType<IndiceMonetarioInput>}> = (props) => {
+          const {lojaId,data} = props ?? {};
+
+          return  gravarIndiceMonetario(lojaId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GravarIndiceMonetarioMutationResult = NonNullable<Awaited<ReturnType<typeof gravarIndiceMonetario>>>
+    export type GravarIndiceMonetarioMutationBody = BodyType<IndiceMonetarioInput>
+    export type GravarIndiceMonetarioMutationError = ErrorType<void>
+
+    /**
+ * @summary Grava (ou corrige) o IPCA de uma competência
+ */
+export const useGravarIndiceMonetario = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof gravarIndiceMonetario>>, TError,{lojaId: string;data: BodyType<IndiceMonetarioInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof gravarIndiceMonetario>>,
+        TError,
+        {lojaId: string;data: BodyType<IndiceMonetarioInput>},
+        TContext
+      > => {
+      return useMutation(getGravarIndiceMonetarioMutationOptions(options));
     }
 
 export const getGerarRecorrenciasUrl = (lojaId: string,) => {

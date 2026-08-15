@@ -36,7 +36,8 @@ export type ParcelaComMora = {
  * 1%/mês SOBRE SI MESMOS, virando R$ 15,45 no dia seguinte. A PAGA sai
  * sozinha, porque o saldo aberto dela é zero.
  */
-export function moraDe(p: ParcelaComMora) {
+/** P4: `indices` é o IPCA da loja (`ipcaDaLoja`); sem ele a correção fica dita como não informada. */
+export function moraDe(p: ParcelaComMora, indices?: ReadonlyMap<string, number> | null) {
   if (p.status === "CANCELADA" || p.origem === "MORA") return null;
   const m = moraDaParcela({
     // O MESMO `saldoAberto` do resto do sistema (E49/E125): o previsto menos o
@@ -45,6 +46,7 @@ export function moraDe(p: ParcelaComMora) {
     saldoAberto: saldoAberto(p),
     vencimento: p.vencimento,
     perdoada: p.moraPerdoadaEm !== null,
+    indices,
   });
   return m === null ? null : { ...m, explicacao: explicacaoDaMora(m) };
 }

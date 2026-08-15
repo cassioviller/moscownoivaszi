@@ -99,6 +99,7 @@ import { cpfNaPorta } from "../lib/documento-na-porta";
 import { derrubarFilaDeAtrasos } from "../lib/fila-de-atrasos-cache";
 // E213 — a multa e os juros da cláusula 9ª, derivados num lugar só.
 import { moraDe } from "../lib/mora-da-parcela";
+import { ipcaDaLoja } from "../lib/indices-monetarios";
 // E222 — o expediente de RETIRADA e DEVOLUÇÃO (cláusula 4ª), que não é o de
 // atendimento. As duas portas que gravam as datas passam pela mesma guarda.
 import { expedienteDeRetiradaPorExtenso, recusaDeExpedienteDeRetirada } from "../lib/expediente-de-retirada";
@@ -192,7 +193,8 @@ async function comOContratoDela<T extends { id: string }>(parcela: T) {
   });
   // E213 — a mora entra por aqui porque este é o ponto por onde TODA parcela
   // seca desta rota sai. Anexá-la em cada resposta seria a segunda grafia.
-  return completa ? { ...completa, mora: moraDe(completa) } : parcela;
+  // P4: o IPCA da loja da parcela — uma leitura por parcela devolvida por aqui.
+  return completa ? { ...completa, mora: moraDe(completa, await ipcaDaLoja(completa.lojaId)) } : parcela;
 }
 
 router.get("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
@@ -1334,6 +1336,7 @@ router.get("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<voi
     };
   }
 
+  const ipca = await ipcaDaLoja(lojaId); // P4
   res.json(
     GetContratoResponse.parse({
       ...contrato,
@@ -1360,7 +1363,7 @@ router.get("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<voi
        * atravessa import, e com o helper a aresta `Parcela.mora` voltaria a
        * aparecer como promessa que ninguém entrega.
        */
-      parcelas: contrato.parcelas.map((p) => ({ ...p, mora: moraDe(p) })),
+      parcelas: contrato.parcelas.map((p) => ({ ...p, mora: moraDe(p, ipca) })),
       bloqueioVestidoIds: vinculos.map((v) => v.bloqueioId),
       pecas,
       rescisao: rescisaoNoPayload(),
@@ -2524,7 +2527,7 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("contrat
    * recebimento: sem ele, "por que entraram R$ 515,00 numa parcela de
    * R$ 500,00?" não tem resposta depois do fato.
    */
-  const mora = moraDe(existente);
+  const mora = moraDe(existente, await ipcaDaLoja(lojaId as string)); // P4
   const acrescimoC = mora?.acrescimoC ?? 0;
   const saldoPrincipalC = centavos(existente.valorPrevisto) - jaRecebidoC;
   const saldoC = saldoPrincipalC + acrescimoC;
@@ -2800,7 +2803,8 @@ router.post(
      * — `moraDe` com o perdão IGNORADO, senão o segundo clique se
      * autoconfirmaria.
      */
-    if (moraDe({ ...existente, moraPerdoadaEm: null }) === null) {
+    const ipcaPerdao = await ipcaDaLoja(lojaId as string); // P4
+    if (moraDe({ ...existente, moraPerdoadaEm: null }, ipcaPerdao) === null) {
       res.status(422).json({
         error: "SEM_MORA",
         detalhe: "Esta parcela não está vencida com saldo em aberto — não há multa nem juros a perdoar.",
@@ -2834,7 +2838,7 @@ router.post(
           motivo,
           // O acréscimo do DIA do perdão: ele cresce, então o número que a
           // decisão dispensou só existe aqui.
-          acrescimoDispensado: moraDe({ ...existente, moraPerdoadaEm: null })?.acrescimo ?? 0,
+          acrescimoDispensado: moraDe({ ...existente, moraPerdoadaEm: null }, ipcaPerdao)?.acrescimo ?? 0,
         },
       });
       return linha;

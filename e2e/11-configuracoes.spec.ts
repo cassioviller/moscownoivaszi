@@ -78,3 +78,26 @@ test.describe("Configurações — Dados da loja (E234)", () => {
     await expect(page.locator("#loja-pix-chave")).toHaveValue("23723482805");
   });
 });
+
+/**
+ * P4/E237 — o IPCA informado por competência. A dona digita a variação do
+ * mês em Configurações → Índices; a mora das parcelas vencidas passa a
+ * corrigir pelos meses cheios. A cena grava um mês, recarrega e vê o número.
+ */
+test.describe("Configurações — Índices IPCA (E237)", () => {
+  test("gravar o IPCA de um mês pela tela, e ele volta gravado", async ({ page }) => {
+    await page.goto("/configuracoes");
+    await page.waitForLoadState("networkidle");
+    const card = page.getByTestId("card-indices-ipca");
+    await expect(card).toBeVisible();
+    // O mês mais antigo da lista (24 meses atrás) — não colide com nada que a suíte de API grava.
+    const linha = card.locator("li[data-testid^='indice-']").last();
+    const competencia = (await linha.getAttribute("data-testid"))!.replace("indice-", "");
+    await linha.locator("input").fill("0,37");
+    await linha.getByRole("button", { name: /Gravar|Corrigir/ }).click();
+    await expect(page.getByText(/IPCA de .* gravado/).first()).toBeVisible();
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByTestId(`indice-${competencia}-atual`)).toHaveText("0,37%");
+  });
+});

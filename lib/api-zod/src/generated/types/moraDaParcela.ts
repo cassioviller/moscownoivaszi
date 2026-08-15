@@ -11,6 +11,7 @@ export interface MoraDaParcela {
   saldo: number;
   multa: number;
   juros: number;
+  correcao?: number;
   acrescimo: number;
   total: number;
   perdoada: boolean;

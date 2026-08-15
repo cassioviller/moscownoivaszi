@@ -37,15 +37,27 @@ import { diaDeNegocio, hojeLocal } from "./datas";
  * dívida render diferente em fevereiro e em março, e a cláusula não pede isso.
  * Está escrito aqui e no teste para a dona poder corrigir em uma linha.
  *
- * ## A correção monetária NÃO é calculada, e isso é declarado
+ * ## A correção monetária é pelo IPCA (P4, decidida em 15/08/2026) — e só com índice INFORMADO
  *
- * A cláusula manda corrigir e **não nomeia índice**. IPCA, IGP-M e INPC dão
- * três números diferentes para a mesma dívida, e escolher um por conta própria
- * seria inventar cláusula — o mesmo limite que o E211 respeitou ao não escalar
- * o reajuste além da terceira troca. Fica como pendência da dona (P4), e a
- * ausência é dita na tela em vez de calada: quem lê o acréscimo vê que ele tem
- * multa e juros, e não correção.
+ * A cláusula manda corrigir e **não nomeia índice**. Até 15/08/2026 a conta
+ * declarava a ausência; naquele dia a dona escolheu o **IPCA** (P4). O sistema
+ * não tem de onde tirar o índice sozinho, então ele é INFORMADO por competência
+ * (`indices_monetarios`, Configurações → Índices), e a convenção é declarada
+ * aqui e na frase:
  *
+ * - **meses cheios**: corrige-se pelos meses de calendário INTEIROS entre o
+ *   vencimento e hoje — do mês seguinte ao do vencimento até o mês anterior ao
+ *   de hoje. Vencida há 20 dias, não há mês cheio e não há correção; vencida em
+ *   10/03 e lida em 15/08, corrige-se por abril, maio, junho e julho;
+ * - **o fator é o produto** `Π(1 + pct/100)` desses meses, sobre o SALDO;
+ * - **multa e juros continuam sobre o saldo**, não sobre o corrigido — a
+ *   cláusula lista os três lado a lado, e empilhá-los seria inventar ordem;
+ * - **mês sem índice informado = sem correção, DITO** com o mês que falta. A
+ *   ausência continua sendo a resposta honesta enquanto a dona não digitar o
+ *   número; o que mudou é que agora ela sabe qual número falta.
+ *
+ * O caixa e o carnê não gravam a correção: como a multa e os juros, ela é
+ * DERIVADA e nasce no dia do recebimento (`aMora`, E213).
  * ## A mora é DERIVADA, nunca gravada
  *
  * Mesma escolha do `estaAtrasada` que ela estende, e pela mesma razão: o valor
@@ -70,7 +82,11 @@ export type Mora = {
   saldo: number;
   multa: number;
   juros: number;
-  /** Multa + juros. */
+  /** A correção monetária pelo IPCA (P4), em reais — 0 quando não há mês cheio ou falta índice. */
+  correcao: number;
+  /** O que aconteceu com a correção — a frase precisa dizer. */
+  correcaoDetalhe: CorrecaoDetalhe;
+  /** Multa + juros + correção. */
   acrescimo: number;
   /** Saldo + acréscimo — o que a noiva deve HOJE. */
   total: number;
@@ -78,6 +94,7 @@ export type Mora = {
   saldoC: number;
   multaC: number;
   jurosC: number;
+  correcaoC: number;
   acrescimoC: number;
   totalC: number;
   /** Alguém perdoou: a conta continua sendo mostrada, e o acréscimo é zero. */
@@ -108,6 +125,8 @@ export function moraDaParcela(params: {
   vencimento: Date | string;
   hoje?: string;
   perdoada?: boolean;
+  /** P4 — o IPCA por competência ("YYYY-MM" → %). Sem ele, a correção fica dita como não informada. */
+  indices?: ReadonlyMap<string, number> | null;
 }): Mora | null {
   const saldoC = centavos(params.saldoAberto);
   if (saldoC <= 0) return null;
@@ -129,7 +148,11 @@ export function moraDaParcela(params: {
   const jurosC = perdoada
     ? 0
     : Math.round((saldoC * JUROS_DE_MORA_MENSAL_PCT * dias) / (100 * DIAS_DO_MES_DE_MORA));
-  const acrescimoC = multaC + jurosC;
+  const correcao = perdoada
+    ? { correcaoC: 0, detalhe: { estado: "sem-tabela", indice: "IPCA" } as CorrecaoDetalhe }
+    : correcaoPeloIpca({ saldoC, vencimento, hoje, indices: params.indices });
+  const correcaoC = correcao.correcaoC;
+  const acrescimoC = multaC + jurosC + correcaoC;
   const totalC = saldoC + acrescimoC;
 
   return {
@@ -137,11 +160,14 @@ export function moraDaParcela(params: {
     saldo: reais(saldoC),
     multa: reais(multaC),
     juros: reais(jurosC),
+    correcao: reais(correcaoC),
+    correcaoDetalhe: correcao.detalhe,
     acrescimo: reais(acrescimoC),
     total: reais(totalC),
     saldoC,
     multaC,
     jurosC,
+    correcaoC,
     acrescimoC,
     totalC,
     perdoada,
@@ -164,6 +190,75 @@ export function explicacaoDaMora(m: Mora): string {
     `Vencida há ${m.dias} dia(s): multa de ${MULTA_DE_MORA_PCT}% = ${brl(m.multa)} · ` +
     `juros de ${JUROS_DE_MORA_MENSAL_PCT}% ao mês (${m.dias}/${DIAS_DO_MES_DE_MORA}) = ${brl(m.juros)}. ` +
     `Saldo ${brl(m.saldo)} + ${brl(m.acrescimo)} = ${brl(m.total)}. ` +
-    `Sem correção monetária — o contrato não nomeia índice.`
+    fraseDaCorrecao(m)
   );
+}
+
+/**
+ * P4 — a correção monetária pelo IPCA, com o índice INFORMADO por competência.
+ *
+ * `indices` mapeia `"YYYY-MM"` → variação percentual do mês (o IPCA de abril
+ * de 2026 = 0,42 → `{"2026-04": 0.42}`). A conta é pura: quem tem banco
+ * carrega o mapa da loja e passa; quem não tem (o teste, o portal em memória)
+ * passa o que quiser.
+ */
+export type CorrecaoDetalhe =
+  | { estado: "aplicada"; indice: "IPCA"; meses: string[]; pctAcumulado: number }
+  | { estado: "sem-mes-cheio"; indice: "IPCA" }
+  | { estado: "falta-indice"; indice: "IPCA"; meses: string[]; faltando: string }
+  | { estado: "sem-tabela"; indice: "IPCA" };
+
+/** Os meses de calendário INTEIROS entre o vencimento e hoje ("YYYY-MM"). */
+export function mesesCheiosDeMora(vencimentoYMD: string, hojeYMD: string): string[] {
+  const [va, vm] = vencimentoYMD.split("-").map(Number) as [number, number];
+  const [ha, hm] = hojeYMD.split("-").map(Number) as [number, number];
+  const meses: string[] = [];
+  let a = va, m = vm + 1;
+  if (m > 12) { m = 1; a += 1; }
+  while (a < ha || (a === ha && m < hm)) {
+    meses.push(`${a}-${String(m).padStart(2, "0")}`);
+    m += 1;
+    if (m > 12) { m = 1; a += 1; }
+  }
+  return meses;
+}
+
+export function correcaoPeloIpca(params: {
+  saldoC: number;
+  vencimento: string;
+  hoje: string;
+  indices?: ReadonlyMap<string, number> | null;
+}): { correcaoC: number; detalhe: CorrecaoDetalhe } {
+  if (!params.indices) return { correcaoC: 0, detalhe: { estado: "sem-tabela", indice: "IPCA" } };
+  const meses = mesesCheiosDeMora(params.vencimento, params.hoje);
+  if (meses.length === 0) return { correcaoC: 0, detalhe: { estado: "sem-mes-cheio", indice: "IPCA" } };
+  let fator = 1;
+  for (const mes of meses) {
+    const pct = params.indices.get(mes);
+    if (pct === undefined || !Number.isFinite(pct)) {
+      return { correcaoC: 0, detalhe: { estado: "falta-indice", indice: "IPCA", meses, faltando: mes } };
+    }
+    fator *= 1 + pct / 100;
+  }
+  const correcaoC = Math.max(0, Math.round(params.saldoC * (fator - 1)));
+  return {
+    correcaoC,
+    detalhe: { estado: "aplicada", indice: "IPCA", meses, pctAcumulado: Math.round((fator - 1) * 10_000) / 100 },
+  };
+}
+
+/** A frase da correção, na língua da tela — a mesma para todos os leitores. */
+export function fraseDaCorrecao(m: Pick<Mora, "correcao" | "correcaoDetalhe">): string {
+  const d = m.correcaoDetalhe;
+  const mesBR = (ym: string) => `${ym.slice(5, 7)}/${ym.slice(0, 4)}`;
+  switch (d.estado) {
+    case "aplicada":
+      return `Correção pelo IPCA de ${mesBR(d.meses[0]!)} a ${mesBR(d.meses[d.meses.length - 1]!)} (${d.pctAcumulado.toLocaleString("pt-BR")}%) = ${brl(m.correcao)}.`;
+    case "sem-mes-cheio":
+      return `Sem correção monetária — ainda não há mês cheio de atraso (IPCA, meses inteiros entre o vencimento e hoje).`;
+    case "falta-indice":
+      return `Sem correção monetária — o IPCA de ${mesBR(d.faltando)} não foi informado (Configurações → Índices).`;
+    case "sem-tabela":
+      return `Sem correção monetária — índice não informado.`;
+  }
 }

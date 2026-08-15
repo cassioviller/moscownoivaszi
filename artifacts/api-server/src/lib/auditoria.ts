@@ -81,6 +81,8 @@ export interface RegistroAuditoria {
     | "comissao_regra"
     // E123 — o desfazer do registro de cobrança.
     | "registro_cobranca"
+    // P4/E237 — o IPCA por competência.
+    | "indice_monetario"
     // S3 — a loja como ENTIDADE, e não como escopo: é o que ela é quando o
     // que aconteceu foi ela ter sido apagada.
     | "loja";

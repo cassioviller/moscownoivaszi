@@ -161,14 +161,28 @@ describe("moraDaParcela — a conta da 9ª", () => {
 const RS = "R$\u00a0";
 
 describe("explicacaoDaMora — a frase diz o que a conta TEM e o que ela não tem", () => {
-  it("decompõe multa e juros, e declara a ausência da correção monetária", () => {
+  it("decompõe multa e juros, e declara o que a correção NÃO teve — sem tabela, sem mês cheio, sem índice", () => {
     const m = moraDaParcela({ saldoAberto: 500, vencimento: "2026-07-14", hoje: HOJE })!;
     expect(explicacaoDaMora(m)).toBe(
       `Vencida há 30 dia(s): multa de ${MULTA_DE_MORA_PCT}% = ${RS}10,00 · ` +
         `juros de ${JUROS_DE_MORA_MENSAL_PCT}% ao mês (30/${DIAS_DO_MES_DE_MORA}) = ${RS}5,00. ` +
         `Saldo ${RS}500,00 + ${RS}15,00 = ${RS}515,00. ` +
-        "Sem correção monetária — o contrato não nomeia índice.",
+        "Sem correção monetária — índice não informado.",
     );
+    // P4/E237: com a tabela mas sem mês cheio (30 dias não fecham um mês de calendário)…
+    const semMesCheio = moraDaParcela({ saldoAberto: 500, vencimento: "2026-07-14", hoje: HOJE, indices: new Map() })!;
+    expect(explicacaoDaMora(semMesCheio)).toContain("ainda não há mês cheio de atraso");
+    // …com meses cheios e o índice de um deles faltando: DIZ qual falta e não corrige.
+    const faltando = moraDaParcela({ saldoAberto: 500, vencimento: "2026-03-10", hoje: HOJE, indices: new Map([["2026-04", 0.4], ["2026-05", 0.3]]) })!;
+    expect(faltando.correcao).toBe(0);
+    expect(explicacaoDaMora(faltando)).toContain("o IPCA de 06/2026 não foi informado");
+    // …e com os quatro meses (abril a julho) o saldo corrige pelo produto — e a multa e os juros seguem sobre o SALDO.
+    const cheia = moraDaParcela({ saldoAberto: 500, vencimento: "2026-03-10", hoje: HOJE, indices: new Map([["2026-04", 0.4], ["2026-05", 0.3], ["2026-06", 0.2], ["2026-07", 0.1]]) })!;
+    // 500 × (1,004 × 1,003 × 1,002 × 1,001 − 1) = 500 × 0,010036 = R$ 5,018 → R$ 5,02 (arredondado em centavos, uma vez)
+    expect(cheia.correcao).toBe(5.02);
+    expect(cheia.multa).toBe(10);
+    expect(cheia.total).toBe(500 + 10 + cheia.juros + 5.02);
+    expect(explicacaoDaMora(cheia)).toContain("Correção pelo IPCA de 04/2026 a 07/2026 (1%) = " + RS + "5,02.");
   });
 
   it("a perdoada diz que foi perdoada, e não some da tela", () => {
