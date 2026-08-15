@@ -124,7 +124,7 @@ describe("S-C89 — a fila responde do cache, e o número de consultas é travad
 
   const fila = () => agent.get(`/api/lojas/${f.lojaId}/contratos-com-atraso`);
 
-  it("o custo é 2 fixas + 3 por contrato + 1 pelas órfãs — e o GET seguinte custa ZERO", async () => {
+  it("o custo é 2 fixas + 2 por contrato + 1 pelas órfãs — e o GET seguinte custa ZERO", async () => {
     await noivaComPecaAtrasada(9);
     await noivaComPecaAtrasada(11);
 
@@ -136,10 +136,22 @@ describe("S-C89 — a fila responde do cache, e o número de consultas é travad
       /**
        * A conta, por extenso (igualdade, lição da S-C46 — piso `>=` deixa a
        * prosa envelhecer): regra(1) + candidatos(1) + por contrato
-       * [regra(1) + bloqueios(1) + aluguel(1)] ×2 + órfãs(1) = **9**.
+       * [bloqueios(1) + aluguel(1)] ×2 + órfãs(1) = **7**.
        * Quem mudar a fila e vir este número cair, ganhou; subir, explica.
+       *
+       * **S-C280: 9 → 7, e a queda é POR CONTRATO.** O colchete tinha uma
+       * `regra(1)` dentro: `pecasAtrasadasDoContrato` rebuscava
+       * `regra_disponibilidade` a cada volta do laço, idêntica à que a fila já
+       * tinha lido na linha de cima. Com dois contratos eram duas consultas
+       * evitáveis; com vinte seriam vinte. A regra passou a ser um parâmetro
+       * opcional — as outras duas portas do E212 chamam uma vez por
+       * requisição e não têm o que passar, e obrigá-las a buscar antes só para
+       * repassar moveria o custo em vez de tirá-lo.
+       *
+       * **Foi esta régua que mediu o ganho**, no vermelho `expected 7 to be 9`:
+       * conserto de consulta sem contador é opinião.
        */
-      expect(contador.conta()).toBe(9);
+      expect(contador.conta()).toBe(7);
 
       contador.zerar();
       const segunda = await fila().expect(200);

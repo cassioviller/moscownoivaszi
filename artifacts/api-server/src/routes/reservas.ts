@@ -52,6 +52,7 @@ import {
   type BloqueioJanelasInput,
   type ConflitoDetalhe,
   type DbExecutor,
+  type RegraJanelas,
 } from "../lib/disponibilidade";
 import { transicaoReservaValida } from "../lib/estados";
 import { criarReservaDeVestido } from "../lib/reserva-do-vestido";
@@ -2274,8 +2275,24 @@ async function pecasAtrasadasDoContrato(
   contratoId: string,
   lojaId: string,
   executor: DbExecutor = db,
+  /**
+   * S-C280 — a regra da loja, quando quem chama já a tem na mão.
+   *
+   * Ela é UMA linha por loja e não muda no meio de uma resposta. A fila de
+   * atrasos já a busca (`filaDeAtrasosDaLoja`) e depois chamava esta função
+   * uma vez por contrato atrasado — que a rebuscava, **idêntica**, a cada
+   * volta. Com N contratos na fila eram N consultas evitáveis: a régua da
+   * S-C89 media `regra(1) + candidatos(1) + por contrato [regra(1) +
+   * bloqueios(1) + aluguel(1)] ×2 + órfãs(1) = 9`, e a `regra(1)` de dentro do
+   * colchete é a que sai.
+   *
+   * Opcional de propósito: as outras duas portas do E212 chamam uma vez por
+   * requisição e não têm o que passar. Obrigá-las a buscar antes só para
+   * repassar seria mover o custo, não tirá-lo.
+   */
+  regraJaLida?: RegraJanelas,
 ): Promise<{ pecas: PecaAtrasada[]; semAluguel: string[] }> {
-  const regra = await buscarRegra(lojaId, executor);
+  const regra = regraJaLida ?? (await buscarRegra(lojaId, executor));
   // A janela de uso INTEIRA é o divisor da diária: os dias antes, o dia do
   // casamento e os dias depois. No padrão da loja são 3 + 1 + 2 = 6.
   const diasDeAluguel = regra.usoDiasAntes + regra.usoDiasDepois + 1;
@@ -2504,7 +2521,7 @@ async function filaDeAtrasosDaLoja(lojaId: string) {
 
   const itens = [];
   for (const [contratoId, cand] of porContrato) {
-    const { pecas, semAluguel } = await pecasAtrasadasDoContrato(contratoId, lojaId);
+    const { pecas, semAluguel } = await pecasAtrasadasDoContrato(contratoId, lojaId, db, regra);
     const cobranca = cobrancaDoAtraso(pecas);
     // A peça atrasada FORA do rol de itens não tem conta, e é a que mais precisa
     // ser vista: ela está fora e ninguém consegue cobrá-la (422

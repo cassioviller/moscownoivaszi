@@ -165,6 +165,23 @@ export default function Vestidos() {
   );
   // Só os livres na data escolhida (E41) — depende de `dataSelecionada`.
   const soDisponiveis = searchParams.get("disponiveis") === "1";
+  /**
+   * S-C22 — o recorte da peça exclusiva (cláusula 12ª), que o E216 deixou
+   * declarado como custo.
+   *
+   * `exclusiva` é coluna do vestido e não atributo de catálogo, então ela não
+   * entrava por `atributos=` como decote e volume entram — foi a decisão 1 do
+   * E216, e o preço dela era este: **não havia como perguntar ao acervo quais
+   * peças carregam a multa da 12ª**. Medido no `heliumdb` em 15/08: **514
+   * peças, ZERO exclusivas** (a sobra dizia 132, e media o `moscow_base`, que
+   * é o outro banco — a lição de `1d9ccff`).
+   *
+   * Entra agora, e não "no dia em que a loja marcar as primeiras", porque é
+   * nesse dia que a pergunta nasce: quem acabou de marcar cinco peças entre
+   * 514 precisa achá-las para conferir, e um acervo sem o recorte obriga a
+   * rolar a lista inteira olhando selo por selo.
+   */
+  const soExclusivas = searchParams.get("exclusivas") === "1";
   const definirFiltroUrl = (nome: string, valor: string | null) =>
     setSearchParams((p) => comFiltros(p, { [nome]: valor }, { [nome]: TODOS }), { replace: true });
   const definirAtributo = (attrId: string, opcaoId: string) => {
@@ -212,8 +229,9 @@ export default function Vestidos() {
     }
     if (dataSelecionada) chips.push(format(parseDia(dataSelecionada), "dd/MM/yyyy"));
     if (soDisponiveis) chips.push("Só disponíveis");
+    if (soExclusivas) chips.push("Só exclusivas");
     return chips;
-  }, [busca, tamanho, categoria, filtrosAtributo, atributosAtivos, dataSelecionada, soDisponiveis]);
+  }, [busca, tamanho, categoria, filtrosAtributo, atributosAtivos, dataSelecionada, soDisponiveis, soExclusivas]);
   const nAtributosAtivos = Object.keys(filtrosAtributo).length;
 
   const disponibilidade = useCheckDisponibilidadeVestidos(
@@ -257,13 +275,15 @@ export default function Vestidos() {
       }
       // E41: só os livres na data (o toggle só age com data selecionada).
       if (soDisponiveis && dataSelecionada && !dispPorVestido.get(v.id)?.disponivel) return false;
+      // S-C22: o recorte da 12ª. Coluna do vestido, não atributo de catálogo.
+      if (soExclusivas && !v.exclusiva) return false;
       return true;
     });
-  }, [vestidos, busca, tamanho, categoria, filtrosAtributo, soDisponiveis, dataSelecionada, dispPorVestido]);
+  }, [vestidos, busca, tamanho, categoria, filtrosAtributo, soDisponiveis, dataSelecionada, dispPorVestido, soExclusivas]);
 
   const temAtributoFiltrado = Object.values(filtrosAtributo).some((op) => op && op !== TODOS);
   const temFiltrosAtivos =
-    busca.trim() !== "" || tamanho !== TODOS || categoria !== TODOS || !!dataSelecionada || temAtributoFiltrado || soDisponiveis;
+    busca.trim() !== "" || tamanho !== TODOS || categoria !== TODOS || !!dataSelecionada || temAtributoFiltrado || soDisponiveis || soExclusivas;
 
   function limparFiltros() {
     // Uma escrita só limpa tudo; o input de busca adota o `q` vazio da URL
@@ -613,6 +633,17 @@ export default function Vestidos() {
             Só disponíveis
           </Button>
         )}
+        {/* S-C22: sem depender de data — a pergunta "quais peças carregam a
+            multa da 12ª" é do acervo, não do calendário. */}
+        <Button
+          variant={soExclusivas ? "default" : "outline"}
+          size="sm"
+          aria-pressed={soExclusivas}
+          data-testid="toggle-so-exclusivas"
+          onClick={() => definirFiltroUrl("exclusivas", soExclusivas ? null : "1")}
+        >
+          Só exclusivas
+        </Button>
         <div className="ml-auto hidden text-sm text-muted-foreground whitespace-nowrap md:block">
           {filtrados.length} de {vestidos?.length ?? 0} vestidos
         </div>

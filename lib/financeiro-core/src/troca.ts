@@ -37,7 +37,32 @@ import { addDias, diaLocal } from "./datas";
  */
 export const PRAZO_DA_TROCA_DIAS = 7;
 
-/** Dias da semana vedados pelo §1º — 5 = sexta, 6 = sábado. */
+/**
+ * Dias da semana vedados pelo §1º — 5 = sexta, 6 = sábado.
+ *
+ * **S-C243 — a decisão de fidelidade, escrita onde a constante mora.**
+ *
+ * O expediente de retirada é EDITÁVEL (cláusula 4ª, `regra_disponibilidade`:
+ * `retiradaDias`), e a dona pode mudá-lo para terça e quarta amanhã. Esta
+ * constante **não a segue**, e isso é escolha, não esquecimento.
+ *
+ * O §1º nomeia os dias — *"às sextas-feiras e aos sábados"* —, não a categoria
+ * *"os dias de movimento"*. Derivar daqui do expediente faria o sistema
+ * recusar trocas num dia que o papel assinado permite, ou permitir num dia que
+ * o papel veda; nos dois casos ele passaria a cobrar uma cláusula que a noiva
+ * não assinou. **O instrumento diz sexta e sábado, e o sistema obedece ao
+ * instrumento.**
+ *
+ * O custo está declarado, e é real: se a loja mudar o movimento para terça e
+ * quarta, a guarda continua protegendo o balcão nos dias errados. **O conserto
+ * disso não é código — é emendar o contrato**, e aí esta constante muda junto,
+ * no mesmo commit em que a cláusula mudar de texto.
+ *
+ * É a mesma disciplina do P4 (a 9ª não nomeia índice, então o sistema não
+ * corrige e DIZ que não corrige) e da P5 (a 17ª não define "data da locação",
+ * então o sistema declara a leitura que usou): onde o papel é específico,
+ * obedece-se à letra; onde é omisso, declara-se a convenção.
+ */
 const DIAS_VEDADOS = new Set([5, 6]);
 
 const NOME_DO_DIA = [
