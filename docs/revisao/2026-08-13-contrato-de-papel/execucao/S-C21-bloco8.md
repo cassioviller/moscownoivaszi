@@ -163,3 +163,63 @@ costureira-fixture (perfil na letra do seed) gravava `retiradaFechamentoMinutos`
 misto `expected 403 "Forbidden", got 422` (a parede de horário respondia antes da permissão).
 Depois: **s-c221 4 passed**, e o lote s-c221 + e222-expediente + varredura-manuais (3
 arquivos, 15) + s36-gate: **42 + 15 passed**, typecheck verde nos 5 projetos.
+
+---
+
+## S-C89 — o custo da fila medido, o cache de 5 min por loja, e a régua que trava a conta
+
+**Decisão da dona (14/08/2026): cache de 5 min por loja no SERVIDOR, Map com TTL, sem
+dependência nova.**
+
+**Medição do custo atual — e a sobra contava errado:** ela dizia *"1 consulta larga + 2 por
+contrato atrasado"*. Medido com um contador em cima de `pool.query` (filtrado pelas tabelas
+da fila — o middleware de sessão também consulta o banco, e contá-lo mediria autenticação):
+são **2 fixas** (a regra da loja + a varredura larga) **+ 3 por contrato atrasado**
+(`buscarRegra` DE NOVO dentro de `pecasAtrasadasDoContrato`, os bloqueios do contrato, o
+aluguel de cada peça no rol) **+ 1 pelas órfãs** — e **4 por contrato** quando o atraso já
+virou parcela (a `cobrancaViva`). Com 2 contratos de 1 peça: **9 consultas por GET**, pagas
+de novo a cada poll de 5 min do sino, em CADA tela aberta.
+
+**O que mudou:**
+
+- `lib/fila-de-atrasos-cache.ts` (novo) — Map por loja, TTL de 5 min (o MESMO poll do sino:
+  o pior atraso de aviso que o cache adiciona é um ciclo que o sino já tinha), com
+  `lerFilaDeAtrasos`/`guardarFilaDeAtrasos`/`derrubarFilaDeAtrasos`.
+- O `GET /contratos-com-atraso` responde do cache; o `.parse` do contrato de resposta roda
+  nas DUAS vias.
+- **As portas que derrubam o cache da loja — enumeradas pelas TABELAS que a fila lê, não
+  pelo palpite** (a sobra sugeria "receber, perdoar, cobrar"; **receber não muda a fila** —
+  cobrança viva é `status !== CANCELADA`, e PAGA segue viva — e **perdoar mora é da carteira
+  da 9ª, não desta fila**):
+  1. `POST .../cobranca-de-atraso` (reservas.ts) — o `jaCobrada`;
+  2. `PATCH /bloqueios/:id` — retirada/devolução real e datas;
+  3. `DELETE /bloqueios/:id` — a linha some;
+  4. `PATCH /reservas/:id` — mover a data move a janela de uso;
+  5. `DELETE /reservas/:id` — cancela os bloqueios;
+  6. `POST /contratos` (contratos.ts) — a órfã adotada vira item;
+  7. `POST /contratos/:id/cancelar` — o item vira órfã e a parcela do atraso morre;
+  8. `POST /contratos/:id/trocar-peca` — troca o bloqueio apontado;
+  9. `POST /parcelas/:id/estornar` e `DELETE /parcelas/:id` — a cobrança viva muda;
+  10. `PUT /disponibilidade/regras` (agenda.ts) — `usoDiasDepois` é o divisor da janela.
+- **A régua** (`s-c89-cache-da-fila-api.test.ts`): pino de IGUALDADE no custo (9 no cenário
+  de 2 contratos — a lição da S-C46: piso `>=` deixa a prosa envelhecer), **ZERO consultas
+  de fila no GET seguinte**, e dois casos provando a invalidação POR PORTA (cobrar → o
+  próximo GET diz `jaCobrada`; devolução registrada no prazo → a linha sai).
+- **Fixture direta não passa por porta**: os três arquivos que medem a fila depois de
+  `db.insert` cru (`s-c32`, `s-c80`, `e231`) derrubam o cache no próprio helper `fila()`,
+  com o porquê escrito — eles pregam a CONTA; o cache tem régua própria.
+
+**Vermelho antes (regra 34, cache desligado de propósito na rota e religado):**
+`AssertionError: expected 9 to be +0` — sem o cache, o segundo GET paga as 9 consultas de
+novo. E um vermelho MEU que virou nota no próprio teste: o primeiro desenho esperava a linha
+sumir com a devolução registrada HOJE de uma peça atrasada — `expected true to be false` —
+e a fila está CERTA em mantê-la: devolvida fora do prazo, a cobrança continua devida; o que
+sai da fila é a devolução DENTRO do prazo (backdatada para o dia real da volta).
+Depois: **s-c89 3 · s-c32 12 · s-c80 · e231 · e212 — 46 passed nos 5 arquivos**, typecheck
+verde.
+
+**Correção que fica para o rastreador:** o custo real é `2 + 3·atrasados (+1 se cobrado) + 1`,
+não `1 + 2·atrasados`. E o `buscarRegra` duplicado (uma vez na fila, uma vez POR CONTRATO
+dentro de `pecasAtrasadasDoContrato`) é 1 consulta evitável por contrato — fica como sobra
+proposta (S-C280), não como conserto daqui: mexer na assinatura de
+`pecasAtrasadasDoContrato` toca a prévia e o POST do E212, e o cache já paga o grosso.

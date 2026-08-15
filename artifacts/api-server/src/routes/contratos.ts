@@ -93,6 +93,9 @@ import { leadsQueCasam } from "../lib/busca-lead";
 import { conteudoEnviado, identidadeDasPecas } from "../lib/conteudo-orcamento";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
+// S-C89 — as portas deste arquivo que mudam um fato lido pela fila de atrasos
+// (status do contrato, vínculo com bloqueio, cobrança viva) derrubam o cache.
+import { derrubarFilaDeAtrasos } from "../lib/fila-de-atrasos-cache";
 // E213 — a multa e os juros da cláusula 9ª, derivados num lugar só.
 import { moraDe } from "../lib/mora-da-parcela";
 // E222 — o expediente de RETIRADA e DEVOLUÇÃO (cláusula 4ª), que não é o de
@@ -1162,6 +1165,8 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
     with: { lead: true, vendedora: true, parcelas: true, itens: true }
   });
 
+  // S-C89: o contrato novo adota bloqueios — a órfã da fila vira item.
+  derrubarFilaDeAtrasos(lojaId);
   res.status(201).json(CreateContratoResponse.parse(fullContrato));
 });
 
@@ -2054,6 +2059,9 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
     where: and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)),
     with: { lead: true, vendedora: true, parcelas: true, itens: true }
   });
+  // S-C89: cancelar solta os bloqueios — o item da fila vira órfã, e a
+  // parcela do atraso morre junto (a cobrança viva muda).
+  derrubarFilaDeAtrasos(lojaId);
   res.json(CancelarContratoResponse.parse({
     ...fullContrato,
     // Escrito por extenso (e não `rescisao: desfecho.rescisao`) para a
@@ -2308,6 +2316,9 @@ router.post("/lojas/:lojaId/contratos/:contratoId/trocar-peca", async (req, res)
     return;
   }
 
+  // S-C89: a troca cancela o bloqueio antigo e prende outro — as linhas da
+  // fila apontam para bloqueios.
+  derrubarFilaDeAtrasos(lojaId);
   res.json(TrocarPecaDoContratoResponse.parse({
     bloqueioNovoId: desfecho.bloqueioNovoId,
     vestidoNovoId,
@@ -3000,6 +3011,9 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/estornar", async (req, res): Pro
     res.status(404).json({ error: "PARCELA_NAO_ENCONTRADA", detalhe: "Esta parcela não existe nesta loja." });
     return;
   }
+  // S-C89: a parcela do atraso estornada segue viva, mas a de um contrato que
+  // acabou de reativar cobrança muda o `jaCobrada` da fila.
+  derrubarFilaDeAtrasos(lojaId as string);
   res.json(EstornarParcelaResponse.parse(await comOContratoDela(desfecho.parcela)));
 });
 
@@ -3062,6 +3076,9 @@ router.delete("/lojas/:lojaId/parcelas/:parcelaId", async (req, res): Promise<vo
     res.status(422).json({ error: "PARCELA_NAO_PREVISTA", detalhe: "Só parcelas previstas podem ser removidas" });
     return;
   }
+  // S-C89: apagar a parcela do atraso (`set null` em atraso_parcela_id via FK)
+  // devolve o contrato à fila como não-cobrado.
+  derrubarFilaDeAtrasos(lojaId as string);
   res.status(204).send();
 });
 

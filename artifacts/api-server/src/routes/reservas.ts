@@ -56,6 +56,13 @@ import {
 import { transicaoReservaValida } from "../lib/estados";
 import { criarReservaDeVestido } from "../lib/reserva-do-vestido";
 import { erroDeValidacao } from "../lib/erros";
+// S-C89 — a fila de atrasos responde do cache por 5 min; toda porta DESTE
+// arquivo que muda um fato que ela lê derruba o cache da loja.
+import {
+  lerFilaDeAtrasos,
+  guardarFilaDeAtrasos,
+  derrubarFilaDeAtrasos,
+} from "../lib/fila-de-atrasos-cache";
 // S-O56/E185: a régua do dono saiu daqui para `lib/dono-do-bloqueio.ts` — ela
 // vale para as 10 operações fora deste arquivo que também aninham um bloqueio.
 import {
@@ -735,6 +742,9 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
     throw err;
   }
 
+  // S-C89: mover a data da reserva move a janela de uso dos bloqueios — os
+  // dias de atraso da fila mudam junto.
+  derrubarFilaDeAtrasos(lojaId);
   const fullReserva = await db.query.reservasTable.findFirst({
     where: eq(reservasTable.id, reserva.id),
     with: RESERVA_COM_TUDO,
@@ -880,6 +890,8 @@ router.delete("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<vo
     });
     return;
   }
+  // S-C89: remover a reserva leva os bloqueios dela — linhas da fila somem.
+  derrubarFilaDeAtrasos(lojaId);
   res.status(204).send();
 });
 
@@ -1328,6 +1340,8 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
     res.status(409).json({ error: "VESTIDO_INDISPONIVEL", conflitos: atualizado.conflitos });
     return;
   }
+  // S-C89: retirada/devolução real e datas são fatos que a fila de atrasos lê.
+  derrubarFilaDeAtrasos(lojaId);
   // V14/E167: o PATCH devolve o MESMO payload do GET. A ficha invalida e relê
   // depois de cada movimentação, mas um campo que só uma das duas portas
   // preenche é armadilha para quem ler o schema depois.
@@ -1430,6 +1444,8 @@ router.delete("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<
     });
     return;
   }
+  // S-C89: o bloqueio apagado pode ser uma linha da fila (item ou órfã).
+  derrubarFilaDeAtrasos(lojaId);
   res.status(204).send();
 });
 
@@ -2671,7 +2687,21 @@ router.get(
   requireModulo("contratos"),
   async (req, res): Promise<void> => {
     const { lojaId } = req.params as { lojaId: string };
-    res.json(ListContratosComAtrasoResponse.parse(await filaDeAtrasosDaLoja(lojaId)));
+    /**
+     * S-C89 — a resposta pronta vale 5 min por loja (o mesmo poll do sino).
+     * O custo de recalcular é 2 + 3·atrasados + 1 consultas (medido na régua
+     * `s-c89`); as portas que mudam a fila derrubam o cache da loja — a lista
+     * está em `lib/fila-de-atrasos-cache.ts`. O `.parse` roda nas duas vias:
+     * o contrato de resposta vale também para o que sai do cache.
+     */
+    const emCache = lerFilaDeAtrasos(lojaId);
+    if (emCache !== null) {
+      res.json(ListContratosComAtrasoResponse.parse(emCache));
+      return;
+    }
+    const fila = await filaDeAtrasosDaLoja(lojaId);
+    guardarFilaDeAtrasos(lojaId, fila);
+    res.json(ListContratosComAtrasoResponse.parse(fila));
   },
 );
 
@@ -2841,6 +2871,9 @@ router.post(
       return;
     }
 
+    // S-C89: `jaCobrada` é uma coluna da fila — a cobrança recém-nascida tem
+    // de aparecer no próximo GET, não daqui a 5 min.
+    derrubarFilaDeAtrasos(lojaId);
     res.status(201).json(
       CobrarAtrasoDaDevolucaoResponse.parse(
         envelopeDoAtraso(cobranca, semAluguel, { jaCobrada: true, parcelaId }),

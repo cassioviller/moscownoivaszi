@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db, bloqueioVestidosTable, contratoBloqueiosTable, contratosTable, parcelasTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
+import { derrubarFilaDeAtrasos } from "../lib/fila-de-atrasos-cache";
 import {
   criarBloqueio,
   criarContrato,
@@ -122,7 +123,12 @@ describe("E231 — a peça física", () => {
   });
 
   describe("S-C114 — a fila distingue 'nunca teve contrato' de 'o contrato caiu'", () => {
-    const fila = () => agent.get(`/api/lojas/${f.lojaId}/contratos-com-atraso`);
+    // S-C89: fixture direta não passa por porta — cada leitura da fila parte
+    // de cache frio (a régua do cache é o s-c89-cache-da-fila-api.test.ts).
+    const fila = () => {
+      derrubarFilaDeAtrasos();
+      return agent.get(`/api/lojas/${f.lojaId}/contratos-com-atraso`);
+    };
 
     it("a peça do contrato CANCELADO chega com o id dele — a venda desfeita tem endereço", async () => {
       const { bloqueio, contrato } = await pecaNaRua({ cancelado: true });

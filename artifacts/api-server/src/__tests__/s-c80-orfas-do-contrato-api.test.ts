@@ -9,6 +9,7 @@ import {
 import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { addDias, ancoraDeNegocio, hojeLocal } from "@workspace/financeiro-core";
+import { derrubarFilaDeAtrasos } from "../lib/fila-de-atrasos-cache";
 import {
   criarBloqueio,
   criarContrato,
@@ -299,7 +300,13 @@ describe("S-C80/S-C85/S-C86 — a peça sem dona, a cancelada e a sem contrato",
 
   // ───────── S-C86 — a peça fora que nenhum contrato cobre ─────────
 
-  const fila = () => agent.get(`/api/lojas/${f.lojaId}/contratos-com-atraso`);
+  // S-C89: a fixture escreve direto no banco (porta nenhuma vê), e este
+  // arquivo prega a CONTA da fila — o cache tem régua própria (s-c89). Cada
+  // leitura parte de cache frio.
+  const fila = () => {
+    derrubarFilaDeAtrasos();
+    return agent.get(`/api/lojas/${f.lojaId}/contratos-com-atraso`);
+  };
 
   type ForaSemContrato = {
     bloqueioId: string;

@@ -1,5 +1,9 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { contratoBloqueiosTable, contratoItensTable, contratosTable, db } from "@workspace/db";
+// S-C89: a fila responde do cache por 5 min, e as portas o derrubam. A
+// fixture daqui escreve DIRETO no banco — nenhuma porta vê, então cada caso
+// parte de cache frio.
+import { derrubarFilaDeAtrasos } from "../lib/fila-de-atrasos-cache";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { addDias, ancoraDeNegocio, hojeLocal } from "@workspace/financeiro-core";
@@ -48,7 +52,13 @@ describe("S-C32 — a fila das peças que não voltaram no prazo", () => {
     await fecharPool();
   });
 
+  beforeEach(() => derrubarFilaDeAtrasos());
+
   const diasAtras = (n: number) => ancoraDeNegocio(addDias(hojeLocal(), -n));
+
+  // O derrube fica DENTRO do helper porque vários casos medem fila → fixture
+  // direta → fila de novo no MESMO `it`: este arquivo prega a CONTA, e o
+  // cache tem régua própria (`s-c89-cache-da-fila-api.test.ts`).
 
   /** A mesma montagem do E212: vestido + bloqueio com datas reais + rol de itens. */
   async function noivaComPecas(
@@ -104,7 +114,10 @@ describe("S-C32 — a fila das peças que não voltaram no prazo", () => {
     return { lead, contrato, nomes, bloqueios };
   }
 
-  const fila = () => agent.get(`/api/lojas/${f.lojaId}/contratos-com-atraso`);
+  const fila = () => {
+    derrubarFilaDeAtrasos();
+    return agent.get(`/api/lojas/${f.lojaId}/contratos-com-atraso`);
+  };
 
   /** O que a porta devolve por contrato — escrito à mão para o typecheck ler. */
   type ItemDaFila = {

@@ -45,6 +45,9 @@ import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 // corpo de agenda carrega uma cláusula de CONTRATO (o expediente da 4ª).
 import { getPermissoes } from "../lib/auth";
 import { podeNoModulo } from "../lib/permissoes";
+// S-C89 — a regra de disponibilidade carrega a janela de uso que a fila de
+// atrasos lê; o PUT dela derruba o cache da loja.
+import { derrubarFilaDeAtrasos } from "../lib/fila-de-atrasos-cache";
 import {
   recusaDeMover,
   ausenciaQueCobre,
@@ -1486,6 +1489,9 @@ router.put("/lojas/:lojaId/disponibilidade/regras", async (req, res): Promise<vo
     })
     .returning();
 
+  // S-C89: `usoDiasDepois` é a janela de uso que a fila de atrasos usa para
+  // contar os dias — mudar a regra muda a fila inteira da loja.
+  derrubarFilaDeAtrasos(lojaId);
   res.json(SetDisponibilidadeResponse.parse(regra));
 });
 
