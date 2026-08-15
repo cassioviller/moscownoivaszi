@@ -236,8 +236,33 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
    * `e215-qualificacao-api.test.ts`, *"apagar o `nascimento` com null APAGA —
    * não grava 1970 (V12)"*. A dívida sobe, o caso é seguro, e agora há teste
    * dizendo por quê em vez de um comentário afirmando.
+   *
+   * ────────────────────────────────────────────────────────────────────────
+   *
+   * **S-C281 — e o parágrafo acima é a lição, virada do avesso.**
+   *
+   * Ele mediu o caso SEGURO (`nullish`, onde o `null` curto-circuita) e
+   * concluiu pela CLASSE: *"a dívida sobe, o caso é seguro"*. Os outros dois
+   * casos nunca foram medidos, e nos dois o `null` chegava à coerção:
+   *
+   * - `dataDoCorpo().optional()` — o `optional` só olha `undefined`;
+   * - `dataDoCorpo()` cru, **obrigatório** — nada olha nada.
+   *
+   * Medido na porta, com dinheiro: `POST /parcelas/:id/receber` com
+   * `recebidoEm: null` respondia **200** e gravava
+   * `parcelas.recebido_em = 1970-01-01T00:00:00Z`. Eram **113 campos** assim
+   * no gerado — não os 22 que a grafia `.optional()` deixava contar.
+   *
+   * O conserto trocou o dono: o codegen escreve `dataDoCorpo()`
+   * (`lib/api-zod/src/data-do-corpo.ts`), que recusa `null` antes de coagir e
+   * preserva o `nullish` deste parágrafo. **O título desta régua dizia
+   * "`null` vira 1970 e o zod aprova" — deixou de ser verdade, e o número
+   * mudou de nome junto**, porque régua cujo enunciado envelheceu é régua que
+   * ensina errado (a lição do E184, do lado dos testes). Quem conta agora são
+   * as chamadas peneiradas; a garantia de que nenhuma escapou é da
+   * `varredura-datas-nao-aceitam-nulo`, que mede por EFEITO.
    */
-  it("916 datas coercidas — as datas coercidas estão contadas — `null` vira 1970 e o zod aprova", () => {
+  it("916 datas coercidas — todas peneiradas pelo `dataDoCorpo()`, que recusa o `null`", () => {
     // E228: 892 → 910. O `orfaoSeguraAte` (S-C60) entrou no `BloqueioVestido`,
     // que viaja em 18 respostas — uma coluna nova num schema compartilhado
     // multiplica pelo número de portas que o serializam. Todas são SAÍDA
@@ -248,11 +273,19 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
     // E230: 912 → 914 — `devolucaoPrevista`/`devolucaoFeitaEm` do
     // `VestidoDaNoiva` (S-C92). SAÍDA do portal, uma rota.
     // E231: 914 → 916 — as duas REAIS da `LocacaoDoLead` (S-C121). SAÍDA.
-    const coeridas = (zod.match(/coerce\.date\(\)/g) ?? []).length;
+    const coeridas = (zod.match(/dataDoCorpo\(\)/g) ?? []).length;
     expect(
       coeridas,
       "mudou o número de datas coercidas? A guarda do V12 (`reservas.ts`) é campo a campo, não global",
     ).toBe(916);
+
+    // S-C281 — e nenhuma sobrou crua. O hook do `orval.config.ts` é um gesto
+    // que se pode desligar; se alguém o desligar, o número acima continua 916
+    // pela outra grafia e só esta linha acusa.
+    expect(
+      (zod.match(/zod\.coerce\.date\(\)/g) ?? []).length,
+      "voltou a haver `zod.coerce.date()` cru no gerado — a peneira da S-C281 saiu do codegen",
+    ).toBe(0);
   });
 
   /**
