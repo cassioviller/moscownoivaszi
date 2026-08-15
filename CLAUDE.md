@@ -538,7 +538,7 @@ para o documento que manda.
    (`2912526`). Antes da conferência a tabela também dizia zero 🟠 — a diferença
    é que agora é verdade.
 
-   **Tudo isso está no `main`, e o `main` está PUBLICADO.** Na terceira sessão de 15/08 o `origin/main` foi de `89e98930` para `c3e53ace` (E220 primeira fatia + docs, 5 commits, autorizado pela dona na hora). Antes, no mesmo dia, o
+   **Tudo isso está no `main`, e o `main` está PUBLICADO.** No fim de 15/08 (quarta sessão) o `origin/main` foi de `d2837063` para `24d1c191` — **13 commits**, fast-forward puro (E234, a decisão da contadora, E235, E236, as sobras do dia, E237 e o seed real), autorizado pela dona na hora. Antes, na terceira sessão, de `89e98930` para `c3e53ace` (E220 primeira fatia + docs, 5 commits). Antes, no mesmo dia, o
    `origin/main` foi de `cbcd8b30` para `0dfa8b95` — **69 commits**, a onda
    inteira de 14 e 15/08 —, fast-forward puro, com autorização da dona no
    mesmo dia. **E o hash de partida é a prova do custo**: `cbcd8b30` era
