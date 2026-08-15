@@ -12,8 +12,11 @@ export interface ContratoUpdate {
   vestidoDescricao?: string;
   formaPagamento?: ContratoUpdateFormaPagamento;
   dataCasamento?: Date;
-  dataRetirada?: Date;
-  dataDevolucao?: Date;
-  prazoDevolucaoReservaDias?: number;
+  /** @nullable */
+  dataRetirada?: Date | null;
+  /** @nullable */
+  dataDevolucao?: Date | null;
+  /** @nullable */
+  prazoDevolucaoReservaDias?: number | null;
   observacoes?: string;
 }

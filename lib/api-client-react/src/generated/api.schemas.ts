@@ -2668,9 +2668,12 @@ export interface ContratoUpdate {
   vestidoDescricao?: string;
   formaPagamento?: ContratoUpdateFormaPagamento;
   dataCasamento?: string;
-  dataRetirada?: string;
-  dataDevolucao?: string;
-  prazoDevolucaoReservaDias?: number;
+  /** @nullable */
+  dataRetirada?: string | null;
+  /** @nullable */
+  dataDevolucao?: string | null;
+  /** @nullable */
+  prazoDevolucaoReservaDias?: number | null;
   observacoes?: string;
 }
 

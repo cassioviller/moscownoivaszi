@@ -51,3 +51,47 @@ Banco próprio: `moscow_wt_bloco8` (criado com `push` + seed; conferido com `SEL
 `GetLookbookPublicoResponse.parse` derruba a resposta inteira, que é a guarda da S-C150
 fazendo o serviço do lado bom. Depois do montador: **4 passed**. A suíte `portal` (6 arquivos,
 29 testes) verde com o campo obrigatório — a segunda porta entrega.
+
+---
+
+## S-C232 — o `null` que apaga a data, e o mecanismo que a sobra descreveu errado
+
+**Decisão da dona (14/08/2026): SIM, aceitar `null`.**
+
+**Correção ao diagnóstico — a sobra dizia "o `ContratoUpdate` do spec nem aceita `null`", e o
+estado real era PIOR:** o Zod gerado é `zod.coerce.date()`, e `new Date(null)` é época —
+medido com o schema gerado: `UpdateContratoBody.safeParse({ dataRetirada: null })` devolvia
+`{"dataRetirada":"1970-01-01T00:00:00.000Z"}`. O `PATCH { dataRetirada: null }` de hoje não
+era recusado: era convertido numa retirada em **31/12/1969 21:00 (São Paulo)** e recusado por
+ACIDENTE pelo expediente da 4ª (`RETIRADA_FORA_DO_EXPEDIENTE`). Já
+`prazoDevolucaoReservaDias: null` levava 400 de validação. Três respostas diferentes para o
+mesmo gesto, nenhuma delas a certa.
+
+**O que mudou:**
+
+- `lib/api-spec/openapi.yaml` — `ContratoUpdate.dataRetirada`, `.dataDevolucao` (datas da
+  locação, E224) e `.prazoDevolucaoReservaDias` (o prazo da 18ª, E227, que herdou o limite)
+  viram `nullable`; codegen re-rodado. O gerado agora é `zod.coerce.date().nullish()`, e o
+  `ZodNullable` decide ANTES da coerção — `null` atravessa como `null`.
+- **O handler não precisou de uma linha**: o `PATCH` já espalha `...parsed.data` no `.set()`
+  (`contratos.ts:1631`), então `null` grava `null`; a guarda do carnê (`if
+  (parsed.data.dataRetirada)`) e a do expediente (`expediente-de-retirada.ts:41` trata
+  `null`/`undefined`) não rodam sobre data apagada — apagar não pode violar prazo nenhum.
+- Teste novo: `s-c232-apagar-datas-da-locacao-api.test.ts` — apaga cada campo, prova que o
+  ausente continua sendo "não mexi" (gramática do S-M10) e que a data não vira 1970.
+
+**Vermelho antes (literal):**
+- `dataRetirada: null` → `Error: expected 200 "OK", got 422 "Unprocessable Entity"`;
+- `dataDevolucao: null, prazoDevolucaoReservaDias: null` → `Error: expected 200 "OK", got 400
+  "Bad Request"`.
+Depois: **3 passed**, e os 8 arquivos vizinhos que exercitam o `PATCH /contratos` (e158, e163,
+e222, revisao-lote2, so111/so113, sc70, sm24) seguem verdes — **83 passed**.
+
+**A METADE DA TELA ESTÁ BLOQUEADA PARA ESTE AGENTE, de propósito:** o `?? undefined` mora em
+`contratos/[id].tsx:475-482` (`onSalvarLocacao`), arquivo reservado ao agente A/C neste lote.
+O conserto que falta é de três linhas, e fica aqui para quem tem o arquivo:
+`dataRetirada: localParaISO(retiradaEditada) ?? undefined` → `?? null`; o mesmo na devolução;
+e o prazo vira `prazoEditado.trim() === "" ? null : Number(prazoEditado)` (o comentário
+S-C211 dali já dizia que apagar o prazo "pede spec" — o spec agora aceita). O cliente gerado
+já tipa `Date | null`, então a edição compila no dia em que for feita. Sem ela, a porta
+aceita o gesto que o diálogo ainda não manda — a sobra fecha DE VERDADE com essas três linhas.

@@ -7085,9 +7085,9 @@ export const UpdateContratoBody = zod.object({
   "vestidoDescricao": zod.string().optional(),
   "formaPagamento": zod.enum(['PIX', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'DINHEIRO', 'BOLETO', 'TRANSFERENCIA', 'OUTRO']).optional(),
   "dataCasamento": zod.coerce.date().optional(),
-  "dataRetirada": zod.coerce.date().optional(),
-  "dataDevolucao": zod.coerce.date().optional(),
-  "prazoDevolucaoReservaDias": zod.number().optional(),
+  "dataRetirada": zod.coerce.date().nullish(),
+  "dataDevolucao": zod.coerce.date().nullish(),
+  "prazoDevolucaoReservaDias": zod.number().nullish(),
   "observacoes": zod.string().optional()
 })
 

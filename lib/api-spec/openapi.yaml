@@ -7494,9 +7494,14 @@ components:
         vestidoDescricao: { type: string }
         formaPagamento: { type: string, enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO] }
         dataCasamento: { type: string, format: date-time }
-        dataRetirada: { type: string, format: date-time }
-        dataDevolucao: { type: string, format: date-time }
-        prazoDevolucaoReservaDias: { type: integer }
+        # S-C232 — apagar a data gravada é decisão tão legítima quanto trocá-la
+        # (a promessa do E224): `null` APAGA, campo ausente é "não mexi" — a
+        # gramática do S-M10. Sem o null aqui, o `zod.coerce.date()` gerado
+        # convertia `null` em 01/01/1970 e o expediente da 4ª recusava uma data
+        # fantasma. O prazo da 18ª (E227) herda o mesmo gesto.
+        dataRetirada: { type: ["string", "null"], format: date-time }
+        dataDevolucao: { type: ["string", "null"], format: date-time }
+        prazoDevolucaoReservaDias: { type: ["integer", "null"] }
         observacoes: { type: string }
     CancelarContratoInput:
       type: object
