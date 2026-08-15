@@ -29,18 +29,18 @@ para o documento que manda.
    pelo desenho das 21 cláusulas": a PRIMEIRA FATIA está EXECUTADA em
    `880b9a5a`** (o PDF É o instrumento: 21 cláusulas com os números lidos das
    réguas, a identificação das partes com a qualificação do E215, a régua de
-   EFEITO `e220-instrumento`); a D4 ficou respondida pelo gesto. **O que resta
-   dele é a S-C301** (a validação de CNPJ, 🟡, próxima da fila) e a **S-C300**
-   (representante, PIX e a CIDADE do foro — `lojas` não tem as colunas; é a D7).
+   EFEITO `e220-instrumento`); a D4 ficou respondida pelo gesto. **A segunda fatia
+   é o E233 (`8a8bfe5f`)**: CPF e CNPJ conferidos pelos dígitos nas SEIS portas
+   (S-C301 fechada). **O que resta dele é a S-C300** — a D7 foi respondida SIM
+   em 15/08 (sete campos no cadastro da loja) e virou o **E234**, código.
    A tabela do `EXECUCAO.md` é a fila; **conte, não deduza** — depois da
    segunda metade de 15/08, que pegou as 22 sobras abertas e executou tudo o
-   que era executável, restam **TRÊS sobras** (contadas depois da terceira sessão de 15/08): a
-   **S-C51** 🟡 (a conciliação por parcela — espera a contadora, porque carimbo
-   por ATO pede a tabela que o E221 recusou por escrito), a **S-C301** 🟡 (a
-   validação de CNPJ — código, a próxima) e a **S-C300** 🔵 (a D7 vista do
-   banco). A S-C132 fechou no E220. **O plano das três está em
+   que era executável, restam **DUAS sobras** (contadas depois do E233): a
+   **S-C51** 🟡 (a conciliação por parcela — espera a contadora, com a pergunta
+   pronta no plano) e a **S-C300** 🔵 (a D7, respondida SIM → E234, o próximo
+   código). A S-C132 fechou no E220 e a S-C301 no E233. **O plano das três está em
    [`2026-08-15-as-tres-ultimas-plano.md`](docs/propostas/2026-08-15-as-tres-ultimas-plano.md)**
-   — E233 (CNPJ **e CPF**, sem decisão), E234 (**a D7 foi respondida SIM em 15/08** — código), E235 (espera a contadora; a pergunta está no plano), cada uma medida. Mais **5 pendências que não são
+   — E233 **executado** (`8a8bfe5f`), E234 (**a D7 foi respondida SIM em 15/08** — o próximo, código), E235 (espera a contadora; a pergunta está no plano), cada uma medida. Mais **5 pendências que não são
    software** (a P5 nasceu no E219: confirmar que os 7 dias da 17ª contam do
    fecho). As duas sessões do dia estão contadas em
    `docs/revisao/2026-08-15-sessao-a-fila-do-que-restava.md` (a madrugada:
