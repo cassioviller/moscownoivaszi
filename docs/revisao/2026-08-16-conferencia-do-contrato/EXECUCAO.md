@@ -37,12 +37,12 @@ o viu** (regra 12) e sai riscada no commit que a fecha (regra 21).
 
 | ID | Sev. | Onde | O que | Estado |
 |---|---|---|---|---|
-$1$1| S-CF3 | 🔵 | `varredura-campo-escalar-do-spec`, `varredura-manuais-prazos`, `varredura-das-varreduras`, `sc140`, `so18`, `revisao-reserva-avaria`, `varredura-fixture-do-e2e`, `varredura-expurgo-lgpd` | Os 🔵 da lente G que o lote de higiene deixou DECLARADOS: G11 (o `escrito()` grosso), G12 (os dias vedados da 17ª em prosa sem `data-regua` — a régua de prazos é numérica; ensinar-lhe dias da semana é régua nova), G13 (a heurística da varredura-das-varreduras) e os menores de G15 (alias de SQL pregado, `dataFutura(-n)` como "há n dias", medições em `moscow_base`, o `const r` reutilizado, `coluna:` em comentário). Nenhum tem defeito vivo atrás | aberta (higiene, 16/08) |
+$1$1| ~~S-CF3~~ | 🔵 | `varredura-campo-escalar-do-spec`, `varredura-manuais-prazos`, `varredura-das-varreduras`, `sc140`, `so18`, `revisao-reserva-avaria`, `varredura-fixture-do-e2e`, `varredura-expurgo-lgpd` | Os 🔵 da lente G que o lote de higiene deixou DECLARADOS: G11 (o `escrito()` grosso), G12 (os dias vedados da 17ª em prosa sem `data-regua` — a régua de prazos é numérica; ensinar-lhe dias da semana é régua nova), G13 (a heurística da varredura-das-varreduras) e os menores de G15 (alias de SQL pregado, `dataFutura(-n)` como "há n dias", medições em `moscow_base`, o `const r` reutilizado, `coluna:` em comentário). Nenhum tem defeito vivo atrás | ✅ **fechada por DECISÃO da dona em 16/08/2026: ficam grossas de propósito** — a resposta escrita é o fecho (regra 21); reabrir pede defeito vivo, não gosto |
 
 ## Decisões da dona
 
 | Épico | Pergunta | Recomendação | Estado |
 |---|---|---|---|
-| E241 | sob `estornar`, a conta a pagar `DEVOLUCAO` nasce? | não nasce — o dinheiro já voltou pelo estorno | executada na recomendação em `e9231ce1` (16/08); corrigível numa linha |
-| E242 | os 12 meses de IPCA DE EXEMPLO (pedido de 15/08, `bb03a0f7`) valem para a instalação de TESTE (E2E, demo) — a REAL nasce sem índice, e a 9ª fica dita até a dona digitar o IPCA. Confirma? | sim; se quiser os exemplos também na real, `SEED_IPCA_EXEMPLO=true` | executada na leitura recomendada em `3029efba`; a dona confirma ou vira uma env |
-| E244 | a 16ª cobra pelo `dataDevolucao` do papel ou pela janela? | o papel — é o que a noiva assinou | executada na recomendação em `d880b43a`; corrigível numa linha (`fimPrevistoDaDevolucao`) |
+| E241 | sob `estornar`, a conta a pagar `DEVOLUCAO` nasce? | não nasce — o dinheiro já voltou pelo estorno | ✅ **confirmada pela dona em 16/08/2026** (`e9231ce1` fica como está) |
+| E242 | os 12 meses de IPCA DE EXEMPLO (pedido de 15/08, `bb03a0f7`) valem para a instalação de TESTE (E2E, demo) — a REAL nasce sem índice, e a 9ª fica dita até a dona digitar o IPCA. Confirma? | sim; se quiser os exemplos também na real, `SEED_IPCA_EXEMPLO=true` | ✅ **confirmada pela dona em 16/08/2026: só na de teste** (`3029efba` fica como está) |
+| E244 | a 16ª cobra pelo `dataDevolucao` do papel ou pela janela? | o papel — é o que a noiva assinou | ✅ **confirmada pela dona em 16/08/2026: o papel** (`d880b43a` fica como está) |
