@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
-import { inArray } from "drizzle-orm";
-import { db, contratosTable, leadsTable } from "../lib/db/src/index";
+import { and, eq, inArray } from "drizzle-orm";
+import { db, contratosTable, leadsTable, comissaoRegrasTable, comissaoFaixasTable } from "../lib/db/src/index";
 import { lerEstado, sessaoViaAPI, API_URL, QUALIFICACAO_DA_NOIVA } from "./helpers";
 
 const estado = lerEstado();
@@ -20,6 +20,12 @@ test.describe("Colocação no extrato pessoal (E55)", () => {
   const competencia = new Date(Date.now() - 3 * 3_600_000).toISOString().slice(0, 7);
   const contratos: string[] = [];
   const leads: string[] = [];
+  /**
+   * S-O130 — a regra de comissão da Maria, criada aqui, sai no hook. Pelo par
+   * (vendedora, vigência) e não pelo id: o 409 que o spec tolerava era a regra
+   * do run ANTERIOR ainda de pé, e um hook por id nunca a alcançaria.
+   */
+  let mariaId: string | null = null;
 
   test.beforeAll(async ({ playwright }) => {
     const api = await playwright.request.newContext();
@@ -44,6 +50,7 @@ test.describe("Colocação no extrato pessoal (E55)", () => {
       },
     });
     expect([200, 201, 409]).toContain(regra.status());
+    mariaId = maria.usuarioId;
 
     // Valores distintos: a Maria vende mais, então fica na frente.
     for (const [vendedoraId, valorTotal] of [
@@ -75,6 +82,20 @@ test.describe("Colocação no extrato pessoal (E55)", () => {
     }
     if (leads.length > 0) {
       await db.delete(leadsTable).where(inArray(leadsTable.id, leads));
+    }
+    // S-O130: a REGRA criada no beforeAll ficava (o 409 da reexecução era o
+    // sintoma — "já existe regra começando nesta data" desde o run anterior).
+    if (mariaId) {
+      const regras = await db.select({ id: comissaoRegrasTable.id }).from(comissaoRegrasTable).where(and(
+        eq(comissaoRegrasTable.lojaId, estado.lojaId),
+        eq(comissaoRegrasTable.vendedoraId, mariaId),
+        eq(comissaoRegrasTable.vigenciaInicio, new Date("2020-01-01T12:00:00-03:00")),
+      ));
+      const ids = regras.map((r) => r.id);
+      if (ids.length > 0) {
+        await db.delete(comissaoFaixasTable).where(inArray(comissaoFaixasTable.regraId, ids));
+        await db.delete(comissaoRegrasTable).where(inArray(comissaoRegrasTable.id, ids));
+      }
     }
   });
 

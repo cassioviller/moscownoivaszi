@@ -1,5 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import path from "node:path";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
+import { db, contasPagarTable, pagamentosTable, pagamentoItensTable } from "../lib/db/src/index";
 import { lerEstado, API_URL } from "./helpers";
 
 const estado = lerEstado();
@@ -22,6 +24,28 @@ function observarApi(page: Page): string[] {
 }
 
 test.describe("Onda 5 — folha", () => {
+  /**
+   * S-O130 — o que este arquivo cria pela API sai no hook: a conta e o
+   * pagamento da sonda "GET seguro", e as contas que `recorrencias/gerar`
+   * abriu para 2025-01. Antes ficavam no banco de dev, e a
+   * `varredura-fixture-do-e2e` os listava como rastro sem hook.
+   */
+  const criadas: { contaId?: string; pagamentoId?: string } = {};
+  test.afterAll(async () => {
+    if (criadas.pagamentoId) {
+      await db.delete(pagamentoItensTable).where(eq(pagamentoItensTable.pagamentoId, criadas.pagamentoId));
+      await db.delete(pagamentosTable).where(eq(pagamentosTable.id, criadas.pagamentoId));
+    }
+    if (criadas.contaId) await db.delete(contasPagarTable).where(eq(contasPagarTable.id, criadas.contaId));
+    // As contas geradas para 2025-01 (todas com recorrencia_id): o run seguinte
+    // as gera de novo — a idempotência é medida DENTRO do teste, não entre runs.
+    await db.delete(contasPagarTable).where(and(
+      eq(contasPagarTable.lojaId, estado.lojaId),
+      eq(contasPagarTable.competencia, "2025-01"),
+      isNotNull(contasPagarTable.recorrenciaId),
+    ));
+  });
+
   test("/financeiro/folha monta e carrega dados sem erro de API", async ({ page }) => {
     const falhas = observarApi(page);
     await page.goto("/financeiro/folha");
@@ -87,6 +111,7 @@ test.describe("Onda 5 — folha", () => {
       },
     );
     expect(conta.status(), await conta.text()).toBe(201);
+    criadas.contaId = (await conta.json()).id as string;
     const pago = await request.post(
       `${API_URL}/api/lojas/${estado.lojaId}/financeiro/pagamentos`,
       {
@@ -99,6 +124,7 @@ test.describe("Onda 5 — folha", () => {
     );
     expect(pago.status(), await pago.text()).toBe(201);
     const meuId = (await pago.json()).id as string;
+    criadas.pagamentoId = meuId;
 
     // O export de novo, agora com o pagamento deste spec dentro da janela.
     await request.get(

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { and, eq } from "drizzle-orm";
-import { db, contratosTable, comissaoFechamentosTable } from "../lib/db/src/index";
+import { db, contratosTable, comissaoFechamentosTable, contasPagarTable } from "../lib/db/src/index";
 import { lerEstado, API_URL, QUALIFICACAO_DA_NOIVA } from "./helpers";
 
 const estado = lerEstado();
@@ -59,6 +59,12 @@ test.describe("Reabrir fechamento (E54)", () => {
   test.afterAll(async () => {
     // Não deixa a competência do e2e fechada nem o contrato pesando na
     // varredura de pendências dos outros specs.
+    // S-O130: a conta a pagar que o fechamento gerou sai ANTES da linha do
+    // fechamento (a FK do fechamento para a conta é SET NULL, e a conta ficava).
+    const fechamentos = await db.select({ contaPagarId: comissaoFechamentosTable.contaPagarId }).from(comissaoFechamentosTable).where(
+      and(eq(comissaoFechamentosTable.lojaId, estado.lojaId), eq(comissaoFechamentosTable.competencia, competencia)),
+    );
+    const contas = fechamentos.map((f) => f.contaPagarId).filter((c): c is string => !!c);
     await db.delete(comissaoFechamentosTable).where(
       and(
         eq(comissaoFechamentosTable.lojaId, estado.lojaId),
@@ -68,6 +74,7 @@ test.describe("Reabrir fechamento (E54)", () => {
     if (contratoId) {
       await db.update(contratosTable).set({ status: "CANCELADO" }).where(eq(contratosTable.id, contratoId));
     }
+    for (const contaId of contas) await db.delete(contasPagarTable).where(eq(contasPagarTable.id, contaId));
   });
 
   test("a confirmação diz o que some, e reabrir libera a competência", async ({ page, request }) => {

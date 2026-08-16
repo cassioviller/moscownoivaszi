@@ -8,6 +8,7 @@ import {
   parcelasTable,
   bloqueioVestidosTable,
   vestidosTable,
+  contasPagarTable,
 } from "../lib/db/src/index";
 import { lerEstado, API_URL, QUALIFICACAO_DA_NOIVA } from "./helpers";
 
@@ -86,6 +87,13 @@ test.describe.serial("E227 — a 18ª e a 13ª ganham gesto", () => {
 
   test.afterAll(async () => {
     if (contratoId) {
+      // S-O130 — achado da MEDIÇÃO: a rescisão pela LOJA (13ª, o clique
+      // "cancelar-rescisao-loja") cria a conta a pagar da devolução com
+      // origem_contrato_id, e este hook a deixava (a FK é SET NULL). A
+      // varredura-fixture não vê o que nasce por CLIQUE; a contagem no banco
+      // depois do run viu: +1 conta DEVOLUCAO por passada, criada 6 s antes
+      // do fim do run — neste spec, não no 62.
+      await db.delete(contasPagarTable).where(eq(contasPagarTable.origemContratoId, contratoId));
       await db.delete(parcelasTable).where(eq(parcelasTable.contratoId, contratoId));
       await db.delete(contratosTable).where(eq(contratosTable.id, contratoId));
     }

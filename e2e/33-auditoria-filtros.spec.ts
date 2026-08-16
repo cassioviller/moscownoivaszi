@@ -1,5 +1,7 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
 import path from "node:path";
+import { eq, inArray } from "drizzle-orm";
+import { db, contasPagarTable, pagamentosTable, pagamentoItensTable } from "../lib/db/src/index";
 import { lerEstado, API_URL } from "./helpers";
 
 const estado = lerEstado();
@@ -25,6 +27,24 @@ async function autenticar(request: APIRequestContext): Promise<void> {
 test.describe("Trilha de auditoria — filtros e CSV (E47)", () => {
   const stamp = Date.now();
   const descricao = `E2E auditoria ${stamp}`;
+  let contaId: string | null = null;
+
+  /**
+   * S-O130 — a conta de R$ 123,45 e o pagamento dela saem no hook. A TRILHA
+   * fica (audit_log é escrita colateral, sem FK): é ela que os testes leem, e
+   * o pagamento apagado por aqui não passa pela porta, então não deixa
+   * PAGAMENTO_ESTORNADO na trilha.
+   */
+  test.afterAll(async () => {
+    if (!contaId) return;
+    const itens = await db.select({ pagamentoId: pagamentoItensTable.pagamentoId }).from(pagamentoItensTable).where(eq(pagamentoItensTable.contaPagarId, contaId));
+    const pagamentoIds = itens.map((i) => i.pagamentoId);
+    if (pagamentoIds.length > 0) {
+      await db.delete(pagamentoItensTable).where(inArray(pagamentoItensTable.pagamentoId, pagamentoIds));
+      await db.delete(pagamentosTable).where(inArray(pagamentosTable.id, pagamentoIds));
+    }
+    await db.delete(contasPagarTable).where(eq(contasPagarTable.id, contaId));
+  });
 
   test.beforeAll(async ({ request }) => {
     await autenticar(request);
@@ -38,6 +58,7 @@ test.describe("Trilha de auditoria — filtros e CSV (E47)", () => {
       },
     });
     expect(conta.status(), await conta.text()).toBe(201);
+    contaId = (await conta.json()).id as string;
 
     // Pagar é o que deixa linha na trilha, com o admin como autor. A ação é
     // PAGAMENTO_REGISTRADO desde o A2/E94: as duas portas de pagar (esta, de
@@ -46,7 +67,7 @@ test.describe("Trilha de auditoria — filtros e CSV (E47)", () => {
     // encontrava metade dos pagamentos. Agora a linha é indexada pelo
     // pagamento, que é o fato de caixa, e o detalhe traz as contas que quitou.
     const pago = await request.post(
-      `${API_URL}/api/lojas/${estado.lojaId}/contas-pagar/${(await conta.json()).id}/pagar`,
+      `${API_URL}/api/lojas/${estado.lojaId}/contas-pagar/${contaId}/pagar`,
       { data: { data: new Date().toISOString(), valorPago: 123.45, forma: "PIX" } },
     );
     expect(pago.status(), await pago.text()).toBe(200);

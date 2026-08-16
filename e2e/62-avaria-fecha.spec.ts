@@ -9,6 +9,7 @@ import {
   parcelasTable,
   vestidosTable,
   reservasTable,
+  contasPagarTable,
 } from "../lib/db/src/index";
 import { lerEstado, API_URL, sessaoViaAPI, fecharTourDoAcesso } from "./helpers";
 
@@ -109,6 +110,9 @@ test.describe.serial("E167 — a avaria fecha na ficha sem noiva própria", () =
 
   test.afterAll(async () => {
     for (const id of [contratoVelhoId, contratoNovoId].filter(Boolean)) {
+      // S-O130: a conta a pagar da devolução (13ª §3º), que o `POST /cancelar`
+      // cria com `origem_contrato_id` — a FK é SET NULL, e a conta ficava.
+      await db.delete(contasPagarTable).where(eq(contasPagarTable.origemContratoId, id));
       await db.delete(parcelasTable).where(eq(parcelasTable.contratoId, id));
       await db.delete(contratosTable).where(eq(contratosTable.id, id));
     }

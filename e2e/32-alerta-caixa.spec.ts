@@ -1,5 +1,7 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
 import path from "node:path";
+import { and, eq } from "drizzle-orm";
+import { db, saldosReferenciaTable } from "../lib/db/src/index";
 import { lerEstado, API_URL } from "./helpers";
 
 const estado = lerEstado();
@@ -29,6 +31,7 @@ async function autenticar(request: APIRequestContext): Promise<void> {
 
 test.describe("Alerta de caixa (E46)", () => {
   let contaId: string;
+  let saldoId: string | null = null;
 
   test.beforeAll(async ({ request }) => {
     await autenticar(request);
@@ -45,6 +48,7 @@ test.describe("Alerta de caixa (E46)", () => {
       data: { dataReferencia: negocio(0), valor: 100_000 },
     });
     expect(saldo.status(), await saldo.text()).toBe(200);
+    saldoId = (await saldo.json()).id ?? null;
 
     const conta = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/financeiro/contas-pagar`, {
       data: {
@@ -63,6 +67,9 @@ test.describe("Alerta de caixa (E46)", () => {
     if (contaId) {
       await request.delete(`${API_URL}/api/lojas/${estado.lojaId}/contas-pagar/${contaId}`);
     }
+    // S-O130: o saldo de referência de R$ 100.000 do dia sai junto — ficava, e o
+    // dashboard do run seguinte partia de um saldo que ninguém informou.
+    if (saldoId) await db.delete(saldosReferenciaTable).where(and(eq(saldosReferenciaTable.id, saldoId), eq(saldosReferenciaTable.lojaId, estado.lojaId)));
   });
 
   test("o dashboard avisa, e o aviso leva à projeção", async ({ page }) => {

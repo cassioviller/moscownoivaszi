@@ -463,11 +463,13 @@ describe("varredura — o que o spec escreve no banco, o hook apaga (S-O101)", (
  * bloqueio, lead e vestido no `afterAll`, e a régua o vê verde. O que ela
  * achou é de três classes, e a classe decide o que fazer:
  *
- * - **rastro de verdade**, que o run seguinte herda: as contas a pagar e os
+ * - ~~**rastro de verdade**, que o run seguinte herda: as contas a pagar e os
  *   pagamentos do `15` e do `33`, a regra de comissão do `41`, o saldo de
- *   referência do `32`, a conta da rescisão do `62`. Cada um pede um
- *   `delete` no hook — e o E2E precisa rodar para provar que o hook não
- *   derruba o spec seguinte, o que é trabalho de quem tem a porta (S-O130).
+ *   referência do `32`, a conta da rescisão do `62`.~~ **S-O130 fechou**: os
+ *   seis ganharam o `delete` no hook (o `40` também, para a conta do
+ *   fechamento), e o E2E completo provou que nenhum hook derruba o vizinho.
+ *   Do `41` ficou a lição: o `409` que ele tolerava na criação da regra era o
+ *   sintoma do rastro — a regra do run anterior ainda estava lá.
  * - **decisão escrita no próprio spec**: o `39` e o `40` CANCELAM o contrato
  *   em vez de apagá-lo (*"sem apagar o histórico"*), e a noiva fica; o `06`
  *   recolhe no COMEÇO do run seguinte (o `request.delete` antes do `post`).
@@ -483,18 +485,8 @@ describe("varredura — o que o spec escreve no banco, o hook apaga (S-O101)", (
 const CRIA_PELA_API_SEM_HOOK: Record<string, string> = {
   "e2e/06-agenda.spec.ts: atendimentosTable":
     "o atendimento do dia fixo (2028-02-14) é recolhido no COMEÇO do run seguinte, pelo `request.delete` que precede o `post` — limpeza de partida, não de hook.",
-  "e2e/15-onda5-pdf-e-folha.spec.ts: contasPagarTable, pagamentosTable, pagamentoItensTable":
-    "rastro real: `recorrencias/gerar` cria as contas de 2025-01 e o spec paga uma; sem hook. S-O130.",
-  "e2e/32-alerta-caixa.spec.ts: saldosReferenciaTable":
-    "rastro real: o saldo de referência de R$ 100.000 do dia fica (a conta a pagar é apagada pela API no hook, e a régua vê). S-O130.",
-  "e2e/33-auditoria-filtros.spec.ts: contasPagarTable, pagamentosTable, pagamentoItensTable":
-    "rastro real: a conta de R$ 123,45 e o pagamento dela ficam; sem hook. S-O130.",
   "e2e/39-pendencias-comissao.spec.ts: leadsTable, contratosTable, parcelasTable, contratoItensTable, contratoBloqueiosTable":
     "decisão do spec: o hook CANCELA o contrato em vez de apagá-lo (\"sem apagar o histórico\"), e a noiva fica com ele.",
-  "e2e/40-reabrir-fechamento.spec.ts: leadsTable, contratosTable, parcelasTable, contratoItensTable, contratoBloqueiosTable, contasPagarTable":
-    "decisão do spec para o contrato (cancelado, não apagado); a conta a pagar do fechamento de comissão fica. S-O130.",
-  "e2e/41-colocacao-comissao.spec.ts: comissaoRegrasTable, comissaoFaixasTable":
-    "rastro real: o hook apaga contratos e noivas e deixa a REGRA de comissão criada; sem hook para ela. S-O130.",
-  "e2e/62-avaria-fecha.spec.ts: contasPagarTable":
-    "rastro real: o `POST /cancelar` cria a conta a pagar da devolução (13ª §3º) e o hook apaga contrato, vestido, reserva e noiva — a conta não cai com nenhum deles. S-O130.",
+  "e2e/40-reabrir-fechamento.spec.ts: leadsTable, contratosTable, parcelasTable, contratoItensTable, contratoBloqueiosTable":
+    "decisão do spec para o contrato (cancelado, não apagado, \"sem apagar o histórico\"); a conta a pagar do fechamento saiu no hook (S-O130).",
 };
