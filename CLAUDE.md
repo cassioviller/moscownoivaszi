@@ -86,6 +86,21 @@ para o documento que manda.
    [`2026-08-15-as-sobras-do-lote-das-27-plano.md`](docs/propostas/2026-08-15-as-sobras-do-lote-das-27-plano.md):
    dinheiro primeiro (S-O120), depois cobertura, depois higiene.**
 
+   **E a fila do plano foi EXECUTADA na sequência (noite de 15/08 → madrugada
+   de 16/08):** S-O120 (`3e6c0bac` — o vermelho: a conta acabava PREVISTA
+   presa ao pagamento novo), S-O140+S-O143 (`fd28a0b8`), S-O121 (`199cf3e7`,
+   só o último reabre), o lote de higiene S-O122/123/133/141/142
+   (`2ef44028`), S-O130 (`758e5ca0` — eram SETE specs, não seis: o `63`
+   rescinde por clique e a régua não via) e a S-O93 MEDIDA (`2a0994cd, o commit da S-O145 que ela fez nascer; o registro está em execucao/S-O93.md`: dois
+   E2E ao mesmo tempo precisam de banco, portas E CHECKOUT próprios — o
+   `.auth/admin.json` é uma sessão que só vale no servidor que a criou). No
+   caminho nasceram e fecharam a **S-O144** (`6acecf85`+`9b39d4e3`: o E2E
+   escolhia a loja por NOME e há duas "Moscow Noivas" desde o seed real — 14
+   vermelhos que pareciam da S-O120) e a **S-O145** (o spec 16 só passava
+   porque o dev tem atraso). **Resta UMA linha na ótica dos papéis: a
+   S-O131 🔵, que é decisão da dona** (seis portas do cliente sem tela). Toda
+   linha de código aberta no repositório é ZERO.
+
    **A lição da segunda metade é de MEDIÇÃO, e ela tem número: SETE das nove
    sobras estavam erradas sobre si mesmas, e todas para MENOS.** A S-C281 dizia
    22 campos e eram **113** (a grafia `.optional()` era o grep, não a causa —
@@ -549,7 +564,7 @@ para o documento que manda.
    (`2912526`). Antes da conferência a tabela também dizia zero 🟠 — a diferença
    é que agora é verdade.
 
-   **Tudo isso está no `main`, e o `main` está PUBLICADO.** No fim de 15/08 (quarta sessão) o `origin/main` foi de `d2837063` para `24d1c191` — **13 commits**, fast-forward puro (E234, a decisão da contadora, E235, E236, as sobras do dia, E237 e o seed real), autorizado pela dona na hora. Antes, na terceira sessão, de `89e98930` para `c3e53ace` (E220 primeira fatia + docs, 5 commits). Antes, no mesmo dia, o
+   **Tudo isso está no `main`, e o `main` está PUBLICADO.** Na madrugada de 16/08 (a quinta sessão de 15/08, que virou a noite) o `origin/main` foi de `a2cefb26` para `0e19163e` — **16 commits**, fast-forward puro (a integração dos lotes, a fila inteira do plano das sobras, S-O144/S-O145 e a medição da S-O93), a pedido da dona. Antes, no fim de 15/08 (quarta sessão) o `origin/main` foi de `d2837063` para `24d1c191` — **13 commits**, fast-forward puro (E234, a decisão da contadora, E235, E236, as sobras do dia, E237 e o seed real), autorizado pela dona na hora. Antes, na terceira sessão, de `89e98930` para `c3e53ace` (E220 primeira fatia + docs, 5 commits). Antes, no mesmo dia, o
    `origin/main` foi de `cbcd8b30` para `0dfa8b95` — **69 commits**, a onda
    inteira de 14 e 15/08 —, fast-forward puro, com autorização da dona no
    mesmo dia. **E o hash de partida é a prova do custo**: `cbcd8b30` era
@@ -563,8 +578,8 @@ para o documento que manda.
    `git rev-list --count origin/main..main` antes de assumir que ainda está em
    dia — esta linha envelhece a cada commit, e já envelheceu seis vezes.
 
-   Hoje a régua é **API 1786 (258 arquivos) · frontend 1003 (108 arquivos) ·
-   E2E 180 · typecheck verde** — as quatro medidas em série no fecho do E237, quarta sessão de 2026-08-15 (a API rodou inteira seis vezes na sessão; o E2E, sete). O parágrafo anterior media 1782 (257) · 1003 · 179 no E236. O parágrafo anterior media 1774 (255) · 998 · 178 no E234, e 1755 (251) · 998 (108) · 177 no fecho da
+   Hoje a régua é **API 1842 (267 arquivos) · frontend 1014 (108 arquivos) ·
+   E2E 181 · typecheck verde** — as quatro medidas em série na madrugada de 16/08, no fecho da fila das sobras do lote das 27 (a API rodou inteira duas vezes na sessão; o E2E, **oito** — seis da suíte de sempre, uma dupla em paralelo para a S-O93). O parágrafo anterior media 1786 (258) · 1003 · 180 no fecho do E237, quarta sessão de 2026-08-15 (a API rodou inteira seis vezes na sessão; o E2E, sete). O parágrafo anterior media 1782 (257) · 1003 · 179 no E236. O parágrafo anterior media 1774 (255) · 998 · 178 no E234, e 1755 (251) · 998 (108) · 177 no fecho da
    segunda metade de 2026-08-15 (a API rodou INTEIRA **seis vezes** na
    sessão; o E2E, **quatro**). O parágrafo anterior media 1726 · 974 na
    madrugada do mesmo dia. O parágrafo abaixo, dos números de
