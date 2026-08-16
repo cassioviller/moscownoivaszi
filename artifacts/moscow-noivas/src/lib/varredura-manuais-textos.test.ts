@@ -181,8 +181,17 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
      * podiam subir esta contagem; em série, os dois viraram citação com o
      * pedaço literal declarado.
      */
+    /**
+     * **E248 subiu para 12, pela mesma causa de sempre**: o recado da
+     * qualificação (`orcamentos/[id].tsx`, "O contrato qualifica quem assina, e
+     * a ficha ainda não tem:") termina na LISTA dos campos que faltam — não
+     * existe a frase inteira no código. Os três outros recados que o E248 pôs
+     * no manual do proprietário (o reabrir do último, o estorno em dobro, a
+     * conta de comissão) são frases contíguas em `MENSAGENS_ERRO` e entraram
+     * como citação literal, sem molde.
+     */
     const moldes = todas().filter((c) => c.molde);
-    expect(moldes.length).toBe(11);
+    expect(moldes.length).toBe(12);
     // E o molde tem de ser mais curto que o exibido — senão não é molde, é uma
     // citação literal com um atributo pendurado.
     for (const m of moldes) {

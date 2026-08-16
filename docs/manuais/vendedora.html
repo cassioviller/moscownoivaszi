@@ -342,6 +342,7 @@
       <h2><span class="passo">1</span>A noiva chega</h2>
       <p class="resumo">Menu → Noivas → <span class="btn">Adicionar noiva</span></p>
       <p>Dois campos são obrigatórios, e só dois: <strong>“Nome da noiva”</strong> e <strong>“Origem”</strong> — de onde ela veio: Loja, WhatsApp, Site ou Instagram. Tudo o mais é opcional e pode esperar: nome do noivo, WhatsApp, cerimonialista, data e horário do casamento, local.</p>
+      <p><strong>Pode esperar — até o contrato.</strong> A ficha tem a seção <strong>“Para o contrato”</strong>, com os doze dados de quem assina (CPF, RG, estado civil, profissão, data de nascimento, e-mail e o endereço em seis campos), e a própria seção avisa: sem esses dados o contrato não fecha. O <strong>CPF é conferido pelos dígitos</strong> na hora — um número inválido não entra, e o recado diz que o dígito não bate. Preencha quando a noiva decidir; o fecho vai buscar aqui.</p>
       <p><strong>A Origem nasce vazia de propósito.</strong> O sistema não escolhe por você porque esse campo vira relatório: é ele que responde <em>de onde vêm as noivas que fecham</em>. Um palpite estraga esse número para sempre.</p>
       <div class="fala">
         <span class="rotulo">Depois do contrato, a Origem trava</span>
@@ -556,7 +557,8 @@
       <p><strong>Reserve ali mesmo</strong>, no botão <span class="btn">Reservar agora</span> ao lado. Você consegue fazer isso mesmo sem o módulo de acervo — a venda é de quem vende.</p>
 
       <h3>Depois: os dados e o carnê</h3>
-      <p><strong>“Vendedora da venda”</strong> — se for diferente da do orçamento, o sistema avisa que a comissão vai para quem está selecionada, e registra a troca · <strong>“CPF da noiva”</strong> · <strong>“Forma de pagamento”</strong> · <strong>“Data do casamento”</strong> · <strong>“Retirada”</strong> · <strong>“Devolução”</strong> · <strong>“Entrada (R$)”</strong> · <strong>“Nº de parcelas”</strong> · <strong>“1ª parcela vence em”</strong>.</p>
+      <p><strong>“Vendedora da venda”</strong> — se for diferente da do orçamento, o sistema avisa que a comissão vai para quem está selecionada, e registra a troca · <strong>“Forma de pagamento”</strong> · <strong>“Data do casamento”</strong> · <strong>“Retirada”</strong> · <strong>“Devolução”</strong> · <strong>“Entrada (R$)”</strong> · <strong>“Nº de parcelas”</strong> · <strong>“1ª parcela vence em”</strong>.</p>
+      <p><strong>Não há mais campo de CPF no diálogo.</strong> Quem assina o contrato é a noiva da <strong>ficha</strong>, com os doze dados de “Para o contrato” (CPF, RG, estado civil, profissão, nascimento, e-mail e endereço) — o diálogo mostra o bloco <strong>Quem assina</strong> com o botão <span class="btn">Editar ficha</span>, e <strong>congela esses dados como estão no dia do fecho</strong> (é o que o instrumento imprime). Se a ficha ainda não tem tudo, o diálogo diz o que falta e o fecho é recusado até você completar — o recado está na tabela <a href="#nao">Quando o sistema diz não</a>.</p>
 
       <h3>A retirada e a devolução já vêm sugeridas</h3>
       <p><strong>Os dois campos nascem preenchidos</strong> a partir da reserva: a peça sai no primeiro dia em que ela é sua e volta no último, nos horários do contrato — a locação começa às 10:30 do dia da retirada e termina às 18:00 do dia da devolução (cláusula 5ª). <strong>Os dois são opcionais</strong>: apague o que ainda não foi combinado.</p>
@@ -786,11 +788,11 @@
       </div>
       <div class="fala">
         <span class="rotulo">A conta, com números</span>
-        <p>Uma parcela de <strong>R$ 500,00 vencida há 30 dias</strong> vale <strong>R$ 515,00</strong>: R$ 10,00 de multa mais R$ 5,00 de juros.</p>
+        <p>Uma parcela de <strong>R$ 500,00 vencida há 30 dias</strong> vale <strong>R$ 515,00</strong>: R$ 10,00 de multa mais R$ 5,00 de juros — e ainda sem correção, porque não há mês cheio de atraso.</p>
       </div>
       <p><strong>Vencer hoje não é estar vencida</strong> — o dia do vencimento é o último dia de pagar em dia, e a conta só começa no seguinte.</p>
       <p><strong>A multa é sobre a parcela, não sobre o contrato inteiro.</strong> Num contrato de R$ 5.000,00 em 10×, isso é <strong>R$ 10,00 e não R$ 100,00</strong> — dez vezes de diferença. E a lei do consumidor limita a multa de mora a 2% <em>da prestação</em>, não do contrato.</p>
-      <p><strong>E a correção monetária o sistema declara que não faz.</strong> A cláusula manda corrigir e não diz por qual índice — IPCA, IGP-M e INPC dariam três números diferentes para a mesma dívida, e escolher um por conta própria seria inventar cláusula. A frase aparece junto da conta, para você não ler o total como se fosse a dívida inteira.</p>
+      <p><strong>E a correção monetária é pelo IPCA</strong> — a dona decidiu em 15/08/2026, e o sistema corrige pelos <strong>meses cheios</strong> entre o vencimento e hoje, com o número que ela informa mês a mês em Configurações → Índices. A frase da conta diz o que aconteceu, sempre: <em>“Correção pelo IPCA de 04/2026 a 07/2026 (1,58%)”</em> quando corrigiu; <em>“Sem correção monetária — ainda não há mês cheio de atraso”</em> quando a parcela venceu há menos de um mês; e <em>“Sem correção monetária — o IPCA de 05/2026 não foi informado (Configurações → Índices)”</em> quando falta o número de um mês — aí é a dona quem digita, e a conta se corrige sozinha. Você não digita índice nenhum: lê a frase junto da conta, para não ler o total como se fosse a dívida inteira.</p>
 
       <h3>Onde a noiva lê isso, e onde você lê</h3>
       <p><strong>Vocês duas leem o MESMO número.</strong> A noiva, no portal dela; você, no carnê da ficha do contrato: a parcela vencida aparece em vermelho, com o selo <strong>Atrasada</strong>, o valor <strong>já com a multa e os juros</strong> — R$ 515,00, não R$ 500,00 — e, embaixo, a conta escrita por extenso: quantos dias, quanto de multa, quanto de juros, e a frase da correção. É a mesma frase do portal, de propósito: um número maior sem explicação ao lado é o que gera a ligação para a loja — ou você cobrando um valor que não sabe justificar.</p>
@@ -876,6 +878,7 @@
           <tbody>
             <tr><td>“O contrato vende uma peça que não está reservada — ela pode sair para outra noiva no mesmo fim de semana.”</td><td>Use <span class="btn">Reservar agora</span> no próprio diálogo</td></tr>
             <tr><td data-tela="não bate com a da reserva do vestido">“A data do casamento no contrato (10/05/2027) não bate com a da reserva do vestido (17/05/2027). Ajuste a data ou a reserva.”</td><td>Corrija a data na ficha da noiva e use <span class="btn" data-tela="Mover para ">Mover para …</span> no bloco <strong>O casamento</strong> — a reserva, as peças e o contrato ativo andam juntos</td></tr>
+            <tr><td data-tela="O contrato qualifica quem assina, e a ficha ainda não tem:">“O contrato qualifica quem assina, e a ficha ainda não tem: CPF, RG, endereço. Complete a ficha e volte — sem isso o fecho é recusado.”</td><td>Hoje é a primeira recusa que uma noiva nova leva. Clique em <span class="btn">Editar ficha</span> no bloco <strong>Quem assina</strong>, complete a seção <strong>Para o contrato</strong> e volte ao diálogo — os dados que faltavam são os nomeados no recado</td></tr>
             <tr><td>“Os itens mudaram depois do envio que a noiva aceitou — o contrato tem de nascer do que ela viu.”</td><td>Refaça os itens como estavam, ou mande proposta nova para novo aceite</td></tr>
             <tr><td>“Uma janela de manutenção não segura a peça para a noiva — crie uma reserva de casamento para vendê-la.”</td><td>Aquele bloqueio é de manutenção, não reserva</td></tr>
             <tr><td>“Este lead já possui um contrato ativo”</td><td>A noiva já tem contrato vivo</td></tr>

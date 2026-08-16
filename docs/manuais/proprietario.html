@@ -514,15 +514,15 @@
       </ul>
       <p class="nota">Esse prazo vale só para o <b>carnê do aluguel</b>. Avaria, atraso e mora nascem depois da retirada por definição, e passam.</p>
 
-      <h3>O que o sistema não faz, e por quê</h3>
-      <p>Três omissões são deliberadas. Nenhuma é esquecimento, e as três estão declaradas na tela em vez de caladas — porque régua que esconde o que não faz é a que autoriza o erro.</p>
+      <h3>O que o sistema faz com o índice, e o que ele não faz</h3>
+      <p>Uma coisa ele passou a fazer em 15/08/2026 (a correção pelo IPCA — com o número que você digita), e duas omissões continuam deliberadas. Nenhuma é esquecimento, e as três estão declaradas na tela em vez de caladas — porque régua que esconde o que não faz é a que autoriza o erro.</p>
 
       <div class="rolagem">
         <table>
-          <thead><tr><th>O que ele não faz</th><th>Por quê</th></tr></thead>
+          <thead><tr><th>O que ele faz — ou não faz</th><th>Por quê</th></tr></thead>
           <tbody>
             <tr>
-              <td><strong>Corrige monetariamente a parcela vencida pelo IPCA</strong> (9ª) — <strong>com o número que você informa</strong> em <a href="#loja">Configurações → Índices</a>. Mês sem número não corrige, e a noiva lê no portal <em>“Sem correção monetária — o IPCA de mm/aaaa não foi informado”</em>.</td>
+              <td><strong>FAZ: corrige monetariamente a parcela vencida pelo IPCA</strong> (9ª) — <strong>com o número que você informa</strong> em <a href="#loja">Configurações → Índices</a>. Mês sem número não corrige, e a noiva lê no portal <em>“Sem correção monetária — o IPCA de mm/aaaa não foi informado”</em>.</td>
               <td>Decidido em 15/08/2026: <strong>IPCA</strong>, pelos <strong>meses cheios</strong> entre o vencimento e hoje (vencida em 10/03 e lida em 15/08, corrige por abril a julho); multa e juros continuam sobre o saldo. O sistema não busca o índice sozinho — <strong>é você quem digita a variação do mês</strong>, e a trilha guarda quem digitou. Vencida há menos de um mês cheio, não há correção.</td>
             </tr>
             <tr>
@@ -642,7 +642,7 @@
 
       <h3>Fechar a competência</h3>
       <p>O botão <span class="btn">Fechar competência</span> pede confirmação e <strong>diz o que vai lançar antes de você confirmar</strong> — e enquanto a conta ainda está sendo feita, ele diz isso também (<em>“Calculando o que será lançado…”</em>) em vez de afirmar zero. O fechamento gera a <strong>conta a pagar</strong> da vendedora e é idempotente: fechar duas vezes não paga duas vezes.</p>
-      <p>Errou? <span class="btn" data-tela="Reabrir o fechamento de ">Reabrir o fechamento de Maria?</span> existe, e a reabertura também deixa rastro.</p>
+      <p>Errou? <span class="btn" data-tela="Reabrir o fechamento de ">Reabrir o fechamento de Maria?</span> existe, e a reabertura também deixa rastro. <strong>Reabre-se de trás para a frente</strong> (decisão sua, 15/08/2026): se a vendedora já tem agosto fechado, julho não reabre — reabra agosto primeiro, depois julho. É assim porque reabrir um mês no meio da série mudaria a base de todos os que vieram depois, e nada os recalcula.</p>
 
       <div class="fala aviso">
         <span class="rotulo">O aviso que evita o esquecimento caro</span>
@@ -707,6 +707,9 @@
         <p><strong>O lugar de corrigir é esta tela, não o código.</strong> Cinco minutos, e é o que falta para o portal da noiva parar de exibir uma loja que não existe. É a pendência <strong>P3</strong> da lista no fim deste manual.</p>
       </div>
 
+      <h3>O catálogo de atributos — criar, editar, e agora apagar</h3>
+      <p>Menu → <span class="btn">Catálogo</span>. Os atributos (Cor, Tipo de peça, Tecido…) e as opções de cada um são o que classifica as peças e o que a noiva marca no que quer. Desde 15/08/2026 a tela também <strong>apaga</strong>: <span class="btn">Apagar atributo</span> na ficha do atributo, e o ícone de lixeira ao lado de cada opção. <strong>Só sai o que está sem uso</strong> — se a opção ou o atributo já classifica alguma peça ou alguma noiva, o sistema recusa e diz quantas (<em>“Marfim classifica 3 peça(s) e 1 noiva(s) — apagar levaria essa classificação junto.”</em>); aí o gesto é <strong>desativar</strong>, que a tira das escolhas novas sem apagar o que já foi marcado.</p>
+
       <h3>Backup</h3>
       <p><em>“Cópia do banco inteiro. A rotina agendada roda sozinha; aqui você vê a última e pode disparar uma na hora.”</em></p>
       <p>A tela mostra um sinal colorido, quando foi o último backup, o tamanho, se foi <strong>manual ou agendado</strong> e quem disparou. <em>“Nunca rodou”</em> é o estado a não deixar parado.</p>
@@ -729,6 +732,9 @@
           <tbody>
             <tr><td>“A projeção está sem nível”</td><td>Falta o saldo de partida — o alarme de caixa está desligado</td></tr>
             <tr><td>“Uma competência passada ainda não foi fechada”</td><td>Comissão de mês anterior pendente. O mês é clicável</td></tr>
+            <tr><td>“Esta vendedora tem fechamento mais recente — reabra do último para o primeiro.”</td><td>Você tentou reabrir um mês que não é o último fechado da vendedora. Reabra o mais recente primeiro (o recado diz qual)</td></tr>
+            <tr><td>“Este pagamento já foi estornado por outro clique — recarregue a lista.”</td><td>Dois cliques em “estornar” no mesmo segundo: o segundo perdeu, e <strong>nada foi estornado em dobro</strong></td></tr>
+            <tr><td>“Esta conta veio de um fechamento de comissão — reabra o fechamento em Comissões para desfazê-la.”</td><td>A conta da comissão não se apaga pelo caixa a pagar; ela se desfaz reabrindo o fechamento que a criou, senão a vendedora não recebe</td></tr>
             <tr><td>“A soma das parcelas não fecha com o total.”</td><td>Entrada e número de parcelas não batem com o contrato</td></tr>
             <tr><td>“Este lead já possui um contrato ativo”</td><td>A noiva já tem contrato vivo. Cancele o anterior ou revise</td></tr>
             <tr><td>“Nenhuma cabine ativa — a grade do dia precisa de ao menos uma.”</td><td>Ative uma cabine em Cabines &amp; horário</td></tr>
@@ -745,7 +751,7 @@
 
     <section id="decisoes">
       <h2>O que espera uma decisão sua</h2>
-      <p class="resumo">São <strong>oito</strong>, e <strong>nenhuma se resolve escrevendo código</strong>. Cinco vieram da leitura do contrato de papel, duas são sobre o PDF do contrato (as duas já respondidas em 15/08 — ficam aqui para conferência até o trabalho entrar), e uma é escolha de produto. As que estavam nesta lista antes você já decidiu — estão no fim, para conferência, inclusive a rodada inteira de 14/08.</p>
+      <p class="resumo">O que ainda espera você são <strong>três gestos na instalação real</strong> (P1, P2 e P3 abaixo) e <strong>uma menor</strong> (o gênero do perfil). Tudo o mais desta seção <strong>já foi decidido e já está no sistema</strong> — fica aqui para conferência: as duas do contrato de papel respondidas em 15/08 (P4, P5), as duas do PDF (D4, D7), a escolha de produto e a rodada inteira de 14/08. Nenhuma das quatro que restam se resolve escrevendo código.</p>
 
       <h3>O contrato de papel — cinco pendências</h3>
       <p>Em 13/08/2026 as 21 cláusulas do instrumento foram lidas uma a uma contra o que o sistema faz, e a fila de código que nasceu dali <strong>terminou em 15/08</strong> — dos doze épicos, os doze estão no sistema — o último, o PDF como instrumento, saiu em 15/08 (as duas decisões abaixo dizem o que ainda falta nele). <strong>Cinco coisas são suas.</strong></p>
@@ -809,9 +815,9 @@
       <h3>Uma escolha de produto — decidida</h3>
       <p>Esta não era do contrato: era de como a loja concilia o banco. <strong>Foi respondida em 15/08/2026: por pagamento</strong>, e está no sistema desde o mesmo dia (ver <a href="#conferir">Conferir o banco</a>). A parcela paga em pedaços aparece um pedaço por linha na Conciliação, cada um casa com a linha do banco, e o “conferido” é por pedaço. Nada muda para quem paga a parcela inteira de uma vez — que hoje é o caso de todas as parcelas da sua instalação.</p>
 
-      <h3>As duas menores, ainda de pé</h3>
+      <h3>A menor, ainda de pé — e a que saiu</h3>
       <ul>
-        <li><strong>A confecção não tem prazo próprio.</strong> O prazo dela é sempre o casamento da noiva, e a costureira não tem como dizer <em>“esta eu preciso pronta no dia 10”</em> quando o casamento é em março. Resolver é coluna nova no banco — pede migração, não ajuste de tela. O custo de não resolver: o prazo real é combinado por fora, e a fila mostra uma data que ninguém segue.</li>
+        <li><strong>A confecção já tem prazo próprio</strong> (desde 15/08/2026): a costureira diz <em>“esta eu preciso pronta no dia 10”</em> na própria ficha do trabalho, a fila ordena por esse prazo, e o manual dela ensina como. Saiu desta lista.</li>
         <li><strong>O perfil “Proprietária” está no gênero errado.</strong> O nome está gravado no cadastro inicial e ecoa em mais quatro lugares; corrigir pede um script para quem já instalou.</li>
       </ul>
 
