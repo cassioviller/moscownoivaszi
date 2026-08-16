@@ -560,6 +560,29 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
     "Not Found"` na saída do beco, e nos dois casos os testes VELHOS seguiram
     verdes com o defeito de volta no lugar.)*
 
+35. **Varredura que enumera por `git ls-files` é CEGA para o arquivo novo até o
+    `git add` — e o `git add` acontece depois de você rodar a régua.** A ordem
+    natural do trabalho (escrevo o arquivo → rodo as réguas → commito) põe a
+    medição exatamente na janela em que o arquivo ainda não existe para quem
+    enumera pelo versionamento. O verde que você lê é verdadeiro sobre um
+    conjunto que não inclui o que você acabou de escrever. **Arquivo NOVO se
+    indexa antes de medir** (`git add -N` basta), e a suíte que decide o commit
+    roda depois disso. *(2026-08-16, S-CF2: o `e2e/65` foi escrito, as três
+    varreduras de spec rodaram **17/17 verdes**, o E2E completo passou 187, e o
+    commit entrou. O `git add` do próprio commit tornou o arquivo versionado, e
+    as duas varreduras que derivam a população do `git ls-files` — a
+    `varredura-data-de-negocio-em-fixture` (população derivada no E247/G5) e o
+    retrato nomeado da `varredura-fixture-do-e2e` — passaram a reprovar:
+    `casamentoData: anc(10)` sem âncora visível na sentença, e `expected
+    [ …(11) ] to deeply equal [ …(10) ]`. **O `main` ficou vermelho e o
+    `CLAUDE.md` publicou "API 1865 verde"** — a S-A5 pela quarta vez, agora não
+    num ponteiro esquecido, mas numa régua que eu tinha acabado de rodar. Quem
+    achou foi um `/code-review max` rodado depois; o conserto está em
+    `3c71d474`. **E há uma lição dentro da lição:** derivar a população da
+    varredura (o que o E247/G5 fez, e foi certo) AUMENTA a superfície desta
+    cegueira, porque passa a haver mais réguas cuja resposta depende do índice
+    do git — a derivação precisa vir acompanhada desta ordem de gestos.)*
+
 ---
 
 ## Histórico
