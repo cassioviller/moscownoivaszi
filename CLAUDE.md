@@ -42,11 +42,20 @@ para o documento que manda.
    [`docs/revisao/2026-08-16-ponteiro-historico.md`](docs/revisao/2026-08-16-ponteiro-historico.md);
    as lições que viraram regra estão no `METODO.md`.
 
-   **A conferência do código novo está em curso** (16/08): sete lentes de
-   leitura pura sobre o que entrou desde `cd990767` (a véspera do E211) —
-   ~10,4 mil linhas em 127 arquivos sem revisão por cima. O resultado vai para
-   `docs/revisao/2026-08-16-conferencia-do-contrato/`; se houver fila, ela nasce
-   lá e este ponteiro muda.
+   **A conferência do código novo está FEITA e abriu a fila seguinte** (16/08):
+   sete lentes de leitura pura sobre o que entrou desde `cd990767` (a véspera
+   do E211) — ~10,4 mil linhas em 127 arquivos — deram **0 🔴 · 7 🟠 · 17 🟡 ·
+   ~30 🔵**, consolidados em
+   [`2026-08-16-conferencia-do-contrato/G-consolidado.md`](docs/revisao/2026-08-16-conferencia-do-contrato/G-consolidado.md)
+   e ordenados em **E241–E248** (dinheiro primeiro: a rescisão que devolve
+   DUAS vezes sob "estornar", o seed que inventa IPCA e a 9ª cobra, a mora que
+   é "de hoje" contra o fato datado; depois a 16ª que cobra pela janela e o
+   papel diz outra data — decisão da dona; a porta ao lado; o E2E com data
+   marcada para reprovar em 15/10/2026; as réguas de letra; os manuais). A
+   tabela do consolidado é a fila; **conte, não deduza.** Também: as duas
+   últimas sobras da ótica fecharam (S-O131 "ganha tela" e a S-O146 🟠 que ela
+   achou — a edição de atributo caía ao abrir), a S-A27 foi classificada e o
+   `heliumdb` perdeu 725 contas e 451 pagamentos fantasmas de E2E.
 
 3. **A régua e a publicação.** Hoje a régua é **API 1842 (267 arquivos) ·
    frontend 1014 (108 arquivos) · E2E 184 · typecheck verde em 5 projetos** —
