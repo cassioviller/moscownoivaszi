@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { eq } from "drizzle-orm";
-import { db, contratosTable, parcelasTable, registrosCobrancaTable } from "../lib/db/src/index";
-import { lerEstado, API_URL } from "./helpers";
+import { db, contratosTable, parcelasTable, registrosCobrancaTable, leadsTable } from "../lib/db/src/index";
+import { lerEstado, API_URL, QUALIFICACAO_DA_NOIVA } from "./helpers";
 
 const estado = lerEstado();
 
@@ -20,6 +20,7 @@ test.describe("Cobrança — histórico por noiva", () => {
   // que ELE criou, nunca o atraso de outrem.
   let contratoId: string | null = null;
   let registroCobrancaId: string | null = null;
+  let leadId: string | null = null;
 
   test.beforeAll(async ({ request }) => {
     await request.post(`${API_URL}/api/auth/login`, {
@@ -40,9 +41,23 @@ test.describe("Cobrança — histórico por noiva", () => {
     const equipe = await request.get(`${API_URL}/api/lojas/${estado.lojaId}/equipe`);
     const vendedoras = (await equipe.json()) as { usuarioId: string }[];
 
+    /**
+     * S-O145 — a noiva do fecho é PRÓPRIA e QUALIFICADA. O spec fechava contrato
+     * para `estado.leadId` (a noiva do seed, sem os 12 dados da qualificação),
+     * e só passava no dev porque lá SEMPRE há parcela em atraso e este ramo
+     * nunca rodava; no banco virgem da medição da S-O93 ele rodou e levou
+     * `422 QUALIFICACAO_INCOMPLETA` (E215). O E2E não pode depender do que o
+     * dev acumulou — a S-O73 pela quarta vez.
+     */
+    const lead = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/leads`, {
+      data: { noivaNome: `E2E Cobrança histórico ${Date.now()}`, origem: "LOJA", ...QUALIFICACAO_DA_NOIVA },
+    });
+    expect(lead.status(), await lead.text()).toBe(201);
+    leadId = ((await lead.json()) as { id: string }).id;
+
     const contrato = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/contratos`, {
       data: {
-        leadId: estado.leadId,
+        leadId,
         vendedoraId: vendedoras[0]!.usuarioId,
         valorTotal: 3000,
       },
@@ -62,8 +77,8 @@ test.describe("Cobrança — histórico por noiva", () => {
 
   test.afterAll(async () => {
     // O banco do e2e persiste entre execuções: sem limpar, cada run soma mais
-    // uma noiva "em atraso" ao acervo. Parcelas antes do contrato; o lead é o
-    // do seed e fica.
+    // uma noiva "em atraso" ao acervo. Parcelas antes do contrato, e a noiva
+    // (própria desde a S-O145) por último — `contratos.lead_id` é RESTRICT.
     if (registroCobrancaId) {
       await db.delete(registrosCobrancaTable).where(eq(registrosCobrancaTable.id, registroCobrancaId));
     }
@@ -71,6 +86,7 @@ test.describe("Cobrança — histórico por noiva", () => {
       await db.delete(parcelasTable).where(eq(parcelasTable.contratoId, contratoId));
       await db.delete(contratosTable).where(eq(contratosTable.id, contratoId));
     }
+    if (leadId) await db.delete(leadsTable).where(eq(leadsTable.id, leadId));
   });
 
   test("abrir o histórico busca só o da noiva aberta, e o contato registrado aparece", async ({
