@@ -69,6 +69,9 @@ export default async function globalSetup() {
     execSync("pnpm --filter @workspace/api-server exec tsx src/scripts/seed.ts", {
       cwd: path.resolve(__dirname, ".."),
       stdio: "inherit",
+      // E242: a suíte É a instalação de teste — recebe os 12 meses de IPCA de
+      // exemplo que a instalação real não recebe (o mesmo env do webServer).
+      env: { ...process.env, SEED_IPCA_EXEMPLO: "true" },
     });
     [admin] = await db.select().from(usuariosTable).where(eq(usuariosTable.email, ADMIN_EMAIL));
     if (!admin) throw new Error("[e2e-setup] seed não criou o admin");

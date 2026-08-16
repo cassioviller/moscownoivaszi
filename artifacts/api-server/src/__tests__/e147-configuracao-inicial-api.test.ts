@@ -8,11 +8,13 @@ import {
   cabinesTable,
   comissaoRegrasTable,
   comissaoFaixasTable,
+  indicesMonetariosTable,
 } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
 import { fecharPool } from "./helpers";
 import {
   aplicarConfiguracaoInicial,
+  configuracaoDoAmbiente,
   contarConfiguracao,
   CATALOGO_PADRAO,
   CABINES_PADRAO,
@@ -78,8 +80,10 @@ describe("E147 — aplicar a configuração inicial numa loja nova", () => {
     // (E91) — a ordem da limpeza é significativa, e é a do `replit.md`.
     await db.delete(lojasTable).where(eq(lojasTable.id, opts.loja.id));
     await db.delete(lojasTable).where(eq(lojasTable.id, `cfg-loja-sem-dinheiro-${sufixo}`));
+    await db.delete(lojasTable).where(eq(lojasTable.id, `cfg-loja-ipca-${sufixo}`));
     await db.delete(usuariosTable).where(eq(usuariosTable.email, opts.dona.email));
     await db.delete(usuariosTable).where(eq(usuariosTable.email, `dona-sem-dinheiro-${sufixo}@teste.local`));
+    await db.delete(usuariosTable).where(eq(usuariosTable.email, `dona-ipca-${sufixo}@teste.local`));
     if (perfisCriadosAqui.length > 0) {
       await db.delete(perfisTable).where(inArray(perfisTable.id, perfisCriadosAqui));
     }
@@ -200,6 +204,40 @@ describe("E147 — aplicar a configuração inicial numa loja nova", () => {
     expect(depois.nome).toBe("Provador Rosa");
     const c = await contarConfiguracao(opts.loja.id);
     expect(c.cabines, "renomear não pode fazer nascer uma quarta cabine").toBe(CABINES_PADRAO.length);
+  });
+
+  /**
+   * **E242 — o seed real não inventa índice.** O bloco "7b" (P4/E237) gravava
+   * 12 meses de IPCA "de exemplo" pelo MESMO caminho da instalação nova
+   * (`seedInicial` → `aplicarConfiguracaoInicial`), e a mora tratava cada um
+   * como índice publicado: parcela de R$ 5.000,00 vencida em 10/03/2026, lida
+   * em 16/08 com os valores do seed → R$ 78,96 de "correção" que ninguém
+   * publicou, aceitos pelo teto do `/receber`. Os exemplos continuam existindo
+   * para a instalação de TESTE (E2E, demo), por pedido explícito
+   * (`comIpcaDeExemplo` / `SEED_IPCA_EXEMPLO=true`); a instalação real nasce
+   * sem índice, e a 9ª fica DITA ("mês sem número não corrige") até a dona
+   * digitar o IPCA publicado.
+   */
+  it("**E242 — a configuração padrão NÃO grava IPCA de exemplo; só quem pede (a instalação de teste) recebe os 12 meses**", async () => {
+    const indicesDe = (lojaId: string) =>
+      db.select().from(indicesMonetariosTable).where(eq(indicesMonetariosTable.lojaId, lojaId));
+    // `opts` já rodou nos testes acima com os exemplos financeiros ligados —
+    // e mesmo assim não pode ter IPCA nenhum.
+    expect(await indicesDe(opts.loja.id)).toHaveLength(0);
+    expect(configuracaoDoAmbiente().comIpcaDeExemplo, "sem env, a instalação real nasce sem índice").toBe(false);
+
+    const deTeste: OpcoesConfiguracao = {
+      ...opcoesDe(`ipca-${sufixo}`),
+      comIpcaDeExemplo: true,
+    };
+    const resumo = await aplicarConfiguracaoInicial(deTeste);
+    expect(resumo.criado.indicesIpca).toBe(12);
+    const gravados = await indicesDe(deTeste.loja.id);
+    expect(gravados).toHaveLength(12);
+    expect(gravados.every((i) => (i.atualizadoPor ?? "").startsWith("seed (valor de exemplo"))).toBe(true);
+    // Idempotente: rodar de novo não duplica nem sobrescreve.
+    const deNovo = await aplicarConfiguracaoInicial(deTeste);
+    expect(deNovo.criado.indicesIpca ?? 0).toBe(0);
   });
 
   it("sem exemplos financeiros, a loja fica com agenda e catálogo e nenhum valor", async () => {

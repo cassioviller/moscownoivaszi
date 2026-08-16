@@ -93,7 +93,9 @@ export default defineConfig({
       // dele quando presente (é como o preview aponta para o banco da LOJA), e
       // o userenv do workspace o define para todo shell — sem o vazio, a suíte
       // E2E inteira rodaria no banco da loja em vez do de DATABASE_URL.
-      command: `PORT=${API_PORT} E2E_SUITE=1 APP_DATABASE_NAME= pnpm --filter @workspace/api-server run dev`,
+      // E242: SEED_IPCA_EXEMPLO — o E2E É a instalação de teste que a P4 pediu com
+      // a correção da 9ª funcionando; a instalação real nasce sem índice.
+      command: `PORT=${API_PORT} E2E_SUITE=1 SEED_IPCA_EXEMPLO=true APP_DATABASE_NAME= pnpm --filter @workspace/api-server run dev`,
       url: `http://localhost:${API_PORT}/api/healthz`,
       reuseExistingServer: REUSAR_SERVIDOR,
       timeout: 120_000,

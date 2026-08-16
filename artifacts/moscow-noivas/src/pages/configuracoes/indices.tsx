@@ -16,6 +16,7 @@ import { mensagemApi } from "@/lib/erro-api";
 import { Carregando, Erro } from "@/components/estado";
 import { competenciaAtual, rotuloCompetencia, ultimasCompetencias } from "@/lib/financeiro/datas";
 import { pctBR as pct } from "@/lib/formatos";
+import { podeNoModulo } from "@/lib/permissoes";
 
 /**
  * **P4/E237 — o IPCA informado por competência.**
@@ -26,13 +27,18 @@ import { pctBR as pct } from "@/lib/formatos";
  * meses CHEIOS entre o vencimento e hoje. Mês sem número é mês sem correção —
  * a frase da mora, na fila e no carnê, diz qual mês falta.
  *
- * A tela mostra os últimos 12 meses (o mês corrente incluso, embora ele nunca
- * seja "cheio" ainda — vale para o mês que vem) e um campo por mês; salvar é
+ * A tela abre nos últimos 12 meses (o mês corrente incluso, embora ele nunca
+ * seja "cheio" ainda — vale para o mês que vem) e amplia de 12 em 12 para trás
+ * (E242) — um campo por mês, para todo mês que a fila disser que falta; salvar é
  * UPSERT: corrigir um número errado é digitar de novo, e a trilha guarda quem.
  */
 
 export function IndicesMonetarios() {
-  const { activeLojaId } = useAuth();
+  const { activeLojaId, acessosModulos } = useAuth();
+  // E242 — a porta é `financeiro` (`PUT /lojas/:lojaId/financeiro/indices`);
+  // o card só é montado por quem tem `financeiro.editar` (configuracoes/index),
+  // e a afirmação fica AQUI também para a s36 casar tela × servidor.
+  const podeGravar = podeNoModulo(acessosModulos, "financeiro", "editar");
   const indices = useListIndicesMonetarios(activeLojaId!, {
     query: { queryKey: getListIndicesMonetariosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
@@ -41,7 +47,12 @@ export function IndicesMonetarios() {
   const { toast } = useToast();
   const [rascunho, setRascunho] = useState<Record<string, string>>({});
 
-  const competencias = useMemo(() => ultimasCompetencias(competenciaAtual(), 12).reverse(), []);
+  // E242 (C7): a lista abria os últimos 12 meses e parava — a mora de uma
+  // parcela vencida há 14 meses pedia um mês sem campo. "Meses anteriores"
+  // amplia de 12 em 12, sem teto: o campo existe para todo mês que a fila
+  // disser que falta.
+  const [meses, setMeses] = useState(12);
+  const competencias = useMemo(() => ultimasCompetencias(competenciaAtual(), meses).reverse(), [meses]);
   const gravado = useMemo(() => new Map((indices.data ?? []).map((i) => [i.competencia, i.variacaoPct])), [indices.data]);
 
   async function salvar(competencia: string) {
@@ -78,6 +89,16 @@ export function IndicesMonetarios() {
         {indices.isError && <Erro titulo="Não deu para ler os índices" erro={indices.error} onTentarNovamente={() => void indices.refetch()} />}
         {indices.isLoading && <Carregando forma="lista" linhas={4} />}
         {indices.data && (
+          <>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="mb-2"
+            data-testid="indices-meses-anteriores"
+            onClick={() => setMeses((m) => m + 12)}
+          >
+            Mostrar 12 meses anteriores
+          </Button>
           <ul className="divide-y">
             {competencias.map((c) => {
               const atual = gravado.get(c);
@@ -98,13 +119,14 @@ export function IndicesMonetarios() {
                     value={rascunho[c] ?? ""}
                     onChange={(e) => setRascunho((r) => ({ ...r, [c]: e.target.value }))}
                   />
-                  <Button size="sm" variant="outline" onClick={() => void salvar(c)} disabled={gravar.isPending || !(rascunho[c] ?? "").trim()}>
+                  <Button size="sm" variant="outline" onClick={() => void salvar(c)} disabled={!podeGravar || gravar.isPending || !(rascunho[c] ?? "").trim()}>
                     {atual !== undefined ? "Corrigir" : "Gravar"}
                   </Button>
                 </li>
               );
             })}
           </ul>
+          </>
         )}
       </CardContent>
     </Card>

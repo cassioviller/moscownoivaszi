@@ -31,7 +31,14 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   provisionado do zero e um configurado à mão terminam idênticos.
   Parametrização por env (branco = default): `SEED_LOJA_ID|NOME|CNPJ|ENDERECO|
   TELEFONE`, `SEED_DONA_ID|NOME|EMAIL|SENHA|SUPERADMIN`,
-  `SEED_EXEMPLOS_FINANCEIROS=false` (sem escada nem recorrências).
+  `SEED_EXEMPLOS_FINANCEIROS=false` (sem escada nem recorrências),
+  `SEED_IPCA_EXEMPLO=true` (**E242** — os 12 meses de IPCA DE EXEMPLO da P4/E237;
+  **default false**: a instalação real nasce sem índice, porque a mora trata
+  qualquer linha de `indices_monetarios` como IPCA publicado e imprimia
+  "Correção pelo IPCA de 04/2026 a 07/2026 (1,58%)" como fato — R$ 78,96
+  numa parcela de R$ 5.000,00 vencida em 10/03/2026 com números que ninguém
+  publicou. O E2E é a instalação de teste e liga a env no `playwright.config.ts`
+  e no seed do `global-setup`; a demo tem os seus em `loja-de-demonstracao.ts`).
   **Ele não cadastra noiva, vestido, contrato nem parcela** — isso é trabalho da
   loja, e entra pela tela.
   **O expediente padrão é o DESTE ateliê, e não uma premissa** (S-A8): abre os

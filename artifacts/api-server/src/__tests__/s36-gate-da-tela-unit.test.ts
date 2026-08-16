@@ -71,7 +71,7 @@ function moduloPorOperacao(): Map<string, string> {
  * desta classe é oferecer um BOTÃO que o servidor recusa.
  */
 const VERBOS_QUE_ESCREVEM =
-  /^(create|update|delete|set|add|remove|gerar|pagar|receber|estornar|cancelar|marcar|reenviar|aceitar|desfazer|rotacionar|aplicar|fechar|reabrir|enviar|importar|anonimizar|cobrar|run|executar|baixar)/i;
+  /^(create|update|delete|set|add|remove|gerar|pagar|receber|estornar|cancelar|marcar|reenviar|aceitar|desfazer|rotacionar|aplicar|fechar|reabrir|enviar|importar|anonimizar|cobrar|run|executar|baixar|gravar)/i;
 
 /** A outra ponta, também pelo versionamento (S-D30). Caminhos absolutos. */
 function telas(): string[] {

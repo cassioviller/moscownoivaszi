@@ -52,6 +52,12 @@ export default function Configuracoes() {
   const podeCaptacao = podeNoModulo(acessosModulos, "admin", "ver");
   // S17: o card de dados da loja SALVA, então o gate é o da escrita.
   const podeEditarLoja = podeNoModulo(acessosModulos, "admin", "editar");
+  // E242 (C4 da conferência): o IPCA é uma porta de FINANCEIRO
+  // (`PUT /financeiro/indices`, `requireModulo("financeiro")`), e o card
+  // aparecia para quem edita a LOJA — perfil com admin.editar e sem
+  // financeiro via o botão "Gravar" e levava 403. A s36 não enxergava porque
+  // `gravar` não estava entre os verbos que escrevem.
+  const podeIndices = podeNoModulo(acessosModulos, "financeiro", "editar");
   // Tour do acesso (E24): reabrível a qualquer momento.
   const [tourAberto, setTourAberto] = useState(false);
   
@@ -278,8 +284,8 @@ export default function Configuracoes() {
             {/* Captação externa (E19) — só para quem gere a loja. */}
             {podeCaptacao && <CaptacaoExterna />}
 
-            {/* P4/E237 — o IPCA por competência: quem edita a loja informa o índice da 9ª. */}
-            {podeEditarLoja && <IndicesMonetarios />}
+            {/* P4/E237 — o IPCA por competência: quem edita o FINANCEIRO informa o índice da 9ª (E242). */}
+            {podeIndices && <IndicesMonetarios />}
 
             {/* Privacidade (E77) — anonimização das perdidas antigas. */}
             {podeCaptacao && <PrivacidadeLgpd />}

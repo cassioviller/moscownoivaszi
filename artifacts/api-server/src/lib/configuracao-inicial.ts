@@ -483,6 +483,15 @@ export type OpcoesConfiguracao = {
   dona: { id: string; nome: string; email: string; senha: string; superAdmin: boolean };
   /** Escada de comissão e recorrências. Desligado, a loja fica sem valor nenhum. */
   comExemplosFinanceiros: boolean;
+  /**
+   * E242 — os 12 meses de IPCA "de exemplo" (P4/E237). **Só a instalação de
+   * TESTE pede** (`SEED_IPCA_EXEMPLO=true` — o E2E põe no comando do servidor);
+   * a instalação real nasce sem índice, porque a mora trata qualquer linha de
+   * `indices_monetarios` como IPCA publicado e imprime "Correção pelo IPCA de
+   * 04/2026 a 07/2026 (1,58%)" como fato no carnê, no portal e na trilha.
+   * Ausente ou vazio: false.
+   */
+  comIpcaDeExemplo?: boolean;
 };
 
 export type ResumoConfiguracao = {
@@ -551,6 +560,7 @@ export function configuracaoDoAmbiente(env: NodeJS.ProcessEnv = process.env): Op
       superAdmin: texto("SEED_DONA_SUPERADMIN", "true") !== "false",
     },
     comExemplosFinanceiros: texto("SEED_EXEMPLOS_FINANCEIROS", "true") !== "false",
+    comIpcaDeExemplo: texto("SEED_IPCA_EXEMPLO", "false") === "true",
   };
 }
 
@@ -713,11 +723,19 @@ export async function aplicarConfiguracaoInicial(opts: OpcoesConfiguracao): Prom
   if (!opts.comExemplosFinanceiros) return { lojaId: loja.id, lojaNome: loja.nome, donaEmail: dona.email, criado };
 
   // 7b. O IPCA dos últimos 12 meses — VALORES DE EXEMPLO (P4/E237, a pedido
-  //     da dona em 15/08: a instalação de teste sai com a correção da 9ª
-  //     funcionando). São números plausíveis, não o IPCA publicado: a dona
-  //     troca cada um em Configurações → Índices, e a trilha guarda a troca.
+  //     da dona em 15/08: a instalação de TESTE sai com a correção da 9ª
+  //     funcionando). São números plausíveis, não o IPCA publicado.
   //     Idempotente: mês já informado não é sobrescrito.
-  {
+  //
+  //     E242 — só sob `comIpcaDeExemplo` (`SEED_IPCA_EXEMPLO=true`). Este
+  //     bloco corria pelo MESMO caminho da instalação real (`seedInicial` →
+  //     aqui), e a mora não distingue exemplo de índice publicado: com os
+  //     valores do seed, uma parcela de R$ 5.000,00 vencida em 10/03/2026 e
+  //     lida em 16/08 cobrava R$ 78,96 de "correção" que ninguém publicou —
+  //     aceitos pelo teto do `/receber`. A instalação real nasce sem índice e a
+  //     9ª fica DITA (mês sem número não corrige, e a fila diz qual falta) até
+  //     a dona digitar o IPCA em Configurações → Índices.
+  if (opts.comIpcaDeExemplo) {
     const hoje = hojeLocal();
     const [ano, mes] = hoje.split("-").map(Number) as [number, number];
     const exemplos = [0.42, 0.38, 0.31, 0.46, 0.5, 0.29, 0.35, 0.44, 0.52, 0.16, 0.24, 0.39];
