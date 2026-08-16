@@ -145,7 +145,7 @@ describe("varredura — a régua do banco virgem cobre o que as migrações back
     expect(lerMigracao("limpa.sql", "ALTER TABLE a ADD COLUMN b text;").backfill).toEqual([]);
   });
 
-  it("15 migrações escrevem dado — 9 backfillam, 6 são faxina — e a conta está travada", () => {
+  it("16 migrações escrevem dado — 10 backfillam, 6 são faxina — e a conta está travada", () => {
     // Retrato travado (regra da casa): migração nova de backfill sobe o 9 e
     // obriga a linha de cobertura abaixo; faxina nova sobe o 6 e não obriga
     // nada — o rastro de teste não existe numa instalação nova.
@@ -160,6 +160,11 @@ describe("varredura — a régua do banco virgem cobre o que as migrações back
       "docs/migracoes/2026-08-07-sa26-grafia-do-status-do-vestido.sql",
       "docs/migracoes/2026-08-07-sd26-perfis-para-modulo-x-acao.sql",
       "docs/migracoes/2026-08-12-e172-modulos-orcamentos-e-contratos.sql",
+      // S-A27 (ec53e2d6, 16/08): o Tipo de peça das 132 peças do legado —
+      // backfilla `vestido_atributos`, que a régua já cobre pelo spec 04.
+      // Entrou depois desta lista e a suíte ficou vermelha no `main` até o
+      // E241 passar por aqui (regra 18).
+      "docs/migracoes/2026-08-16-s-a27-tipo-de-peca-do-legado.sql",
     ]);
     expect(soFaxina.length).toBe(6);
   });
