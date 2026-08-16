@@ -14,6 +14,8 @@ Plano: [`2026-08-16-conferencia-do-contrato-plano.md`](../../propostas/2026-08-1
 Contado em 16/08/2026: **0 🔴 · 7 🟠 · 17 🟡 · ~30 🔵**, em **8 épicos +
 1 lote de higiene**. Duas decisões da dona (E241, E244), nenhuma trava.
 
+**Contado em 16/08/2026 à noite: os 8 épicos estão EXECUTADOS** (E241 `e9231ce1` · E242 `3029efba` · E243 `c4e152b1` · E244 `d880b43a` · E245 `a736229f` · E246 `f373a65e` · E247 `fb00bd96` · E248 `5096469b`) — **7 🟠 e 17 🟡 fechados, ZERO abertos**; resta o **lote de higiene 🔵** (a linha abaixo, aberta) e as sobras da tabela de Sobras (S-CF2 🔵, aberta). As três decisões executadas na recomendação (E241, E242, E244) estão na tabela de Decisões para a dona confirmar. **Conte a tabela, não este parágrafo.**
+
 ## A fila
 
 | Épico | Tese | Fecha | Estado |
@@ -24,8 +26,8 @@ Contado em 16/08/2026: **0 🔴 · 7 🟠 · 17 🟡 · ~30 🔵**, em **8 épic
 | ~~**E244**~~ | ~~a 16ª cobra pelo que o papel manda~~ | E1 🟠 (decisão da dona), C5, C10 | ✅ `d880b43a` · [relatório](execucao/E244.md) — `fimPrevistoDaDevolucao` (o papel, senão a janela) nos três sítios; executado na recomendação (o papel), para a dona confirmar; a S-C89 cobrou o primeiro conserto (`expected 9 to be 7`) e a fila passa a data já lida; a cobrança de atraso ganha o prazo na tela; prazo vazio não vira 0. Vermelho antes: `expected 1750 to be 750` |
 | ~~**E245**~~ | ~~as portas ao lado~~ | B1, A5=B2, B3–B6, B8 | ✅ `a736229f` · [relatório](execucao/E245.md) — sete consertos, sete cenas de corrida rodadas sobre o código quebrado de propósito (B1 por `pg_locks`); a varredura de trancas cobrou o retrato (45 · 13 · 14); o E225 reprovou a primeira versão do B5 (a devolução se registra no cancelado de propósito) e a guarda encolheu para a saída; B6 declarado como ponto cego, não consertado |
 | ~~**E246**~~ | ~~o E2E para de depender do dev~~ | D1–D4, D6–D9 | ✅ `f373a65e` · [relatório](execucao/E246.md) — a fixture da reserva renovada a cada run (respeitando a EXCLUDE), o `13` pelo `href`, o `07` pela busca, contrato próprio no `08` e no `15` (os 4 `skip` saíram), o `16` num ramo só, a competência do `36` em SP, o rastro por tela de `04`/`05`/`51` apagado, as 779 contas do `34`, a data do `52` derivada. E2E 186 em 6,8 min, 0 skipped · banco virgem 16 passed |
-| **E247** | as réguas veem a segunda forma | G1–G8, G10 | em execução |
-| **E248** | os manuais dizem o que o sistema faz | F1–F8 | aberto |
+| ~~**E247**~~ | ~~as réguas veem a segunda forma~~ | G1–G8, G10 | ✅ `fb00bd96` · [relatório](execucao/E247.md) — cada régua aprende a segunda forma e prova que vê: dois vermelhos literais sobre o repositório como estava (`createParcelaAvulsa (requestBody inline).descricao` sem teto → `maxLength: 1000` no spec; o `52` com `T12:00:00Z` → a âncora da casa); cabines 9 → 12; escritores diretos derivados; a régua do gesto prega a chamada; a cena CANCELADA afirma; as corridas por `sleep` provam a espera; a bomba do `e217` (02/11/2027) desarmada. API 1865 · E2E 186 |
+| ~~**E248**~~ | ~~os manuais dizem o que o sistema faz~~ | F1–F8 | ✅ `5096469b` · [relatório](execucao/E248.md) — vendedora (F1, F2, F4), recepção (F4), proprietário (F3, F5, F6, F7, F8); as cinco varreduras dos manuais 29/29 (moldes 11 → 12); PDFs republicados |
 | higiene 🔵 | lote | B7, C8, C9, C11, C12, E2–E4, G9, G11–G15, A6, A7 | aberto |
 
 ## Sobras
