@@ -695,6 +695,18 @@ rode o codegen.
   queries" do `verificarDisponibilidade`. **A contagem da 12ª exclui ESTE
   contrato** (`c_outros.id <> $`), coisa que o `POST /cancelar` não precisa
   fazer porque lá ela roda depois do `UPDATE` para CANCELADO.
+  **A devolução da rescisão sai por UM caminho (E241).** Sob `destinoPago:
+  "manter"` o que a cláusula manda devolver nasce como `contas_pagar` tipo
+  `DEVOLUCAO` vencendo em 30 dias (13ª §3º); sob `"estornar"` o caixa já
+  devolveu 100% do recebido — que é sempre ≥ a devolução da cláusula — e a
+  conta **não nasce**. Antes as duas coisas aconteciam juntas: R$ 1.200,00 de
+  reserva + R$ 1.000,00 de carnê, noiva desiste, "estornar" → estorno de
+  R$ 2.200,00 **e** conta de R$ 400,00 (R$ 2.600,00 sobre R$ 2.200,00);
+  pela loja, 100% mais 100%. A trilha `CONTRATO_CANCELADO` diz por onde saiu
+  (`devolucaoPorContaAPagar`: 0 sob estornar, `rescisaoDevolucaoTotal` sob
+  manter), e o diálogo de cancelar troca a frase "nasce como conta a pagar"
+  por "sai do caixa agora — não nasce conta a pagar" quando o rádio do estorno
+  está marcado.
 - **A taxa de avaria tem FAIXA, e ela vem do contrato de papel (E214).** A
   avaria passa a dizer de qual cláusula a taxa saiu: **LIMPEZA** é a 14ª (faixa
   absoluta, **R$ 350,00 a R$ 2.500,00**) e **DANO** é a 15ª (teto de **5× o

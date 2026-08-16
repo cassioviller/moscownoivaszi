@@ -293,6 +293,14 @@ export default function ContratoDetail() {
   // que a cláusula manda — rescisão pela loja não pode ser acusada de obedecer.
   const avisoDoEstorno =
     rescisao && iniciativa === "LOCATARIA" ? estornoContraARescisao(rescisao, destinoPago) : null;
+  // E241 — a devolução da cláusula sai por UM caminho: pela conta a pagar
+  // (13ª §3º, 30 dias) sob "manter", ou pelo estorno do caixa sob "estornar".
+  // A tela dizia "nasce como conta a pagar" ao lado do rádio "estorna do
+  // caixa" como se fossem coisas diferentes — e a porta abria as duas.
+  const fraseDaDevolucao =
+    destinoPago === "estornar"
+      ? "Com \"Devolvi o valor\" marcado abaixo, a devolução sai do caixa agora — não nasce conta a pagar."
+      : "A devolução nasce como conta a pagar da loja, vencendo em 30 dias (13ª §3º).";
 
   /**
    * P8/E169 — o "Total do plano" e o alerta que ele acende falam do CARNÊ.
@@ -1448,9 +1456,7 @@ export default function ContratoDetail() {
                 <p className="text-sm text-muted-foreground">
                   Cláusula 13ª: a loja devolve o que foi pago
                   {oQueSeraDesfeito.recebido > 0 ? <> — {brl(oQueSeraDesfeito.recebido)}</> : null}.
-                  {oQueSeraDesfeito.recebido > 0 && (
-                    <> A devolução nasce como conta a pagar da loja, vencendo em 30 dias (13ª §3º).</>
-                  )}
+                  {oQueSeraDesfeito.recebido > 0 && <> {fraseDaDevolucao}</>}
                 </p>
               </div>
             )}
@@ -1489,8 +1495,8 @@ export default function ContratoDetail() {
                   <span className="tabular-nums">devolve {brl(rescisao.devolucaoTotal)}</span>
                 </div>
                 {rescisao.devolucaoTotal > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    A devolução nasce como conta a pagar da loja, vencendo em 30 dias (13ª §3º).
+                  <p className="text-xs text-muted-foreground" data-testid="cancelar-devolucao-por-onde">
+                    {fraseDaDevolucao}
                   </p>
                 )}
               </div>

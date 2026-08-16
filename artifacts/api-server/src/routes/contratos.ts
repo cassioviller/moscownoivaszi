@@ -1928,14 +1928,28 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
      * `contas_pagar` (o mesmo lugar que já representa dívida da loja), não
      * como ajuste em `parcelas`: a dívida é NOVA e é da LOJA, não uma parcela
      * que a noiva deve.
+     *
+     * **E241 — a rescisão devolve UMA vez.** Esta conta e o `destinoPago:
+     * "estornar"` logo abaixo são dois caminhos para o MESMO dinheiro voltar,
+     * e a porta abria os dois: com R$ 1.200,00 de reserva e R$ 1.000,00 de
+     * carnê pagos, a noiva desistindo, a 11ª devolve R$ 400,00 — marcando
+     * "estornar", o caixa devolvia os R$ 2.200,00 inteiros E nascia a conta de
+     * R$ 400,00: R$ 2.600,00 devolvidos sobre R$ 2.200,00 recebidos. Pela
+     * loja (13ª): estorno de 100% mais conta de 100%. Sob `estornar` o
+     * estorno já é a devolução — e é sempre MAIOR ou igual à da cláusula
+     * (`devolucaoTotal ≤ totalPagoPlano ≤ totalRecebido`), então a conta não
+     * nasce. A trilha diz por qual caminho o dinheiro saiu
+     * (`devolucaoPorContaAPagar`).
      */
-    if (rescisao.devolucaoTotal > 0) {
+    const devolucaoPorContaAPagar =
+      parsed.data.destinoPago === "estornar" ? 0 : rescisao.devolucaoTotal;
+    if (devolucaoPorContaAPagar > 0) {
       await tx.insert(contasPagarTable).values({
         id: randomUUID(),
         lojaId: lojaId as string,
         tipo: "DEVOLUCAO",
         descricao: `Devolução — rescisão do contrato de ${contrato.vestidoDescricao ?? "locação"} (${rescisao.explicacao})`,
-        valorPrevisto: rescisao.devolucaoTotal,
+        valorPrevisto: devolucaoPorContaAPagar,
         vencimento: inicioDoDia(addDias(diaLocal(agora), PRAZO_DEVOLUCAO_DA_LOJA_DIAS)),
         origemContratoId: contrato.id,
       });
@@ -2077,6 +2091,10 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
         iniciativa: parsed.data.iniciativa ?? "LOCATARIA",
         rescisaoDevolucaoTotal: rescisao.devolucaoTotal,
         rescisaoRetencaoTotal: rescisao.retencaoTotal,
+        // E241 — por qual caminho a devolução da cláusula SAIU: pela conta a
+        // pagar (13ª §3º, 30 dias) ou já pelo estorno acima (`totalEstornado`).
+        // As duas nunca somam: 0 aqui é "o estorno cobriu".
+        devolucaoPorContaAPagar,
         /**
          * S-C140 — a divergência entre as duas linhas acima, DITA.
          *

@@ -93,6 +93,11 @@ test.describe.serial("E227 — a 18ª e a 13ª ganham gesto", () => {
       // varredura-fixture não vê o que nasce por CLIQUE; a contagem no banco
       // depois do run viu: +1 conta DEVOLUCAO por passada, criada 6 s antes
       // do fim do run — neste spec, não no 62.
+      //
+      // E241 — aquela conta ERA o defeito, não sobra de fixture: a cena marca
+      // "Devolvi o valor" (estorno de R$ 800,00) e a porta abria a conta de
+      // R$ 800,00 em cima. Hoje ela não nasce; o `delete` fica como guarda
+      // do que o teste do E241 já afirma ser zero.
       await db.delete(contasPagarTable).where(eq(contasPagarTable.origemContratoId, contratoId));
       await db.delete(parcelasTable).where(eq(parcelasTable.contratoId, contratoId));
       await db.delete(contratosTable).where(eq(contratosTable.id, contratoId));
@@ -142,6 +147,10 @@ test.describe.serial("E227 — a 18ª e a 13ª ganham gesto", () => {
     // contra a cláusula" não pode acusar quem está obedecendo a 13ª.
     await page.getByLabel(/Devolvi o valor/).click();
     await expect(page.getByTestId("cancelar-estorno-contra-clausula")).toBeHidden();
+    // E241 — a tela dizia "nasce como conta a pagar" ao lado do rádio que
+    // estorna do caixa, e a porta abria os dois caminhos. Com o estorno
+    // marcado, a frase diz por onde o dinheiro sai — e a conta não nasce.
+    await expect(page.getByTestId("cancelar-rescisao-loja")).toContainText("não nasce conta a pagar");
 
     await page.getByRole("textbox", { name: /Motivo do cancelamento/ }).fill("O vestido rasgou no ateliê");
     await page.getByRole("button", { name: "Confirmar cancelamento" }).click();
@@ -165,7 +174,22 @@ test.describe.serial("E227 — a 18ª e a 13ª ganham gesto", () => {
       iniciativa: "LOJA",
       rescisaoRetencaoTotal: 0,
       rescisaoDevolucaoTotal: 800,
+      // E241 — os R$ 800,00 voltaram pelo estorno; a conta a pagar não nasceu.
+      totalEstornado: 800,
+      devolucaoPorContaAPagar: 0,
     });
+  });
+
+  test("E241 — a devolução saiu UMA vez: zero contas a pagar do contrato depois do estorno", async () => {
+    // A cena acima marcou "Devolvi o valor" (estorno de R$ 800,00) pela 13ª.
+    // Antes do E241, esta contagem dava 1: uma `DEVOLUCAO` de R$ 800,00 em
+    // cima dos R$ 800,00 já estornados — R$ 1.600,00 de saída para R$ 800,00
+    // que entraram, e nenhum teste lia `contas_pagar` depois de "estornar".
+    const contas = await db
+      .select()
+      .from(contasPagarTable)
+      .where(eq(contasPagarTable.origemContratoId, contratoId));
+    expect(contas).toHaveLength(0);
   });
 });
 
