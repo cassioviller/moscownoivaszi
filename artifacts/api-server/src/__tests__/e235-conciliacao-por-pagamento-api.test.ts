@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
-import { conciliacaoDeRecebimentosTable, db, parcelasTable } from "@workspace/db";
+import { conciliacaoDeRecebimentosTable, db, parcelasTable, pool } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { addDias, ancoraDeNegocio, conciliarExtrato, hojeLocal, type MovimentoSistema, type TransacaoExtrato } from "@workspace/financeiro-core";
 import {
@@ -231,4 +231,48 @@ describe("E235 — a conciliação enxerga cada pagamento", () => {
     const r = conciliarExtrato([{ data: hoje, descricao: "PIX RECEBIDO", valor: 500 }], ms.map(semCarimbo));
     expect([r.casadas.length, r.soExtrato.length, r.soSistema.length]).toEqual([1, 0, 0]);
   });
+
+  /**
+   * **E245 (B4 da conferência) — a derivação do carimbo exige recebimento,
+   * como o carimbo direto (E115).** O carimbo direto da parcela repete
+   * `recebido_em IS NOT NULL`; a DERIVAÇÃO (todos os atos carimbados → a
+   * parcela) repetia só `conciliado_em IS NULL`, com a trilha lida no pool
+   * dentro da transação. Marcar o último recibo × estornar em voo → a parcela
+   * voltava a PREVISTA e ficava "conferida com o extrato".
+   */
+  it("E245 — marcar o último recibo × estornar em voo: a parcela PREVISTA não fica carimbada", async () => {
+    const lead = await criarLead(f);
+    const contrato = await criarContrato(f, { leadId: lead.id, valorTotal: 1000, fechadoEm: dataFutura(-400) });
+    const pid = randomUUID();
+    await db.insert(parcelasTable).values({
+      id: pid, lojaId: f.lojaId, contratoId: contrato.id, numero: 1, origem: "PLANO", valorPrevisto: 1000,
+      vencimento: new Date(DIA("2027-06-10")),
+    });
+    await dona.post(`/api/lojas/${f.lojaId}/parcelas/${pid}/receber`).send({ valorRecebido: 300, recebidoEm: DIA("2027-06-01"), formaRecebimento: "PIX" }).expect(200);
+    await dona.post(`/api/lojas/${f.lojaId}/parcelas/${pid}/receber`).send({ valorRecebido: 700, recebidoEm: DIA("2027-06-02"), formaRecebimento: "PIX" }).expect(200);
+    const atos = (await movimentos("2027-06-01", "2027-06-30")).filter((m) => m.id.endsWith(pid) || m.id.startsWith("recibo:"));
+    const ids = atos.filter((m) => m.tipo === "recebimento").map((m) => m.id.split(":")[1]!);
+    expect(ids).toHaveLength(2);
+    const marcar = (corpo: object) => dona.post(`/api/lojas/${f.lojaId}/financeiro/conciliacao/marcar`).send(corpo);
+    await marcar({ reciboIds: [ids[0]] }).expect(200);
+
+    const cliente = await pool.connect();
+    try {
+      // O estorno em voo: a parcela volta a PREVISTA, sem recebimento — trancada, não commitada.
+      await cliente.query("BEGIN");
+      await cliente.query(`UPDATE parcelas SET status = 'PREVISTA', valor_recebido = NULL, recebido_em = NULL WHERE id = $1`, [pid]);
+      const marcarP = Promise.resolve(marcar({ reciboIds: [ids[1]] }));
+      await new Promise((r) => setTimeout(r, 300));
+      await cliente.query("COMMIT");
+      expect((await marcarP).status).toBe(200);
+    } finally {
+      await cliente.query("ROLLBACK").catch(() => {});
+      cliente.release();
+    }
+    const [p] = await db.select().from(parcelasTable).where(eq(parcelasTable.id, pid));
+    // ANTES: `conciliadoEm` preenchido numa parcela PREVISTA sem recebimento.
+    expect(p!.status).toBe("PREVISTA");
+    expect(p!.conciliadoEm).toBeNull();
+  });
+
 });

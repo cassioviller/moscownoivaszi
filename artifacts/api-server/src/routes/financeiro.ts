@@ -861,7 +861,16 @@ router.post(
           if (derivadas.length > 0) {
             await tx.update(parcelasTable)
               .set({ conciliadoEm: agora })
-              .where(and(eq(parcelasTable.lojaId, lojaId), inArray(parcelasTable.id, derivadas), isNull(parcelasTable.conciliadoEm)));
+              .where(and(
+                eq(parcelasTable.lojaId, lojaId),
+                inArray(parcelasTable.id, derivadas),
+                isNull(parcelasTable.conciliadoEm),
+                // E245 (B4): a MESMA guarda do carimbo direto acima (E115) — a
+                // trilha foi lida no pool e o estorno pode ter passado no meio;
+                // sem isto, marcar o recibo × estornar deixava a parcela PREVISTA
+                // e "conferida com o extrato".
+                isNotNull(parcelasTable.recebidoEm),
+              ));
           }
         }
       }

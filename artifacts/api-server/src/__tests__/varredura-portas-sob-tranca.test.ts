@@ -238,7 +238,9 @@ const sitio = (p: Porta): string => `${p.arquivo}:${p.linha} ${p.verbo}(${p.tabe
  * `status = PAGA` — e o total é o mesmo 72, porque nenhuma porta nasceu:
  * as duas mudaram de coluna.
  */
-const RETRATO = { TRANCA: 43, CAS: 14, ABERTA: 15 } as const;
+// E245: 43/14/15 → 45/13/14 — a cobrança do atraso (B1) sai de CAS para TRANCA
+// e o nascimento dela sai da dívida; o reabrir (A5=B2) ganha a segunda tranca.
+const RETRATO = { TRANCA: 45, CAS: 13, ABERTA: 14 } as const;
 
 /**
  * O retrato da ORDEM, travado pelo mesmo critério — e é ele que estava 1 e 2
@@ -276,7 +278,9 @@ const RETRATO = { TRANCA: 43, CAS: 14, ABERTA: 15 } as const;
  * vez de aceitar "qualquer coisa que não seja `db`", e o retrato das
  * disciplinas não moveu uma porta — 43 · 14 · 15 antes e depois.
  */
-const RETRATO_DA_ORDEM = { transacoes: 30, trancas: 45 } as const;
+// E245: 30/45 → 31/47 — a transação da cobrança do atraso passa a trancar (B1),
+// e o reabrir do fechamento tranca a linha-alvo antes de ler os posteriores (A5=B2).
+const RETRATO_DA_ORDEM = { transacoes: 31, trancas: 47 } as const;
 
 /**
  * A dívida reconhecida: as portas que hoje não são TRANCA nem CAS.
@@ -431,8 +435,14 @@ const SEM_DISCIPLINA: Record<string, number> = {
    * `atrasoParcelaId` é o único estado que a grafia derivada não pega — ele é
    * VÍNCULO, não data. Removê-la da lista de exceções faz esta contagem ir de
    * **4 para 5** e a dívida de **13 para 14**, medido.
+   *
+   * **De 4 para 3 no E245 (B1 da conferência)** — a cobrança do atraso ganhou a
+   * tranca que a avaria já tinha (`FOR UPDATE` no contrato ANTES do `max`), e
+   * o `INSERT` da parcela passou a nascer sob ela: deixa de ser nascimento
+   * solto e sai desta lista. A transação inteira mede TRANCA agora (o CAS do
+   * `atraso_parcela_id` continua lá, relendo status também).
    */
-  "artifacts/api-server/src/routes/reservas.ts": 4,
+  "artifacts/api-server/src/routes/reservas.ts": 3,
   // Era 6; a sétima é o carnê (`:525`), que só ficou visível quando `parcelas`
   // virou tabela quente no E180. Mesma família das outras seis, mesmo veredito.
   "scripts/loja-de-demonstracao.ts": 7,
@@ -1301,7 +1311,7 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
     expect(hoje).toEqual(SEM_DISCIPLINA);
   });
 
-  it("o total da dívida é 15 — 8 de nascimento/serialização implícita e 7 do gerador da demo (as 2 da S-O120 fecharam)", () => {
+  it("o total da dívida é 14 — 7 de nascimento/serialização implícita e 7 do gerador da demo (as 2 da S-O120 fecharam; a do atraso, no E245)", () => {
     expect(abertas.length).toBe(TOTAL_SEM_DISCIPLINA);
     expect(Object.values(SEM_DISCIPLINA).reduce((s, n) => s + n, 0)).toBe(TOTAL_SEM_DISCIPLINA);
   });
@@ -1329,7 +1339,7 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
    * - **8 → 11 por CAS** é drift ANTERIOR, medido pela S-C11 e não causado por
    *   ela: os pisos eram `>=` e ninguém os subiu depois do E212 e do E213.
    */
-  it("e o censo das disciplinas é o retrato — 43 TRANCA · 14 CAS · 15 ABERTA", () => {
+  it("e o censo das disciplinas é o retrato — 45 TRANCA · 13 CAS · 14 ABERTA", () => {
     const conta = { TRANCA: 0, CAS: 0, ABERTA: 0 };
     for (const p of portas) conta[p.disciplina] += 1;
     expect(conta).toEqual(RETRATO);
@@ -1355,6 +1365,20 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
  * O deadlock que estas contas existem para impedir tem número: o E143 achou o
  * **40P01 fora do mapa de erros** (S20), e um ciclo entre duas rotas derruba uma
  * delas com 500 na cara de quem vende.
+ *
+ * **Ponto cego DECLARADO no E245 (B6 da conferência): a tranca IMPLÍCITA de um
+ * `UPDATE` não entra nesta conta — ela só lê `.for("update")`.** O
+ * `PATCH /reservas` (mover a data) tranca `vestidos` explicitamente (8) e depois
+ * escreve, sem tranca declarada, `bloqueio_vestidos` (7) e `contratos` (5, em
+ * `reservas.ts` na propagação da data) — cada `UPDATE` toma o row lock da linha
+ * que muda, e a cadeia IMPLÍCITA desce: 8 → 7 → 5. O cancelar sobe 5 → 6 → 7.
+ * Cancelar × mover a data no mesmo segundo é um ciclo — **40P01**, um dos dois
+ * cai com 500 (janela de dezenas de ms; sem perda de dado, o perdedor não
+ * commita). A conta abaixo passa verde sobre isso, e é por honestidade que a
+ * fresta fica escrita aqui em vez de num comentário perdido: fechá-la é trancar
+ * o CONTRATO antes do vestido no `PATCH /reservas` (subir a cadeia de
+ * propósito), o que muda a ordem declarada em prosa de `reservas.ts:63` — um
+ * épico com cena de corrida, não uma linha.
  */
 describe("varredura — as trancas sobem a cadeia, e nunca descem", () => {
   /**
@@ -1372,7 +1396,7 @@ describe("varredura — as trancas sobem a cadeia, e nunca descem", () => {
    * commit sobre as quatro pastas varridas. É o caso vivo da S-C46: *piso não
    * obriga a remedir, e a prosa envelhece calada.*
    */
-  it("olha para as transações de verdade — 30 transações trancam, e são 45 trancas", () => {
+  it("olha para as transações de verdade — 31 transações trancam, e são 47 trancas", () => {
     const porTransacao = trancasPorTransacao();
     expect({
       transacoes: porTransacao.size,
@@ -1384,10 +1408,11 @@ describe("varredura — as trancas sobem a cadeia, e nunca descem", () => {
    * O piso do que o E186 abriu: sem trancas via helper, a conta voltou a ser a
    * do E180 e as três contas abaixo passam a aprovar o que não leram.
    */
-  it("e nove delas são alcançadas SEGUINDO o executor para dentro do helper", () => {
+  it("e dez delas são alcançadas SEGUINDO o executor para dentro do helper", () => {
     const viaHelper = [...trancasPorTransacao().values()].flat().filter((t) => t.viaHelper !== null);
     // 7 → 9 no E238: `trancarFechamentosDasVendedoras` (fechar e baixar à mão).
-    expect(viaHelper).toHaveLength(9);
+    // 9 → 10 no E245: o reabrir passa a chamar a MESMA tranca antes de ler os posteriores (A5=B2).
+    expect(viaHelper).toHaveLength(10);
     expect([...new Set(viaHelper.map((t) => t.viaHelper))].sort()).toEqual([
       "trancarContratos",
       "trancarEixos",

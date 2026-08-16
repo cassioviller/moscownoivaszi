@@ -6,6 +6,7 @@ import {
   contratosTable,
   db,
   parcelasTable,
+  pool,
 } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { derrubarFilaDeAtrasos } from "../lib/fila-de-atrasos-cache";
@@ -201,6 +202,72 @@ describe("E212 — o atraso na devolução tem preço", () => {
       // Pelo papel: a devolução é HOJE — sem atraso, fora da fila.
       await db.update(contratosTable).set({ dataDevolucao: diasAtras(0) }).where(eq(contratosTable.id, contrato.id));
       expect(await naFila()).toBe(false);
+    });
+  });
+
+  /**
+   * **E245 (B1 da conferência) — a cobrança do atraso tranca o contrato como a
+   * avaria.** O E212 copiou o desenho da avaria SEM a tranca que a avaria
+   * ganhou dois dias antes (E159, R9/V11): o contrato era lido no POOL, o
+   * `max(numero)` corria sem `FOR UPDATE` no contrato, e o CAS só olhava
+   * `atrasoParcelaId`. Cena A: cobrar × cancelar → a cobrança PREVISTA nascia
+   * num contrato CANCELADO (o formato do K7). Cena B: cobrar × receber com
+   * mora → dois `max`, o segundo INSERT morria em 23505 (`REGISTRO_DUPLICADO`,
+   * lido como "já cobrei"), e a fila dizia `jaCobrada: false`.
+   */
+  describe("E245 — a cobrança do atraso ESPERA a tranca do contrato", () => {
+    it("cobrar × cancelar em voo: a cobrança perde (422) e nenhuma parcela de atraso nasce num contrato cancelado", async () => {
+      const { contrato } = await noivaComPecas([{ aluguel: 3000, casamentoHaDias: 10, devolvidoHaDias: 5 }]);
+      const cliente = await pool.connect();
+      try {
+        // O cancelamento em voo: a linha do contrato está trancada e ainda não commitou.
+        await cliente.query("BEGIN");
+        await cliente.query(`UPDATE contratos SET status = 'CANCELADO', cancelado_em = now() WHERE id = $1`, [contrato.id]);
+        const respostaP = Promise.resolve(cobrar(contrato.id));
+        await new Promise((r) => setTimeout(r, 300));
+        await cliente.query("COMMIT");
+        const r = await respostaP;
+        // ANTES: 201 — e a parcela ATRASO_DEVOLUCAO de R$ 1.750,00 viva num contrato CANCELADO.
+        expect(r.status).toBe(422);
+        expect(r.body.error).toBe("CONTRATO_NAO_ATIVO");
+      } finally {
+        // Assert que caiu no meio deixa a transação aberta — e a conexão volta ao
+        // pool com a tranca; o ROLLBACK é o que solta a rota que está esperando.
+        await cliente.query("ROLLBACK").catch(() => {});
+        cliente.release();
+      }
+      expect(await parcelasDeAtraso(contrato.id)).toHaveLength(0);
+    });
+
+    it("com o contrato trancado por outra transação, a cobrança ESPERA — a parcela só nasce depois do commit", async () => {
+      const { contrato } = await noivaComPecas([{ aluguel: 3000, casamentoHaDias: 10, devolvidoHaDias: 5 }]);
+      const cliente = await pool.connect();
+      try {
+        // A tranca da avaria (E159): quem segura o contrato segura o `max(numero)`.
+        // É a mesma janela do V11 — dois `max` iguais e o segundo INSERT em 23505.
+        await cliente.query("BEGIN");
+        await cliente.query(`SELECT id FROM contratos WHERE id = $1 FOR UPDATE`, [contrato.id]);
+        const cobrancaP = Promise.resolve(cobrar(contrato.id));
+        await new Promise((r) => setTimeout(r, 300));
+        // ANTES: a rota já tinha lido o `max` e INSERIDO a parcela (não commitada,
+        // invisível daqui) e só esbarrava na tranca no UPDATE do contrato — a
+        // transação dela segurava um RowExclusiveLock em `parcelas` enquanto
+        // esperava. Depois: ela espera no `SELECT … FOR UPDATE` do contrato, sem
+        // ter tocado `parcelas`. É o que `pg_locks` responde.
+        const { rows } = await cliente.query(
+          `SELECT count(*)::int AS n FROM pg_locks l JOIN pg_class c ON c.oid = l.relation
+           WHERE c.relname = 'parcelas' AND l.mode = 'RowExclusiveLock' AND l.pid <> pg_backend_pid()`,
+        );
+        expect(rows[0].n, "a cobrança inseriu a parcela ANTES de trancar o contrato").toBe(0);
+        await cliente.query("COMMIT");
+        expect((await cobrancaP).status).toBe(201);
+      } finally {
+        // Assert que caiu no meio deixa a transação aberta — e a conexão volta ao
+        // pool com a tranca; o ROLLBACK é o que solta a rota que está esperando.
+        await cliente.query("ROLLBACK").catch(() => {});
+        cliente.release();
+      }
+      expect(await parcelasDeAtraso(contrato.id)).toHaveLength(1);
     });
   });
 

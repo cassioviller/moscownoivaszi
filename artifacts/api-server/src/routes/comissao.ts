@@ -1221,7 +1221,21 @@ router.delete("/lojas/:lojaId/comissao/fechamentos/:fechamentoId", async (req, r
      * leitura é SOB TRANCA das linhas posteriores desta vendedora — é contra
      * elas que o `FOR UPDATE` do fechar (E238) faz fila, então "não há
      * posterior" continua verdade até esta transação commitar.
+     *
+     * **E245 (A5=B2) — a fresta que dois agentes acharam: `FOR UPDATE` sobre
+     * "posteriores" não segura a linha que o fechar concorrente ainda vai
+     * INSERIR.** `SELECT … FOR UPDATE` sobre zero linhas não tranca nada. O
+     * fechar de agosto em voo (trancou julho, inseriu agosto, não commitou)
+     * era invisível ao reabrir de julho: posteriores = vazio, passa, o
+     * `DELETE` só esbarra na tranca de julho; agosto commita; o DELETE
+     * prossegue — julho reaberto com agosto de pé, o estado que a decisão da
+     * dona proíbe (o cenário do E238, R$ 4.000,00/R$ 400,00). O conserto é a
+     * mesma lição de sempre, na minha própria porta: trancar a linha-ALVO
+     * ANTES de ler — a MESMA tranca do fechar (`trancarFechamentosDasVendedoras`),
+     * que faz fila contra ele; quando ela solta, agosto já está commitado e
+     * o select dos posteriores (sentença nova, snapshot novo) o vê.
      */
+    await trancarFechamentosDasVendedoras(tx, lojaId, [fechamento.vendedoraId]);
     const posteriores = await tx
       .select({ id: comissaoFechamentosTable.id, competencia: comissaoFechamentosTable.competencia })
       .from(comissaoFechamentosTable)

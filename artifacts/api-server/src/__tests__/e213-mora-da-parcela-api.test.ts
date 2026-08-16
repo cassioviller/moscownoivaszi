@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { auditLogTable, contratosTable, db, parcelasTable } from "@workspace/db";
+import { auditLogTable, contratosTable, db, parcelasTable, pool } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { addDias, ancoraDeNegocio, hojeLocal } from "@workspace/financeiro-core";
@@ -289,6 +289,59 @@ describe("E213 — a parcela vencida tem multa e juros", () => {
         formaRecebimento: "PIX",
       });
       expect(r.status).toBe(422);
+    });
+  });
+
+  /**
+   * **E245 (B3 da conferência) — os dois CAS releem TUDO o que decidiram.**
+   * O do receber repetia `status` e `valor_recebido` e não `mora_perdoada_em`;
+   * o do perdão repetia `mora_perdoada_em IS NULL` e não `status`. Receber
+   * R$ 515,00 × perdoar no mesmo segundo → nascia a linha MORA de R$ 15,00
+   * PAGA numa parcela "perdoada", `MORA_PERDOADA` e `MORA_RECEBIDA` na mesma
+   * trilha; e perdoar × receber → o perdão carimbava uma parcela PAGA.
+   */
+  describe("E245 — receber × perdoar: cada CAS relê o que o outro escreve", () => {
+    it("receber R$ 515,00 × perdoar em voo: o recebimento perde (409 PARCELA_MUDOU) e a MORA não nasce na parcela perdoada", async () => {
+      const { contrato, parcela } = await parcelaCom({ vencimento: diasAtras(30) });
+      const cliente = await pool.connect();
+      try {
+        await cliente.query("BEGIN");
+        await cliente.query(`UPDATE parcelas SET mora_perdoada_em = now(), mora_perdoada_motivo = 'acordo' WHERE id = $1`, [parcela.id]);
+        const receberP = Promise.resolve(receber(parcela.id, 515));
+        await new Promise((r) => setTimeout(r, 300));
+        await cliente.query("COMMIT");
+        const r = await receberP;
+        // ANTES: 200 — R$ 515,00 aceitos e a linha MORA de R$ 15,00 PAGA numa parcela perdoada.
+        expect(r.status).toBe(409);
+        expect(r.body.error).toBe("PARCELA_MUDOU");
+      } finally {
+        await cliente.query("ROLLBACK").catch(() => {});
+        cliente.release();
+      }
+      const linhas = await db.select().from(parcelasTable)
+        .where(and(eq(parcelasTable.contratoId, contrato.id), eq(parcelasTable.origem, "MORA")));
+      expect(linhas).toHaveLength(0);
+      expect((await parcelaDe(parcela.id)).valorRecebido).toBeNull();
+    });
+
+    it("perdoar × receber em voo: o perdão perde e diz SEM_MORA — a parcela quitada não fica carimbada", async () => {
+      const { parcela } = await parcelaCom({ vencimento: diasAtras(30) });
+      const cliente = await pool.connect();
+      try {
+        await cliente.query("BEGIN");
+        await cliente.query(`UPDATE parcelas SET status = 'PAGA', valor_recebido = 500, recebido_em = now() WHERE id = $1`, [parcela.id]);
+        const perdoarP = Promise.resolve(perdoar(parcela.id, "acordo com a noiva"));
+        await new Promise((r) => setTimeout(r, 300));
+        await cliente.query("COMMIT");
+        const r = await perdoarP;
+        // ANTES: 200 — `mora_perdoada_em` carimbado numa parcela PAGA.
+        expect(r.status).toBe(422);
+        expect(r.body.error).toBe("SEM_MORA");
+      } finally {
+        await cliente.query("ROLLBACK").catch(() => {});
+        cliente.release();
+      }
+      expect((await parcelaDe(parcela.id)).moraPerdoadaEm).toBeNull();
     });
   });
 

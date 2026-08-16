@@ -1237,8 +1237,16 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
    * régua da vida da cobrança é a MESMA da recobrança (`cobrancaViva`):
    * parcela CANCELADA não cobra ninguém, e aí desfazer volta a ser legítimo.
    */
-  if (dados.retiradaDataReal === null && existente.retiradaDataReal) {
-    const cobrados = await db
+  const desfazARetirada = dados.retiradaDataReal === null && !!existente.retiradaDataReal;
+  const registraASaida = dados.retiradaDataReal !== undefined && dados.retiradaDataReal !== null;
+  /**
+   * A guarda, com o executor de quem chama. No POOL ela responde rápido; DENTRO
+   * da transação (E245, B5) ela relê sob a tranca do contrato — a cobrança do
+   * atraso (E212/E245) tranca a mesma linha, então quem chegar depois vê o
+   * `atraso_parcela_id` que a outra acabou de gravar.
+   */
+  const atrasoCobradoSobreEstaRetirada = async (executor: DbExecutor, sobTranca: boolean) => {
+    const consulta = executor
       .select({ atrasoParcelaId: contratosTable.atrasoParcelaId })
       .from(contratosTable)
       .leftJoin(contratoBloqueiosTable, eq(contratoBloqueiosTable.contratoId, contratosTable.id))
@@ -1250,18 +1258,24 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
           eq(contratosTable.bloqueioVestidoId, bloqueioId),
         ),
       ));
+    const cobrados = sobTranca ? await consulta.for("update", { of: contratosTable }) : await consulta;
     for (const c of cobrados) {
-      if (c.atrasoParcelaId && (await cobrancaViva(c.atrasoParcelaId))) {
-        res.status(422).json({
-          error: "ATRASO_JA_COBRADO",
-          detalhe:
-            "O atraso desta peça já virou parcela no carnê — estorne ou cancele a parcela do " +
-            "atraso primeiro, senão a cobrança fica órfã de retirada.",
-          campos: [{ campo: "retiradaDataReal", motivo: "Há atraso cobrado sobre esta retirada" }],
-        });
-        return;
-      }
+      if (c.atrasoParcelaId && (await cobrancaViva(c.atrasoParcelaId, executor))) return true;
     }
+    return false;
+  };
+  const recusaAtrasoCobrado = () => {
+    res.status(422).json({
+      error: "ATRASO_JA_COBRADO",
+      detalhe:
+        "O atraso desta peça já virou parcela no carnê — estorne ou cancele a parcela do " +
+        "atraso primeiro, senão a cobrança fica órfã de retirada.",
+      campos: [{ campo: "retiradaDataReal", motivo: "Há atraso cobrado sobre esta retirada" }],
+    });
+  };
+  if (desfazARetirada && (await atrasoCobradoSobreEstaRetirada(db, false))) {
+    recusaAtrasoCobrado();
+    return;
   }
 
   const mudouJanelas =
@@ -1276,6 +1290,13 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
   // escrita solta. A tranca vai na linha do VESTIDO, a mesma dos criadores
   // concorrentes, e a verificação relê pelo executor da transação.
   const atualizado = await db.transaction(async (tx) => {
+    // E245 (B5): a guarda do E231 relida SOB a tranca do contrato — antes do
+    // vestido, na ordem do módulo (contratos → bloqueios → vestidos). No pool
+    // ela e a cobrança do atraso se cruzavam: retirada desfeita E cobrança
+    // viva sobre ela, a parcela órfã que a S-O122/E231 existe para impedir.
+    if (desfazARetirada && (await atrasoCobradoSobreEstaRetirada(tx, true))) {
+      return { atrasoCobrado: true as const };
+    }
     let regra;
     if (mudouJanelas) {
       await tx.select({ id: vestidosTable.id }).from(vestidosTable)
@@ -1314,8 +1335,20 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
         ocupacaoFim: ocupacao?.fim ?? null,
         updatedAt: new Date(),
       })
-      .where(and(eq(bloqueioVestidosTable.id, bloqueioId), eq(bloqueioVestidosTable.lojaId, lojaId)))
+      .where(and(
+        eq(bloqueioVestidosTable.id, bloqueioId),
+        eq(bloqueioVestidosTable.lojaId, lojaId),
+        // E245 (B5): a peça só SAI por bloqueio VIVO. O cancelamento em voo
+        // (`PATCH /reservas` ou `POST /contratos/:id/cancelar`) passava entre a
+        // leitura de cima e esta escrita, e o bloqueio ficava cancelado E "na
+        // rua" — o predicado do E225 então ocupava o vestido antigo por uma
+        // peça que não está com ninguém. Só a RETIRADA nova pede bloqueio vivo:
+        // devolução e lavagem se registram no cancelado de propósito (E225 —
+        // a peça devolvida de um contrato morto tem de voltar ao acervo).
+        ...(registraASaida ? [isNull(bloqueioVestidosTable.canceladoEm)] : []),
+      ))
       .returning();
+    if (!bloqueio) return { cancelado: true as const };
 
     /**
      * S-O11 — trocar a dona de uma reserva é mexer em de quem é a peça, e a
@@ -1337,8 +1370,19 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
         },
       });
     }
-    return { bloqueio: bloqueio! };
+    return { bloqueio };
   });
+  if ("atrasoCobrado" in atualizado) {
+    recusaAtrasoCobrado();
+    return;
+  }
+  if ("cancelado" in atualizado) {
+    res.status(409).json({
+      error: "RESERVA_CANCELADA",
+      detalhe: "Esta reserva foi cancelada — a peça não sai por uma reserva cancelada.",
+    });
+    return;
+  }
   if ("conflitos" in atualizado) {
     res.status(409).json({ error: "VESTIDO_INDISPONIVEL", conflitos: atualizado.conflitos });
     return;
@@ -2853,6 +2897,32 @@ router.post(
 
     const parcelaId = randomUUID();
     const desfecho = await db.transaction(async (tx) => {
+      /**
+       * **E245 (B1) — a tranca que a avaria ganhou no E159 e o E212 não copiou.**
+       *
+       * O docblock desta rota dizia "mesmo desenho do E97/F22 para a avaria",
+       * e a avaria, dois dias antes, já trancava o contrato ANTES do
+       * `max(numero)` (R9/V11, `:2107-2130`). Aqui o contrato era lido no
+       * POOL, o `max` corria solto e o CAS só olhava `atrasoParcelaId`. Duas
+       * cenas, as duas medidas: cobrar × cancelar em voo → a cobrança de
+       * R$ 1.750,00 nascia PREVISTA num contrato CANCELADO (o formato do K7);
+       * e com o contrato trancado por outra transação a rota já tinha lido o
+       * `max` e inserido a parcela antes de esperar — a janela do V11, em
+       * que dois `max` iguais fazem o segundo INSERT morrer em 23505
+       * (`REGISTRO_DUPLICADO`, lido como "já cobrei"). Sob a tranca: status e
+       * `atrasoParcelaId` relidos, os números em série. A ordem é a do módulo:
+       * contrato → parcelas.
+       */
+      const [sobTranca] = await tx
+        .select({ status: contratosTable.status, atrasoParcelaId: contratosTable.atrasoParcelaId })
+        .from(contratosTable)
+        .where(and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)))
+        .for("update");
+      if (sobTranca?.status !== "ATIVO") return { contratoNaoAtivo: true as const };
+      if (sobTranca.atrasoParcelaId && (await cobrancaViva(sobTranca.atrasoParcelaId, tx))) {
+        throw new AtrasoJaCobrado();
+      }
+
       // Mesma conta da rota irmã do E97: `numero: 0` é a ENTRADA do carnê, e
       // com `unique(contratoId, numero)` um zero fixo devolveria
       // `REGISTRO_DUPLICADO` — um 409 que se lê como "já cobrei isso".
@@ -2896,8 +2966,10 @@ router.post(
         .set({ atrasoParcelaId: parcelaId, updatedAt: new Date() })
         .where(and(
           eq(contratosTable.id, contratoId),
-          contrato.atrasoParcelaId
-            ? eq(contratosTable.atrasoParcelaId, contrato.atrasoParcelaId)
+          // E245: o CAS relê o que a tranca leu — status E o vínculo.
+          eq(contratosTable.status, "ATIVO"),
+          sobTranca.atrasoParcelaId
+            ? eq(contratosTable.atrasoParcelaId, sobTranca.atrasoParcelaId)
             : isNull(contratosTable.atrasoParcelaId),
         ))
         .returning();
@@ -2934,6 +3006,11 @@ router.post(
       throw err;
     });
 
+    if ("contratoNaoAtivo" in desfecho) {
+      // E245: o cancelamento passou entre a leitura de cima e a tranca.
+      res.status(422).json({ error: "CONTRATO_NAO_ATIVO", detalhe: "Contrato não está ativo" });
+      return;
+    }
     if ("jaCobrada" in desfecho) {
       res.status(409).json({
         error: "ATRASO_JA_COBRADO",

@@ -65,6 +65,44 @@ describe("E158 — as guardas de contratos.ts relidas sob a tranca", () => {
     return { lead, contrato: resposta.body as { id: string; parcelas: { id: string; numero: number }[] } };
   }
 
+  // ─────────────────── E245/B8 — o que a tranca lê é o que o instrumento congela ───────
+
+  /**
+   * **E245 (B8 da conferência) — a qualificação vem do lead SOB a tranca.** O
+   * `POST /contratos` trancava a linha do lead (K3) lendo só o `id`, e a
+   * qualificação que o instrumento congela (E215) vinha do `lead` do POOL, lido
+   * antes: o CPF que a recepção corrigiu no meio entrava VELHO no papel — o
+   * documento assinado com o número errado. Mesmo formato na rescisão: o
+   * `sobTranca` do cancelar relia só `status`, e `calcularRescisao` decidia com
+   * `valorTotal`/`prazoDevolucaoReservaDias`/`dataRetirada` do pool.
+   */
+  it("E245/B8 · a recepção corrige o CPF em voo: o contrato congela o CPF NOVO, não o do pool", async () => {
+    const lead = await criarLead(f);
+    const cliente = await pool.connect();
+    try {
+      await cliente.query("BEGIN");
+      await cliente.query(`UPDATE leads SET cpf = '529.982.247-25' WHERE id = $1`, [lead.id]);
+      const postP = Promise.resolve(
+        agent.post(`/api/lojas/${f.lojaId}/contratos`).send({
+          leadId: lead.id,
+          vendedoraId: f.vendedoraId,
+          valorTotal: 1000,
+          parcelas: [{ numero: 1, valorPrevisto: 1000, vencimento: dataFutura(30) }],
+        }),
+      );
+      await new Promise((r) => setTimeout(r, 300));
+      await cliente.query("COMMIT");
+      const r = await postP;
+      expect(r.status, JSON.stringify(r.body)).toBe(201);
+      // ANTES: "390.533.447-05" — o CPF da fixture, lido no pool antes da tranca.
+      const [gravado] = await db.select({ cpf: contratosTable.cpf }).from(contratosTable).where(eq(contratosTable.id, r.body.id));
+      expect(gravado!.cpf).toBe("529.982.247-25");
+    } finally {
+      await cliente.query("ROLLBACK").catch(() => {});
+      cliente.release();
+    }
+  });
+
   // ─────────────────── K1/P1 — o dinheiro que escapava do cancelamento ───────
 
   it("K1/P1 · o Pix que entra na janela do cancelamento NÃO sobrevive com o dinheiro dentro", async () => {

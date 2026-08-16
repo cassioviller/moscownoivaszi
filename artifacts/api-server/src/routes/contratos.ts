@@ -881,9 +881,13 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
      * `contratos_lead_ativo_unico` fecha por baixo o que esta releitura fecha
      * por cima.
      */
-    await tx.select({ id: leadsTable.id }).from(leadsTable)
+    // E245 (B8): a linha INTEIRA, não só o `id` — a qualificação que o
+    // instrumento congela (E215) vem daqui, e não do `lead` do pool: o CPF que
+    // a recepção corrigiu no meio (a S-O121 da ficha) entrava velho no papel.
+    const [leadSobTranca] = await tx.select().from(leadsTable)
       .where(and(eq(leadsTable.id, contratoData.leadId), eq(leadsTable.lojaId, lojaId)))
       .for("update");
+    if (!leadSobTranca) return { leadSumiu: true as const };
     const [ativoAgora] = await tx.select({ id: contratosTable.id }).from(contratosTable)
       .where(and(
         eq(contratosTable.leadId, contratoData.leadId),
@@ -965,7 +969,7 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       // E215 — a qualificação CONGELA aqui, vinda da ficha conferida acima. O
       // `cpf` do corpo deixou de ser lido: era a segunda grafia do mesmo dado,
       // e das duas só a ficha é editável depois.
-      ...congelarQualificacao(lead),
+      ...congelarQualificacao(leadSobTranca),
       vestidoDescricao: contratoData.vestidoDescricao ?? null,
       valorTotal: contratoData.valorTotal,
       descontoTipo,
@@ -1141,6 +1145,12 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
   // e por um dia. Esta é a régua do módulo inteiro para corrida perdida.
   if ("duplicado" in result) {
     res.status(409).json({ error: "CONTRATO_ATIVO_DUPLICADO", detalhe: "Este lead já possui um contrato ativo" });
+    return;
+  }
+  // E245 (B8): a noiva foi apagada entre a leitura de cima e a tranca — o mesmo
+  // 422 da guarda lenta (`:295`).
+  if ("leadSumiu" in result) {
+    res.status(422).json({ error: "LEAD_INVALIDO", detalhe: "Lead não encontrado nesta loja" });
     return;
   }
 
@@ -1802,8 +1812,12 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
       .where(and(eq(leadsTable.id, contrato.leadId), eq(leadsTable.lojaId, lojaId)))
       .for("update");
 
+    // E245 (B8): a linha INTEIRA sob a tranca, não só o `status` — a rescisão
+    // (E217) lê `valorTotal`, `prazoDevolucaoReservaDias` e `dataRetirada`, e
+    // eles vinham do `contrato` do POOL: o prazo da 18ª ou a data de retirada
+    // corrigidos no meio (E224) decidiam a conta com o valor velho.
     const [sobTranca] = await tx
-      .select({ status: contratosTable.status })
+      .select()
       .from(contratosTable)
       .where(and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)))
       .for("update");
@@ -1919,11 +1933,12 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
             )
           : false,
       })),
-      valorTotalContrato: contrato.valorTotal,
+      // E245 (B8): do registro sob a tranca, não do pool.
+      valorTotalContrato: sobTranca.valorTotal,
       totalPagoPlano: reais(totalPagoPlanoC),
       reservaPaga: reais(reservaPagaC),
-      prazoDevolucaoReservaDias: contrato.prazoDevolucaoReservaDias,
-      dataRetirada: contrato.dataRetirada,
+      prazoDevolucaoReservaDias: sobTranca.prazoDevolucaoReservaDias,
+      dataRetirada: sobTranca.dataRetirada,
       hoje: agora,
     });
 
@@ -1952,7 +1967,7 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
         id: randomUUID(),
         lojaId: lojaId as string,
         tipo: "DEVOLUCAO",
-        descricao: `Devolução — rescisão do contrato de ${contrato.vestidoDescricao ?? "locação"} (${rescisao.explicacao})`,
+        descricao: `Devolução — rescisão do contrato de ${sobTranca.vestidoDescricao ?? "locação"} (${rescisao.explicacao})`,
         valorPrevisto: devolucaoPorContaAPagar,
         vencimento: inicioDoDia(addDias(diaLocal(agora), PRAZO_DEVOLUCAO_DA_LOJA_DIAS)),
         origemContratoId: contrato.id,
@@ -2077,7 +2092,7 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
       detalhe: {
         motivo: parsed.data.motivo,
         destinoPago: parsed.data.destinoPago ?? "manter",
-        valorTotal: contrato.valorTotal,
+        valorTotal: sobTranca.valorTotal,
         // O que o cancelamento desfez, nas duas pernas: o que já tinha entrado
         // (e voltou, se estornou) e o que deixou de ser cobrável.
         totalRecebido: totalRecebidoAntes,
@@ -2672,6 +2687,12 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("contrat
         eq(parcelasTable.id, existente.id),
         eq(parcelasTable.status, existente.status),
         sql`${parcelasTable.valorRecebido} is not distinct from ${existente.valorRecebido}::numeric`,
+        // E245 (B3): o perdão também é estado LIDO — a mora que este ato
+        // calculou (`aMoraC`, a linha MORA que vai nascer) supõe que
+        // `mora_perdoada_em` é o que era. Receber R$ 515,00 × perdoar no mesmo
+        // segundo nascia a MORA de R$ 15,00 PAGA numa parcela "perdoada", com
+        // `MORA_PERDOADA` e `MORA_RECEBIDA` na mesma trilha.
+        sql`${parcelasTable.moraPerdoadaEm} is not distinct from ${existente.moraPerdoadaEm}`,
       ))
       .returning();
     // Zero linhas: alguém recebeu nesta parcela entre o nosso SELECT e agora.
@@ -2897,6 +2918,10 @@ router.post(
           eq(parcelasTable.id, parcelaId),
           eq(parcelasTable.lojaId, lojaId),
           isNull(parcelasTable.moraPerdoadaEm),
+          // E245 (B3): e o STATUS lido — a guarda `SEM_MORA` acima decidiu
+          // sobre uma parcela aberta; se o recebimento passou no meio e a
+          // quitou, perdoar carimbaria uma parcela PAGA.
+          eq(parcelasTable.status, existente.status),
         ))
         .returning();
       if (!linha) return null;
@@ -2920,6 +2945,16 @@ router.post(
       // Perdeu a corrida do duplo clique: o perdão já está de pé, e devolver a
       // parcela como está é a resposta certa — o estado final é o pedido.
       const [linha] = await db.select().from(parcelasTable).where(eq(parcelasTable.id, parcelaId));
+      // E245 (B3): ou perdeu para o RECEBIMENTO — a parcela quitou no meio e já
+      // não há mora a perdoar. Aí o estado final NÃO é o pedido, e a resposta é
+      // a mesma que a guarda de cima daria agora.
+      if (linha && !linha.moraPerdoadaEm && moraDe({ ...linha, moraPerdoadaEm: null }, ipcaPerdao) === null) {
+        res.status(422).json({
+          error: "SEM_MORA",
+          detalhe: "Esta parcela não está vencida com saldo em aberto — não há multa nem juros a perdoar.",
+        });
+        return;
+      }
       res.json(PerdoarMoraResponse.parse(await comOContratoDela(linha!)));
       return;
     }

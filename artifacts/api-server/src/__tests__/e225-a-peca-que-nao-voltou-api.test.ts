@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { db, bloqueioVestidosTable, contratoBloqueiosTable, contratosTable } from "@workspace/db";
+import { db, pool, bloqueioVestidosTable, contratoBloqueiosTable, contratosTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import {
   criarBloqueio,
@@ -126,6 +126,47 @@ describe("E225 — a peça que saiu e não voltou ocupa mesmo com o contrato can
 
     const r = await reservarPara(vestido.id, noivaB.id, 30);
     expect(r.status, JSON.stringify(r.body)).toBe(201);
+  });
+
+  /**
+   * **E245 (B5 da conferência) — a peça só SAI por bloqueio vivo.** O
+   * `PATCH /bloqueios` escrevia `retiradaDataReal` sem repetir
+   * `cancelado_em IS NULL`: o cancelamento em voo passava entre a leitura e a
+   * escrita e o bloqueio ficava cancelado E "na rua" — o predicado do E225
+   * então ocupava o vestido por uma peça que não está com ninguém. A
+   * devolução e a lavagem continuam se registrando no cancelado (o `it` acima).
+   */
+  it("E245 — registrar a RETIRADA × cancelar em voo: a retirada perde (409) e a peça não fica \"na rua\" por reserva morta", async () => {
+    const noivaA = await criarLead(f);
+    const vestido = await criarVestido(f);
+    const bloqueio = await criarBloqueio(f, {
+      vestidoId: vestido.id,
+      tipo: "RESERVA_CASAMENTO",
+      leadId: noivaA.id,
+      casamentoData: diasReais(3),
+    });
+    const cliente = await pool.connect();
+    try {
+      await cliente.query("BEGIN");
+      await cliente.query(`UPDATE bloqueio_vestidos SET cancelado_em = now() WHERE id = $1`, [bloqueio.id]);
+      const patchP = Promise.resolve(
+        agent.patch(`/api/lojas/${f.lojaId}/bloqueios/${bloqueio.id}`).send({ retiradaDataReal: new Date().toISOString() }),
+      );
+      await new Promise((r) => setTimeout(r, 300));
+      await cliente.query("COMMIT");
+      const r = await patchP;
+      // ANTES: 200 — bloqueio cancelado com retirada_data_real preenchida.
+      expect(r.status, JSON.stringify(r.body)).toBe(409);
+      expect(r.body.error).toBe("RESERVA_CANCELADA");
+    } finally {
+      await cliente.query("ROLLBACK").catch(() => {});
+      cliente.release();
+    }
+    const [depois] = await db.select().from(bloqueioVestidosTable).where(eq(bloqueioVestidosTable.id, bloqueio.id));
+    expect(depois!.retiradaDataReal).toBeNull();
+    // E o vestido está LIVRE para outra noiva — nada "na rua".
+    const noivaB = await criarLead(f);
+    expect((await reservarPara(vestido.id, noivaB.id, 30)).status).toBe(201);
   });
 
   it("cancelado SEM retirada segue soltando na hora — o cancelamento comum não regride", async () => {
