@@ -97,6 +97,8 @@ const MENSAGENS_ERRO: Record<string, string> = {
   SEM_MOVIMENTO: "Nenhuma venda nesta competência.",
   COMISSAO_JA_PAGA: "A comissão já foi paga — estorne o pagamento antes de reabrir.",
   FECHAMENTO_NAO_ENCONTRADO: "Fechamento não encontrado.",
+  // S-O121 (decisão da dona, 15/08/2026): reabre-se de trás para a frente.
+  FECHAMENTO_NAO_E_O_ULTIMO: "Esta vendedora tem fechamento mais recente — reabra do último para o primeiro.",
 };
 
 const MOTIVO_FAIXA: Record<string, string> = {

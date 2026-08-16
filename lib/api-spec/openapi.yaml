@@ -5120,6 +5120,12 @@ paths:
           description: Fechamento não encontrado nesta loja
         "409":
           description: A conta de comissão já foi paga (COMISSAO_JA_PAGA)
+        "422":
+          description: >
+            FECHAMENTO_NAO_E_O_ULTIMO — só o último fechamento da vendedora
+            pode ser reaberto (S-O121, decisão da dona em 15/08/2026); o corpo
+            traz `reabraAntes` com os posteriores, do mais recente ao mais
+            antigo.
   /lojas/{lojaId}/comissao/pendencias:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"

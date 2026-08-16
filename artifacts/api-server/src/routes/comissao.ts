@@ -10,7 +10,7 @@ import {
   usuariosTable,
   usuariosLojasTable,
 } from "@workspace/db";
-import { eq, and, count, gte, lt, lte, inArray, isNull, isNotNull, desc, sql } from "drizzle-orm";
+import { eq, and, count, gt, gte, lt, lte, inArray, isNull, isNotNull, desc, sql } from "drizzle-orm";
 import { alias as aliasedTable } from "drizzle-orm/pg-core";
 import { erroDeValidacao } from "../lib/erros";
 import { registrarAuditoria } from "../lib/auditoria";
@@ -1213,6 +1213,27 @@ router.delete("/lojas/:lojaId/comissao/fechamentos/:fechamentoId", async (req, r
      * UNIQUE e referencia a conta — apagar a conta antes deixaria a FK
      * (ON DELETE SET NULL) mexendo numa linha que já vai embora.
      */
+    /**
+     * S-O121 — **só o ÚLTIMO fechamento da vendedora pode ser reaberto**
+     * (decisão da dona, 15/08/2026). Reabrir um mês no meio da série muda a
+     * base de todos os que vieram depois e nada os recalcula: o parcial de
+     * julho que agosto absorveu levava os R$ 4.000,00 sem devolvê-los. A
+     * leitura é SOB TRANCA das linhas posteriores desta vendedora — é contra
+     * elas que o `FOR UPDATE` do fechar (E238) faz fila, então "não há
+     * posterior" continua verdade até esta transação commitar.
+     */
+    const posteriores = await tx
+      .select({ id: comissaoFechamentosTable.id, competencia: comissaoFechamentosTable.competencia })
+      .from(comissaoFechamentosTable)
+      .where(and(
+        eq(comissaoFechamentosTable.lojaId, lojaId),
+        eq(comissaoFechamentosTable.vendedoraId, fechamento.vendedoraId),
+        gt(comissaoFechamentosTable.competencia, fechamento.competencia),
+      ))
+      .orderBy(desc(comissaoFechamentosTable.competencia))
+      .for("update");
+    if (posteriores.length > 0) return { naoEOUltimo: true as const, posteriores };
+
     const [removido] = await tx
       .delete(comissaoFechamentosTable)
       .where(eq(comissaoFechamentosTable.id, fechamentoId))
@@ -1285,6 +1306,16 @@ router.delete("/lojas/:lojaId/comissao/fechamentos/:fechamentoId", async (req, r
   }
   if ("jaReaberto" in resultado) {
     res.status(404).json({ error: "FECHAMENTO_NAO_ENCONTRADO" });
+    return;
+  }
+  if ("naoEOUltimo" in resultado && resultado.posteriores) {
+    const posteriores = resultado.posteriores;
+    const meses = posteriores.map((p) => p.competencia).join(", ");
+    res.status(422).json({
+      error: "FECHAMENTO_NAO_E_O_ULTIMO",
+      detalhe: `Esta vendedora tem fechamento posterior (${meses}) — reabra do mais recente para o mais antigo: primeiro ${posteriores[0]!.competencia}.`,
+      reabraAntes: posteriores.map((p) => ({ fechamentoId: p.id, competencia: p.competencia })),
+    });
     return;
   }
 
