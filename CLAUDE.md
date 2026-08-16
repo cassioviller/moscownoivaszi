@@ -67,9 +67,21 @@ para o documento que manda.
    grossas de propósito); a S-CF2 fechada com o `e2e/65` (`206d3e51`, E2E 187);
    a S-A2 fechada por decisão (não há mais fotos — as 136 saídas ficam como
    piso); P1–P3 decididas (jurídico/gesto da instalação, fora do sistema); a
-   S-M17 fica aberta porque **a instalação real ainda não existe**. **A
-   conferência do contrato não tem sobra aberta; não há trilha em curso com
-   fila de código; a única sobra viva do repositório é a S-M17.** A régua
+   S-M17 fica aberta porque **a instalação real ainda não existe**. 
+
+   **E então a dona rodou um `/code-review max` do app inteiro, e ele abriu a
+   fila seguinte.** Dez ângulos sobre `fb3dcb50`, **19 achados**, conferidos um
+   a um antes de entrar na tabela (nenhum descartado): o primeiro era que **a
+   suíte de API estava VERMELHA no `main`** — o `e2e/65` só entrou nas
+   varreduras que enumeram por `git ls-files` depois do `git add`, e este
+   ponteiro publicava "API 1865 verde" (consertado em `3c71d474`; virou a
+   **regra 35** do METODO). Os outros **18 estão ABERTOS** na tabela de Sobras
+   da conferência como **S-R2…S-R19 — 1 🔴 · 8 🟠 · 8 🟡 · 2 🔵**, e **sete
+   nasceram da fila de hoje** (E242, E244, E245, higiene, E248). O 🔴 é o
+   **S-R2**: casamento ADIADO não move `contratos.data_devolucao`, e desde o
+   E244 é ela que manda na 16ª — **R$ 12.000,00 de EXTRAVIO** sobre uma noiva
+   que devolveu em dia. **A fila de amanhã é essa tabela; conte-a.** A outra
+   sobra viva do repositório continua sendo a S-M17. A régua
    do E241 achou a suíte de API vermelha no `main` desde `ec53e2d6`
    (consertada em `c8dda201`). Também: as duas
    últimas sobras da ótica fecharam (S-O131 "ganha tela" e a S-O146 🟠 que ela
@@ -88,7 +100,7 @@ para o documento que manda.
    (instalação nova, ~1 min): rode-a antes de mexer em seed, schema ou
    `global-setup`.
 
-   **O `main` está 28+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
+   **O `main` está 31+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
    de manhã; a conferência, o E241 e os docs não estão publicados). Confira com
    `git rev-list --count origin/main..main` antes de assumir — esta linha
    envelhece a cada commit. Todo worktree de agente nasce em `origin/main`
