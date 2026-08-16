@@ -104,7 +104,13 @@ describe("E238 — reabrir × fechar, no mesmo segundo", () => {
         const respostaP = Promise.resolve(
           ag.post(`/api/lojas/${f.lojaId}/comissao/fechamentos`).send({ competencia: "2025-07" }),
         );
+        // E247 (G8): a prova de que a rota ESPEROU — sob máquina carregada, o sleep
+        // sozinho fica verde sem tranca nenhuma. A resposta NÃO pode ter chegado
+        // antes do COMMIT.
+        let chegou_respostaP = false;
+        void respostaP.then(() => { chegou_respostaP = true; }, () => { chegou_respostaP = true; });
         await new Promise((r) => setTimeout(r, 500));
+        expect(chegou_respostaP, "a rota respondeu ANTES do commit — não esperou a tranca").toBe(false);
         await cliente.query("COMMIT");
 
         const resposta = await respostaP;
@@ -180,7 +186,11 @@ describe("E238 — reabrir × fechar, no mesmo segundo", () => {
         const respostaP = Promise.resolve(
           ag.post(`/api/lojas/${f.lojaId}/comissao/fechamentos`).send({ competencia: "2025-08" }),
         );
+        // E247 (G8): a mesma prova de espera da cena acima.
+        let chegou_respostaP = false;
+        void respostaP.then(() => { chegou_respostaP = true; }, () => { chegou_respostaP = true; });
         await new Promise((r) => setTimeout(r, 500));
+        expect(chegou_respostaP, "a rota respondeu ANTES do commit — não esperou a tranca").toBe(false);
         await cliente.query("COMMIT");
 
         const resposta = await respostaP;

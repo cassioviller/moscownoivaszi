@@ -44,8 +44,30 @@ const CAMPOS_DE_NEGOCIO = ["casamentoData", "dataCasamento"] as const;
  * Os arquivos que escrevem no banco sem passar por porta: os helpers de fixture
  * da suíte de API e o `global-setup` do E2E. Um spec que chame `POST` está
  * coberto pela âncora do E197 e não entra aqui.
+ *
+ * **E247 (G5 da conferência) — a lista era CURADA (dois arquivos), e o
+ * `e2e/52` fazia `db.insert(leadsTable)` com `casamentoData` fora dela.** A
+ * lista passa a ser DERIVADA do versionamento: todo teste ou fixture que
+ * insere direto numa tabela com data de negócio entra, e os dois curados são o
+ * piso (a régua da régua abaixo continua conferindo que existem). O que se
+ * examina em cada arquivo é só a SENTENÇA de escrita direta (`.insert(` na
+ * vizinhança acima), porque um payload de `POST` no mesmo arquivo é coberto
+ * pela âncora da porta (E197) — e o `lote3` tem dezenas deles.
  */
-const ESCRITORES_DIRETOS = ["artifacts/api-server/src/__tests__/helpers.ts", "e2e/global-setup.ts"];
+const CURADOS = ["artifacts/api-server/src/__tests__/helpers.ts", "e2e/global-setup.ts"];
+const TABELAS_COM_DATA_DE_NEGOCIO = /\.insert\((leadsTable|reservasTable|bloqueioVestidosTable)\)/;
+function escritoresDiretos(): string[] {
+  // O recorte é o das FIXTURES de teste (E2E e suíte de API). `scripts/` fica
+  // fora de propósito: a demo (`loja-de-demonstracao.ts`) escreve às 16:00 SP
+  // por `emDias(n, 16, 0)` — mesmo dia em SP e em UTC, ancorada de fato e fora
+  // da gramática desta régua; ela tem as próprias réguas (S-C75, trancas).
+  const versionados = execSync("git ls-files -- e2e artifacts/api-server/src/__tests__", { cwd: RAIZ, encoding: "utf8" })
+    .split("\n")
+    .filter((r) => r.endsWith(".ts") && !r.endsWith(".d.ts"));
+  const derivados = versionados.filter((rel) => TABELAS_COM_DATA_DE_NEGOCIO.test(readFileSync(join(RAIZ, rel), "utf8")));
+  return [...new Set([...CURADOS, ...derivados])].sort();
+}
+const ESCRITORES_DIRETOS = escritoresDiretos();
 
 function linhas(rel: string): { n: number; texto: string }[] {
   return readFileSync(join(RAIZ, rel), "utf8")
@@ -57,9 +79,15 @@ describe("varredura — data de negócio escrita direto no banco (S-O119)", () =
   it("os escritores diretos existem, e a lista não envelheceu em silêncio", () => {
     // Régua da régua: se um destes arquivos for renomeado, a varredura passa a
     // não varrer nada e ficaria verde por vacuidade — que é a regra 34.
-    for (const rel of ESCRITORES_DIRETOS) {
+    for (const rel of CURADOS) {
       expect(() => readFileSync(join(RAIZ, rel), "utf8"), `${rel} sumiu`).not.toThrow();
     }
+    // E247 (G5): a lista derivada contém os curados e alcança quem insere direto
+    // fora deles — o `e2e/52` é o que a lente achou; se ele parar de inserir
+    // direto, esta linha muda com ele.
+    for (const rel of CURADOS) expect(ESCRITORES_DIRETOS).toContain(rel);
+    expect(ESCRITORES_DIRETOS).toContain("e2e/52-orcamento-vira-contrato.spec.ts");
+    expect(ESCRITORES_DIRETOS.length).toBeGreaterThan(CURADOS.length);
   });
 
   it("toda escrita direta de data de negócio passa por âncora", () => {
@@ -85,6 +113,14 @@ describe("varredura — data de negócio escrita direto no banco (S-O119)", () =
         if (!campo) continue;
         // Declaração de tipo (`casamentoData: Date`) não é escrita.
         if (/:\s*(Date|string)\b/.test(texto)) continue;
+        // E247 (G5): só a ESCRITA DIRETA — o `.insert(` tem de estar na
+        // vizinhança acima (até 12 linhas). Payload de `POST` no mesmo arquivo
+        // é coberto pela âncora da porta (E197), e nos curados TODA sentença
+        // continua sendo examinada (eles só escrevem direto).
+        if (!CURADOS.includes(rel)) {
+          const acima = todas.slice(Math.max(0, n - 13), n - 1).map((l) => l.texto).join(" ");
+          if (!/\.insert\(/.test(acima)) continue;
+        }
         sentencasExaminadas++;
         /**
          * A SENTENÇA, não a linha. O valor pode ser um ternário quebrado em

@@ -442,12 +442,17 @@ describe("E213 — a parcela vencida tem multa e juros", () => {
   it("a parcela CANCELADA não deve mora — não é dívida, é linha que saiu da cobrança", async () => {
     const { parcela } = await parcelaCom({ vencimento: diasAtras(30) });
     await db.update(parcelasTable).set({ status: "CANCELADA" }).where(eq(parcelasTable.id, parcela.id));
+    // E247 (G7): a cena não afirmava nada — `de: hoje, ate: hoje` contra um
+    // vencimento de 30 dias atrás nunca achava a parcela, e o `if` não rodava.
+    // O recorte é por VENCIMENTO, e a parcela CANCELADA continua na lista sem
+    // filtro de status (só `abertas` a exclui): ela é achada, e a mora é nula.
     const r = await agent
       .get(`/api/lojas/${f.lojaId}/financeiro/parcelas`)
-      .query({ de: hojeLocal(), ate: hojeLocal() })
+      .query({ de: diasAtras(31).toISOString().slice(0, 10), ate: hojeLocal() })
       .expect(200);
     const achada = (r.body as { id: string; mora: unknown }[]).find((p) => p.id === parcela.id);
-    if (achada) expect(achada.mora).toBeNull();
+    expect(achada, "a parcela CANCELADA tem de aparecer no recorte por vencimento").toBeDefined();
+    expect(achada!.mora).toBeNull();
   });
 
   it("a parcela de contrato cancelado não quebra a fila", async () => {

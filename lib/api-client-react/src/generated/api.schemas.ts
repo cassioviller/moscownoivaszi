@@ -4029,7 +4029,10 @@ em: string;
 };
 
 export type CreateParcelaAvulsaBody = {
-  /** @minLength 1 */
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
   descricao: string;
   /** @exclusiveMinimum 0 */
   valorPrevisto: number;

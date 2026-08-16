@@ -123,7 +123,12 @@ describe("S-C242 — duas trocas simultâneas do mesmo contrato", () => {
           .post(`/api/lojas/${f.lojaId}/contratos/${contratoId}/trocar-peca`)
           .send({ bloqueioId: bloqueioA.id, vestidoNovoId: vestidoC.id }),
       );
+      // E247 (G8): a prova de que as duas ESPERARAM — nenhuma respondeu antes do commit.
+      let chegouPrimeira = false, chegouSegunda = false;
+      void primeira.then(() => { chegouPrimeira = true; }, () => { chegouPrimeira = true; });
+      void segunda.then(() => { chegouSegunda = true; }, () => { chegouSegunda = true; });
       await new Promise((r) => setTimeout(r, 400));
+      expect([chegouPrimeira, chegouSegunda], "uma troca respondeu ANTES do commit — não esperou a tranca").toEqual([false, false]);
       await cliente.query("COMMIT");
 
       const respostas = await Promise.all([primeira, segunda]);

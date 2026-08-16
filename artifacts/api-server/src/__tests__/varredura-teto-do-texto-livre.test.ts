@@ -81,11 +81,59 @@ function propriedadesDeEntrada(fonte: string): Propriedade[] {
   return out;
 }
 
+/**
+ * **E247 (G1 da conferência) — a SEGUNDA forma: o `requestBody` INLINE.**
+ *
+ * O leitor de cima só entra em `components.schemas` com sufixo
+ * `Input|Update|Body`. Três operações declaram o corpo direto no `paths`
+ * (`schema: { type: object, properties: … }` dentro do `requestBody`), e a
+ * régua prometia "todo texto livre tem teto" contando 35 — o
+ * `createParcelaAvulsa.descricao` (`minLength: 1`, sem `maxLength`) era o 36º,
+ * e 100 kB entravam por ele. Este leitor percorre os `paths` e nomeia o
+ * pseudo-schema pelo `operationId`.
+ */
+function propriedadesInline(fonte: string): Propriedade[] {
+  const linhas = fonte.split("\n");
+  const out: Propriedade[] = [];
+  let operationId: string | null = null;
+  let emRequestBody = false;
+  let emProps = false;
+  for (let i = 0; i < linhas.length; i++) {
+    const l = linhas[i]!;
+    if (!l.trim() || l.trim().startsWith("#")) continue;
+    const ind = l.length - l.trimStart().length;
+    const op = /^\s{6}operationId:\s*(\S+)/.exec(l);
+    if (op) { operationId = op[1]!; emRequestBody = false; emProps = false; continue; }
+    if (ind === 6 && l.trim() === "requestBody:") { emRequestBody = true; emProps = false; continue; }
+    if (ind === 6 && l.trim() !== "requestBody:") { emRequestBody = false; emProps = false; }
+    if (!emRequestBody) continue;
+    if (ind === 14 && l.trim() === "properties:") { emProps = true; continue; }
+    if (ind <= 14 && emProps && l.trim() !== "properties:") emProps = false;
+    if (!emProps || ind !== 16) continue;
+    const pm = /^([A-Za-z0-9_]+):\s*(.*)$/.exec(l.trim());
+    if (!pm) continue;
+    let corpo = pm[2]!;
+    for (let j = i + 1; j < linhas.length; j++) {
+      const lj = linhas[j]!;
+      if (!lj.trim() || lj.trim().startsWith("#")) continue;
+      if (lj.length - lj.trimStart().length <= 16) break;
+      corpo += "\n" + lj.trim();
+    }
+    if (!/type:\s*(\[?\s*"?string"?)/.test(corpo)) continue;
+    if (/\benum:|format:\s*(date|uuid|email|date-time)/.test(corpo)) continue;
+    const ml = /maxLength:\s*(\d+)/.exec(corpo);
+    out.push({ schema: `${operationId ?? "?"} (requestBody inline)`, nome: pm[1]!, corpo, linha: i + 1, maxLength: ml ? Number(ml[1]) : null });
+  }
+  return out;
+}
+
 const classe = (nome: string): "nota" | "frase" | null => (NOTA.test(nome) ? "nota" : FRASE.test(nome) ? "frase" : null);
 
 describe("varredura — o texto livre que entra pela API tem teto, e é um só por campo (S-O109)", () => {
   const spec = readFileSync(SPEC, "utf8");
-  const props = propriedadesDeEntrada(spec);
+  // E247 (G1): as duas formas — os schemas nomeados E os corpos inline.
+  const inline = propriedadesInline(spec);
+  const props = [...propriedadesDeEntrada(spec), ...inline];
   const livres = props.filter((p) => classe(p.nome) !== null);
 
   it("lê os schemas de entrada inteiros — 205 strings livres em 2026-08-15, 35 delas de texto", () => {
@@ -93,6 +141,40 @@ describe("varredura — o texto livre que entra pela API tem teto, e é um só p
     // Piso da classe: se ele desabar, ou os nomes mudaram de grafia ou o leitor
     // deixou de entrar em `properties:`.
     expect(livres.length, "campos de texto livre").toBeGreaterThanOrEqual(30);
+    // E247 (G1): o leitor inline tem o que ler — o `createParcelaAvulsa` é o
+    // que a lente achou; se ele virar schema nomeado, esta linha muda com ele.
+    expect(inline.map((p) => `${p.schema}.${p.nome}`)).toContain("createParcelaAvulsa (requestBody inline).descricao");
+  });
+
+  it("o leitor inline acha o corpo plantado no path e ignora o schema por $ref", () => {
+    const fonte = [
+      "paths:",
+      "  /x:",
+      "    post:",
+      "      operationId: plantada",
+      "      requestBody:",
+      "        content:",
+      "          application/json:",
+      "            schema:",
+      "              type: object",
+      "              properties:",
+      "                descricao: { type: string, minLength: 1 }",
+      "                valor: { type: number }",
+      "                vencimento: { type: string, format: date-time }",
+      "      responses:",
+      "        \"201\": { description: ok }",
+      "  /y:",
+      "    post:",
+      "      operationId: porRef",
+      "      requestBody:",
+      "        content:",
+      "          application/json:",
+      "            schema:",
+      "              $ref: \"#/components/schemas/PorRefInput\"",
+    ].join("\n");
+    const p = propriedadesInline(fonte);
+    expect(p.map((x) => `${x.schema}.${x.nome}`)).toEqual(["plantada (requestBody inline).descricao"]);
+    expect(p[0]!.maxLength).toBeNull();
   });
 
   it("o leitor acha a propriedade plantada e ignora enum, data e id", () => {

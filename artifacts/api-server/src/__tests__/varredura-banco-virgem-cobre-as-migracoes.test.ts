@@ -82,17 +82,24 @@ function specsDaRegua(): string[] {
  * `motivo`: por que nenhum precisa (a tabela nasce vazia numa instalação nova
  * e o backfill só existiu para o dev que tinha dado antigo).
  */
-const COBERTURA: Record<string, { spec: string } | { motivo: string }> = {
+/**
+ * E247 (G2 da conferência) — `exercicio` é a PROVA de que o spec exercita a
+ * tabela, e não só existe. A régua conferia que o arquivo citado estava em
+ * `SPECS`; um spec renomeado por dentro (que parasse de tocar a área) ficaria
+ * verde. O regex é a grafia que a cena tem de conter — o gesto, o testid ou a
+ * rota — e é lido no fonte do spec.
+ */
+const COBERTURA: Record<string, { spec: string; exercicio: RegExp } | { motivo: string }> = {
   // E149: a cor virou atributo; o dev tinha o par (Cor, Marfim) pela migração e
   // o banco novo não — foi a S-O73. O `04` abre a ficha e filtra pelo par.
-  vestido_atributos: { spec: "e2e/04-vestidos.spec.ts" },
+  vestido_atributos: { spec: "e2e/04-vestidos.spec.ts", exercicio: /Marfim|atributo/i },
   // SA26: a grafia do status do vestido (`ATIVO` → `ativo`); o `04` lê o status
   // com rótulo tratado.
-  vestidos: { spec: "e2e/04-vestidos.spec.ts" },
+  vestidos: { spec: "e2e/04-vestidos.spec.ts", exercicio: /"\/vestidos"|\/vestidos\// },
   // E80, SD26, E172: os perfis do sistema — `sistema`, `acessos_modulos` por
   // módulo×ação, e os módulos `orcamentos`/`contratos`. O `12` prova que o
   // seed sozinho monta a matriz inteira num banco novo.
-  perfis: { spec: "e2e/12-permissoes.spec.ts" },
+  perfis: { spec: "e2e/12-permissoes.spec.ts", exercicio: /perfis|permiss/i },
   // E172: os overrides por loja receberam os módulos novos. Instalação nova
   // nasce sem override; o `12` exercita a matriz semeada, e o override é
   // criado e restaurado pelo `46` — que NÃO está na régua. Fica dito.
@@ -102,13 +109,13 @@ const COBERTURA: Record<string, { spec: string } | { motivo: string }> = {
   },
   // E72: o vínculo contrato↔bloqueio saiu do 1:1 legado para a tabela; o `52`
   // fecha o contrato com a reserva inline e é o único que CRIA o vínculo.
-  contrato_bloqueios: { spec: "e2e/52-orcamento-vira-contrato.spec.ts" },
+  contrato_bloqueios: { spec: "e2e/52-orcamento-vira-contrato.spec.ts", exercicio: /Gerar contrato/ },
   // S16: o carimbo do contrato na noiva (`contrato_id`), backfillado do que já
   // existia. O `52` fecha um contrato novo, e o carimbo nasce com ele.
-  leads: { spec: "e2e/52-orcamento-vira-contrato.spec.ts" },
+  leads: { spec: "e2e/52-orcamento-vira-contrato.spec.ts", exercicio: /leadsTable|\/leads/ },
   // S26: a origem da parcela (`PLANO`/`AVULSA`), backfillada nas de antes. O
   // `52` fecha o contrato e o carnê nasce com origem.
-  parcelas: { spec: "e2e/52-orcamento-vira-contrato.spec.ts" },
+  parcelas: { spec: "e2e/52-orcamento-vira-contrato.spec.ts", exercicio: /parcela/i },
   // E97: `contato_em`/`confirmado_em` do atendimento, backfillados do legado.
   atendimentos: {
     motivo:
@@ -185,6 +192,12 @@ describe("varredura — a régua do banco virgem cobre o que as migrações back
   it("todo spec citado na cobertura está em SPECS, e nenhuma linha da cobertura é morta", () => {
     const citados = [...new Set(Object.values(COBERTURA).flatMap((c) => ("spec" in c ? [c.spec] : [])))];
     for (const s of citados) expect(specs, `${s} é citado como cobertura e não está em SPECS do ${SCRIPT}`).toContain(s);
+    // E247 (G2): e EXERCITA a tabela — o regex de cada linha casa com o fonte do spec.
+    for (const [tabela, c] of Object.entries(COBERTURA)) {
+      if (!("spec" in c)) continue;
+      const fonte = readFileSync(join(RAIZ, c.spec), "utf8");
+      expect(c.exercicio.test(fonte), `${c.spec} é citado como cobertura de ${tabela} e não contém ${c.exercicio}`).toBe(true);
+    }
     const backfilladas = new Set(comBackfill.flatMap((m) => m.backfill));
     const mortas = Object.keys(COBERTURA).filter((t) => !backfilladas.has(t));
     expect(mortas, "tabela na cobertura que migração nenhuma backfilla — apague a linha").toEqual([]);

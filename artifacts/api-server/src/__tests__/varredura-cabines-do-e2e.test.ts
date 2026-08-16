@@ -27,8 +27,16 @@ const RAIZ = join(import.meta.dirname, "..", "..", "..", "..");
  * (`request.post(`${API_URL}/api/...`)` e `api.post(`/api/...`)`). GET e PATCH
  * na mesma rota ficam de fora — consultar ou desativar não cria linha.
  */
-const CRIA = /\.post\(\s*`[^`]*\/cabines`/;
-const APAGA = /apagarCabineCriada\(/;
+/**
+ * E247 (G3 da conferência) — a SEGUNDA forma. Três specs (`23`, `26`, `45`)
+ * criam a cabine por `db.insert(cabinesTable)` e apagam por
+ * `db.delete(cabinesTable)` — fora do retrato de 9 e da régua de limpeza, que
+ * só viam o POST e o `apagarCabineCriada(`. A varredura via a forma que
+ * conhecia; o rastro entrava pela outra. Os dois regexes ganham a grafia
+ * direta e o retrato sobe para 12.
+ */
+const CRIA = /\.post\(\s*`[^`]*\/cabines`|\.insert\(cabinesTable\)/;
+const APAGA = /apagarCabineCriada\(|\.delete\(cabinesTable\)/;
 
 function specs(): string[] {
   return arquivosVersionados(RAIZ, ["e2e"]).filter((r) => r.endsWith(".spec.ts"));
@@ -44,6 +52,10 @@ describe("varredura — spec que cria cabine apaga a sua (S-D25)", () => {
     expect(re().test("await request.get(`${API_URL}/api/lojas/${estado.lojaId}/cabines`)")).toBe(
       false,
     );
+    // E247 (G3): a forma direta, nas duas pontas.
+    expect(re().test("await db.insert(cabinesTable).values({ id: cabineId, lojaId: estado.lojaId, nome: cabineId });")).toBe(true);
+    expect(new RegExp(APAGA.source).test("await db.delete(cabinesTable).where(eq(cabinesTable.id, cabineId));")).toBe(true);
+    expect(re().test("import { db, cabinesTable } from \"../lib/db/src/index\";")).toBe(false);
   });
 
   it("todo spec que cria cabine chama a régua de limpeza", () => {
@@ -73,8 +85,12 @@ describe("varredura — spec que cria cabine apaga a sua (S-D25)", () => {
     expect(comCriacao.sort(), "specs que criam cabine — cada um chama a limpeza acima").toEqual([
       "e2e/18-agenda-grade.spec.ts",
       "e2e/22-atendimento-inicio-real.spec.ts",
+      // E247 (G3): os três por `db.insert(cabinesTable)` — 9 → 12.
+      "e2e/23-prova-data-real.spec.ts",
       "e2e/24-dias-funcionamento.spec.ts",
       "e2e/25-confirmar-presenca.spec.ts",
+      "e2e/26-prova-ocupa-intervalo.spec.ts",
+      "e2e/45-portal-noiva.spec.ts",
       "e2e/49-provas-recorte.spec.ts",
       "e2e/55-ficha-responde-o-telefone.spec.ts",
       "e2e/57-confeccao-na-fila.spec.ts",

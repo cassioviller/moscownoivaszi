@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
 import { auditLogTable, contasPagarTable, contratoItensTable, contratosTable, db, parcelasTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
+import { addDias, ancoraDeNegocio, hojeLocal } from "@workspace/financeiro-core";
 import {
   criarContrato,
   criarFixture,
@@ -151,7 +152,10 @@ describe("E217 — a rescisão do contrato (POST /cancelar)", () => {
   });
 
   it("**18ª — pago o total, cancela dentro do prazo pactuado: devolve sem a multa de 60%**", async () => {
-    const dataRetirada = new Date("2027-12-01T14:00:00-03:00");
+    // E247 (G10): era `2027-12-01` cravado contra `hoje` — a partir de
+    // 02/11/2027 a 18ª deixaria de valer e o teste reprovaria sem defeito. A
+    // retirada é sempre 60 dias à frente do dia em que a suíte roda.
+    const dataRetirada = ancoraDeNegocio(addDias(hojeLocal(), 60));
     const { contrato } = await contratoComItemEParcelas({
       valorItem: 3000,
       reservaPaga: 1200,

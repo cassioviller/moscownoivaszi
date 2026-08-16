@@ -50,16 +50,25 @@ describe("S-C35 — a retirada e a devolução têm onde ser preenchidas", () =>
     for (const { tela } of PONTAS) expect(versionados).toContain(tela);
   });
 
-  it.each(PONTAS)("$tela oferece os dois campos ($porta)", ({ tela }) => {
+  /**
+   * E247 (G6 da conferência) — a régua era de LETRA: `toContain("dataRetirada")`
+   * e `toContain("localParaISO")` ficam verdes com o `import` sozinho, e trocar
+   * o corpo por `new Date(...)` não a derrubaria. O que se prega é a CHAMADA no
+   * corpo que a porta recebe — `dataRetirada: localParaISO(` —, a mesma forma
+   * que este arquivo já usa para os campos de data.
+   */
+  it.each(PONTAS)("$tela oferece os dois campos ($porta) e os manda pela conversão da loja", ({ tela }) => {
     const codigo = fonte(tela);
-    expect(codigo).toContain("dataRetirada");
-    expect(codigo).toContain("dataDevolucao");
+    expect(codigo).toMatch(/dataRetirada:\s*localParaISO\(/);
+    expect(codigo).toMatch(/dataDevolucao:\s*localParaISO\(/);
   });
 
   it.each(PONTAS)("$tela lê a hora no relógio da loja, não no do navegador", ({ tela }) => {
     const codigo = fonte(tela);
-    // A conversão é uma só, e mora em `lib/retirada-devolucao.ts` (E224).
-    expect(codigo).toContain("localParaISO");
+    // A conversão é uma só, e mora em `lib/retirada-devolucao.ts` (E224) — e é
+    // CHAMADA, não só importada.
+    expect(codigo).toMatch(/\blocalParaISO\(/);
+    expect(codigo).not.toMatch(/data(Retirada|Devolucao):\s*new Date\(/);
   });
 
   it.each(PONTAS)("$tela não reescreve a hora da cláusula 5ª à mão", ({ tela }) => {
@@ -136,6 +145,7 @@ describe("S-C91 — a ficha da noiva mostra a locação, não só a reserva", ()
     // certo para o aviso da reserva, logo acima no mesmo card. O que ele não
     // pode fazer é formatar a locação: "12/05/2027" não diz a que horas a noiva
     // vem buscar, que é a informação que as cláusulas 4ª e 5ª existem para fixar.
-    expect(codigo).toContain("instanteCurto");
+    // E247 (G6): a CHAMADA sobre a locação, não a letra do import.
+    expect(codigo).toMatch(/instanteCurto\(locacao\.(retirada|devolucao)/);
   });
 });

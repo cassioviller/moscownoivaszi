@@ -56,7 +56,10 @@ test.describe("Orçamento vira contrato (E120 + E162)", () => {
       lojaId: estado.lojaId,
       noivaNome,
       // Meio-dia UTC: o `slice(0, 10)` da tela lê o dia sem risco de véspera.
-      casamentoData: new Date(`${CASAMENTO}T12:00:00Z`),
+      // E247 (G5): a âncora da CASA (meio-dia em SP) — a régua de data de negócio
+      // passou a alcançar este insert direto, e "T12:00:00Z" (09:00 SP) era a
+      // mesma intenção noutra gramática.
+      casamentoData: new Date(`${CASAMENTO}T12:00:00-03:00`),
       /**
        * E215 — este spec insere o lead DIRETO no banco (não pela porta), então
        * a qualificação entra como coluna e não como payload. Sem ela o caminho

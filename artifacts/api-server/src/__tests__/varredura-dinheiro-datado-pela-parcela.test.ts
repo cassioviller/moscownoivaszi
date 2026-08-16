@@ -127,6 +127,15 @@ const DIVIDA_DECLARADA: Record<string, string> = {
 describe("S-C53 — quem soma dinheiro por `recebido_em` está contado", () => {
   it("a varredura tem o que varrer — piso (S-C46/S-C260)", () => {
     expect(fontesDoServidor().length).toBeGreaterThan(40);
+    // E247 (G4): o piso contava FONTES, não achados da peneira — um regex
+    // envelhecido devolveria `[]` e a lista vazia passaria verde. A peneira tem
+    // de continuar achando quem se SABE que soma por `recebido_em`: os dois que
+    // usam a divisão e a dívida declarada. Se algum sumir daqui, ou o arquivo
+    // mudou (aí a lista muda com ele) ou o regex parou de ver — e é a segunda
+    // que este assert existe para pegar.
+    const achados = somamPorRecebidoEm();
+    expect(achados).toEqual(expect.arrayContaining([...USAM_A_DIVISAO, ...Object.keys(DIVIDA_DECLARADA)]));
+    expect(achados.length).toBeGreaterThanOrEqual(USAM_A_DIVISAO.length + Object.keys(DIVIDA_DECLARADA).length);
   });
 
   it("toda leitura que soma por `recebido_em` usa a divisão ou é dívida com MOTIVO", () => {

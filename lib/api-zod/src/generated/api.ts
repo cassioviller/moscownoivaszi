@@ -8005,13 +8005,14 @@ export const CreateParcelaAvulsaParams = zod.object({
   "contratoId": zod.coerce.string()
 })
 
+export const createParcelaAvulsaBodyDescricaoMax = 1000;
 
 export const createParcelaAvulsaBodyValorPrevistoExclusiveMin = 0;
 
 
 
 export const CreateParcelaAvulsaBody = zod.object({
-  "descricao": zod.string().min(1),
+  "descricao": zod.string().min(1).max(createParcelaAvulsaBodyDescricaoMax),
   "valorPrevisto": zod.number().gt(createParcelaAvulsaBodyValorPrevistoExclusiveMin),
   "vencimento": dataDoCorpo()
 })
