@@ -55,13 +55,14 @@ para o documento que manda.
    tabela do consolidado é a fila; **conte, não deduza.** O rastreador da
    fila é [`2026-08-16-conferencia-do-contrato/EXECUCAO.md`](docs/revisao/2026-08-16-conferencia-do-contrato/EXECUCAO.md)
    e o plano é [`2026-08-16-conferencia-do-contrato-plano.md`](docs/propostas/2026-08-16-conferencia-do-contrato-plano.md).
-   **E241–E245 estão EXECUTADOS** (`e9231ce1`, `3029efba`, `c4e152b1`,
-   `d880b43a`, `a736229f`; as duas decisões da dona — o IPCA de exemplo só na
-   instalação de teste, e a 16ª pelo papel — foram executadas na recomendação
-   e estão na tabela de Decisões do rastreador para ela confirmar) — e a régua
-   do E241 achou a suíte de API vermelha no `main` desde `ec53e2d6`
-   (consertada em `c8dda201`). **Próximo: E246** (o E2E para de depender do
-   dev — D1–D4, D6–D9; a régua é o próprio E2E). Também: as duas
+   **E241–E246 estão EXECUTADOS** (`e9231ce1`, `3029efba`, `c4e152b1`,
+   `d880b43a`, `a736229f`, `f373a65e`; as duas decisões da dona — o IPCA de
+   exemplo só na instalação de teste, e a 16ª pelo papel — foram executadas na
+   recomendação e estão na tabela de Decisões do rastreador para ela
+   confirmar) — e a régua do E241 achou a suíte de API vermelha no `main`
+   desde `ec53e2d6` (consertada em `c8dda201`). **Próximo: E247** (as réguas
+   veem a segunda forma — G1–G8, G10; G2–G8 e G10 já editados no working tree
+   ao registrar isto, falta o G1 no spec). Também: as duas
    últimas sobras da ótica fecharam (S-O131 "ganha tela" e a S-O146 🟠 que ela
    achou — a edição de atributo caía ao abrir), a S-A27 foi classificada e o
    `heliumdb` perdeu 725 contas e 451 pagamentos fantasmas de E2E.
@@ -78,7 +79,7 @@ para o documento que manda.
    (instalação nova, ~1 min): rode-a antes de mexer em seed, schema ou
    `global-setup`.
 
-   **O `main` está 18+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
+   **O `main` está 20+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
    de manhã; a conferência, o E241 e os docs não estão publicados). Confira com
    `git rev-list --count origin/main..main` antes de assumir — esta linha
    envelhece a cada commit. Todo worktree de agente nasce em `origin/main`
