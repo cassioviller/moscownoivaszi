@@ -169,6 +169,17 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   silencioso é o pior: com um E2E de vizinho vivo na 5099, o spec logaria no
   banco DELE enquanto a tela lê o outro. Hoje `API_URL` deriva de
   `E2E_API_PORT`, com o mesmo default.
+  **E o terceiro recurso, medido em 2026-08-16 (S-O93): dois E2E ao mesmo
+  tempo precisam de banco próprio, portas próprias E CHECKOUT próprio.** Dois
+  `playwright test` no mesmo checkout, cada um com `createdb` + `push` + seed
+  e portas próprias (5199/5273 e 5299/5373): o A fez 175 verdes · 1 vermelho
+  · 4 skipped em 6,0 min; o B quebrou em massa a partir do spec 03. O motivo:
+  `auth.setup` grava `e2e/.auth/admin.json` DENTRO do checkout, e o cookie que
+  ficou lá existia em `sessoes` do banco A (1) e não do B (0) — todo spec do B
+  que herda o `storageState` chegou ao servidor B deslogado. O
+  `e2e/.state.json` não colidiu porque o seed usa ids fixos e os dois eram
+  idênticos. **Em worktree, cada run tem o seu `e2e/`; no mesmo checkout,
+  nunca dois** — e o dev, com a suíte de sempre, continua em série.
 - **A varredura das PORTAS DE ESCRITA sob tranca** (E171, ampliada no E180):
   `cd artifacts/api-server && npx vitest run src/__tests__/varredura-portas-sob-tranca.test.ts`
   (**~2 s, não toca no banco**). Ela enumera por `git ls-files` + AST **toda
