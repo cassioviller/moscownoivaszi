@@ -55,21 +55,21 @@ para o documento que manda.
    tabela do consolidado é a fila; **conte, não deduza.** O rastreador da
    fila é [`2026-08-16-conferencia-do-contrato/EXECUCAO.md`](docs/revisao/2026-08-16-conferencia-do-contrato/EXECUCAO.md)
    e o plano é [`2026-08-16-conferencia-do-contrato-plano.md`](docs/propostas/2026-08-16-conferencia-do-contrato-plano.md).
-   **E241, E242 e E243 estão EXECUTADOS** (`e9231ce1`: sob `estornar` a conta
-   `DEVOLUCAO` não nasce; `3029efba`: o IPCA de exemplo só entra sob
-   `SEED_IPCA_EXEMPLO` — **era um pedido da dona em 15/08, e a leitura está na
-   tabela de Decisões do rastreador para ela confirmar**; `c4e152b1`: a mora é
-   do dia do FATO, com a porta nova `GET /parcelas/:id/mora?em=`) — e a régua
-   do E241 achou a suíte de API vermelha no `main` desde `ec53e2d6`
-   (consertada em `c8dda201`). **Próximo: E244** (a 16ª cobra pelo papel —
-   decisão da dona, recomendação: o papel). Também: as duas
+   **E241–E244 estão EXECUTADOS — o lote de dinheiro fechou** (`e9231ce1`,
+   `3029efba`, `c4e152b1`, `d880b43a`; as duas decisões da dona — o IPCA de
+   exemplo só na instalação de teste, e a 16ª pelo papel — foram executadas na
+   recomendação e estão na tabela de Decisões do rastreador para ela
+   confirmar) — e a régua do E241 achou a suíte de API vermelha no `main`
+   desde `ec53e2d6` (consertada em `c8dda201`). **Próximo: E245** (as portas
+   ao lado — trancas e CAS, cada uma com a cena de corrida). O E2E do lote
+   E244+E245 roda no fecho do E245. Também: as duas
    últimas sobras da ótica fecharam (S-O131 "ganha tela" e a S-O146 🟠 que ela
    achou — a edição de atributo caía ao abrir), a S-A27 foi classificada e o
    `heliumdb` perdeu 725 contas e 451 pagamentos fantasmas de E2E.
 
-3. **A régua e a publicação.** Hoje a régua é **API 1852 (267 arquivos) ·
-   frontend 1014 (108 arquivos) · E2E 186 · typecheck verde em 5 projetos** —
-   medidas em série no fecho do E243 (16/08, fim da tarde). A API inteira leva ~11,6 min no
+3. **A régua e a publicação.** Hoje a régua é **API 1856 (267 arquivos) ·
+   frontend 1017 (108 arquivos) · E2E 186 · typecheck verde em 5 projetos** —
+   medidas em série no fecho do E244 (16/08, noite). A API inteira leva ~11,6 min no
    `heliumdb`; o E2E, ~6,5 min, e é a régua que **agente nenhum pode rodar**
    (worktree isola arquivo e banco e NÃO isola porta — e dois E2E ao mesmo
    tempo precisam de banco, portas **e checkout** próprios, medido na S-O93:
@@ -79,7 +79,7 @@ para o documento que manda.
    (instalação nova, ~1 min): rode-a antes de mexer em seed, schema ou
    `global-setup`.
 
-   **O `main` está 14+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
+   **O `main` está 16+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
    de manhã; a conferência, o E241 e os docs não estão publicados). Confira com
    `git rev-list --count origin/main..main` antes de assumir — esta linha
    envelhece a cada commit. Todo worktree de agente nasce em `origin/main`
