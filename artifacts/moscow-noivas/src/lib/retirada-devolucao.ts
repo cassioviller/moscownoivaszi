@@ -1,6 +1,7 @@
 import {
   descricaoDoExpedienteDeRetirada,
   diaLocalYMD,
+  diasDaLocacaoSugeridos,
   expedienteDeRetirada,
   foraDoExpedienteDeRetirada,
   fraseDaRecusaDeRetirada,
@@ -8,10 +9,8 @@ import {
   LOCACAO_FIM_PADRAO,
   LOCACAO_INICIO_PADRAO,
   minutosParaHHMM,
-  proximoDiaDeExpedienteDeRetirada,
   type ExpedienteDeRetirada,
 } from "@workspace/agenda-core";
-import { addDias } from "@workspace/financeiro-core";
 
 /**
  * **E224 — o gesto da retirada e da devolução.**
@@ -129,15 +128,23 @@ export function sugestaoDaLocacao(
   if (antes === null || antes === undefined || depois === null || depois === undefined) return null;
 
   const exp = expedienteDeRetirada(regra);
-  const inicioDaJanela = addDias(casamentoDia, -antes);
-  const fimDaJanela = addDias(casamentoDia, depois);
-  const diaRetirada = proximoDiaDeExpedienteDeRetirada(inicioDaJanela, exp);
-  const diaDevolucao = proximoDiaDeExpedienteDeRetirada(fimDaJanela, exp);
+  /**
+   * E249/S-R2 — a conta dos DIAS saiu daqui para o `@workspace/agenda-core`.
+   *
+   * Ela era só da tela enquanto só a tela sugeria. O E244 pôs
+   * `contratos.data_devolucao` no comando da 16ª, e o servidor passou a ter de
+   * refazer estes dois dias quando o casamento é adiado — duas grafias da
+   * mesma conta em dois pacotes é a classe do E240/S-O116. O que fica aqui é o
+   * formato do `<input>` e o aviso; a conta é uma.
+   */
+  const dias = diasDaLocacaoSugeridos(casamentoDia, { usoDiasAntes: antes, usoDiasDepois: depois }, exp);
   // Semana inteira fechada: a loja não retira em dia nenhum, e sugerir seria
   // entregar um 422. O campo em branco diz a verdade.
-  if (!diaRetirada || !diaDevolucao) return null;
+  if (!dias) return null;
+  const { retirada: diaRetirada, devolucao: diaDevolucao, janela, andou } = dias;
+  const inicioDaJanela = janela.inicio;
+  const fimDaJanela = janela.fim;
 
-  const andou = diaRetirada !== inicioDaJanela || diaDevolucao !== fimDaJanela;
   return {
     retirada: `${diaRetirada}T${minutosParaHHMM(LOCACAO_INICIO_PADRAO)}`,
     devolucao: `${diaDevolucao}T${minutosParaHHMM(LOCACAO_FIM_PADRAO)}`,

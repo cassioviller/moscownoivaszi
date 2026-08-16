@@ -18,7 +18,15 @@
  *   gravado, `diaDeNegocio`, a mesma régua de `financeiro-core/datas.ts`.
  */
 import { and, eq, gte, isNotNull, isNull, lt, ne, not, or, type SQL } from "drizzle-orm";
-import { diaDeNegocio, diaLocal, inicioDoDia, addDias } from "@workspace/financeiro-core";
+import {
+  diaDeNegocio,
+  diaLocal,
+  inicioDoDia,
+  addDias,
+  // E249/S-R3 — o dia até o qual a peça pode estar fora: o papel, senão a
+  // janela. A mesma função que o E244 pôs na prévia, na fila e nas órfãs.
+  fimPrevistoDaDevolucao,
+} from "@workspace/financeiro-core";
 import { janelaDeProvaDoDia } from "@workspace/agenda-core";
 import {
   db,
@@ -26,6 +34,8 @@ import {
   reservasTable,
   regraDisponibilidadeTable,
   leadsTable,
+  contratosTable,
+  contratoBloqueiosTable,
   type BloqueioVestido,
 } from "@workspace/db";
 
@@ -113,6 +123,16 @@ export type BloqueioJanelasInput = Pick<
    * agenda nada.
    */
   canceladoEm?: BloqueioVestido["canceladoEm"];
+  /**
+   * E249/S-R3 — `contratos.data_devolucao` do contrato ATIVO preso a este
+   * bloqueio: o dia que o papel imprime, e que desde o E244 manda na 16ª.
+   *
+   * Presente quando o bloqueio vem de `buscarBloqueiosAtivos` (que o traz no
+   * mesmo SELECT, sem consulta a mais); ausente nos CANDIDATOS montados à mão,
+   * e ausente é a resposta certa — candidato ainda não tem contrato, logo não
+   * tem papel, logo vale a janela.
+   */
+  dataDevolucaoDoPapel?: Date | string | null;
 };
 
 /** Item de conflito no shape do payload 409 / endpoint batch. */
@@ -273,7 +293,33 @@ function janelasSemOlharCancelamento(
   // 2028-09-04, e as três janelas — prova, uso e lavagem — andavam um dia.
   const dataCasamento = diaDeNegocio(b.casamentoData);
   const inicioUsoPrevisto = addDias(dataCasamento, -regra.usoDiasAntes);
-  const fimUsoPrevisto = addDias(dataCasamento, regra.usoDiasDepois);
+  /**
+   * **E249/S-R3 — o QUARTO sítio da 16ª, que o E244 não converteu.**
+   *
+   * O relatório do E244 diz "uma função nos três sítios" — a prévia/cobrança,
+   * a fila de atrasos e as órfãs. Este módulo é o quarto, e é o que pinta o
+   * acervo e o calendário: ele seguia com `casamento + usoDiasDepois` e nunca
+   * lia `contratos.data_devolucao`.
+   *
+   * **A divergência era visível na mesma tela.** Casamento sábado 12/09,
+   * `usoDiasDepois = 2` → janela até segunda 14/09, que a 4ª fecha → o papel
+   * imprime terça **15/09 às 18:00**. Na terça de manhã, com a peça ainda
+   * fora: aqui o motivo virava `ATRASO_DEVOLUCAO` e a tela pintava a peça em
+   * atraso; a porta, com a régua do E244, respondia **422 `SEM_ATRASO`**. O
+   * invariante estava escrito no docblock que o épico não abriu
+   * (`reservas.ts`, a cobrança de atraso): *"se as duas divergirem, a tela
+   * mostra a peça em dia e a porta cobra o atraso dela"* — e ele valia ao
+   * contrário.
+   *
+   * A janela FÍSICA anda junto de propósito: se o papel autoriza a peça fora
+   * até 15/09, ela não está livre para outra noiva em 15/09. Oferecer o que o
+   * instrumento já prometeu é o defeito de que o 409 existe para proteger.
+   */
+  const fimUsoPrevisto = fimPrevistoDaDevolucao({
+    casamentoData: dataCasamento,
+    usoDiasDepois: regra.usoDiasDepois,
+    dataDevolucao: b.dataDevolucaoDoPapel,
+  });
 
   const janelas: Janela[] = [];
 
@@ -473,7 +519,8 @@ export async function buscarRegra(
 }
 
 export interface BloqueioAtivoComContexto {
-  bloqueio: BloqueioVestido;
+  /** E249/S-R3: o bloqueio do banco, mais a data que o papel do contrato ATIVO imprime. */
+  bloqueio: BloqueioVestido & { dataDevolucaoDoPapel: Date | null };
   noivaNome: string | null;
 }
 
@@ -549,17 +596,49 @@ export async function buscarBloqueiosAtivos(
   const ocupa = or(vivo, naRua);
   if (ocupa) filtros.push(ocupa);
 
+  /**
+   * E249/S-R3 — a data do papel entra pelo SELECT que já existia.
+   *
+   * Dois `leftJoin` a mais (`contrato_bloqueios` → `contratos`), e **nenhuma
+   * consulta nova**: a alternativa era ler o contrato por bloqueio, que é
+   * exatamente a S-C280 que o E244 teve de desfazer na fila de atrasos.
+   *
+   * Só contrato **ATIVO**: o papel de um contrato cancelado não segura peça
+   * nenhuma, e é a mesma escolha do E211/S-O4, que só propaga a data para
+   * contrato vivo. A peça de um contrato cancelado que ainda está na rua
+   * continua ocupando pelo braço FÍSICO (E225) — pela retirada real, não pelo
+   * papel morto.
+   */
   const linhas = await executor
     .select({
       bloqueio: bloqueioVestidosTable,
       noivaNome: leadsTable.noivaNome,
+      dataDevolucaoDoPapel: contratosTable.dataDevolucao,
     })
     .from(bloqueioVestidosTable)
     .leftJoin(reservasTable, eq(reservasTable.id, bloqueioVestidosTable.reservaId))
     .leftJoin(leadsTable, eq(leadsTable.id, bloqueioVestidosTable.leadId))
+    .leftJoin(
+      contratoBloqueiosTable,
+      eq(contratoBloqueiosTable.bloqueioId, bloqueioVestidosTable.id),
+    )
+    .leftJoin(
+      contratosTable,
+      and(
+        eq(contratosTable.id, contratoBloqueiosTable.contratoId),
+        eq(contratosTable.status, "ATIVO"),
+      ),
+    )
     .where(and(...filtros));
 
-  return linhas;
+  // O papel viaja DENTRO do bloqueio: `janelasDoBloqueio` recebe `bloqueio` em
+  // seis sítios, e costurar o campo em cada um deles seria a regra 26 na
+  // véspera — cinco grafias do mesmo cuidado, e o sítio esquecido é o que
+  // quebra.
+  return linhas.map(({ bloqueio, noivaNome, dataDevolucaoDoPapel }) => ({
+    bloqueio: { ...bloqueio, dataDevolucaoDoPapel },
+    noivaNome,
+  }));
 }
 
 /**

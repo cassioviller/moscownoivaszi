@@ -19,3 +19,7 @@ export * from "./expediente-retirada";
 // E240/S-O116 — a janela de PROVA, num lugar só: servidor e tela importam a
 // mesma conta em vez de escrevê-la duas vezes.
 export * from "./janela-de-prova";
+// E249/S-R2 — e os dias da LOCAÇÃO pelo mesmo motivo: o E224 escreveu a conta
+// na tela, e o E244 deu ao servidor um motivo para saber refazê-la (o casamento
+// que é adiado move a data que o papel imprime).
+export * from "./janela-da-locacao";

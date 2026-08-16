@@ -15,7 +15,7 @@ Plano: [`2026-08-16-a-fila-do-review-max-plano.md`](../../propostas/2026-08-16-a
 Dez ângulos sobre `fb3dcb50`, **19 achados**, conferidos um a um antes de
 entrar na tabela — nenhum descartado. A S-R1 (a suíte de API vermelha no
 `main`) fechou em `3c71d474` e virou a **regra 35**. Restam **18 abertos:
-1 🔴 · 8 🟠 · 7 🟡 · 2 🔵**, em **6 épicos**. Sete deles nasceram da fila do
+1 🔴 · 7 🟠 · 8 🟡 · 2 🔵**, em **6 épicos**. Sete deles nasceram da fila do
 mesmo dia (E242, E244, E245, higiene, E248).
 
 ## A fila
@@ -43,4 +43,4 @@ S-R\* não moram aqui: elas moram na tabela da conferência.
 
 | ID | Sev. | Onde | O que | Estado |
 |---|---|---|---|---|
-| — | — | — | (nenhuma até agora) | — |
+| S-RM1 | 🟡 | `disponibilidade.ts` (`janelasSemOlharCancelamento`) × `reservas.ts` (`PATCH /reservas`) × `contratos.ts` (`POST /contratos`) | **A data do papel agora ESTICA a janela física, e ninguém revalida os dias que ela estica.** Desde o E249/S-R3, `fimUsoPrevisto` é `fimPrevistoDaDevolucao` — e o papel do E224 anda para a frente até dia de expediente, logo é `≥ casamento + usoDiasDepois`. O `PATCH /reservas` valida a disponibilidade do candidato pela JANELA (`casamento + 2`) e grava um papel que pode ir a `+3` ou `+4`; o `POST /contratos` grava `dataDevolucao` vinda da sugestão da tela sem consultar disponibilidade nenhuma. Nos dias entre a janela e o papel a peça fica ocupada por uma escrita que o 409 não viu. Casamento sábado, janela até segunda (fechada), papel na terça: a terça é ocupada sem ter sido validada. **Não é regressão do E249** — o `POST /contratos` já gravava assim desde o E224; o que o E249 fez foi dar efeito de ocupação a um campo que antes não tinha nenhum. O conserto é passar o papel novo ao candidato antes de validar (e validar no `POST /contratos`), e mora na mesma família da S-R8: precisa da ordem de trancas do E251 | aberta (E249, 16/08) — **vista de passagem, conferida no código** |

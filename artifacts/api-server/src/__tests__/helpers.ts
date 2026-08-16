@@ -386,6 +386,15 @@ export async function criarContrato(
     fechadoEm: Date;
     canceladoEm?: Date | null;
     comissaoEstornadaEm?: Date | null;
+    /** Data de NEGÓCIO do casamento (âncora ao meio-dia de SP — S-O117). */
+    dataCasamento?: Date | null;
+    /**
+     * E249 — as duas datas que o INSTRUMENTO imprime (cláusulas 4ª e 5ª). São
+     * instantes, e desde o E244 a de devolução é a régua da 16ª: sem ela na
+     * fixture, nenhuma cena de atraso pode ser escrita pelo papel.
+     */
+    dataRetirada?: Date | null;
+    dataDevolucao?: Date | null;
   },
 ): Promise<Contrato> {
   const cancelado = params.canceladoEm ?? params.comissaoEstornadaEm ?? null;
@@ -399,6 +408,13 @@ export async function criarContrato(
       vendedoraId: params.vendedoraId ?? f.vendedoraId,
       valorTotal: params.valorTotal,
       fechadoEm: params.fechadoEm,
+      // S-O117/E197: data de NEGÓCIO ancorada ao meio-dia de SP, como as
+      // irmãs (`criarReserva`, `criarBloqueio`) e como a porta faz no `PATCH
+      // /contratos`. A varredura do E247/G5 cobrou esta linha assim que o
+      // `git add -N` a tornou visível — que é a regra 35 funcionando.
+      dataCasamento: params.dataCasamento ? reancorarDataDeNegocio(params.dataCasamento) : null,
+      dataRetirada: params.dataRetirada ?? null,
+      dataDevolucao: params.dataDevolucao ?? null,
       status: cancelado ? "CANCELADO" : "ATIVO",
       canceladoEm: cancelado,
       comissaoEstornadaEm: params.comissaoEstornadaEm ?? null,

@@ -1747,6 +1747,24 @@ router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<v
    * de sucesso de uma edição — que é gesto humano, não laço — em troca de a
    * tela que salvar não precisar de um `GET` logo depois.
    */
+  /**
+   * **E249/S-R12 — a única porta que EDITA a data do papel era a única que não
+   * derrubava a fila.**
+   *
+   * Todas as irmãs deste arquivo derrubam (`:1187`, `:2156`, `:2497`, `:3270`,
+   * `:3335`), e a razão está escrita na S-C89: a fila de atrasos responde do
+   * cache por 5 minutos, e toda porta que muda um fato que ela lê tem de
+   * invalidar. O E244 deu a `data_devolucao` o comando da 16ª — desde então,
+   * esta porta muda o fato mais caro que a fila lê. Corrigida a data do papel,
+   * a fila e o sino seguiam anunciando o atraso, e o VALOR dele, por até cinco
+   * minutos.
+   *
+   * Incondicional, como as irmãs: editar contrato é gesto humano, não laço, e
+   * um `if` sobre "mudou a data?" seria a sexta grafia do mesmo cuidado
+   * (regra 26).
+   */
+  derrubarFilaDeAtrasos(lojaId as string);
+
   const completo = await db.query.contratosTable.findFirst({
     where: and(eq(contratosTable.id, contrato.id), eq(contratosTable.lojaId, lojaId as string)),
     with: { lead: true, vendedora: true, parcelas: true, itens: true },

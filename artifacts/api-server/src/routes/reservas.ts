@@ -75,6 +75,8 @@ import {
   reservaComDonos,
 } from "../lib/dono-do-bloqueio";
 import { FOTO_MAX_BYTES as AVARIA_FOTO_MAX_BYTES } from "../lib/limites";
+// E249/S-R2 — o casamento que anda leva as duas datas do papel com ele.
+import { papelParaOCasamentoNovo } from "../lib/expediente-de-retirada";
 import {
   addDias,
   ancoraDeNegocio,
@@ -534,11 +536,43 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
        *
        * Só contrato **ATIVO**: cancelado é história, e reescrever a data de um
        * contrato encerrado falsificaria o que foi assinado.
+       *
+       * **E249/S-R2 🔴 — e a data que o PAPEL imprime andava atrás.**
+       *
+       * A propagação parava em `dataCasamento`. O E244, no dia anterior a este
+       * épico, deu a `contratos.data_devolucao` o comando da 16ª: é ela que
+       * decide até quando a peça pode estar fora sem atraso.
+       *
+       * **Medido:** casamento há 100 dias com a devolução impressa há 98,
+       * adiado para há 3; a peça volta há 1 dia, em dia pela janela nova. Com
+       * o papel parado, `diasDeAtraso` = 97, e 97 ≥ 10 é EXTRAVIO pelo caput —
+       * **quatro peças de R$ 3.000,00 = R$ 48.000,00** que a prévia oferece e
+       * a porta cobra de quem devolveu no prazo. População no `heliumdb` em
+       * 16/08: **0 de 828 contratos** têm `data_devolucao` — armado e não
+       * disparado; dispara na primeira noiva que fecha contrato pela tela do
+       * E224 e adia a data.
+       *
+       * A retirada anda junto: é a mesma cláusula, o mesmo papel e o mesmo
+       * gesto. Deixá-la para trás mandaria a noiva buscar a peça três meses
+       * antes do casamento novo.
+       *
+       * **Um UPDATE, não dois.** A propagação era um `UPDATE` em lote e as
+       * datas do papel variam por contrato — escrever as duas coisas em duas
+       * escritas seria uma PORTA a mais em `contratos` para a varredura do
+       * E171 contar, e a segunda nasceria ABERTA. A leitura vem antes, e cada
+       * contrato recebe as três colunas de uma vez.
        */
       const idsVinculados = vinculados.map((b) => b.id);
-      const contratosAtualizados = idsVinculados.length > 0
-        ? await tx.update(contratosTable)
-            .set({ dataCasamento: dados.casamentoData, updatedAt: new Date() })
+      const alvos = idsVinculados.length > 0
+        ? await tx
+            .select({
+              id: contratosTable.id,
+              valorTotal: contratosTable.valorTotal,
+              reajustesDeData: contratosTable.reajustesDeData,
+              dataRetirada: contratosTable.dataRetirada,
+              dataDevolucao: contratosTable.dataDevolucao,
+            })
+            .from(contratosTable)
             .where(and(
               eq(contratosTable.status, "ATIVO"),
               eq(contratosTable.lojaId, lojaId),
@@ -549,12 +583,35 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
                   .where(inArray(contratoBloqueiosTable.bloqueioId, idsVinculados)),
               ),
             ))
-            .returning({
-              id: contratosTable.id,
-              valorTotal: contratosTable.valorTotal,
-              reajustesDeData: contratosTable.reajustesDeData,
-            })
         : [];
+
+      // A régua da loja lida UMA vez para os N contratos: ler por contrato
+      // seria a S-C280 de volta, a consulta por linha que o E244 desfez.
+      const papel = alvos.some((c) => c.dataRetirada || c.dataDevolucao)
+        ? await papelParaOCasamentoNovo(lojaId, diaDeNegocio(dados.casamentoData), tx)
+        : null;
+
+      const contratosAtualizados: typeof alvos = [];
+      const papelMovido: { contratoId: string; retirada: string | null; devolucao: string | null }[] = [];
+      for (const contrato of alvos) {
+        const novas = papel?.datasDe(contrato) ?? null;
+        await tx.update(contratosTable)
+          .set({ dataCasamento: dados.casamentoData, ...(novas ?? {}), updatedAt: new Date() })
+          .where(and(
+            eq(contratosTable.id, contrato.id),
+            // A guarda relida na própria escrita: o contrato que cancelou entre
+            // o SELECT e agora não se reescreve (cancelado é história assinada).
+            eq(contratosTable.status, "ATIVO"),
+          ));
+        contratosAtualizados.push(contrato);
+        if (novas && (novas.dataRetirada || novas.dataDevolucao)) {
+          papelMovido.push({
+            contratoId: contrato.id,
+            retirada: novas.dataRetirada?.toISOString() ?? null,
+            devolucao: novas.dataDevolucao?.toISOString() ?? null,
+          });
+        }
+      }
 
 
       /**
@@ -712,6 +769,10 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
             de: reserva.casamentoData,
             para: dados.casamentoData,
             contratos: contratosAtualizados.map((c) => c.id),
+            // E249/S-R2: e para onde foram as datas do papel. Elas mandam na
+            // 16ª desde o E244 — mover a régua da cobrança sem dizer para onde
+            // é a classe que o E94 fechou para o dinheiro.
+            papel: papelMovido,
           },
         });
       }
