@@ -14,7 +14,7 @@ Plano: [`2026-08-16-conferencia-do-contrato-plano.md`](../../propostas/2026-08-1
 Contado em 16/08/2026: **0 🔴 · 7 🟠 · 17 🟡 · ~30 🔵**, em **8 épicos +
 1 lote de higiene**. Duas decisões da dona (E241, E244), nenhuma trava.
 
-**Contado em 16/08/2026 à noite: os 8 épicos estão EXECUTADOS** (E241 `e9231ce1` · E242 `3029efba` · E243 `c4e152b1` · E244 `d880b43a` · E245 `a736229f` · E246 `f373a65e` · E247 `fb00bd96` · E248 `5096469b`) — **7 🟠 e 17 🟡 fechados, ZERO abertos**; resta o **lote de higiene 🔵** (a linha abaixo, aberta) e as sobras da tabela de Sobras (S-CF2 🔵, aberta). As três decisões executadas na recomendação (E241, E242, E244) estão na tabela de Decisões para a dona confirmar. **Conte a tabela, não este parágrafo.**
+**Contado em 16/08/2026 à noite: os 8 épicos E o lote de higiene estão EXECUTADOS** (higiene `484f429b`, 13 de 17 🔵; o resto na S-CF3) (E241 `e9231ce1` · E242 `3029efba` · E243 `c4e152b1` · E244 `d880b43a` · E245 `a736229f` · E246 `f373a65e` · E247 `fb00bd96` · E248 `5096469b`) — **7 🟠 e 17 🟡 fechados, ZERO abertos**; restam as duas linhas da tabela de Sobras (**S-CF2** 🔵 e **S-CF3** 🔵). As três decisões executadas na recomendação (E241, E242, E244) estão na tabela de Decisões para a dona confirmar. **Conte a tabela, não este parágrafo.**
 
 ## A fila
 
@@ -28,7 +28,7 @@ Contado em 16/08/2026: **0 🔴 · 7 🟠 · 17 🟡 · ~30 🔵**, em **8 épic
 | ~~**E246**~~ | ~~o E2E para de depender do dev~~ | D1–D4, D6–D9 | ✅ `f373a65e` · [relatório](execucao/E246.md) — a fixture da reserva renovada a cada run (respeitando a EXCLUDE), o `13` pelo `href`, o `07` pela busca, contrato próprio no `08` e no `15` (os 4 `skip` saíram), o `16` num ramo só, a competência do `36` em SP, o rastro por tela de `04`/`05`/`51` apagado, as 779 contas do `34`, a data do `52` derivada. E2E 186 em 6,8 min, 0 skipped · banco virgem 16 passed |
 | ~~**E247**~~ | ~~as réguas veem a segunda forma~~ | G1–G8, G10 | ✅ `fb00bd96` · [relatório](execucao/E247.md) — cada régua aprende a segunda forma e prova que vê: dois vermelhos literais sobre o repositório como estava (`createParcelaAvulsa (requestBody inline).descricao` sem teto → `maxLength: 1000` no spec; o `52` com `T12:00:00Z` → a âncora da casa); cabines 9 → 12; escritores diretos derivados; a régua do gesto prega a chamada; a cena CANCELADA afirma; as corridas por `sleep` provam a espera; a bomba do `e217` (02/11/2027) desarmada. API 1865 · E2E 186 |
 | ~~**E248**~~ | ~~os manuais dizem o que o sistema faz~~ | F1–F8 | ✅ `5096469b` · [relatório](execucao/E248.md) — vendedora (F1, F2, F4), recepção (F4), proprietário (F3, F5, F6, F7, F8); as cinco varreduras dos manuais 29/29 (moldes 11 → 12); PDFs republicados |
-| higiene 🔵 | lote | B7, C8, C9, C11, C12, E2–E4, G9, G11–G15, A6, A7 | aberto |
+| ~~higiene 🔵~~ | ~~lote~~ | B7, C8, C9, C11, C12, E2–E4, G9, G11–G15, A6, A7 | ✅ `484f429b` · [relatório](execucao/higiene.md) — **13 de 17** fechados (A6, A7, B7, C8, C9, C11, C12, E2, E3, E4, G9, G14, dois títulos de G15); **G11, G12, G13 e o resto de G15 ficam declarados na S-CF3** (réguas de propósito grossas, e a régua de prazos é numérica). API 1865 · frontend 1017 · E2E 186 em 7,4 min |
 
 ## Sobras
 
@@ -37,7 +37,7 @@ o viu** (regra 12) e sai riscada no commit que a fecha (regra 21).
 
 | ID | Sev. | Onde | O que | Estado |
 |---|---|---|---|---|
-$1| S-CF2 | 🔵 | `reservas/[bloqueioId].tsx` (`cobrar-atraso`) | Nenhum E2E clica "Cobrar o atraso" — a 16ª pela tela nunca foi encenada, e o campo de prazo do E244 tampouco. Candidata ao lote do E246 | aberta (E244, 16/08) |
+$1$1| S-CF3 | 🔵 | `varredura-campo-escalar-do-spec`, `varredura-manuais-prazos`, `varredura-das-varreduras`, `sc140`, `so18`, `revisao-reserva-avaria`, `varredura-fixture-do-e2e`, `varredura-expurgo-lgpd` | Os 🔵 da lente G que o lote de higiene deixou DECLARADOS: G11 (o `escrito()` grosso), G12 (os dias vedados da 17ª em prosa sem `data-regua` — a régua de prazos é numérica; ensinar-lhe dias da semana é régua nova), G13 (a heurística da varredura-das-varreduras) e os menores de G15 (alias de SQL pregado, `dataFutura(-n)` como "há n dias", medições em `moscow_base`, o `const r` reutilizado, `coluna:` em comentário). Nenhum tem defeito vivo atrás | aberta (higiene, 16/08) |
 
 ## Decisões da dona
 

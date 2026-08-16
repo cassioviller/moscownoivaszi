@@ -60,9 +60,11 @@ para o documento que manda.
    `fb00bd96`, `5096469b` — 7 🟠 e 17 🟡 fechados, ZERO abertos; as três
    decisões executadas na recomendação — o IPCA de exemplo só na instalação de
    teste, a 16ª pelo papel, a conta a pagar que não nasce sob "estornar" —
-   estão na tabela de Decisões do rastreador para a dona confirmar). O que
-   resta da conferência é o **lote de higiene 🔵** (a última linha da fila do
-   rastreador) e a **S-CF2** 🔵 (nenhum E2E clica "cobrar o atraso"). A régua
+   estão na tabela de Decisões do rastreador para a dona confirmar). O lote de
+   higiene 🔵 também fechou (`484f429b`, 13 de 17). **O que resta da conferência
+   são duas sobras 🔵 na tabela do rastreador: S-CF2** (nenhum E2E clica
+   "cobrar o atraso") **e S-CF3** (quatro réguas de propósito grossas, declaradas).
+   **Não há trilha em curso com fila de código.** A régua
    do E241 achou a suíte de API vermelha no `main` desde `ec53e2d6`
    (consertada em `c8dda201`). Também: as duas
    últimas sobras da ótica fecharam (S-O131 "ganha tela" e a S-O146 🟠 que ela
@@ -71,7 +73,7 @@ para o documento que manda.
 
 3. **A régua e a publicação.** Hoje a régua é **API 1865 (267 arquivos) ·
    frontend 1017 (108 arquivos) · E2E 186 · typecheck verde em 5 projetos** —
-   medidas em série no fecho do E247/E248 (16/08, noite). A API inteira leva ~11,6 min no
+   medidas em série no fecho do lote de higiene (16/08, noite). A API inteira leva ~11,6 min no
    `heliumdb`; o E2E, ~6,5 min, e é a régua que **agente nenhum pode rodar**
    (worktree isola arquivo e banco e NÃO isola porta — e dois E2E ao mesmo
    tempo precisam de banco, portas **e checkout** próprios, medido na S-O93:
@@ -81,7 +83,7 @@ para o documento que manda.
    (instalação nova, ~1 min): rode-a antes de mexer em seed, schema ou
    `global-setup`.
 
-   **O `main` está 24+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
+   **O `main` está 26+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
    de manhã; a conferência, o E241 e os docs não estão publicados). Confira com
    `git rev-list --count origin/main..main` antes de assumir — esta linha
    envelhece a cada commit. Todo worktree de agente nasce em `origin/main`
