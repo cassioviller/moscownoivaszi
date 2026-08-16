@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
+import { eq } from "drizzle-orm";
+import { db, leadsTable } from "../lib/db/src/index";
 import { lerEstado } from "./helpers";
 
 const estado = lerEstado();
@@ -32,6 +34,16 @@ test.describe("Leads → Noivas (E31)", () => {
     await expect(page.getByTestId("text-noiva-nome")).toHaveText(/E2E Noiva Playwright/);
   });
 
+  /**
+   * E246 (D7 da conferência) — a noiva criada pela TELA é apagada pelo id da
+   * URL do sucesso. Eram **295** "Noiva Criada Pelo E2E" no `heliumdb`, uma por
+   * passada, invisíveis à `varredura-fixture-do-e2e`.
+   */
+  const noivasCriadas: string[] = [];
+  test.afterAll(async () => {
+    for (const id of noivasCriadas) await db.delete(leadsTable).where(eq(leadsTable.id, id));
+  });
+
   test("cadastra uma noiva pelo fluxo unificado", async ({ page }) => {
     await page.goto("/noivas");
     await page.getByTestId("button-adicionar-noiva").click();
@@ -48,6 +60,7 @@ test.describe("Leads → Noivas (E31)", () => {
 
     // O sucesso navega para o detalhe da noiva recém-criada.
     await expect(page).toHaveURL(/\/noivas\/[^/]+$/);
+    noivasCriadas.push(new URL(page.url()).pathname.split("/").pop()!);
     await expect(page.getByText("Noiva Criada Pelo E2E").first()).toBeVisible();
   });
 });

@@ -64,7 +64,13 @@ test("detalhe da reserva abre a partir da lista", async ({ page }) => {
   // A mesma noiva pode ter várias reservas (outros specs criam) — basta que
   // apareça na lista, daí o .first().
   await expect(page.getByText("E2E Noiva Playwright").first()).toBeVisible();
-  await page.getByRole("link", { name: "Provas & ajustes" }).first().click();
+  // E246 (D2): era o PRIMEIRO "Provas & ajustes" da lista — passava porque a
+  // fixture era a reserva viva mais antiga (casamento em 14/10/2026), e a
+  // partir de 15/10/2026 o `.first()` cairia em outra e o spec reprovaria sem
+  // uma linha mudar. O link é o da fixture, pelo `href`; e o `global-setup`
+  // passou a renovar a data dela a cada run, para ela continuar entre as
+  // "próximas" que a tela abre.
+  await page.locator(`a[href$="/reservas/e2e-bloqueio-1"]`).first().click();
   await expect(page).toHaveURL(/\/reservas\/e2e-bloqueio-1$/);
   // O detalhe resolve as relações do bloqueio (noiva no título, vestido abaixo):
   // é o enriquecimento relacional da Onda 2 chegando à tela.

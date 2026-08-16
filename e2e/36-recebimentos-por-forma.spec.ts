@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { eq } from "drizzle-orm";
 import { db, leadsTable, contratosTable, parcelasTable } from "../lib/db/src/index";
-import { lerEstado, API_URL, QUALIFICACAO_DA_NOIVA } from "./helpers";
+import { lerEstado, API_URL, QUALIFICACAO_DA_NOIVA, diaLocalSP } from "./helpers";
 
 const estado = lerEstado();
 
@@ -18,9 +18,13 @@ test.describe("Recebimentos por meio (E50)", () => {
   const stamp = Date.now();
   let leadId: string;
   let contratoId: string;
-  /** Competência do mês corrente: é onde o recebimento de hoje cai. */
-  const hoje = new Date();
-  const competencia = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`;
+  /**
+   * Competência do mês corrente: é onde o recebimento de hoje cai. E246 (D6):
+   * era o mês UTC do processo — das 21h à meia-noite do último dia do mês, o
+   * mês seguinte (a classe S-M25/S-O119). O app vive em São Paulo; o spec
+   * também (o `37` e o `41` já faziam a conta certa).
+   */
+  const competencia = diaLocalSP().slice(0, 7);
 
   test.beforeAll(async ({ request }) => {
     await request.post(`${API_URL}/api/auth/login`, {

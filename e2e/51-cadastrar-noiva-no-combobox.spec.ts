@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
+import { eq } from "drizzle-orm";
+import { db, leadsTable } from "../lib/db/src/index";
 import { lerEstado, API_URL } from "./helpers";
 
 const estado = lerEstado();
@@ -48,6 +50,9 @@ test.describe("Cadastrar noiva sem sair do agendamento", () => {
     const criada = itens.find((l) => l.noivaNome === nome);
     expect(criada, "a noiva cadastrada pelo combobox").toBeTruthy();
     expect(criada!.origem).toBe("INSTAGRAM");
+    // E246 (D7): o rastro sai — eram **225** "Noiva Combobox …" no `heliumdb`.
+    // O nome é único por run, e é o que se apaga.
+    await db.delete(leadsTable).where(eq(leadsTable.noivaNome, nome));
   });
 
   test("o cadastro de noiva não responde a origem por quem a preenche", async ({ page }) => {

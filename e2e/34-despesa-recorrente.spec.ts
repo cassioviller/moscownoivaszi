@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
+import { and, eq, isNotNull } from "drizzle-orm";
+import { db, contasPagarTable } from "../lib/db/src/index";
 import { lerEstado, API_URL } from "./helpers";
 
 const estado = lerEstado();
@@ -23,6 +25,16 @@ test.describe("Despesa recorrente (E48)", () => {
   let recorrenciaId: string;
 
   test.afterAll(async ({ request }) => {
+    // E246 (D8): "Gerar competência" gera TODAS as recorrências ativas da loja
+    // para a competência do run (20XX-0Y) — eram **779** contas entre 2040-04 e
+    // 2089-09 no `heliumdb`, uma por recorrência viva por passada. A receita é
+    // a do `15`: apagar as contas geradas para a competência, todas com
+    // `recorrencia_id`.
+    await db.delete(contasPagarTable).where(and(
+      eq(contasPagarTable.lojaId, estado.lojaId),
+      eq(contasPagarTable.competencia, competencia),
+      isNotNull(contasPagarTable.recorrenciaId),
+    ));
     await request.post(`${API_URL}/api/auth/login`, {
       data: { email: estado.adminEmail, senha: estado.senha },
     });

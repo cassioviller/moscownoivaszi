@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
+import { eq } from "drizzle-orm";
+import { db, vestidosTable } from "../lib/db/src/index";
 import { coletarErrosApi, resumoErros, lerEstado } from "./helpers";
 
 const estado = lerEstado();
@@ -16,12 +18,26 @@ test.describe("Vestidos", () => {
     expect(erros, `Listagem não deveria gerar erros de API:\n${resumoErros(erros)}`).toEqual([]);
   });
 
+  /**
+   * E246 (D7 da conferência) — o rastro criado pela TELA é apagado. O
+   * `varredura-fixture-do-e2e` só vê o que nasce pela API; este teste deixava
+   * um "Vestido Criado Pelo Teste" por passada (**305** no `heliumdb`), e o
+   * código, que é o que a tela mostra, é o que se apaga.
+   */
+  const codigosCriados: string[] = [];
+  test.afterAll(async () => {
+    for (const codigo of codigosCriados) {
+      await db.delete(vestidosTable).where(eq(vestidosTable.codigo, codigo));
+    }
+  });
+
   test("cadastrar vestido pelo dialog funciona de ponta a ponta", async ({ page }) => {
     await page.goto("/vestidos");
     await page.getByRole("button", { name: "Novo Vestido" }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
 
     const codigo = `E2E-${Date.now().toString().slice(-6)}`;
+    codigosCriados.push(codigo);
     await page.getByLabel("Código").fill(codigo);
     await page.getByLabel("Nome").first().fill("Vestido Criado Pelo Teste");
     await page.getByLabel(/Preço/).fill("3500");

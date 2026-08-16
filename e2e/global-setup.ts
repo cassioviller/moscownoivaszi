@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { escolherLojaDaSuite } from "./loja-da-suite";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import {
   db,
   pool,
@@ -353,6 +353,47 @@ export default async function globalSetup() {
       ocupacaoFim: diaLocal(devolucao),
     });
   });
+
+  /**
+   * E246 (D2 da conferência) — a reserva da fixture é RENOVADA a cada run.
+   *
+   * O `garantir` acima só cria; a data era "+90 dias" da PRIMEIRA criação (no
+   * dev, 16/07 → casamento em 14/10/2026), e nada a movia. Os specs que a
+   * abrem (`13`) contam com ela entre as "próximas" da /reservas; a partir de
+   * 15/10/2026 ela seria passado e a suíte reprovaria sem uma linha mudar — a
+   * bomba de calendário que a lente D achou com data marcada. É o desenho do
+   * `AJUSTE_E2E` da regra: o que a suíte pretende testar se grava em todo run.
+   *
+   * A janela nova é [casamento−3, casamento+2] e a EXCLUDE de ocupação do
+   * banco recusa sobreposição com outra reserva viva do MESMO vestido — os
+   * specs criam reservas em `e2e-vestido-1` com `dataFutura` (base fixa em
+   * 2027), então +90 dias colide a partir de novembro/2026 com a de 06/02/2027.
+   * A renovação anda de 7 em 7 dias até a primeira janela livre.
+   */
+  {
+    const [atual] = await db.select().from(bloqueioVestidosTable).where(eq(bloqueioVestidosTable.id, "e2e-bloqueio-1"));
+    const daquiA30 = Date.now() + 30 * 24 * 60 * 60 * 1000;
+    if (atual && atual.casamentoData && atual.casamentoData.getTime() < daquiA30) {
+      const vivas = await db.select({ inicio: bloqueioVestidosTable.ocupacaoInicio, fim: bloqueioVestidosTable.ocupacaoFim })
+        .from(bloqueioVestidosTable)
+        .where(and(eq(bloqueioVestidosTable.vestidoId, "e2e-vestido-1"), isNull(bloqueioVestidosTable.canceladoEm)));
+      const outras = vivas.filter((v) => v.inicio && v.fim);
+      let casamento = ancoraDeNegocioLocal(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000));
+      for (let tentativa = 0; tentativa < 52; tentativa++) {
+        const ini = diaLocal(new Date(casamento.getTime() - 3 * 24 * 60 * 60 * 1000));
+        const fim = diaLocal(new Date(casamento.getTime() + 2 * 24 * 60 * 60 * 1000));
+        const colide = outras.some((o) => !(fim < String(o.inicio) || ini > String(o.fim)));
+        if (!colide) break;
+        casamento = ancoraDeNegocioLocal(new Date(casamento.getTime() + 7 * 24 * 60 * 60 * 1000));
+      }
+      const retirada = new Date(casamento.getTime() - 3 * 24 * 60 * 60 * 1000);
+      const devolucao = new Date(casamento.getTime() + 2 * 24 * 60 * 60 * 1000);
+      await db.update(bloqueioVestidosTable)
+        .set({ casamentoData: casamento, ocupacaoInicio: diaLocal(retirada), ocupacaoFim: diaLocal(devolucao) })
+        .where(eq(bloqueioVestidosTable.id, "e2e-bloqueio-1"));
+      console.log(`[e2e-setup] reserva da fixture renovada para ${diaLocal(casamento)} (E246/D2)`);
+    }
+  }
 
   const [contrato] = await db.select().from(contratosTable).where(eq(contratosTable.lojaId, loja.id)).limit(1);
 

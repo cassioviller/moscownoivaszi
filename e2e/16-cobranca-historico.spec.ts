@@ -16,8 +16,15 @@ test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
  * atraso: contrato + plano com o primeiro vencimento no passado.
  */
 test.describe("Cobrança — histórico por noiva", () => {
-  // Nulo = este run não criou (a fila já tinha atraso): o afterAll só apaga o
-  // que ELE criou, nunca o atraso de outrem.
+  /**
+   * E246 (D4 da conferência) — UM ramo só. O spec bifurcava por ambiente:
+   * "já há atraso na fila? então não crio" — e no dev, que SEMPRE tem atraso,
+   * o ramo que cria nunca rodava (foi assim que a S-O145 ficou escondida até
+   * o banco virgem da S-O93). Agora cria sempre a própria noiva em atraso e
+   * mira a LINHA DELA na fila, não a primeira que aparecer.
+   */
+  const stamp = Date.now();
+  const nomeDaNoiva = `E2E Cobrança histórico ${stamp}`;
   let contratoId: string | null = null;
   let registroCobrancaId: string | null = null;
   let leadId: string | null = null;
@@ -27,14 +34,6 @@ test.describe("Cobrança — histórico por noiva", () => {
       data: { email: estado.adminEmail, senha: estado.senha },
     });
     await request.post(`${API_URL}/api/auth/selecionar-loja`, { data: { lojaId: estado.lojaId } });
-
-    // Já em atraso? Então a fila já tem quem cobrar e não criamos de novo.
-    const parcelas = await request.get(`${API_URL}/api/lojas/${estado.lojaId}/financeiro/parcelas`);
-    expect(parcelas.status(), await parcelas.text()).toBe(200);
-    const lista = (await parcelas.json()) as { status: string; vencimento: string }[];
-    const hoje = new Date().toISOString();
-    const jaTemAtraso = lista.some((p) => p.status === "PREVISTA" && p.vencimento < hoje);
-    if (jaTemAtraso) return;
 
     // A rota /equipe expõe `usuarioId`, não `id` — tipar errado fazia o POST
     // abaixo nascer com vendedoraId undefined (CORPO_INVALIDO).
@@ -50,7 +49,7 @@ test.describe("Cobrança — histórico por noiva", () => {
      * dev acumulou — a S-O73 pela quarta vez.
      */
     const lead = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/leads`, {
-      data: { noivaNome: `E2E Cobrança histórico ${Date.now()}`, origem: "LOJA", ...QUALIFICACAO_DA_NOIVA },
+      data: { noivaNome: nomeDaNoiva, origem: "LOJA", ...QUALIFICACAO_DA_NOIVA },
     });
     expect(lead.status(), await lead.text()).toBe(201);
     leadId = ((await lead.json()) as { id: string }).id;
@@ -117,7 +116,8 @@ test.describe("Cobrança — histórico por noiva", () => {
     await page.goto("/financeiro/cobranca");
     await expect(page.getByRole("heading", { name: "Cobrança", exact: true })).toBeVisible();
 
-    const linha = page.locator("li", { has: page.getByRole("button", { name: /Histórico/ }) }).first();
+    // A linha da NOSSA noiva — não a primeira da fila.
+    const linha = page.locator("li", { has: page.getByRole("button", { name: /Histórico/ }) }).filter({ hasText: nomeDaNoiva }).first();
     await expect(linha).toBeVisible();
 
     // A query é LAZY: antes de abrir, nenhuma request de histórico saiu.
@@ -157,7 +157,7 @@ test.describe("Cobrança — histórico por noiva", () => {
 
   test("nenhum 'Invalid Date' no histórico", async ({ page }) => {
     await page.goto("/financeiro/cobranca");
-    const linha = page.locator("li", { has: page.getByRole("button", { name: /Histórico/ }) }).first();
+    const linha = page.locator("li", { has: page.getByRole("button", { name: /Histórico/ }) }).filter({ hasText: nomeDaNoiva }).first();
     await linha.getByRole("button", { name: /Histórico/ }).click();
     await page.waitForLoadState("networkidle");
     const corpo = (await linha.textContent()) ?? "";

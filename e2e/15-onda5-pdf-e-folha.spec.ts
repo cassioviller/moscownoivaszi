@@ -1,8 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 import path from "node:path";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
-import { db, contasPagarTable, pagamentosTable, pagamentoItensTable } from "../lib/db/src/index";
-import { lerEstado, API_URL } from "./helpers";
+import { db, contasPagarTable, pagamentosTable, pagamentoItensTable, contratosTable, leadsTable, parcelasTable } from "../lib/db/src/index";
+import { lerEstado, API_URL, QUALIFICACAO_DA_NOIVA } from "./helpers";
 
 const estado = lerEstado();
 
@@ -163,20 +163,39 @@ test.describe("Onda 5 — folha", () => {
 });
 
 test.describe("Onda 5 — PDF de contrato", () => {
+  let contratoDoPdf: { contratoId: string; leadId: string } | null = null;
+  test.afterAll(async () => {
+    if (!contratoDoPdf) return;
+    await db.delete(parcelasTable).where(eq(parcelasTable.contratoId, contratoDoPdf.contratoId));
+    await db.delete(contratosTable).where(eq(contratosTable.id, contratoDoPdf.contratoId));
+    await db.delete(leadsTable).where(eq(leadsTable.id, contratoDoPdf.leadId));
+  });
+
   test("PROBE API: o contrato baixa como PDF de verdade", async ({ request }) => {
     await request.post(`${API_URL}/api/auth/login`, {
       data: { email: estado.adminEmail, senha: estado.senha },
     });
     await request.post(`${API_URL}/api/auth/selecionar-loja`, { data: { lojaId: estado.lojaId } });
 
-    const contratos = await request.get(`${API_URL}/api/lojas/${estado.lojaId}/contratos`);
-    expect(contratos.status()).toBe(200);
-    // E124: a resposta virou página `{ total, itens }`.
-    const lista = (await contratos.json()).itens;
-    test.skip(lista.length === 0, "sem contrato no seed para exportar");
+    // E246 (D3): o contrato é PRÓPRIO. Era `lista[0]` de `GET /contratos` — um
+    // contrato ARBITRÁRIO (hoje um ATIVO, amanhã um CANCELADO) — e o
+    // `test.skip` sobre lista vazia era um dos "4 skipped" da S-O93: um teste
+    // ausente num banco novo (regra 19).
+    const lead = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/leads`, {
+      data: { noivaNome: `E2E PDF ${Date.now()}`, origem: "LOJA", ...QUALIFICACAO_DA_NOIVA },
+    });
+    expect(lead.status(), await lead.text()).toBe(201);
+    const leadId = ((await lead.json()) as { id: string }).id;
+    const me = await request.get(`${API_URL}/api/auth/me`);
+    const contrato = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/contratos`, {
+      data: { leadId, vendedoraId: (await me.json()).usuario.id, valorTotal: 1800 },
+    });
+    expect(contrato.status(), await contrato.text()).toBe(201);
+    const contratoId = ((await contrato.json()) as { id: string }).id;
+    contratoDoPdf = { contratoId, leadId };
 
     const res = await request.get(
-      `${API_URL}/api/lojas/${estado.lojaId}/contratos/${lista[0].id}/pdf`,
+      `${API_URL}/api/lojas/${estado.lojaId}/contratos/${contratoId}/pdf`,
     );
     expect(res.status()).toBe(200);
     expect(res.headers()["content-type"]).toContain("application/pdf");

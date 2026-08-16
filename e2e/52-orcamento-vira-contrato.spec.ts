@@ -12,7 +12,7 @@ import {
   vestidosTable,
   bloqueioVestidosTable,
 } from "../lib/db/src/index";
-import { lerEstado, API_URL, QUALIFICACAO_DA_NOIVA } from "./helpers";
+import { lerEstado, API_URL, QUALIFICACAO_DA_NOIVA, diaLocalSP } from "./helpers";
 
 const estado = lerEstado();
 
@@ -186,7 +186,10 @@ test.describe("Orçamento vira contrato (E120 + E162)", () => {
     await expect(dialogo.getByTestId("aviso-janela-da-reserva")).toContainText("18/05/2027");
 
     // 4. O contrato fecha POR DENTRO do gate — a reserva recém-criada vai junto.
-    await dialogo.getByLabel(/1ª parcela vence em/).fill("2026-09-10");
+    // E246 (D9): era "2026-09-10" cravado — a partir de 11/09/2026 a cena
+    // passaria a encenar uma parcela VENCIDA com mora, sem uma linha mudar.
+    // O vencimento é derivado de hoje: sempre 30 dias à frente.
+    await dialogo.getByLabel(/1ª parcela vence em/).fill(diaLocalSP(30));
     await dialogo.getByRole("button", { name: "Gerar contrato" }).click();
 
     await expect(page).toHaveURL(/\/contratos\/[0-9a-f-]+$/);

@@ -7,21 +7,31 @@ const estado = lerEstado();
 test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
 
 test.describe("Orçamentos", () => {
+  /**
+   * E246 (D1 da conferência) — os dois testes abaixo passavam porque a página 1
+   * de /orcamentos estava cheia de lixo da MESMA noiva: `e2e-orcamento-1` é o
+   * #303 de 303 na ordem da tela, e as posições 1–60 eram 60 RASCUNHOs de
+   * `e2e-lead-1` que nenhum spec vivo cria. Em banco virgem passa; em qualquer
+   * banco onde outra coisa ocupe 24 linhas antes dela, reprova — a lição que o
+   * `05` aprendeu no E124/D2. A BUSCA (o mesmo `input-busca-orcamento` que o
+   * `54` usa) mira a noiva da fixture, e o assert deixa de depender da ordem.
+   */
   test("lista mostra o orçamento existente", async ({ page }) => {
     await page.goto("/orcamentos");
     await expect(page.getByText(/Orçamento/).first()).toBeVisible();
-    // Ao menos um card de orçamento renderizado.
+    await page.getByTestId("input-busca-orcamento").fill("E2E Noiva Playwright");
+    // O orçamento da fixture (`e2e-orcamento-1`, RASCUNHO) aparece pela busca.
+    await expect(page.locator("a", { hasText: "E2E Noiva Playwright" }).first()).toBeVisible();
     await expect(page.getByText("RASCUNHO").first()).toBeVisible();
   });
 
-  // FALHA ESPERADA no main (achado UX-orcamentos): a lista mostra
-  // "Lead: a1b2c3d4" (orcamentos/index.tsx:38) em vez do nome da noiva.
+  // Era o achado UX-orcamentos: a lista mostrava "Lead: a1b2c3d4" em vez do
+  // nome da noiva — fechado; este teste prova o conserto.
   test("card do orçamento identifica a noiva pelo nome", async ({ page }) => {
     await page.goto("/orcamentos");
-    // `.first()`: o banco de dev acumula orçamentos da mesma noiva seedada a
-    // cada rodada — um match basta para provar que é o NOME, não o id.
+    await page.getByTestId("input-busca-orcamento").fill("E2E Noiva Playwright");
     await expect(
-      page.getByText("E2E Noiva Playwright").first(),
+      page.locator("a", { hasText: "E2E Noiva Playwright" }).first(),
       "Card deveria mostrar o nome da noiva, não o id truncado (orcamentos/index.tsx:38)",
     ).toBeVisible();
   });
