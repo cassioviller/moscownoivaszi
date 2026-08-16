@@ -77,7 +77,7 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
    * acrescenta um objeto aninhado a um schema de resposta, e é aí que a régua
    * serve — obriga a perguntar quem vai preenchê-lo.
    */
-  it("216 operações · 156 com schema de resposta · 75 com relação · 280 pares na fronteira", () => {
+  it("217 operações · 157 com schema de resposta · 75 com relação · 280 pares na fronteira", () => {
     /**
      * E221: 200 → 203, e as três são do recibo da cláusula 7ª — `listRecibos`,
      * `getReciboPdf` e `getPortalReciboPdf`. **Só uma acrescenta par à
@@ -127,7 +127,12 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
      * resposta). Nenhum par novo na fronteira.
      */
     // E237: 214 → 216. `listIndicesMonetarios` e `gravarIndiceMonetario` (`IndiceMonetario`, raso, sem relação).
-    expect(c.operacoes, "operação nova no spec: confira quem monta a resposta dela e atualize esta contagem").toBe(216);
+    // E243: 216 → 217. `moraDaParcelaNoDia` devolve o MESMO `MoraDaParcela` que
+    // toda parcela já carrega (`Parcela.mora`), pela mesma função (`moraDe` com
+    // o dia do fato) — de propósito: a sugestão que o diálogo mostra para uma
+    // data é a que a porta de receber usa como teto naquela data. Raso, sem
+    // relação — nenhum par novo na fronteira.
+    expect(c.operacoes, "operação nova no spec: confira quem monta a resposta dela e atualize esta contagem").toBe(217);
     // E221: 143 → 144. Só o `listRecibos` entra — as outras duas devolvem PDF.
     // E212: 144 → 146. As duas novas são a prévia e a cobrança do atraso da
     // cláusula 16ª, e as duas devolvem o MESMO `CobrancaDeAtraso` — de
@@ -150,7 +155,8 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // E235: 152 → 153. O `listMovimentosConciliacao` (`MovimentoDoSistema`, raso).
     // E236: 153 → 154. O `listManuais` (`ManualDeUso`, raso).
     // E237: 154 → 156. Os dois de índices.
-    expect(c.comSchemaDeResposta).toBe(156);
+    // E243: 156 → 157 (`moraDaParcelaNoDia`, o `MoraDaParcela | null`).
+    expect(c.comSchemaDeResposta).toBe(157);
     // E212: 70 → 72. `CobrancaDeAtraso` aninha `CobrancaDeAtrasoLinha` — a conta
     // é uma linha POR PEÇA, que é o §2º da cláusula 16ª ("aplicados
     // proporcionalmente a trajes e/ou acessórios avulsos") virando forma.

@@ -89,6 +89,35 @@ test.describe("Recebimento parcial (E49)", () => {
     return p.mora.total as number;
   };
 
+  /**
+   * E243 — a sugestão segue a DATA. A parcela venceu há 5 dias: aberto hoje, o
+   * diálogo sugere o total com a mora; mudada a data para o dia do vencimento
+   * (pago em dia, lançado depois), a sugestão cai para o principal — pedida ao
+   * servidor (`GET /parcelas/:id/mora?em=`), não recalculada no navegador.
+   * Antes deste épico o campo ficava nos R$ 1.0xx e, digitados os R$ 1.000,00
+   * na data certa, a parcela ficava PARCIAL devendo uma multa que a noiva
+   * nunca deveu.
+   */
+  test("E243 — mudar a data para o vencimento faz a sugestão cair para o principal", async ({ page, request }) => {
+    const totalHoje = await totalDaFila(request);
+    expect(totalHoje).toBeGreaterThan(1000);
+
+    await page.goto(`/contratos/${contratoId}`);
+    const linha = page.locator("li").filter({ hasText: "Entrada" }).first();
+    await linha.getByRole("button", { name: "Receber", exact: true }).click();
+    const valor = page.locator("#valorRecebido");
+    await expect(valor).toHaveValue(totalHoje.toFixed(2).replace(".", ","));
+
+    const vencimento = new Date(Date.now() - 5 * 86_400_000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+    await page.locator("#dataRecebimento").fill(vencimento);
+    await expect(valor).toHaveValue("1000,00");
+
+    // E de volta a hoje, a sugestão volta a ser a de hoje.
+    await page.locator("#dataRecebimento").fill(new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" }));
+    await expect(valor).toHaveValue(totalHoje.toFixed(2).replace(".", ","));
+    await page.keyboard.press("Escape");
+  });
+
   test("receber metade deixa a parcela PARCIAL, dizendo quanto falta", async ({ page, request }) => {
     const totalHoje = await totalDaFila(request);
 

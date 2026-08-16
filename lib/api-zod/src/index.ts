@@ -38,4 +38,5 @@ export {
   PedirRemarcacaoPortalParams,
   GetComprometimentoEstoqueParams,
   ListAusenciasParams,
+  MoraDaParcelaNoDiaParams,
 } from "./generated/api";

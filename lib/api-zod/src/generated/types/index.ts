@@ -280,6 +280,7 @@ export * from './minhaComissao';
 export * from './minhaComissaoColocacao';
 export * from './minhaComissaoFechamentosItem';
 export * from './moraDaParcela';
+export * from './moraDaParcelaNoDiaParams';
 export * from './movimentoDoSistema';
 export * from './movimentoDoSistemaTipo';
 export * from './orcamento';

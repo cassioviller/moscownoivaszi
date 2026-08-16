@@ -307,7 +307,7 @@ export default function Receber() {
             dois números sem rótulo é a noiva escolhendo em qual acreditar. */}
         <ResumoCard rotulo="A receber (sem multas de atraso)" valor={resumo.aReceber} />
         <ResumoCard rotulo="Recebido" valor={resumo.recebido} />
-        <ResumoCard rotulo="Em atraso (com multa e juros)" valor={resumo.emAtraso} destaque />
+        <ResumoCard rotulo="Em atraso (com multa, juros e correção)" valor={resumo.emAtraso} destaque />
       </div>
 
       <div className="flex flex-wrap gap-2">

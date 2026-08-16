@@ -185,7 +185,7 @@ describe("E235 — a conciliação enxerga cada pagamento", () => {
     expect(linhas.map((l) => [l.origem, Number(l.valorRecebido)]).sort()).toEqual([["MORA", 15], ["PLANO", 500]]);
 
     const ms = (await movimentos(hoje, hoje)).filter((m) => m.id.endsWith(pid) || m.descricao.includes("9ª") || m.id.includes(linhas.find((l) => l.origem === "MORA")!.id));
-    expect(ms.map((m) => [m.id.split(":")[0], m.valor, m.descricao])).toEqual([["parcela", 515, "Parcela 1 · inclui multa e juros da 9ª"]]);
+    expect(ms.map((m) => [m.id.split(":")[0], m.valor, m.descricao])).toEqual([["parcela", 515, "Parcela 1 · inclui multa, juros e correção da 9ª"]]);
 
     const extrato: TransacaoExtrato[] = [{ data: hoje, descricao: "PIX RECEBIDO", valor: 515 }];
     const r = conciliarExtrato(extrato, ms.map(semCarimbo));
@@ -196,5 +196,39 @@ describe("E235 — a conciliação enxerga cada pagamento", () => {
       { id: "parcela:mora", data: hoje, valor: 15, tipo: "recebimento", descricao: "Multa e juros" },
     ]);
     expect([antes.casadas.length, antes.soExtrato.length, antes.soSistema.length]).toEqual([0, 1, 2]);
+  });
+  /**
+   * **E243 (A3 da conferência) — a mora de um ato ESTORNADO não volta na
+   * parcela recebida de novo.** A conciliação somava o `aMora` de TODAS as
+   * `PARCELA_RECEBIDA` da parcela, sem o corte do estorno que
+   * `recibosDaParcela` aplica: ato A paga R$ 515,00 (mora 15, nasce a linha
+   * MORA), estorno avulso (a parcela volta a PREVISTA e a MORA cai), ato B
+   * paga R$ 500,00 — e o movimento `parcela:` dizia **R$ 515,00 "inclui
+   * multa e juros"** contra R$ 500,00 no extrato: divergência falsa dos dois
+   * lados. População no `heliumdb`: 0 linhas MORA — armado.
+   */
+  it("**E243 — depois do estorno, o movimento da parcela vale o que o ato VÁLIDO pagou, sem a mora do ato estornado**", async () => {
+    const lead = await criarLead(f);
+    const contrato = await criarContrato(f, { leadId: lead.id, valorTotal: 500, fechadoEm: new Date() });
+    const pid = randomUUID();
+    await db.insert(parcelasTable).values({
+      id: pid, lojaId: f.lojaId, contratoId: contrato.id, numero: 1, origem: "PLANO", valorPrevisto: 500,
+      vencimento: ancoraDeNegocio(addDias(hojeLocal(), -30)),
+    });
+    const hoje = hojeLocal();
+    // Ato A: paga com a mora — nasce a linha MORA de R$ 15,00.
+    await dona.post(`/api/lojas/${f.lojaId}/parcelas/${pid}/receber`)
+      .send({ valorRecebido: 515, recebidoEm: `${hoje}T10:00:00-03:00`, formaRecebimento: "PIX" }).expect(200);
+    // O estorno avulso: a parcela volta a PREVISTA, a MORA cai.
+    await dona.post(`/api/lojas/${f.lojaId}/parcelas/${pid}/estornar`).send({}).expect(200);
+    // Ato B: paga só o principal — quita (a imputação do E213).
+    await dona.post(`/api/lojas/${f.lojaId}/parcelas/${pid}/receber`)
+      .send({ valorRecebido: 500, recebidoEm: `${hoje}T11:00:00-03:00`, formaRecebimento: "PIX" }).expect(200);
+
+    const ms = (await movimentos(hoje, hoje)).filter((m) => m.id.endsWith(pid));
+    // ANTES do conserto: [["parcela", 515, "Parcela 1 · inclui multa e juros da 9ª"]].
+    expect(ms.map((m) => [m.id.split(":")[0], m.valor, m.descricao])).toEqual([["parcela", 500, "Parcela 1"]]);
+    const r = conciliarExtrato([{ data: hoje, descricao: "PIX RECEBIDO", valor: 500 }], ms.map(semCarimbo));
+    expect([r.casadas.length, r.soExtrato.length, r.soSistema.length]).toEqual([1, 0, 0]);
   });
 });

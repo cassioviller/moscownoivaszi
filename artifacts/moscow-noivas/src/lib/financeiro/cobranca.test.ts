@@ -191,7 +191,7 @@ describe("msgCobranca", () => {
       msgCobranca({ noivaNome: "Ana", totalVencido: 515, acrescimo: 15, diasMaisAntigo: 30 }),
     );
     expect(msg).toContain("um valor em aberto: R$ 515,00");
-    expect(msg).toContain("R$ 15,00 de multa e juros pelo atraso");
+    expect(msg).toContain("R$ 15,00 de multa, juros e correção pelo atraso");
     expect(msg).toContain("cláusula 9ª");
     // O tom concierge e a saída para "já paguei" continuam de pé.
     expect(msg).toContain("Se já tiver acertado");

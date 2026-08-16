@@ -174,6 +174,8 @@ import type {
   MembroEquipeInput,
   MembroEquipeUpdate,
   MinhaComissao,
+  MoraDaParcela,
+  MoraDaParcelaNoDiaParams,
   MovimentoDoSistema,
   Orcamento,
   OrcamentoAceitoSemContrato,
@@ -12518,6 +12520,101 @@ export const useRestabelecerMora = <TError = ErrorType<void>,
       > => {
       return useMutation(getRestabelecerMoraMutationOptions(options));
     }
+
+export const getMoraDaParcelaNoDiaUrl = (lojaId: string,
+    parcelaId: string,
+    params: MoraDaParcelaNoDiaParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/parcelas/${parcelaId}/mora?${stringifiedParams}` : `/api/lojas/${lojaId}/parcelas/${parcelaId}/mora`
+}
+
+/**
+ * A conta é derivada e por padrão é de hoje. O diálogo de receber deixa a vendedora dizer QUANDO o dinheiro entrou (o `recebidoEm` do `POST /receber`), e a mora daquele pagamento é a do dia em que ele aconteceu — é ela que a porta usa como sugestão e teto. Esta leitura devolve o MESMO número, pela mesma função do servidor, para o diálogo sugerir certo antes do clique em vez de recalcular no navegador (uma grafia só). `em` no futuro vale como hoje.
+ * @summary A mora da cláusula 9ª desta parcela num DIA dado (E243)
+ */
+export const moraDaParcelaNoDia = async (lojaId: string,
+    parcelaId: string,
+    params: MoraDaParcelaNoDiaParams, options?: RequestInit): Promise<MoraDaParcela | null> => {
+
+  return customFetch<MoraDaParcela | null>(getMoraDaParcelaNoDiaUrl(lojaId,parcelaId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getMoraDaParcelaNoDiaQueryKey = (lojaId: string,
+    parcelaId: string,
+    params?: MoraDaParcelaNoDiaParams,) => {
+    return [
+    `/api/lojas/${lojaId}/parcelas/${parcelaId}/mora`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getMoraDaParcelaNoDiaQueryOptions = <TData = Awaited<ReturnType<typeof moraDaParcelaNoDia>>, TError = ErrorType<void>>(lojaId: string,
+    parcelaId: string,
+    params: MoraDaParcelaNoDiaParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof moraDaParcelaNoDia>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getMoraDaParcelaNoDiaQueryKey(lojaId,parcelaId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof moraDaParcelaNoDia>>> = ({ signal }) => moraDaParcelaNoDia(lojaId,parcelaId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined && parcelaId !== null && parcelaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof moraDaParcelaNoDia>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type MoraDaParcelaNoDiaQueryResult = NonNullable<Awaited<ReturnType<typeof moraDaParcelaNoDia>>>
+export type MoraDaParcelaNoDiaQueryError = ErrorType<void>
+
+
+/**
+ * @summary A mora da cláusula 9ª desta parcela num DIA dado (E243)
+ */
+
+export function useMoraDaParcelaNoDia<TData = Awaited<ReturnType<typeof moraDaParcelaNoDia>>, TError = ErrorType<void>>(
+ lojaId: string,
+    parcelaId: string,
+    params: MoraDaParcelaNoDiaParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof moraDaParcelaNoDia>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getMoraDaParcelaNoDiaQueryOptions(lojaId,parcelaId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getEstornarParcelaUrl = (lojaId: string,
     parcelaId: string,) => {

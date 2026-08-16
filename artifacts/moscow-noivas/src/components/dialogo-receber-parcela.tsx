@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  getMoraDaParcelaNoDiaQueryKey,
+  useMoraDaParcelaNoDia,
   useReceberParcela,
   type Parcela,
   type ReceberParcelaInputFormaRecebimento,
@@ -25,7 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { diaParaISO } from "@/lib/formatos";
-import { ROTULO_FORMA, FORMAS } from "@/lib/financeiro/forma";
+import { ROTULO_FORMA, FORMAS, saldoAberto } from "@/lib/financeiro/forma";
 import { sugestaoDeRecebimento } from "@/lib/financeiro/mora-na-tela";
 import { hojeLocal } from "@/lib/financeiro/datas";
 import { parseValor } from "@/lib/financeiro/dinheiro";
@@ -113,6 +115,47 @@ export function DialogoReceberParcela({
     setDataRecebimento(hojeLocal());
     setFormaRecebimento("");
   }, [parcela?.id]);
+
+  /**
+   * **E243 — a sugestão segue a DATA, e a conta continua sendo do servidor.**
+   *
+   * A sugestão de abertura é a mora de HOJE (`parcela.mora`), e a vendedora
+   * pode dizer que o dinheiro entrou antes — o `recebidoEm` que a porta usa
+   * como teto desde o E243. Antes, a parcela de R$ 500,00 vencida em 01/07,
+   * paga em dinheiro em 01/07 e lançada em 15/08 com a data certa abria com
+   * R$ 517,50; digitados os R$ 500,00, ficava PARCIAL devendo R$ 17,50 de
+   * uma multa que a noiva nunca deveu. Agora, mudada a data, o diálogo pede
+   * ao servidor a mora DAQUELE dia (`GET /parcelas/:id/mora?em=`) — a mesma
+   * função da porta, não uma segunda régua no navegador (é a promessa da
+   * `mora-na-tela.ts`) — e troca a sugestão se o campo ainda estiver com a
+   * sugestão anterior; o que a vendedora digitou de próprio punho fica.
+   * Parcela sem mora hoje não tem mora em dia nenhum anterior: nem pergunta.
+   */
+  const hoje = hojeLocal();
+  const pedeMoraDoDia = !!parcela && !!parcela.mora && !!dataRecebimento && dataRecebimento < hoje;
+  const moraNoDia = useMoraDaParcelaNoDia(lojaId, parcela?.id ?? "", { em: dataRecebimento }, {
+    query: {
+      queryKey: getMoraDaParcelaNoDiaQueryKey(lojaId, parcela?.id ?? "", { em: dataRecebimento }),
+      enabled: pedeMoraDoDia,
+    },
+  });
+  const [ultimaSugestao, setUltimaSugestao] = useState<string | null>(null);
+  useEffect(() => {
+    if (!parcela) return;
+    const sugestao = (
+      dataRecebimento < hoje
+        ? moraNoDia.isSuccess
+          ? (moraNoDia.data?.total ?? saldoAberto(parcela))
+          : null
+        : sugestaoDeRecebimento(parcela)
+    );
+    if (sugestao === null) return;
+    const texto = sugestao.toFixed(2).replace(".", ",");
+    setValorRecebido((atual) => (ultimaSugestao === null || atual === ultimaSugestao ? texto : atual));
+    setUltimaSugestao(texto);
+    // `ultimaSugestao` fica de fora de propósito: ela é o que este efeito escreve.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parcela?.id, dataRecebimento, moraNoDia.isSuccess, moraNoDia.data?.total]);
 
   const onReceber = async () => {
     if (!parcela) return;

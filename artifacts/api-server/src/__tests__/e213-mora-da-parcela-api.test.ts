@@ -205,6 +205,93 @@ describe("E213 — a parcela vencida tem multa e juros", () => {
     expect(detalhe.explicacao).toMatch(/Sem correção monetária — (o IPCA de \d{2}\/\d{4} não foi informado \(Configurações → Índices\)|ainda não há mês cheio de atraso)/);
   });
 
+  /**
+   * **E243 (A4=C2 da conferência) — a mora é do dia do FATO, não do dia do
+   * lançamento.** `recebidoEm` é informado pela vendedora e pode ser anterior
+   * ao clique (o dinheiro entrou sábado, ela lançou segunda). A porta calculava
+   * sugestão, teto, linha MORA e trilha com `hojeLocal()`: paga R$ 515,00 no
+   * 30º dia e lançada no 33º, a linha MORA gravava R$ 15,00 (o que entrou) e a
+   * descrição/trilha diziam "33 dias · juros R$ 5,50 = R$ 515,50" — 15,50 ≠
+   * 15,00 no mesmo carnê. Pior no diálogo (C2): parcela paga EM DIA e lançada
+   * 45 dias depois com a data certa abria sugerindo R$ 517,50 e, digitados os
+   * R$ 500,00, ficava PARCIAL devendo R$ 17,50 de uma multa que a noiva nunca
+   * deveu.
+   */
+  describe("E243 — a mora é do dia do FATO (`recebidoEm`), não de hoje", () => {
+    const noDia = (parcelaId: string, valor: number, diasAtras: number) =>
+      agent.post(`/api/lojas/${f.lojaId}/parcelas/${parcelaId}/receber`).send({
+        valorRecebido: valor,
+        recebidoEm: `${addDias(hojeLocal(), -diasAtras)}T12:00:00-03:00`,
+        formaRecebimento: "PIX",
+      });
+
+    it("paga no 30º dia e lançada no 33º: a linha MORA e a trilha contam 30 dias — R$ 15,00, não R$ 15,50", async () => {
+      const { contrato, parcela } = await parcelaCom({ vencimento: diasAtras(33) });
+      await noDia(parcela.id, 515, 3).expect(200);
+      const [mora] = await db.select().from(parcelasTable)
+        .where(and(eq(parcelasTable.contratoId, contrato.id), eq(parcelasTable.origem, "MORA")));
+      expect(Number(mora!.valorRecebido)).toBe(15);
+      const [rastro] = await db.select().from(auditLogTable)
+        .where(and(eq(auditLogTable.entidadeId, mora!.id), eq(auditLogTable.acao, "MORA_RECEBIDA")));
+      const d = rastro!.detalhe as { diasDeAtraso: number; juros: number; explicacao: string };
+      // ANTES: diasDeAtraso 33, juros 5.5, "… = R$ 515,50" — sobre uma linha de R$ 15,00.
+      expect([d.diasDeAtraso, d.juros]).toEqual([30, 5]);
+      expect(d.explicacao).toContain("30 dia(s)");
+      expect(mora!.descricao).toContain("30 dia(s)");
+    });
+
+    it("o teto é o do dia do fato: R$ 515,50 (a mora de hoje) é ACIMA do saldo de quem pagou no 30º dia", async () => {
+      const { parcela } = await parcelaCom({ vencimento: diasAtras(33) });
+      // ANTES: 200 — a porta aceitava a mora de hoje sobre um pagamento de três dias atrás.
+      const r = await noDia(parcela.id, 515.5, 3).expect(422);
+      expect(r.body.error).toBe("VALOR_ACIMA_DO_SALDO");
+    });
+
+    it("paga EM DIA e lançada 45 dias depois com a data certa: R$ 500,00 quita, sem multa nenhuma", async () => {
+      const { contrato, parcela } = await parcelaCom({ vencimento: diasAtras(45) });
+      await noDia(parcela.id, 500, 45).expect(200);
+      expect((await parcelaDe(parcela.id)).status).toBe("PAGA");
+      const linhas = await db.select().from(parcelasTable)
+        .where(and(eq(parcelasTable.contratoId, contrato.id), eq(parcelasTable.origem, "MORA")));
+      expect(linhas).toHaveLength(0);
+      // E o teto também é o de em dia: R$ 500,01 é acima do saldo.
+      const { parcela: outra } = await parcelaCom({ vencimento: diasAtras(45) });
+      await noDia(outra.id, 500.01, 45).expect(422);
+    });
+
+    it("GET /parcelas/:id/mora?em= devolve a conta DAQUELE dia — o mesmo número que a porta de receber usa como teto", async () => {
+      const { parcela } = await parcelaCom({ vencimento: diasAtras(33) });
+      const em = (d: string) => agent.get(`/api/lojas/${f.lojaId}/parcelas/${parcela.id}/mora`).query({ em: d });
+      // Hoje: 33 dias — R$ 515,50. No 30º dia: R$ 515,00. No vencimento: em dia, null.
+      expect((await em(hojeLocal()).expect(200)).body.total).toBe(515.5);
+      expect((await em(addDias(hojeLocal(), -3)).expect(200)).body).toMatchObject({ dias: 30, total: 515 });
+      expect((await em(addDias(hojeLocal(), -33)).expect(200)).body).toBeNull();
+      // Amanhã vale como hoje — a mora de amanhã não é um fato.
+      expect((await em(addDias(hojeLocal(), 1)).expect(200)).body.total).toBe(515.5);
+      // A forma do dia é validada.
+      await em("16/08/2026").expect(400);
+      // Parcela de outra loja é 404.
+      const outra = await criarFixture();
+      try {
+        const agenteDeOutra = await loginComLoja(outra.superAdminEmail, outra.lojaId);
+        await agenteDeOutra.get(`/api/lojas/${outra.lojaId}/parcelas/${parcela.id}/mora`).query({ em: hojeLocal() }).expect(404);
+      } finally {
+        await limparFixture(outra);
+      }
+    });
+
+    it("`recebidoEm` no futuro não cobra mora de amanhã: o dia do fato é no máximo hoje", async () => {
+      const { parcela } = await parcelaCom({ vencimento: diasAtras(30) });
+      // Vencida há 30 dias: hoje deve R$ 515,00; "daqui a 30 dias" deveria R$ 520,00.
+      const r = await agent.post(`/api/lojas/${f.lojaId}/parcelas/${parcela.id}/receber`).send({
+        valorRecebido: 520,
+        recebidoEm: `${addDias(hojeLocal(), 30)}T12:00:00-03:00`,
+        formaRecebimento: "PIX",
+      });
+      expect(r.status).toBe(422);
+    });
+  });
+
   it("receber em partes: o pedaço menor vai todo ao principal, sem criar linha de mora", async () => {
     const { contrato, parcela } = await parcelaCom({ vencimento: diasAtras(30) });
     await receber(parcela.id, 300).expect(200);

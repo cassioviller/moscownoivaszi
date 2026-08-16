@@ -7859,6 +7859,35 @@ export const RestabelecerMoraResponse = zod.object({
 })
 
 
+/**
+ * A conta é derivada e por padrão é de hoje. O diálogo de receber deixa a vendedora dizer QUANDO o dinheiro entrou (o `recebidoEm` do `POST /receber`), e a mora daquele pagamento é a do dia em que ele aconteceu — é ela que a porta usa como sugestão e teto. Esta leitura devolve o MESMO número, pela mesma função do servidor, para o diálogo sugerir certo antes do clique em vez de recalcular no navegador (uma grafia só). `em` no futuro vale como hoje.
+ * @summary A mora da cláusula 9ª desta parcela num DIA dado (E243)
+ */
+export const MoraDaParcelaNoDiaParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "parcelaId": zod.coerce.string()
+})
+
+export const moraDaParcelaNoDiaQueryEmRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const MoraDaParcelaNoDiaQueryParams = zod.object({
+  "em": zod.coerce.string().regex(moraDaParcelaNoDiaQueryEmRegExp).describe('O dia do pagamento (dia local America\/Sao_Paulo)')
+})
+
+export const MoraDaParcelaNoDiaResponse = zod.union([zod.object({
+  "dias": zod.number(),
+  "saldo": zod.number(),
+  "multa": zod.number(),
+  "juros": zod.number(),
+  "correcao": zod.number().optional(),
+  "acrescimo": zod.number(),
+  "total": zod.number(),
+  "perdoada": zod.boolean(),
+  "explicacao": zod.string().optional()
+}),zod.null()])
+
+
 export const EstornarParcelaParams = zod.object({
   "lojaId": zod.coerce.string(),
   "parcelaId": zod.coerce.string()

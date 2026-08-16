@@ -1,7 +1,8 @@
-import { auditLogTable, conciliacaoDeRecebimentosTable, db, pagamentosTable, parcelasTable } from "@workspace/db";
+import { conciliacaoDeRecebimentosTable, db, pagamentosTable, parcelasTable } from "@workspace/db";
 import { and, eq, gte, inArray, lt } from "drizzle-orm";
 import { addDias, diaLocal, inicioDoDia } from "@workspace/financeiro-core";
-import { realizadoPorRecebimento, recebidasNaJanela } from "./recibos-do-banco";
+import { realizadoPorRecebimento, recebidasNaJanela, trilhaDosRecebimentos } from "./recibos-do-banco";
+import { recibosDaParcela } from "./recibo-do-papel";
 
 /**
  * **E235 (S-C51) — os movimentos do sistema que a conciliação compara com o
@@ -131,27 +132,43 @@ export async function movimentosDoSistema(
    * trilha; para a parcela de um ato só (`parcela:`), é o `valorRecebido` da
    * parcela mais a soma das linhas de MORA que os atos dela criaram.
    */
-  const idsDeParcela = divididas.map((d) => d.parcelaId);
-  const trilhaDosAtos = idsDeParcela.length
-    ? await db
-        .select({ id: auditLogTable.id, parcelaId: auditLogTable.entidadeId, detalhe: auditLogTable.detalhe })
-        .from(auditLogTable)
-        .where(and(eq(auditLogTable.lojaId, lojaId), eq(auditLogTable.acao, "PARCELA_RECEBIDA"), inArray(auditLogTable.entidadeId, [...new Set(idsDeParcela)])))
-    : [];
+  /**
+   * **E243 (A3 da conferência) — os atos que contam são os VÁLIDOS.**
+   *
+   * Aqui se somava o `aMora` de TODAS as `PARCELA_RECEBIDA` da parcela, sem o
+   * corte do estorno que `recibosDaParcela` aplica: ato A paga R$ 515,00 (mora
+   * 15, nasce a linha MORA), estorno avulso (a parcela volta a PREVISTA e a
+   * MORA cai), ato B paga R$ 500,00 — e o movimento `parcela:` dizia
+   * **R$ 515,00 "inclui multa e juros"** contra R$ 500,00 no extrato:
+   * divergência falsa dos dois lados. Agora a mora de cada parcela sai dos
+   * MESMOS recibos que o papel emite e que `porRecebimento` usa para dividir
+   * — o ato anterior ao estorno não é recibo, logo não é mora. Uma leitura,
+   * três usos.
+   */
+  const trilha = await trilhaDosRecebimentos(lojaId, parcelas.flatMap((p) => [p.id, p.contratoId]));
   const num = (v: unknown) => (typeof v === "number" ? v : Number(v ?? 0));
-  /** ato → { pago, moraParcelaId } */
-  const doAto = new Map<string, { pago: number; moraParcelaId: string | null }>();
-  /** parcela de origem → soma da mora dos atos dela (para a parcela que não se divide). */
+  /** id da linha da trilha → a linha de MORA que aquele ato criou. */
+  const moraCriadaPeloAto = new Map<string, string>();
+  for (const l of trilha) {
+    if (l.acao !== "PARCELA_RECEBIDA") continue;
+    const d = (l.detalhe ?? {}) as Record<string, unknown>;
+    if (typeof d.moraParcelaId === "string") moraCriadaPeloAto.set(l.id, d.moraParcelaId);
+  }
+  /** ato → { pago } — só atos válidos (depois do último estorno). */
+  const doAto = new Map<string, { pago: number }>();
+  /** parcela de origem → soma da mora dos atos VÁLIDOS dela (para a parcela que não se divide). */
   const moraDaParcela = new Map<string, number>();
   /** linha de MORA → a parcela de origem (só absorvida se a origem entrar na janela). */
   const origemDaMora = new Map<string, string>();
-  for (const l of trilhaDosAtos) {
-    const d = (l.detalhe ?? {}) as Record<string, unknown>;
-    const moraParcelaId = typeof d.moraParcelaId === "string" ? d.moraParcelaId : null;
-    doAto.set(l.id, { pago: num(d.valorRecebido), moraParcelaId });
-    if (moraParcelaId && num(d.aMora) > 0) {
-      moraDaParcela.set(l.parcelaId, (moraDaParcela.get(l.parcelaId) ?? 0) + num(d.aMora));
-      origemDaMora.set(moraParcelaId, l.parcelaId);
+  for (const p of parcelas) {
+    if (p.origem === "MORA") continue;
+    for (const r of recibosDaParcela(p, trilha).recibos) {
+      doAto.set(r.id, { pago: r.valor });
+      const moraId = moraCriadaPeloAto.get(r.id);
+      if (moraId && num(r.mora) > 0) {
+        moraDaParcela.set(p.id, (moraDaParcela.get(p.id) ?? 0) + num(r.mora));
+        origemDaMora.set(moraId, p.id);
+      }
     }
   }
   const naJanela = (d: { recebidoEm?: Date | string | null; valorRecebido?: number | null }) => {
@@ -176,7 +193,8 @@ export async function movimentosDoSistema(
       data: dia,
       valor: valorPago,
       tipo: "recebimento",
-      descricao: moraJunto > 0 ? `${rotulo} · inclui multa e juros da 9ª` : rotulo,
+      // C6 (E243): o número inclui a correção quando há IPCA — o rótulo diz os três termos (S-C330).
+      descricao: moraJunto > 0 ? `${rotulo} · inclui multa, juros e correção da 9ª` : rotulo,
       // A parcela inteira carimbada ANTES do E235 cobre os pedaços dela.
       conciliadoEm: iso(ehAto ? (carimboDoAto.get(d.id) ?? d.conciliadoEm) : d.conciliadoEm),
     });

@@ -772,7 +772,7 @@ export default function NoivaPortal() {
                             {r.mora > 0 && (
                               <p className="text-muted-foreground text-xs">
                                 {brl(r.valorNaParcela)} nesta parcela +{" "}
-                                {brl(r.mora)} de multa e juros (cláusula 9ª)
+                                {brl(r.mora)} de multa, juros e correção (cláusula 9ª)
                               </p>
                             )}
                           </div>

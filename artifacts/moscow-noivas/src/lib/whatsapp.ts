@@ -112,7 +112,7 @@ export function msgCobranca(p: Cobranca): string {
     `Passando com carinho para lembrar de um valor em aberto: ${brl(p.totalVencido)}, ${atraso}.`,
     ...(acrescimo > 0
       ? [
-          `Esse total já inclui ${brl(acrescimo)} de multa e juros pelo atraso (cláusula 9ª do contrato).`,
+          `Esse total já inclui ${brl(acrescimo)} de multa, juros e correção pelo atraso (cláusula 9ª do contrato).`,
         ]
       : []),
     "Se já tiver acertado, é só desconsiderar. Qualquer dúvida, estou à disposição.",

@@ -36,8 +36,23 @@ export type ParcelaComMora = {
  * 1%/mês SOBRE SI MESMOS, virando R$ 15,45 no dia seguinte. A PAGA sai
  * sozinha, porque o saldo aberto dela é zero.
  */
-/** P4: `indices` é o IPCA da loja (`ipcaDaLoja`); sem ele a correção fica dita como não informada. */
-export function moraDe(p: ParcelaComMora, indices?: ReadonlyMap<string, number> | null) {
+/**
+ * P4: `indices` é o IPCA da loja (`ipcaDaLoja`); sem ele a correção fica dita como não informada.
+ *
+ * **E243 — `opts.hoje` é o DIA DO FATO.** A conta é derivada e por padrão é
+ * de hoje (a fila, o carnê, o portal: quanto a noiva deve AGORA). Mas o
+ * `POST /receber` lê um `recebidoEm` que a vendedora informa e pode ser
+ * anterior ao clique — e a mora daquele pagamento é a do dia em que ele
+ * aconteceu, não a do dia em que foi lançado. Sem isto, paga no 30º dia e
+ * lançada no 33º gravava R$ 15,00 na linha MORA e "33 dias · R$ 515,50" na
+ * descrição e na trilha; e a paga EM DIA lançada 45 dias depois ficava PARCIAL
+ * devendo uma multa que a noiva nunca deveu.
+ */
+export function moraDe(
+  p: ParcelaComMora,
+  indices?: ReadonlyMap<string, number> | null,
+  opts?: { hoje?: string },
+) {
   if (p.status === "CANCELADA" || p.origem === "MORA") return null;
   const m = moraDaParcela({
     // O MESMO `saldoAberto` do resto do sistema (E49/E125): o previsto menos o
@@ -47,6 +62,7 @@ export function moraDe(p: ParcelaComMora, indices?: ReadonlyMap<string, number> 
     vencimento: p.vencimento,
     perdoada: p.moraPerdoadaEm !== null,
     indices,
+    hoje: opts?.hoje,
   });
   return m === null ? null : { ...m, explicacao: explicacaoDaMora(m) };
 }

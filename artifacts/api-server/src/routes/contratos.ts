@@ -47,6 +47,8 @@ import {
   ListParcelasResponse,
   ListRecibosResponse,
   ReceberParcelaBody,
+  MoraDaParcelaNoDiaQueryParams,
+  MoraDaParcelaNoDiaResponse,
   ReceberParcelaResponse,
   // E213 — o perdão da multa e dos juros da cláusula 9ª.
   PerdoarMoraBody,
@@ -73,6 +75,8 @@ import {
   // E218 — o § único do objeto: o restante do valor entra até 20 dias antes da
   // retirada. Vale para o CARNÊ; avaria, atraso e mora nascem depois dela.
   foraDoPrazoDaRetirada,
+  // E243 — o dia do fato do recebimento é no máximo hoje.
+  hojeLocal,
   inicioDoDia,
   liquidoEmCentavos,
   montarPlanoParcelas,
@@ -2488,6 +2492,40 @@ router.post("/lojas/:lojaId/contratos/:contratoId/trocar-peca", async (req, res)
 // Com ela some a última entrada viva da allowlist do `lote2`, e o invariante
 // **spec = servidor** passa a ser total, não "total menos uma".
 
+/**
+ * **E243 — a mora desta parcela num DIA dado.**
+ *
+ * O diálogo de receber deixa a vendedora dizer QUANDO o dinheiro entrou, e a
+ * mora daquele pagamento é a daquele dia — é com ela que o `POST /receber`
+ * abaixo sugere e limita. Esta leitura devolve o MESMO número pela MESMA
+ * função (`moraDe` com `hoje` = o dia pedido), para o diálogo sugerir certo
+ * antes do clique. **Não se recalcula no navegador de propósito**: a
+ * `mora-na-tela.ts` declara que nada ali refaz a conta, e a lição do E187 (cinco
+ * grafias da mesma conta, duas erradas) vale para a mora como valeu para o
+ * desconto. Dia futuro vale como hoje — a mora de amanhã não é um fato.
+ *
+ * Mesmo guard do GET das parcelas do contrato (`contratos`, ver): quem lê o
+ * carnê lê a conta.
+ */
+router.get("/lojas/:lojaId/parcelas/:parcelaId/mora", async (req, res): Promise<void> => {
+  const { lojaId, parcelaId } = req.params;
+  const q = MoraDaParcelaNoDiaQueryParams.safeParse(req.query);
+  if (!q.success) {
+    res.status(400).json(erroDeValidacao(q.error));
+    return;
+  }
+  const [existente] = await db.select().from(parcelasTable)
+    .where(and(eq(parcelasTable.id, parcelaId as string), eq(parcelasTable.lojaId, lojaId as string)));
+  if (!existente) {
+    res.status(404).json({ error: "PARCELA_NAO_ENCONTRADA", detalhe: "Esta parcela não existe nesta loja." });
+    return;
+  }
+  const hoje = hojeLocal();
+  const dia = q.data.em < hoje ? q.data.em : hoje;
+  const mora = moraDe(existente, await ipcaDaLoja(lojaId as string), { hoje: dia });
+  res.json(MoraDaParcelaNoDiaResponse.parse(mora));
+});
+
 router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("contratos", "editar"), async (req, res): Promise<void> => {
   const { lojaId, parcelaId } = req.params;
   const parsed = ReceberParcelaBody.safeParse(req.body);
@@ -2541,12 +2579,27 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("contrat
    * deve R$ 515,00 fica PARCIAL, com R$ 15,00 ainda cobráveis, em vez de
    * quitada devendo a multa.
    *
-   * A mora é derivada do dia de HOJE, então o teto de hoje não é o de amanhã.
-   * É a mesma natureza do E212, e por isso o acréscimo entra na trilha do
-   * recebimento: sem ele, "por que entraram R$ 515,00 numa parcela de
-   * R$ 500,00?" não tem resposta depois do fato.
+   * A mora é derivada, então o teto de um dia não é o de outro. É a mesma
+   * natureza do E212, e por isso o acréscimo entra na trilha do recebimento:
+   * sem ele, "por que entraram R$ 515,00 numa parcela de R$ 500,00?" não tem
+   * resposta depois do fato.
+   *
+   * **E243 — o dia é o do FATO.** `recebidoEm` é o dia em que o dinheiro
+   * entrou (a vendedora informa; pode ser sábado, lançado segunda), e a mora
+   * daquele pagamento é a daquele dia: sugestão, teto, linha MORA e trilha
+   * saem da MESMA conta, em `diaLocal(recebidoEm)`. Antes tudo isto era de
+   * hoje: paga no 30º dia e lançada no 33º gravava R$ 15,00 na linha MORA com
+   * "33 dias · R$ 515,50" na descrição; e a paga EM DIA lançada 45 dias depois
+   * ficava PARCIAL devendo R$ 17,50 de uma multa que a noiva nunca deveu.
+   * O dia do fato é NO MÁXIMO hoje — data futura no corpo não compra a mora
+   * de amanhã.
    */
-  const mora = moraDe(existente, await ipcaDaLoja(lojaId as string)); // P4
+  const diaDoFato = (() => {
+    const dia = diaLocal(parsed.data.recebidoEm);
+    const hoje = hojeLocal();
+    return dia < hoje ? dia : hoje;
+  })();
+  const mora = moraDe(existente, await ipcaDaLoja(lojaId as string), { hoje: diaDoFato }); // P4 · E243
   const acrescimoC = mora?.acrescimoC ?? 0;
   const saldoPrincipalC = centavos(existente.valorPrevisto) - jaRecebidoC;
   const saldoC = saldoPrincipalC + acrescimoC;

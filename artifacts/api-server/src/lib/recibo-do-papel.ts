@@ -1,7 +1,7 @@
 import type { Contrato, Lead, Loja, Parcela, AuditLog } from "@workspace/db";
 import { centavos } from "@workspace/financeiro-core";
 import { desenharPdf, montadorDeTokens, type Token } from "./pdf-desenhista";
-import { brl, dataBR, dataBRInstante, pixDaLoja, rotuloForma, slug } from "./contrato-do-papel";
+import { brl, dataBRInstante, pixDaLoja, rotuloForma, slug } from "./contrato-do-papel";
 
 /**
  * E221 — o RECIBO da cláusula 7ª.
@@ -325,7 +325,10 @@ function montarTokensDoRecibo(d: DadosDoRecibo): Token[] {
 
   add("A QUANTIA DE", 12);
   add(brl(recibo.valor), 14);
-  dado("Data do pagamento", dataBR.format(recibo.pagoEm));
+  // C3 (E243): `pagoEm` é INSTANTE (`recebidoEm`), e `dataBR` lê em UTC — o
+  // pagamento das 21h30 de 28/07 saía "29/07" no papel (o portal acertava).
+  // 9 de 303 parcelas do `heliumdb` recebidas entre 21h e 23h59 SP.
+  dado("Data do pagamento", dataBRInstante.format(recibo.pagoEm));
   dado("Forma de pagamento", rotuloForma(recibo.forma));
   vazio();
 

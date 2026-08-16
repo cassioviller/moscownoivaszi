@@ -3933,6 +3933,45 @@ paths:
                 $ref: "#/components/schemas/Parcela"
         "404":
           description: Parcela não encontrada nesta loja
+  /lojas/{lojaId}/parcelas/{parcelaId}/mora:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: parcelaId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: moraDaParcelaNoDia
+      tags: [financeiro]
+      summary: A mora da cláusula 9ª desta parcela num DIA dado (E243)
+      description: >
+        A conta é derivada e por padrão é de hoje. O diálogo de receber deixa a
+        vendedora dizer QUANDO o dinheiro entrou (o `recebidoEm` do
+        `POST /receber`), e a mora daquele pagamento é a do dia em que ele
+        aconteceu — é ela que a porta usa como sugestão e teto. Esta leitura
+        devolve o MESMO número, pela mesma função do servidor, para o diálogo
+        sugerir certo antes do clique em vez de recalcular no navegador (uma
+        grafia só). `em` no futuro vale como hoje.
+      parameters:
+        - name: em
+          in: query
+          required: true
+          description: O dia do pagamento (dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+      responses:
+        "200":
+          description: A mora naquele dia — `null` quando a cláusula não incide (em dia, sem saldo, cancelada)
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/MoraDaParcela"
+                  - type: "null"
+        "404":
+          description: Parcela não encontrada nesta loja
   /lojas/{lojaId}/parcelas/{parcelaId}/estornar:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"

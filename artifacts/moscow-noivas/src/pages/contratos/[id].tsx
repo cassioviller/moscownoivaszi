@@ -1051,8 +1051,11 @@ export default function ContratoDetail() {
                                     linhas — a parcela e a multa da 9ª. Sem
                                     dizer isso, o link de R$ 515,00 embaixo de
                                     uma parcela de R$ 500,00 parece erro. */}
-                                {brl(r.valor)} · {diaMesAno(r.pagoEm)}
-                                {r.mora > 0 ? ` · inclui ${brl(r.mora)} de multa e juros` : ""}
+                                {/* C3/C6 (E243): `pagoEm` é INSTANTE — `diaMesAno` lia em UTC e
+                                    o pagamento das 21h30 saía no dia seguinte; e o número
+                                    inclui a correção quando há IPCA (S-C330). */}
+                                {brl(r.valor)} · {instanteDia(r.pagoEm)}
+                                {r.mora > 0 ? ` · inclui ${brl(r.mora)} de multa, juros e correção` : ""}
                               </a>
                             ))}
                           </div>
@@ -1335,7 +1338,7 @@ export default function ContratoDetail() {
       <Dialog open={parcelaPerdoar !== null} onOpenChange={(aberto) => !aberto && setParcelaPerdoar(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Perdoar multa e juros</DialogTitle>
+            <DialogTitle>Perdoar multa, juros e correção</DialogTitle>
           </DialogHeader>
           <form
             className="space-y-4"
