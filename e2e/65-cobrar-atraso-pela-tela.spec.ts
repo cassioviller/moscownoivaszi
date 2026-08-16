@@ -65,12 +65,18 @@ test.describe("Cobrar o atraso pela tela (16ª) — S-CF2", () => {
 
     // Casamento há 10 dias, retirada há 13, devolução ainda não: a janela de
     // uso (3 antes + 2 depois no AJUSTE_E2E) fechou há 8 dias — 8 dias de atraso.
+    //
+    // A data de negócio vai numa variável ANCORADA (`casamento`), como no
+    // `global-setup`: a régua da S-O119 lê a sentença da escrita e reconhece a
+    // âncora literal ou esta variável — `anc(10)` inline a escondia, e as duas
+    // linhas abaixo reprovavam (E247/G5 derivou a população por `git ls-files`).
+    const casamento = anc(10);
     reservaId = randomUUID();
     await db.insert(reservasTable).values({
       id: reservaId,
       lojaId: estado.lojaId,
       leadId,
-      casamentoData: anc(10),
+      casamentoData: casamento,
       status: "CONFIRMADA",
     });
     bloqueioId = randomUUID();
@@ -81,7 +87,7 @@ test.describe("Cobrar o atraso pela tela (16ª) — S-CF2", () => {
       leadId,
       reservaId,
       tipo: "RESERVA_CASAMENTO",
-      casamentoData: anc(10),
+      casamentoData: casamento,
       retiradaDataReal: anc(13),
       ocupacaoInicio: diaLocalSP(-13),
       ocupacaoFim: diaLocalSP(-8),

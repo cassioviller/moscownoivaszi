@@ -378,6 +378,11 @@ describe("varredura — o que o spec escreve no banco, o hook apaga (S-O101)", (
       "e2e/52-orcamento-vira-contrato.spec.ts",
       "e2e/61-link-publico.spec.ts",
       "e2e/62-avaria-fecha.spec.ts",
+      // S-CF2 (16/08): a cena da 16ª PELA TELA. Casamento no passado não passa
+      // pela porta de reservar (`POST /reservas` recusa data vencida), então a
+      // montagem é direta — reserva, bloqueio com retirada real, contrato,
+      // item e vínculo —, e o `afterAll` apaga os cinco na ordem das FKs.
+      "e2e/65-cobrar-atraso-pela-tela.spec.ts",
     ]);
   });
 
