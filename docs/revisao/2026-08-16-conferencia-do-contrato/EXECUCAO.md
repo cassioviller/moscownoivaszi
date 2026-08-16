@@ -18,7 +18,7 @@ Contado em 16/08/2026: **0 🔴 · 7 🟠 · 17 🟡 · ~30 🔵**, em **8 épic
 
 | Épico | Tese | Fecha | Estado |
 |---|---|---|---|
-| **E241** | a rescisão devolve UMA vez | A1=C1 🟠 | em execução |
+| ~~**E241**~~ | ~~a rescisão devolve UMA vez~~ | A1=C1 🟠 | ✅ `e9231ce1` · [relatório](execucao/E241.md) — sob `estornar` a conta `DEVOLUCAO` não nasce (o estorno é sempre ≥ a devolução da cláusula, e o clamp "devolucaoTotal − totalEstornado" seria zero sempre); a trilha ganha `devolucaoPorContaAPagar`; a tela troca a frase com o rádio; o `e2e/63` conta `contas_pagar` = 0 — **o `afterAll` da S-O130 já apagava essa conta como sobra de fixture.** Vermelho antes: `expected [ { …(15) } ] to have a length of +0 but got 1`. A régua achou a suíte de API vermelha no `main` desde `ec53e2d6` (S-CF1, `c8dda201`) |
 | **E242** | o seed real não inventa índice | A2 🟠, C4, C7 | aberto |
 | **E243** | a mora é do dia do FATO | A3 🟠, A4=C2, C3, C6 | aberto |
 | **E244** | a 16ª cobra pelo que o papel manda | E1 🟠 (decisão da dona), C5, C10 | aberto |
@@ -41,5 +41,5 @@ o viu** (regra 12) e sai riscada no commit que a fecha (regra 21).
 
 | Épico | Pergunta | Recomendação | Estado |
 |---|---|---|---|
-| E241 | sob `estornar`, a conta a pagar `DEVOLUCAO` nasce? | não nasce — o dinheiro já voltou pelo estorno | executada na recomendação (16/08); corrigível numa linha |
+| E241 | sob `estornar`, a conta a pagar `DEVOLUCAO` nasce? | não nasce — o dinheiro já voltou pelo estorno | executada na recomendação em `e9231ce1` (16/08); corrigível numa linha |
 | E244 | a 16ª cobra pelo `dataDevolucao` do papel ou pela janela? | o papel | aberta |

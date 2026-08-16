@@ -31,7 +31,7 @@ Ordenada como a trilha do contrato: **dinheiro primeiro, depois a porta ao lado,
 
 | Épico | Tese | Fecha | Custo |
 |---|---|---|---|
-| **E241** | A rescisão devolve UMA vez: sob `estornar` a conta a pagar não nasce (o dinheiro já voltou pelo estorno), e o E2E 63 conta `contas_pagar` | A1=C1 🟠 | 1 commit |
+| ~~**E241**~~ ✅ `e9231ce1` | A rescisão devolve UMA vez: sob `estornar` a conta a pagar não nasce (o dinheiro já voltou pelo estorno), e o E2E 63 conta `contas_pagar` | A1=C1 🟠 | 1 commit |
 | **E242** | O seed real não inventa índice: os 12 meses de exemplo saem do caminho da instalação nova (ficam na demo/E2E por env, ou como `IPCA-EXEMPLO` que `ipcaDaLoja` não lê); Índices gateia por `financeiro.editar` e `gravar` entra no regex da `s36` | A2 🟠, C4, C7 | 1 commit |
 | **E243** | A mora é do dia do FATO: descrição/trilha da linha `MORA` e a sugestão/teto do `/receber` calculam em `recebidoEm`; a conciliação deriva a mora do recibo (respeita o corte do estorno); a tela diz "multa, juros e correção" onde o número inclui a correção; a data do recibo é `instanteDia`/`dataBRInstante` | A3 🟠, A4=C2, C3, C6 | 1 commit |
 | **E244** | A 16ª conta pelo que o papel manda: `fimPrevistoDaDevolucao` = `dataDevolucao` do contrato quando existe, senão a janela — uma função nos três sítios; `prazoDias` da cobrança de atraso ganha campo; o prazo vazio não vira 0 | E1 🟠 (**decisão da dona: papel ou janela**), C5, C10 | 1 commit |
