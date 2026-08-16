@@ -216,10 +216,29 @@ function rotaDoSpec(url: string): string {
   return url.replace(/\$\{[^}]+\}/g, ":p").split("?")[0]!.replace(/^.*?\/api/, "");
 }
 
+/**
+ * S-O133 — o `.post` que o spec faz PARA OUVIR RECUSA não cria nada. O
+ * detector lia a rota e não o status esperado, e o `12-permissoes` — que faz
+ * `POST /contas-pagar` como Recepção para ouvir 403 — entrava na dívida como
+ * se criasse conta. A régua passa a ler o `expect(X.status()…).toBe(4xx)`
+ * sobre a MESMA resposta (`const X = await api.post(…)`), no resto do arquivo:
+ * 4xx esperado é porta fechada, e porta fechada não deixa rastro.
+ */
+function postEsperaRecusa(fonte: string, m: RegExpMatchArray): boolean {
+  const antes = fonte.slice(Math.max(0, m.index! - 80), m.index!);
+  const nome = /(?:const|let)\s+(\w+)\s*=\s*await\s*[\w.]*$/.exec(antes)?.[1];
+  if (!nome) return false;
+  const depois = fonte.slice(m.index!);
+  return new RegExp(`expect\\(\\s*${nome}\\.status\\(\\)[^;]*?\\)\\.toBe\\(4\\d\\d\\)`).test(depois);
+}
+
 /** As tabelas que o spec preenche pela API — o `.post` casado com o roteador. */
 function inseridasPelaApi(fonte: string, rotas: RotasDoRoteador): string[] {
   const out = new Set<string>();
-  for (const m of fonte.matchAll(CHAMA_POST)) for (const t of rotas.cria.get(rotaDoSpec(m[1]!)) ?? []) out.add(t);
+  for (const m of fonte.matchAll(CHAMA_POST)) {
+    if (postEsperaRecusa(fonte, m)) continue;
+    for (const t of rotas.cria.get(rotaDoSpec(m[1]!)) ?? []) out.add(t);
+  }
   return [...out];
 }
 
@@ -453,8 +472,10 @@ describe("varredura — o que o spec escreve no banco, o hook apaga (S-O101)", (
  *   em vez de apagá-lo (*"sem apagar o histórico"*), e a noiva fica; o `06`
  *   recolhe no COMEÇO do run seguinte (o `request.delete` antes do `post`).
  *   São padrões que a régua não distingue de esquecimento, e ficam ditos.
- * - **falso positivo do detector**: o `12` faz `POST /contas-pagar` para
- *   ouvir **403** — a régua lê a rota e não o status esperado.
+ * - ~~**falso positivo do detector**: o `12` faz `POST /contas-pagar` para
+ *   ouvir **403** — a régua lê a rota e não o status esperado.~~ **S-O133
+ *   fechou**: a régua lê o `expect(X.status()).toBe(4xx)` da mesma resposta,
+ *   e o `12` saiu da lista sem ganhar hook.
  *
  * Linha paga sai daqui (o teste ao lado cobra); linha nova entra com motivo,
  * ou o spec ganha o hook.
@@ -462,8 +483,6 @@ describe("varredura — o que o spec escreve no banco, o hook apaga (S-O101)", (
 const CRIA_PELA_API_SEM_HOOK: Record<string, string> = {
   "e2e/06-agenda.spec.ts: atendimentosTable":
     "o atendimento do dia fixo (2028-02-14) é recolhido no COMEÇO do run seguinte, pelo `request.delete` que precede o `post` — limpeza de partida, não de hook.",
-  "e2e/12-permissoes.spec.ts: contasPagarTable":
-    "o `POST /contas-pagar` é da Recepção e espera 403 — nada nasce; a régua lê a rota, não o status.",
   "e2e/15-onda5-pdf-e-folha.spec.ts: contasPagarTable, pagamentosTable, pagamentoItensTable":
     "rastro real: `recorrencias/gerar` cria as contas de 2025-01 e o spec paga uma; sem hook. S-O130.",
   "e2e/32-alerta-caixa.spec.ts: saldosReferenciaTable":

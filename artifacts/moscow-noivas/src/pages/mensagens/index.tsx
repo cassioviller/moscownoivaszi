@@ -263,7 +263,7 @@ export default function MensagensDoDia() {
 
   /**
    * E162 (A03.1) — o espelho que faltava: o aceite TIRAVA o orçamento da fila
-   * de "vencendo em 72h" (o recorte é por ENVIADO) e o punha num estado que
+   * de "vencendo em 3 dias" (era "72h" até o E240; o recorte é por ENVIADO) e o punha num estado que
    * nenhuma fila vigiava — enquanto a página da noiva afirmava "a sua
    * vendedora já foi avisada". Agora o aviso existe: o aceite entra AQUI, na
    * fila diária, no dia seguinte ao clique dela.

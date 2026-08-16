@@ -205,7 +205,7 @@ export default function Dashboard() {
   /**
    * E162 (A01.5/A04.1) — a fila do gate no painel do Renato.
    *
-   * O aceite tirava o orçamento da fila de "vencendo em 72h" e o punha num
+   * O aceite tirava o orçamento da fila de "vencendo em 3 dias" (era "72h" no rótulo até o E240) e o punha num
    * estado que NENHUMA tela vigiava: o "sim" da noiva com o vestido solto, e
    * o tempo até alguém notar era ilimitado. O cartão diz o dinheiro parado e
    * a idade do mais antigo — as duas medidas que o achado A04.2 provou não

@@ -264,8 +264,19 @@ const RETRATO = { TRANCA: 43, CAS: 14, ABERTA: 15 } as const;
  * (`trancarFechamentosDasVendedoras`, `comissao.ts`), tomada nas duas
  * transações que já trancavam contratos — fechar e baixar à mão —, ANTES do
  * contrato. Nenhuma transação nasceu: 30 continuam 30.
+ *
+ * **44 → 45 (S-O121)**: o reabrir do fechamento passa a trancar as linhas de
+ * fechamento POSTERIORES da mesma vendedora antes do `DELETE` — é a leitura
+ * de "só o último reabre", sob a mesma tranca contra a qual o fechar do E238
+ * faz fila. Mesma transação (30 continuam 30), mesma direção da ordem: a
+ * conta a pagar, depois o fechamento, depois os contratos.
+ *
+ * E este arquivo é a prova da S-O122: a peneira da releitura passou a seguir
+ * a IDENTIDADE do executor (parâmetro, propriedade e constante derivada) em
+ * vez de aceitar "qualquer coisa que não seja `db`", e o retrato das
+ * disciplinas não moveu uma porta — 43 · 14 · 15 antes e depois.
  */
-const RETRATO_DA_ORDEM = { transacoes: 30, trancas: 44 } as const;
+const RETRATO_DA_ORDEM = { transacoes: 30, trancas: 45 } as const;
 
 /**
  * A dívida reconhecida: as portas que hoje não são TRANCA nem CAS.
@@ -1068,6 +1079,37 @@ describe("varredura — a releitura é o que a chamada pergunta, não a forma de
     expect(portasNoTexto("sintetico.ts", fonte)[0]!.releituraDaGuarda).toBeNull();
   });
 
+  /**
+   * S-O122 — a pergunta só conta se for feita PELO executor que recebeu a
+   * transação. A peneira do E238 aceitava qualquer receptor que não fosse
+   * `db`; um helper que recebe o `tx` e lê por OUTRA transação passava.
+   */
+  it("S-O122 — reprova o helper que recebe o `tx` e lê por OUTRA transação: não é a mesma tranca", () => {
+    const fonte = transacaoQueDelega(
+      `async function relerFora(tx, id) {
+         return db.transaction(async (outra) =>
+           outra.select({ status: contratosTable.status }).from(contratosTable).where(eq(contratosTable.id, id)));
+       }`,
+      `const [sob] = await relerFora(tx, id); if (sob.status !== "ATIVO") return;`,
+    );
+    const [p] = portasNoTexto("sintetico.ts", fonte);
+    expect(p!.releituraDaGuarda).toBeNull();
+    expect(p!.disciplina).toBe("ABERTA");
+  });
+
+  it("S-O122 — e segue a identidade pelo objeto e pela constante derivada: `{ executor: tx }` → `params.executor ?? db`", () => {
+    const fonte = transacaoQueDelega(
+      `async function verificar(params) {
+         const ex = params.executor ?? db;
+         return ex.select({ status: contratosTable.status }).from(contratosTable).where(eq(contratosTable.id, params.id));
+       }`,
+      `const [sob] = await verificar({ executor: tx, id }); if (sob.status !== "ATIVO") return;`,
+    );
+    const [p] = portasNoTexto("sintetico.ts", fonte);
+    expect(p!.releituraDaGuarda).toBe("guarda delegada a verificar (lê contratosTable)");
+    expect(p!.disciplina).toBe("TRANCA");
+  });
+
   it("segue a pergunta para dentro do helper que o helper chama, e para a FILHA — a forma do DELETE /reservas/:id", () => {
     const fonte = `
       import { reservasTable, bloqueioVestidosTable } from "@workspace/db";
@@ -1330,7 +1372,7 @@ describe("varredura — as trancas sobem a cadeia, e nunca descem", () => {
    * commit sobre as quatro pastas varridas. É o caso vivo da S-C46: *piso não
    * obriga a remedir, e a prosa envelhece calada.*
    */
-  it("olha para as transações de verdade — 30 transações trancam, e são 44 trancas", () => {
+  it("olha para as transações de verdade — 30 transações trancam, e são 45 trancas", () => {
     const porTransacao = trancasPorTransacao();
     expect({
       transacoes: porTransacao.size,

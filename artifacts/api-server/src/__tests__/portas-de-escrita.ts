@@ -683,9 +683,74 @@ function trancasNoCorpo(
  * uma linha-pai declarada em `PAIS`, por um executor que não seja o `db` do
  * pool. Devolve a tabela perguntada, para o achado dizer o quê.
  */
+/**
+ * S-O122 — **a pergunta só conta se for feita PELO executor que recebeu a
+ * transação, seguido pela identidade do parâmetro** (como `trancasNoCorpo` já
+ * fazia para as trancas). A peneira do E238 aceitava qualquer executor que não
+ * fosse `db`; um helper que recebesse o `tx` e lesse por OUTRA transação
+ * passaria. Dado o helper e a chamada que o invoca, devolve os nomes pelos
+ * quais o executor da transação é conhecido lá dentro: o parâmetro na posição
+ * do argumento (`relerContrato(tx, id)` → `tx`), a propriedade do objeto
+ * (`verificar({ executor: tx })` → `executor`, e o parâmetro que o recebe,
+ * `params`, para `params.executor.select`), e as constantes locais que
+ * derivam de um deles (`const ex = params.executor ?? db` → `ex`).
+ */
+function executoresNoHelper(
+  fn: FuncaoLocal,
+  chamada: ts.CallExpression,
+  aceitos: ReadonlySet<string>,
+): Set<string> {
+  const nomes = new Set<string>();
+  // Só identificadores simples entram: um parâmetro desestruturado
+  // (`{ executor, lojaId }`) não é um nome, e os de dentro entram pela
+  // propriedade do objeto que o preenche.
+  const add = (nome: string | undefined): void => {
+    if (nome && /^\w+$/.test(nome)) nomes.add(nome);
+  };
+  chamada.arguments.forEach((a, i) => {
+    const param = fn.params[i];
+    if (ts.isIdentifier(a) && aceitos.has(a.text)) add(param);
+    if (ts.isObjectLiteralExpression(a)) {
+      for (const pr of a.properties) {
+        if (ts.isPropertyAssignment(pr) && ts.isIdentifier(pr.initializer) && aceitos.has(pr.initializer.text)) {
+          add(pr.name.getText(fn.modulo.sf));
+          add(param);
+        }
+        if (ts.isShorthandPropertyAssignment(pr) && aceitos.has(pr.name.text)) {
+          add(pr.name.text);
+          add(param);
+        }
+      }
+    }
+  });
+  // Um parâmetro desestruturado `{ executor, lojaId }` é um só "param" no
+  // texto; os nomes de dentro já entraram pela propriedade. As constantes
+  // locais que derivam de um aceito entram por transitividade.
+  const sf = fn.modulo.sf;
+  let cresceu = true;
+  while (cresceu) {
+    cresceu = false;
+    const v = (n: ts.Node): void => {
+      if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer) {
+        const raiz = raizDoReceptor(n.initializer);
+        const texto = n.initializer.getText(sf);
+        const derivada = [...nomes].some((nome) => raiz === nome || new RegExp(`\\b${nome}\\b`).test(texto));
+        if (derivada && !nomes.has(n.name.text) && /^\w+$/.test(n.name.text)) {
+          nomes.add(n.name.text);
+          cresceu = true;
+        }
+      }
+      n.forEachChild(v);
+    };
+    v(fn.corpo);
+  }
+  return nomes;
+}
+
 function tabelaPerguntadaPor(
   fn: FuncaoLocal,
   tabelas: readonly string[],
+  executores: ReadonlySet<string>,
   visitados: ReadonlySet<FuncaoLocal> = new Set(),
 ): string | null {
   const sf = fn.modulo.sf;
@@ -696,7 +761,7 @@ function tabelaPerguntadaPor(
     if (achada) return;
     if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression)) {
       const nome = n.expression.name.text;
-      if (nome === "select" && raizDoReceptor(n.expression.expression) !== "db") {
+      if (nome === "select" && executores.has(raizDoReceptor(n.expression.expression))) {
         const de = tabelaDoFrom(cadeiaCompleta(n));
         if (de && tabelas.includes(canonico(de))) achada = canonico(de);
       }
@@ -707,7 +772,7 @@ function tabelaPerguntadaPor(
         if (
           ts.isPropertyAccessExpression(query) &&
           query.name.text === "query" &&
-          raizDoReceptor(query) !== "db" &&
+          executores.has(raizDoReceptor(query)) &&
           tabelas.includes(canonico(tabela))
         ) {
           achada = canonico(tabela);
@@ -717,7 +782,8 @@ function tabelaPerguntadaPor(
     if (ts.isCallExpression(n) && ts.isIdentifier(n.expression)) {
       const outra = funcaoAlcancavel(fn.modulo, n.expression.text);
       if (outra && !visitados.has(outra)) {
-        const t = tabelaPerguntadaPor(outra, tabelas, new Set([...visitados, fn]));
+        const dentro = executoresNoHelper(outra, n, executores);
+        const t = dentro.size > 0 ? tabelaPerguntadaPor(outra, tabelas, dentro, new Set([...visitados, fn])) : null;
         if (t) achada = t;
       }
     }
@@ -978,7 +1044,7 @@ function analisar(
           const nome = n.expression.getText(sf);
           const fn = ts.isIdentifier(n.expression) ? funcaoAlcancavel(modulo, n.expression.text) : undefined;
           if (fn) {
-            const pergunta = tabelaPerguntadaPor(fn, guarda);
+            const pergunta = tabelaPerguntadaPor(fn, guarda, executoresNoHelper(fn, n, new Set([txNome!])));
             if (pergunta) {
               const onde = fn.modulo === modulo ? "" : ` em ${fn.modulo.sf.fileName}`;
               releituraDaGuarda ??= `guarda delegada a ${nome} (lê ${pergunta}${onde})`;

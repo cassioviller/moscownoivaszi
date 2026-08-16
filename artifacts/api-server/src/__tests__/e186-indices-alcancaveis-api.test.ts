@@ -6,7 +6,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { DUPLICADO_POR_INDICE, SEM_FRASE_POR_DECISAO } from "../lib/erros";
-import { arquivosDeRota, escritasDeRota, escritasQueAlcancam, tabelasEscritasCruas, type IndiceUnico } from "./escritas-de-rota";
+import { arquivosDeRota, contradizPredicado, escritasDeRota, escritasQueAlcancam, tabelasEscritasCruas, type EscritaDeRota, type IndiceUnico } from "./escritas-de-rota";
 
 /** A raiz do repositório — `arquivosDeRota()` devolve caminhos a partir dela. */
 const RAIZ = path.resolve(__dirname, "..", "..", "..", "..");
@@ -79,17 +79,19 @@ describe("E186 — os índices que uma rota alcança têm frase ou têm julgamen
       SELECT t.relname AS tabela, i.relname AS indice,
              (SELECT string_agg(a.attname, ',' ORDER BY k.ord)
                 FROM unnest(ix.indkey) WITH ORDINALITY AS k(attnum, ord)
-                JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum) AS colunas
+                JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum) AS colunas,
+             pg_get_expr(ix.indpred, ix.indrelid) AS predicado
       FROM pg_index ix
       JOIN pg_class i ON i.oid = ix.indexrelid
       JOIN pg_class t ON t.oid = ix.indrelid
       JOIN pg_namespace n ON n.oid = t.relnamespace
       WHERE n.nspname = 'public' AND ix.indisunique AND NOT ix.indisprimary
       ORDER BY t.relname, i.relname`);
-    const indices: IndiceUnico[] = (r.rows as { tabela: string; indice: string; colunas: string }[]).map((x) => ({
+    const indices: IndiceUnico[] = (r.rows as { tabela: string; indice: string; colunas: string; predicado: string | null }[]).map((x) => ({
       tabela: x.tabela,
       indice: x.indice,
       colunas: x.colunas.split(","),
+      predicado: x.predicado,
     }));
     const escritas = escritasDeRota();
     alcancaveis = indices.filter((i) => escritasQueAlcancam(i, escritas).length > 0).map((i) => i.indice);
@@ -111,6 +113,34 @@ describe("E186 — os índices que uma rota alcança têm frase ou têm julgamen
     expect(arquivosDeRota().length, "a enumeração das rotas veio vazia").toBeGreaterThanOrEqual(15);
     expect(escritasDeRota().length, "nenhuma escrita de rota foi reconhecida").toBeGreaterThanOrEqual(80);
     expect(alcancaveis.length, "nenhum índice alcançável — a peneira cegou").toBeGreaterThanOrEqual(15);
+  });
+
+  /**
+   * S-O123 — o predicado do índice PARCIAL entra na conta quando a escrita o
+   * contradiz com um literal. Os dois lados: o INSERT que grava
+   * `status: "CANCELADO"` não alcança `contratos_lead_ativo_unico`
+   * (`WHERE status = ATIVO`); o que grava `"ATIVO"`, ou não grava literal
+   * nenhum, continua alcançando — a régua só desconta o que LÊ.
+   */
+  it("S-O123 — o literal que contradiz o predicado do índice parcial tira a escrita da conta; o resto fica", () => {
+    const indice: IndiceUnico = { tabela: "contratos", indice: "contratos_lead_ativo_unico", colunas: ["lead_id"], predicado: "(status = 'ATIVO'::contrato_status)" };
+    const escrita = (literais: Array<[string, string | boolean | null]>): EscritaDeRota => ({
+      arquivo: "sintetico.ts", linha: 1, verbo: "insert", tabela: "contratos", onConflict: false, onConflictColunas: null,
+      colunas: ["lead_id", "status"], literais: new Map(literais),
+    });
+    expect(escritasQueAlcancam(indice, [escrita([["status", "CANCELADO"]])])).toHaveLength(0);
+    expect(escritasQueAlcancam(indice, [escrita([["status", "ATIVO"]])])).toHaveLength(1);
+    expect(escritasQueAlcancam(indice, [escrita([])])).toHaveLength(1);
+    // As outras três formas que o schema usa, e a conjunção.
+    expect(contradizPredicado("((ativo = true) AND (usuario_id IS NOT NULL))", new Map([["ativo", false]]))).toBe(true);
+    expect(contradizPredicado("((ativo = true) AND (usuario_id IS NOT NULL))", new Map([["usuario_id", null]]))).toBe(true);
+    expect(contradizPredicado("((ativo = true) AND (usuario_id IS NOT NULL))", new Map([["ativo", true]]))).toBe(false);
+    expect(contradizPredicado("(usado_em IS NULL)", new Map([["usado_em", "2026-01-01"]]))).toBe(true);
+    expect(contradizPredicado("(recorrencia_id IS NOT NULL)", new Map())).toBe(false);
+    // E o que ela não lê não desconta.
+    expect(contradizPredicado("(valor > 0)", new Map([["valor", "0"]]))).toBe(false);
+    // No repositório: o único INSERT literal em contratos grava ATIVO — o índice continua alcançável.
+    expect(alcancaveis).toContain("contratos_lead_ativo_unico");
   });
 
   /**

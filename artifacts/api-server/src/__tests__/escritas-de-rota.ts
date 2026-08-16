@@ -73,8 +73,14 @@ import { arquivosVersionados } from "./arquivos-versionados";
  *   MENOS** numa tabela com dois índices — não há caso vivo hoje, e a régua
  *   fecha a porta antes do primeiro.
  *
- * O que ela continua sem ver: o predicado do índice parcial (a linha inserida
- * pode não satisfazê-lo) — erra para mais, como antes.
+ * **S-O123 — e o predicado do índice PARCIAL, quando a escrita o contradiz
+ * com um LITERAL.** `contratos_lead_ativo_unico` é `WHERE status = ATIVO`;
+ * um INSERT que grave `status: "CANCELADO"` preenche todas as colunas do índice
+ * e não entra nele. A conta lê o predicado (`pg_get_expr(indpred)`) nas quatro
+ * formas que o schema usa — `col = x`, `col = true|false`, `col IS NULL`,
+ * `col IS NOT NULL`, e conjunções delas — e desconta a escrita cujo literal
+ * (string, boolean ou `null`) contradiz uma cláusula. Valor que não é literal
+ * continua opaco: conta como alcançando, para MAIS.
  */
 
 const RAIZ = join(import.meta.dirname, "..", "..", "..", "..");
@@ -142,6 +148,55 @@ function colunasPreenchidas(sf: ts.SourceFile, no: ts.Node, tabela: TabelaDoSche
   return [...new Set(chaves.map((k) => tabela.colunas.get(k) ?? `?${k}`))];
 }
 
+/** S-O123 — os literais que um `values()`/`set()` grava por coluna do banco. */
+function literaisPreenchidos(sf: ts.SourceFile, no: ts.Node, tabela: TabelaDoSchema): Map<string, string | boolean | null> {
+  const out = new Map<string, string | boolean | null>();
+  const literal = (obj: ts.ObjectLiteralExpression): void => {
+    for (const pr of obj.properties) {
+      if (!ts.isPropertyAssignment(pr)) continue;
+      const col = tabela.colunas.get(pr.name.getText(sf).replace(/["']/g, ""));
+      if (!col) continue;
+      const v = pr.initializer;
+      if (ts.isStringLiteral(v) || ts.isNoSubstitutionTemplateLiteral(v)) out.set(col, v.text);
+      else if (v.kind === ts.SyntaxKind.TrueKeyword) out.set(col, true);
+      else if (v.kind === ts.SyntaxKind.FalseKeyword) out.set(col, false);
+      else if (v.kind === ts.SyntaxKind.NullKeyword) out.set(col, null);
+    }
+  };
+  const visitar = (n: ts.Node): void => {
+    if (ts.isObjectLiteralExpression(n)) literal(n);
+    else if (ts.isArrayLiteralExpression(n)) n.elements.forEach(visitar);
+    else if (ts.isParenthesizedExpression(n)) visitar(n.expression);
+    else if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === "map") {
+      const cb = n.arguments[0];
+      if (cb && ts.isArrowFunction(cb)) visitar(cb.body);
+    }
+  };
+  visitar(no);
+  return out;
+}
+
+/**
+ * S-O123 — a escrita CONTRADIZ o predicado do índice parcial? Só responde
+ * `true` quando um literal da escrita nega uma cláusula que a conta entende;
+ * predicado que ela não lê, ou valor não literal, é `false` (erra para mais).
+ */
+export function contradizPredicado(predicado: string | null | undefined, literais: ReadonlyMap<string, string | boolean | null>): boolean {
+  if (!predicado) return false;
+  const clausulas = predicado.split(/\s+AND\s+/i).map((c) => c.replace(/^\(+|\)+$/g, "").trim());
+  for (const cl of clausulas) {
+    let m = /^(\w+) = '([^']*)'(?:::\w+)?$/.exec(cl);
+    if (m && literais.has(m[1]!)) { if (literais.get(m[1]!) !== m[2]) return true; continue; }
+    m = /^(\w+) = (true|false)$/.exec(cl);
+    if (m && literais.has(m[1]!)) { if (literais.get(m[1]!) !== (m[2] === "true")) return true; continue; }
+    m = /^(\w+) IS NOT NULL$/.exec(cl);
+    if (m && literais.has(m[1]!)) { if (literais.get(m[1]!) === null) return true; continue; }
+    m = /^(\w+) IS NULL$/.exec(cl);
+    if (m && literais.has(m[1]!)) { if (literais.get(m[1]!) !== null) return true; continue; }
+  }
+  return false;
+}
+
 /** `...parsed.data` — as chaves do schema Zod cujo `safeParse` declarou `parsed`. */
 function chavesDoSpread(sf: ts.SourceFile, expr: ts.Expression): string[] | null {
   if (!ts.isPropertyAccessExpression(expr) || expr.name.text !== "data" || !ts.isIdentifier(expr.expression)) return null;
@@ -202,6 +257,12 @@ export type EscritaDeRota = {
   onConflictColunas: string[] | null;
   /** E238 — as colunas do BANCO que `values()`/`set()` preenche; `null` = opaco. */
   colunas: string[] | null;
+  /**
+   * S-O123 — os LITERAIS por coluna do banco (`status: "CANCELADO"` →
+   * `status → "CANCELADO"`; `ativo: false`; `x: null`). Só o que é literal no
+   * texto entra; o resto não aparece aqui e continua opaco.
+   */
+  literais: Map<string, string | boolean | null>;
 };
 
 /** Os arquivos de rota versionados — a régua do `git ls-files`, sempre. */
@@ -241,6 +302,7 @@ export function escritasDeRota(): EscritaDeRota[] {
               onConflict: conflito !== undefined,
               onConflictColunas: conflito ? colunasDoTarget(sf, conflito, tabela) : null,
               colunas: carga ? colunasPreenchidas(sf, carga, tabela) : null,
+              literais: carga ? literaisPreenchidos(sf, carga, tabela) : new Map(),
             });
           }
         }
@@ -283,7 +345,7 @@ export function tabelasEscritasCruas(): Set<string> {
 }
 
 /** Uma restrição única do banco, como `pg_index` a descreve. */
-export type IndiceUnico = { tabela: string; indice: string; colunas: string[] };
+export type IndiceUnico = { tabela: string; indice: string; colunas: string[]; predicado?: string | null };
 
 /**
  * E238 (S-O83) — **as escritas de rota que ALCANÇAM um índice**, pela conta por
@@ -297,6 +359,8 @@ export function escritasQueAlcancam(indice: IndiceUnico, escritas: readonly Escr
       return false;
     }
     if (e.colunas === null) return true; // opaco: erra para MAIS
+    // S-O123: a linha que a escrita grava não entra no índice parcial.
+    if (contradizPredicado(indice.predicado, e.literais)) return false;
     return e.verbo === "insert"
       ? indice.colunas.every((c) => e.colunas!.includes(c))
       : indice.colunas.some((c) => e.colunas!.includes(c));

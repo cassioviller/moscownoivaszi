@@ -18,7 +18,7 @@
  *   gravado, `diaDeNegocio`, a mesma régua de `financeiro-core/datas.ts`.
  */
 import { and, eq, gte, isNotNull, isNull, lt, ne, not, or, type SQL } from "drizzle-orm";
-import { diaDeNegocio } from "@workspace/financeiro-core";
+import { diaDeNegocio, diaLocal, inicioDoDia, addDias } from "@workspace/financeiro-core";
 import { janelaDeProvaDoDia } from "@workspace/agenda-core";
 import {
   db,
@@ -141,45 +141,22 @@ export type DbExecutor =
 
 // ───────────────────────── Núcleo puro: datas ─────────────────────────
 
-const FUSO_LOJA = "America/Sao_Paulo";
-
-// en-CA formata como "YYYY-MM-DD".
-const formatadorDiaLocal = new Intl.DateTimeFormat("en-CA", {
-  timeZone: FUSO_LOJA,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
 /**
- * Dia local (America/Sao_Paulo) de um instante, como "YYYY-MM-DD".
- * O banco está em GMT — truncar o timestamptz direto erraria o dia.
+ * S-O142 — `diaLocal`, `inicioDoDia` e `addDias` moram no
+ * `financeiro-core/datas.ts` e são RE-EXPORTADAS daqui, porque 12 arquivos do
+ * servidor as importam deste módulo. Havia uma segunda cópia de cada uma aqui
+ * (a de `addDias` com `pad` em vez de `toISOString`), equivalente hoje — e
+ * "equivalente hoje" é a divergência de amanhã. A prova de equivalência, sobre
+ * 120 pares de dia × n, está em `so142-uma-casa-para-as-datas.test.ts`, que
+ * também exige que estas sejam a MESMA referência das do core.
+ *
+ * O que os comentários antigos diziam continua valendo e mora lá: o banco está
+ * em GMT e truncar o timestamptz erraria o dia; o offset -03:00 é fixo porque
+ * o Brasil não tem DST desde 2019; a soma de dias é em UTC-meio-dia.
  */
-export function diaLocal(d: Date): string {
-  return formatadorDiaLocal.format(d);
-}
-
-/**
- * Instante em que o dia local "YYYY-MM-DD" começa em São Paulo — o inverso de
- * `diaLocal`. Offset fixo -03:00: o Brasil não tem DST desde 2019, e é aqui que
- * essa premissa mora (fronteira de dia para filtros sobre timestamptz).
- */
-export function inicioDoDia(dia: string): Date {
-  return new Date(`${dia}T00:00:00-03:00`);
-}
+export { diaLocal, inicioDoDia, addDias } from "@workspace/financeiro-core";
 
 const MS_POR_DIA = 86_400_000;
-
-/**
- * Soma `n` dias a um dia "YYYY-MM-DD". Aritmética em UTC-meio-dia para
- * ficar imune a DST.
- */
-export function addDias(dia: string, n: number): string {
-  const [ano, mes, diaMes] = dia.split("-").map(Number);
-  const instante = new Date(Date.UTC(ano, mes - 1, diaMes, 12) + n * MS_POR_DIA);
-  const pad = (v: number) => String(v).padStart(2, "0");
-  return `${instante.getUTCFullYear()}-${pad(instante.getUTCMonth() + 1)}-${pad(instante.getUTCDate())}`;
-}
 
 // ───────────────────────── Núcleo puro: janelas ─────────────────────────
 
