@@ -83,7 +83,7 @@ para o documento que manda.
    (instalação nova, ~1 min): rode-a antes de mexer em seed, schema ou
    `global-setup`.
 
-   **O `main` está 26+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
+   **O `main` está 24+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
    de manhã; a conferência, o E241 e os docs não estão publicados). Confira com
    `git rev-list --count origin/main..main` antes de assumir — esta linha
    envelhece a cada commit. Todo worktree de agente nasce em `origin/main`
