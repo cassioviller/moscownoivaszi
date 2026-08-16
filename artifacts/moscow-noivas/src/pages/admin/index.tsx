@@ -32,9 +32,24 @@ import {
   useUpdateUsuario,
   useGetConsolidado,
   getGetConsolidadoQueryKey,
+  useDeleteLoja,
+  useDeleteUsuario,
+  useListAuditoriaGlobal,
   type Loja,
   type Usuario,
 } from "@workspace/api-client-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { instanteCurto } from "@/lib/formatos";
+import { rotuloDaAcao } from "@/lib/financeiro/auditoria";
 import { brl } from "@/lib/formatos";
 import { useAuth } from "@/hooks/use-auth";
 import { AdminShell } from "@/components/layout/admin-shell";
@@ -60,7 +75,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Building2, Users, BarChart3 } from "lucide-react";
+import { Building2, Users, BarChart3, ScrollText } from "lucide-react";
 import { Erro } from "@/components/estado";
 import {
   Table,
@@ -173,6 +188,68 @@ function ConsolidadoRede() {
   );
 }
 
+/**
+ * S-O131 — as portas do superadmin que existiam só na API ganham gesto, com a
+ * frase do 409 que a porta já dizia. Apagar é para o que está VAZIO; com
+ * histórico, o caminho continua sendo desativar (E106/S1, E91/B2).
+ */
+const MENSAGENS_ERRO_ADMIN: Record<string, string> = {
+  LOJA_COM_HISTORICO: "Esta loja tem histórico (noivas, contratos, acervo) — não se apaga. Desative-a pela edição: ela some dos seletores e tudo fica guardado.",
+  USUARIO_COM_HISTORICO: "Esta pessoa tem histórico (contrato, orçamento, atendimento ou comissão) — não se apaga. Inative-a pela edição.",
+  LOJA_NAO_ENCONTRADA: "Esta loja já não existe.",
+  USUARIO_NAO_ENCONTRADO: "Esta pessoa já não existe.",
+};
+
+/**
+ * S-O131 / S3 — a trilha do que não pertence a loja nenhuma: apagar uma loja
+ * ou uma pessoa (tabelas globais). Era gravada e nunca lida — a auditoria por
+ * loja filtra por `lojaId`, e estas linhas têm `lojaId` nulo.
+ */
+function AuditoriaGlobal() {
+  const { data, isLoading, isError, error, refetch } = useListAuditoriaGlobal();
+  return (
+    <section className="space-y-4" data-testid="auditoria-global">
+      <div>
+        <h2 className="text-2xl font-serif flex items-center gap-2">
+          <ScrollText className="h-5 w-5" /> Auditoria global
+        </h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          O que não pertence a loja nenhuma: quem apagou que loja, quem apagou que pessoa. A trilha
+          de cada loja mora no Financeiro dela.
+        </p>
+      </div>
+      <Card>
+        <CardContent className="pt-6">
+          {isError ? (
+            <Erro titulo="Não deu para carregar a auditoria global" erro={error} onTentarNovamente={() => refetch()} />
+          ) : isLoading ? (
+            <div className="animate-pulse space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-8 bg-muted rounded-md" />
+              ))}
+            </div>
+          ) : (data ?? []).length === 0 ? (
+            <p className="text-muted-foreground text-sm">Nenhum ato global registrado — nenhuma loja ou pessoa foi apagada.</p>
+          ) : (
+            <ul className="divide-y text-sm">
+              {(data ?? []).map((a) => (
+                <li key={a.id} className="py-2 flex items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="font-medium">{rotuloDaAcao(a.acao)}</span>
+                    <span className="text-muted-foreground"> · {a.entidade} {a.entidadeId}</span>
+                    <span className="block text-xs text-muted-foreground">por {a.usuarioNome}</span>
+                  </span>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">{instanteCurto(a.criadoEm)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
 /** Console superadmin — rota top-level /admin, fora do escopo /loja/:lojaId. */
 export default function AdminConsole() {
   const { toast } = useToast();
@@ -202,6 +279,33 @@ export default function AdminConsole() {
   const createUsuario = useCreateUsuario();
   const updateLoja = useUpdateLoja();
   const updateUsuario = useUpdateUsuario();
+  const deleteLoja = useDeleteLoja();
+  const deleteUsuario = useDeleteUsuario();
+  const [lojaParaApagar, setLojaParaApagar] = useState<Loja | null>(null);
+  const [usuarioParaApagar, setUsuarioParaApagar] = useState<Usuario | null>(null);
+
+  const onApagarLoja = async () => {
+    if (!lojaParaApagar) return;
+    try {
+      await deleteLoja.mutateAsync({ lojaId: lojaParaApagar.id });
+      await queryClient.invalidateQueries({ queryKey: getListLojasQueryKey() });
+      toast({ title: "Loja apagada", description: `${lojaParaApagar.nome} saiu do sistema.` });
+      setLojaParaApagar(null);
+    } catch (err) {
+      toast({ title: "Não deu para apagar a loja", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO_ADMIN), variant: "destructive" });
+    }
+  };
+  const onApagarUsuario = async () => {
+    if (!usuarioParaApagar) return;
+    try {
+      await deleteUsuario.mutateAsync({ usuarioId: usuarioParaApagar.id });
+      await queryClient.invalidateQueries({ queryKey: getListUsuariosQueryKey() });
+      toast({ title: "Pessoa apagada", description: `${usuarioParaApagar.nome} saiu do sistema.` });
+      setUsuarioParaApagar(null);
+    } catch (err) {
+      toast({ title: "Não deu para apagar a pessoa", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO_ADMIN), variant: "destructive" });
+    }
+  };
 
   const [lojaEmEdicao, setLojaEmEdicao] = useState<Loja | null>(null);
   const [usuarioEmEdicao, setUsuarioEmEdicao] = useState<Usuario | null>(null);
@@ -377,6 +481,16 @@ export default function AdminConsole() {
                       >
                         Editar
                       </Button>
+                      {/* S-O131: só loja VAZIA sai; com histórico a porta responde 409 e a frase ensina a desativar. */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive"
+                        onClick={() => setLojaParaApagar(loja)}
+                        data-testid={`apagar-loja-${loja.id}`}
+                      >
+                        Apagar
+                      </Button>
                     </span>
                   </li>
                 ))}
@@ -469,6 +583,18 @@ export default function AdminConsole() {
                       >
                         Editar
                       </Button>
+                      {/* S-O131: apagar a SI MESMO trancaria a porta por dentro (mesma regra do desativar-se). */}
+                      {u.id !== user?.id && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive"
+                          onClick={() => setUsuarioParaApagar(u)}
+                          data-testid={`apagar-usuario-${u.id}`}
+                        >
+                          Apagar
+                        </Button>
+                      )}
                     </span>
                   </li>
                 ))}
@@ -560,6 +686,46 @@ export default function AdminConsole() {
       </Link>
 
       {/* ── Editar loja ── */}
+
+      {/* ── S-O131 / S3: a trilha global ── */}
+      <AuditoriaGlobal />
+
+      {/* ── S-O131: as duas confirmações de apagar ── */}
+      <AlertDialog open={!!lojaParaApagar} onOpenChange={(v) => !v && setLojaParaApagar(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar a loja {lojaParaApagar?.nome}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Só uma loja VAZIA sai. Se ela tiver noivas, contratos, acervo ou equipe, o sistema recusa e o
+              caminho é desativá-la pela edição — tudo fica guardado e ela some dos seletores.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction onClick={onApagarLoja} disabled={deleteLoja.isPending} data-testid="confirmar-apagar-loja">
+              {deleteLoja.isPending ? "Apagando…" : "Apagar loja"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={!!usuarioParaApagar} onOpenChange={(v) => !v && setUsuarioParaApagar(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar {usuarioParaApagar?.nome}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Só sai quem não tem histórico. Se a pessoa já atendeu, orçou, fechou contrato ou teve comissão,
+              o sistema recusa e o caminho é inativá-la pela edição.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction onClick={onApagarUsuario} disabled={deleteUsuario.isPending} data-testid="confirmar-apagar-usuario">
+              {deleteUsuario.isPending ? "Apagando…" : "Apagar pessoa"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Dialog
         open={lojaEmEdicao !== null}
         onOpenChange={(aberto) => !aberto && setLojaEmEdicao(null)}

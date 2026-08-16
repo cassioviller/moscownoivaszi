@@ -6,8 +6,21 @@ import {
   useUpdateAtributo,
   useCreateAtributoOpcao,
   useUpdateAtributoOpcao,
+  useDeleteAtributo,
+  useDeleteAtributoOpcao,
   type Atributo,
 } from "@workspace/api-client-react";
+import { useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { useConfirmarSaida, sujoParaConfirmar } from "@/hooks/use-confirmar-saida";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -16,6 +29,7 @@ import { z } from "zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -27,7 +41,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { ArrowLeft, AlertCircle } from "lucide-react";
+import { ArrowLeft, AlertCircle, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { mensagemApi } from "@/lib/erro-api";
 import { CACHE_ESTAVEL } from "@/lib/cache";
@@ -108,6 +122,41 @@ function EditarAtributoForm({ atributo }: { atributo: Atributo }) {
   const updateAtributo = useUpdateAtributo();
   const createOpcao = useCreateAtributoOpcao();
   const updateOpcao = useUpdateAtributoOpcao();
+  /**
+   * S-O131 — apagar atributo e apagar opção tinham porta (`DELETE`, com o 409
+   * `ATRIBUTO_EM_USO`/`OPCAO_EM_USO` que nomeia quantas peças e noivas a
+   * classificação alcança) e não tinham tela: esta página criava e editava, e
+   * a frase dizia "opções não são apagadas". Agora: o que está sem uso sai; o
+   * que classifica alguém, a porta recusa e a frase dela ensina a desativar.
+   */
+  const deleteAtributo = useDeleteAtributo();
+  const deleteOpcao = useDeleteAtributoOpcao();
+  const [confirmarApagarAtributo, setConfirmarApagarAtributo] = useState(false);
+  const [opcaoParaApagar, setOpcaoParaApagar] = useState<{ id: string; valor: string } | null>(null);
+
+  const onApagarAtributo = async () => {
+    try {
+      await deleteAtributo.mutateAsync({ lojaId: activeLojaId!, atributoId: atributo.id });
+      await queryClient.invalidateQueries({ queryKey: getListAtributosQueryKey(activeLojaId!) });
+      toast({ title: "Atributo apagado", description: `"${atributo.nome}" saiu do catálogo.` });
+      navigate(`/loja/${lojaId}/catalogo`);
+    } catch (err) {
+      setConfirmarApagarAtributo(false);
+      toast({ title: "Não deu para apagar o atributo", description: mensagemApi(err, "Tente novamente."), variant: "destructive" });
+    }
+  };
+  const onApagarOpcao = async () => {
+    if (!opcaoParaApagar) return;
+    try {
+      await deleteOpcao.mutateAsync({ lojaId: activeLojaId!, opcaoId: opcaoParaApagar.id });
+      await queryClient.invalidateQueries({ queryKey: getListAtributosQueryKey(activeLojaId!) });
+      toast({ title: "Opção apagada", description: `"${opcaoParaApagar.valor}" saiu de "${atributo.nome}".` });
+      setOpcaoParaApagar(null);
+    } catch (err) {
+      setOpcaoParaApagar(null);
+      toast({ title: "Não deu para apagar a opção", description: mensagemApi(err, "Tente novamente."), variant: "destructive" });
+    }
+  };
 
   const opcoesOrdenadas = [...(atributo.opcoes ?? [])].sort((a, b) => a.ordem - b.ordem);
 
@@ -193,8 +242,11 @@ function EditarAtributoForm({ atributo }: { atributo: Atributo }) {
             />
 
             {/* AtributoUpdate só aceita nome/ordem/ativo — o tipo não é editável. */}
+            {/* S-O146: era <FormLabel> fora de <FormField> — `useFormField` estoura e a
+                tela INTEIRA caía em "Esta tela quebrou" ao abrir qualquer atributo.
+                Nenhum E2E abria a edição; o 64 (S-O131) foi o primeiro e a achou. */}
             <div className="space-y-2">
-              <FormLabel>Tipo</FormLabel>
+              <Label>Tipo</Label>
               <Input
                 value={atributo.tipo === "ESCALA" ? "Escala (grau)" : "Opção única"}
                 disabled
@@ -256,10 +308,26 @@ function EditarAtributoForm({ atributo }: { atributo: Atributo }) {
                         </FormItem>
                       )}
                     />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      aria-label={`Apagar opção ${f.valor}`}
+                      // `f.id` é a chave do useFieldArray, não a da opção — a opção vem da lista ordenada, no mesmo índice.
+                      onClick={() => {
+                        const opcao = opcoesOrdenadas[index];
+                        if (opcao) setOpcaoParaApagar({ id: opcao.id, valor: opcao.valor });
+                      }}
+                      data-testid={`apagar-opcao-${opcoesOrdenadas[index]?.id ?? index}`}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
                 ))}
                 <p className="text-xs text-muted-foreground">
-                  Opções não são apagadas — desative as que não devem mais aparecer.
+                  Uma opção sem uso pode ser apagada; a que já classifica peça ou noiva, o sistema recusa —
+                  desative-a para ela não aparecer mais.
                 </p>
               </fieldset>
             )}
@@ -285,9 +353,52 @@ function EditarAtributoForm({ atributo }: { atributo: Atributo }) {
               <Button type="button" variant="outline" asChild>
                 <Link to={`/loja/${lojaId}/catalogo`}>Cancelar</Link>
               </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="ml-auto text-destructive"
+                onClick={() => setConfirmarApagarAtributo(true)}
+                data-testid="apagar-atributo"
+              >
+                Apagar atributo
+              </Button>
             </div>
           </form>
         </Form>
+
+        <AlertDialog open={confirmarApagarAtributo} onOpenChange={setConfirmarApagarAtributo}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Apagar o atributo "{atributo.nome}"?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Só sai o atributo que não classifica peça nem noiva. Se já classificar, o sistema recusa e diz
+                quantas — e o caminho é desmarcar "Atributo ativo".
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Voltar</AlertDialogCancel>
+              <AlertDialogAction onClick={onApagarAtributo} disabled={deleteAtributo.isPending} data-testid="confirmar-apagar-atributo">
+                {deleteAtributo.isPending ? "Apagando…" : "Apagar atributo"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog open={!!opcaoParaApagar} onOpenChange={(v) => !v && setOpcaoParaApagar(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Apagar a opção "{opcaoParaApagar?.valor}"?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Só sai a opção sem uso. Se ela já classificar peça ou noiva, o sistema recusa — desative-a.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Voltar</AlertDialogCancel>
+              <AlertDialogAction onClick={onApagarOpcao} disabled={deleteOpcao.isPending} data-testid="confirmar-apagar-opcao">
+                {deleteOpcao.isPending ? "Apagando…" : "Apagar opção"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );

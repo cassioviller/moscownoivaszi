@@ -6,6 +6,7 @@ import {
   getListComissaoRegrasQueryKey,
   useCreateComissaoRegra,
   useDeleteComissaoRegra,
+  useUpdateComissaoRegra,
   useListComissaoFechamentos,
   getListComissaoFechamentosQueryKey,
   usePreviewComissao,
@@ -220,6 +221,13 @@ export default function Comissoes() {
 
   const criarRegra = useCreateComissaoRegra();
   const removerRegra = useDeleteComissaoRegra();
+  /**
+   * S-O131 — a porta `PATCH /comissao/regras/:id` (ativo, bonusAcumulaFaixas)
+   * existia sem tela: a lista já mostrava "inativa" e nenhum gesto chegava lá.
+   * Desativar é o meio-termo entre deixar e remover — a escada sai de vigor e
+   * fica na história, com as faixas.
+   */
+  const atualizarRegra = useUpdateComissaoRegra();
   const gerarFechamento = useGerarComissaoFechamento();
   const baixarEstorno = useBaixarEstornoComissao();
   const reabrirFechamento = useReabrirComissaoFechamento();
@@ -373,6 +381,20 @@ export default function Comissoes() {
       toast({
         title: "Não deu para salvar a regra",
         description: detalhe ?? mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
+        variant: "destructive",
+      });
+    }
+  }
+
+  async function onAlternarRegra(regraId: string, ativo: boolean) {
+    try {
+      await atualizarRegra.mutateAsync({ lojaId: activeLojaId!, regraId, data: { ativo } });
+      await queryClient.invalidateQueries({ queryKey: getListComissaoRegrasQueryKey(activeLojaId!) });
+      toast({ title: ativo ? "Regra reativada" : "Regra desativada" });
+    } catch (err) {
+      toast({
+        title: ativo ? "Não deu para reativar" : "Não deu para desativar",
+        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
     }
@@ -957,7 +979,18 @@ export default function Comissoes() {
                               )}
                               {regra.bonusAcumulaFaixas && " · bônus acumulam"}
                             </p>
-                            {podeMexerNaComissao && (<Button
+                            {podeMexerNaComissao && (<span className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8"
+                              disabled={atualizarRegra.isPending}
+                              onClick={() => onAlternarRegra(regra.id, !regra.ativo)}
+                              data-testid={`alternar-regra-${regra.id}`}
+                            >
+                              {regra.ativo ? "Desativar" : "Reativar"}
+                            </Button>
+                            <Button
                               variant="ghost"
                               size="icon"
                               aria-label={`Remover a versão de ${diaMesAno(inicio)} de ${vendedora.nome}`}
@@ -967,7 +1000,8 @@ export default function Comissoes() {
                               }
                             >
                               <Trash2 className="h-4 w-4" />
-                            </Button>)}
+                            </Button>
+                            </span>)}
                           </div>
                           <ul className="mt-1 space-y-1">
                             {regra.faixas.map((f) => (

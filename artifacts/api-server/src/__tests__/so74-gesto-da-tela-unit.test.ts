@@ -168,7 +168,11 @@ function temChamador(op: string, caminhos: string[], fonte: string): "hook" | "u
 /**
  * A dívida do cliente inteiro — cada linha é um julgamento, e o julgamento
  * separa as duas classes que a sobra pedia: **sem gesto por decisão** e
- * **porta sem tela** (a S-O131 recolhe as segundas).
+ * **porta sem tela**. As seis "porta sem tela" que a S-O131 recolhia
+ * (`deleteLoja`, `deleteUsuario`, `deleteAtributo`, `deleteAtributoOpcao`,
+ * `updateComissaoRegra`, `listAuditoriaGlobal`) **ganharam tela em
+ * 2026-08-16 por decisão da dona** ("ganha tela"), e saíram daqui — o teste
+ * ao lado cobra a baixa. O que fica é só o "por decisão".
  */
 const SEM_GESTO_NO_CLIENTE: Record<string, string> = {
   healthCheck: "por decisão — é o monitor quem bate em /healthz, não uma pessoa; a tela não tem o que fazer com ele.",
@@ -177,15 +181,8 @@ const SEM_GESTO_NO_CLIENTE: Record<string, string> = {
     "por decisão — a peça sai de linha pelo status (`inativo`, em `vestidos/[id]/editar.tsx`) e não some: contrato e trilha apontam para ela. Apagar é porta de API para o acervo de teste.",
   deleteOrcamento:
     "por decisão — orçamento recusado/vencido é histórico da noiva; a tela muda o status e não apaga (o E162 fez o gate em cima dele).",
-  deleteLoja: "porta sem tela — o superadmin apaga loja só pela API (S-O131).",
-  deleteUsuario: "porta sem tela — o admin desativa pela edição e não tem botão de apagar (S-O131).",
-  deleteAtributo: "porta sem tela — o catálogo de atributos (pages/catalogo) cria e edita, não remove (S-O131).",
-  deleteAtributoOpcao: "porta sem tela — idem, para a opção (S-O131).",
-  updateComissaoRegra:
-    "porta sem tela — pages/comissoes cria e remove regra; editar uma existente é só pela API (S-O131).",
   createParcelaAvulsa:
     "por decisão — a parcela avulsa nasce por gesto com vínculo: o reparo (`POST /avarias/:id/cobrar`, F22/E97) e as cobranças do contrato (E217). A porta crua fica para a API.",
-  listAuditoriaGlobal: "porta sem tela — a auditoria do superadmin, cruzando lojas, não tem página (S-O131).",
 };
 
 describe("S-O96 — toda operação do cliente gerado tem chamador, ou dívida com motivo", () => {
