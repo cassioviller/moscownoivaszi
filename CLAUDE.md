@@ -22,9 +22,9 @@ para o documento que manda.
    | Trilha | Rastreador | Estado |
    |---|---|---|
    | Ótica dos papéis | `2026-08-11-otica-dos-papeis/` | EXECUTADA — E158–E197, E210, E238–E240 e as sobras S-O até a S-O146; **ZERO sobras abertas** (contadas em 16/08) |
-   | O contrato de papel vira regra | `2026-08-13-contrato-de-papel/` | EXECUTADA — E211–E237 e as sobras S-C; **ZERO sobras abertas**; restam **P1–P3**, gestos da dona na instalação real (a P4 virou o IPCA em E237, a P5 foi confirmada) |
-   | Revisão max | `2026-08-10-revisao-max/` | fechada — resta **S-M17** 🟡, que espera um dump de instalação real |
-   | Arqueologia do legado | `2026-08-04-arqueologia-legado/` | fechada — resta **S-A2** 🟡 (as fotos que faltam do caderno); a S-A27 foi classificada em 16/08 (126 Noiva · 5 Acessório · 1 pendente, L084) |
+   | O contrato de papel vira regra | `2026-08-13-contrato-de-papel/` | EXECUTADA — E211–E237 e as sobras S-C; **ZERO sobras abertas**; P1–P3 decididas em 16/08 (jurídico e gesto da instalação, fora do sistema); a P4 virou o IPCA em E237, a P5 foi confirmada — **nada aberto** |
+   | Revisão max | `2026-08-10-revisao-max/` | fechada — resta **S-M17** 🟡, que espera um dump de instalação real (**a instalação real ainda não existe** — respondido em 16/08) |
+   | Arqueologia do legado | `2026-08-04-arqueologia-legado/` | fechada — **ZERO sobras abertas** (a S-A2 fechou por decisão em 16/08: não há mais fotos, as 136 saídas ficam como piso); a S-A27 foi classificada em 16/08 (126 Noiva · 5 Acessório · 1 pendente, L084) |
    | Rodadas 6 e 7 | `2026-07-25-rodada-6/`, `2026-07-30-rodada-7-design/` | fechadas, ZERO sobras |
 
    **O que aconteceu por último**, e onde está contado: a noite de 15/08 e a
@@ -61,10 +61,15 @@ para o documento que manda.
    decisões executadas na recomendação — o IPCA de exemplo só na instalação de
    teste, a 16ª pelo papel, a conta a pagar que não nasce sob "estornar" —
    estão na tabela de Decisões do rastreador para a dona confirmar). O lote de
-   higiene 🔵 também fechou (`484f429b`, 13 de 17). **O que resta da conferência
-   são duas sobras 🔵 na tabela do rastreador: S-CF2** (nenhum E2E clica
-   "cobrar o atraso") **e S-CF3** (quatro réguas de propósito grossas, declaradas).
-   **Não há trilha em curso com fila de código.** A régua
+   higiene 🔵 também fechou (`484f429b`, 13 de 17). **Na noite de 16/08 a dona
+   respondeu às perguntas que restavam**: as três decisões (E241, E242, E244)
+   CONFIRMADAS na recomendação; a S-CF3 fechada por decisão (as réguas ficam
+   grossas de propósito); a S-CF2 fechada com o `e2e/65` (`206d3e51`, E2E 187);
+   a S-A2 fechada por decisão (não há mais fotos — as 136 saídas ficam como
+   piso); P1–P3 decididas (jurídico/gesto da instalação, fora do sistema); a
+   S-M17 fica aberta porque **a instalação real ainda não existe**. **A
+   conferência do contrato não tem sobra aberta; não há trilha em curso com
+   fila de código; a única sobra viva do repositório é a S-M17.** A régua
    do E241 achou a suíte de API vermelha no `main` desde `ec53e2d6`
    (consertada em `c8dda201`). Também: as duas
    últimas sobras da ótica fecharam (S-O131 "ganha tela" e a S-O146 🟠 que ela
@@ -72,7 +77,7 @@ para o documento que manda.
    `heliumdb` perdeu 725 contas e 451 pagamentos fantasmas de E2E.
 
 3. **A régua e a publicação.** Hoje a régua é **API 1865 (267 arquivos) ·
-   frontend 1017 (108 arquivos) · E2E 186 · typecheck verde em 5 projetos** —
+   frontend 1017 (108 arquivos) · E2E 187 · typecheck verde em 5 projetos** —
    medidas em série no fecho do lote de higiene (16/08, noite). A API inteira leva ~11,6 min no
    `heliumdb`; o E2E, ~6,5 min, e é a régua que **agente nenhum pode rodar**
    (worktree isola arquivo e banco e NÃO isola porta — e dois E2E ao mesmo
@@ -83,7 +88,7 @@ para o documento que manda.
    (instalação nova, ~1 min): rode-a antes de mexer em seed, schema ou
    `global-setup`.
 
-   **O `main` está 24+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
+   **O `main` está 28+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
    de manhã; a conferência, o E241 e os docs não estão publicados). Confira com
    `git rev-list --count origin/main..main` antes de assumir — esta linha
    envelhece a cada commit. Todo worktree de agente nasce em `origin/main`
