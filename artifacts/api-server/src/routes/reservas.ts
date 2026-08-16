@@ -81,6 +81,8 @@ import {
   cobrancaDoAtraso,
   diaDeNegocio,
   diasDeAtraso,
+  // E244 — o dia até o qual a peça pode estar fora: o papel, senão a janela.
+  fimPrevistoDaDevolucao,
   explicacaoDaFaixa,
   explicacaoDoAtraso,
   hojeLocal,
@@ -2316,12 +2318,31 @@ async function pecasAtrasadasDoContrato(
    * repassar seria mover o custo, não tirá-lo.
    */
   regraJaLida?: RegraJanelas,
+  /**
+   * E244 — a data de devolução do PAPEL, quando quem chama já a leu (a fila a
+   * traz no join dos candidatos). Sem ela, lê-se aqui — a prévia e a cobrança
+   * chamam uma vez por requisição. É a mesma economia da `regraJaLida`, e a
+   * régua da S-C89 (`2 fixas + 2 por contrato + 1`) é quem cobra: uma
+   * consulta a mais por contrato aqui fez a fila custar 9 onde custava 7.
+   */
+  papelJaLido?: { dataDevolucao: Date | null },
 ): Promise<{ pecas: PecaAtrasada[]; semAluguel: string[] }> {
   const regra = regraJaLida ?? (await buscarRegra(lojaId, executor));
   // A janela de uso INTEIRA é o divisor da diária: os dias antes, o dia do
   // casamento e os dias depois. No padrão da loja são 3 + 1 + 2 = 6.
   const diasDeAluguel = regra.usoDiasAntes + regra.usoDiasDepois + 1;
   const hoje = hojeLocal();
+  // E244 — a data de devolução que o PAPEL imprime (E224), quando existe: é
+  // ela, e não a janela, que diz até quando a peça pode estar fora sem atraso.
+  const dataDevolucao =
+    papelJaLido !== undefined
+      ? papelJaLido.dataDevolucao
+      : ((
+          await executor
+            .select({ dataDevolucao: contratosTable.dataDevolucao })
+            .from(contratosTable)
+            .where(and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)))
+        )[0]?.dataDevolucao ?? null);
 
   const bloqueios = await executor
     .select({
@@ -2344,7 +2365,7 @@ async function pecasAtrasadasDoContrato(
   const semAluguel: string[] = [];
   for (const b of bloqueios) {
     if (!b.casamentoData || !b.retiradaDataReal) continue;
-    const fimUsoPrevisto = addDias(diaDeNegocio(b.casamentoData), regra.usoDiasDepois);
+    const fimUsoPrevisto = fimPrevistoDaDevolucao({ casamentoData: b.casamentoData, usoDiasDepois: regra.usoDiasDepois, dataDevolucao });
     // Devolvida: conta até o dia da volta. Ainda fora: conta até HOJE, e o
     // número cresce sozinho — que é o comportamento certo para o extravio, o
     // caso em que a peça nunca volta e nenhum evento nasce para disparar a
@@ -2497,6 +2518,8 @@ async function filaDeAtrasosDaLoja(lojaId: string) {
       contratoId: contratosTable.id,
       leadId: contratosTable.leadId,
       atrasoParcelaId: contratosTable.atrasoParcelaId,
+      // E244 — o papel manda sobre a janela.
+      dataDevolucao: contratosTable.dataDevolucao,
       noivaNome: leadsTable.noivaNome,
       bloqueioId: bloqueioVestidosTable.id,
       casamentoData: bloqueioVestidosTable.casamentoData,
@@ -2522,11 +2545,13 @@ async function filaDeAtrasosDaLoja(lojaId: string) {
     bloqueioId: string;
     atrasoParcelaId: string | null;
     maiorAtraso: number;
+    /** E244 — o papel, lido no mesmo join; passa adiante para não custar uma consulta por contrato. */
+    dataDevolucao: Date | null;
   };
   const porContrato = new Map<string, Candidato>();
   for (const c of candidatos) {
     if (!c.casamentoData) continue;
-    const fimUsoPrevisto = addDias(diaDeNegocio(c.casamentoData), regra.usoDiasDepois);
+    const fimUsoPrevisto = fimPrevistoDaDevolucao({ casamentoData: c.casamentoData, usoDiasDepois: regra.usoDiasDepois, dataDevolucao: c.dataDevolucao });
     const diaDaVolta = c.devolucaoDataReal ? diaLocal(c.devolucaoDataReal) : hoje;
     const dias = diasDeAtraso(fimUsoPrevisto, diaDaVolta);
     if (dias <= 0) continue;
@@ -2540,13 +2565,16 @@ async function filaDeAtrasosDaLoja(lojaId: string) {
         bloqueioId: c.bloqueioId,
         atrasoParcelaId: c.atrasoParcelaId,
         maiorAtraso: dias,
+        dataDevolucao: c.dataDevolucao,
       });
     }
   }
 
   const itens = [];
   for (const [contratoId, cand] of porContrato) {
-    const { pecas, semAluguel } = await pecasAtrasadasDoContrato(contratoId, lojaId, db, regra);
+    const { pecas, semAluguel } = await pecasAtrasadasDoContrato(contratoId, lojaId, db, regra, {
+      dataDevolucao: cand.dataDevolucao,
+    });
     const cobranca = cobrancaDoAtraso(pecas);
     // A peça atrasada FORA do rol de itens não tem conta, e é a que mais precisa
     // ser vista: ela está fora e ninguém consegue cobrá-la (422
@@ -2692,7 +2720,8 @@ async function pecasForaSemContrato(
   const linhas = [];
   for (const o of orfas) {
     if (!o.casamentoData) continue;
-    const fimUsoPrevisto = addDias(diaDeNegocio(o.casamentoData), regra.usoDiasDepois);
+    // E244: a órfã não tem contrato ATIVO, logo não tem papel — a janela é a régua.
+    const fimUsoPrevisto = fimPrevistoDaDevolucao({ casamentoData: o.casamentoData, usoDiasDepois: regra.usoDiasDepois, dataDevolucao: null });
     const diaDaVolta = o.devolucaoDataReal ? diaLocal(o.devolucaoDataReal) : hoje;
     const dias = diasDeAtraso(fimUsoPrevisto, diaDaVolta);
     if (dias <= 0) continue;

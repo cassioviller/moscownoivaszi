@@ -8,6 +8,7 @@ import {
   parcelasTable,
 } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
+import { derrubarFilaDeAtrasos } from "../lib/fila-de-atrasos-cache";
 import { randomUUID } from "node:crypto";
 import { addDias, ancoraDeNegocio, hojeLocal } from "@workspace/financeiro-core";
 import {
@@ -143,6 +144,64 @@ describe("E212 — o atraso na devolução tem preço", () => {
       expect(res.body.error).toBe("SEM_ATRASO");
     });
     expect(await parcelasDeAtraso(contrato.id)).toHaveLength(0);
+  });
+
+  /**
+   * **E244 (E1 da conferência) — a 16ª conta pelo que o PAPEL manda.**
+   *
+   * A conta contava o atraso do fim da JANELA de uso (`casamento +
+   * usoDiasDepois`), e o instrumento (E224) imprime outra data: a devolução
+   * é empurrada para a frente até dia de expediente (36 de 127 reservas caíam
+   * em dia fechado). Casamento sábado 12/09, `usoDiasDepois=2` → janela
+   * termina segunda 14/09 (fechado) → o papel diz **terça 15/09**; na terça
+   * de manhã `dias=1` e a 16ª §1º cobrava R$ 500,00 + R$ 250,00 = R$ 750,00
+   * **por devolver no dia que o papel manda.** Decisão (16/08, na
+   * recomendação — o papel é o que a noiva assinou): quando o contrato tem
+   * `dataDevolucao`, o fim previsto é ela; sem ela, a janela — uma função,
+   * `fimPrevistoDaDevolucao`, nos três sítios.
+   */
+  describe("E244 — a 16ª conta pelo que o papel manda", () => {
+    it("o contrato diz a devolução DOIS dias depois da janela: devolver no dia do papel não é atraso", async () => {
+      // Janela: casamento há 10 → fim há 8. O papel: devolução há 6. Devolvida há 6.
+      const { contrato } = await noivaComPecas([{ aluguel: 3000, casamentoHaDias: 10, devolvidoHaDias: 6 }]);
+      // ANTES: dias=2 → R$ 1.000,00 + R$ 250,00 = R$ 1.250,00 devidos por obedecer ao papel.
+      await db.update(contratosTable).set({ dataDevolucao: diasAtras(6) }).where(eq(contratosTable.id, contrato.id));
+      const r = await previa(contrato.id).expect(200);
+      expect(r.body.devida).toBe(false);
+      expect(r.body.valor).toBe(0);
+    });
+
+    it("e devolver um dia DEPOIS do papel é um dia de atraso — não três", async () => {
+      const { contrato } = await noivaComPecas([{ aluguel: 3000, casamentoHaDias: 10, devolvidoHaDias: 5 }]);
+      await db.update(contratosTable).set({ dataDevolucao: diasAtras(6) }).where(eq(contratosTable.id, contrato.id));
+      const r = await previa(contrato.id).expect(200);
+      // ANTES: 3 dias — R$ 1.500,00 + R$ 250,00.
+      expect(r.body.devida).toBe(true);
+      expect(r.body.valor).toBe(500 + 250);
+    });
+
+    it("sem data no contrato, a janela continua sendo a régua", async () => {
+      const { contrato } = await noivaComPecas([{ aluguel: 3000, casamentoHaDias: 10, devolvidoHaDias: 5 }]);
+      const r = await previa(contrato.id).expect(200);
+      expect(r.body.valor).toBe(1500 + 250);
+    });
+
+    it("a fila de atrasos lê a mesma data: com o papel dando até hoje, a peça que ainda está fora sai da fila", async () => {
+      const { contrato } = await noivaComPecas([{ aluguel: 3000, casamentoHaDias: 10, devolvidoHaDias: null }]);
+      const dona = await loginComLoja(f.superAdminEmail, f.lojaId);
+      const naFila = async () => {
+        // O cache da fila (S-C89) é derrubado pelas escritas das PORTAS; o UPDATE
+        // direto deste teste não passa por elas.
+        derrubarFilaDeAtrasos(f.lojaId);
+        const fila = await dona.get(`/api/lojas/${f.lojaId}/contratos-com-atraso`).expect(200);
+        return (fila.body.itens as { contratoId: string }[]).some((c) => c.contratoId === contrato.id);
+      };
+      // Pela janela: fim há 8, ainda fora → 8 dias, na fila.
+      expect(await naFila()).toBe(true);
+      // Pelo papel: a devolução é HOJE — sem atraso, fora da fila.
+      await db.update(contratosTable).set({ dataDevolucao: diasAtras(0) }).where(eq(contratosTable.id, contrato.id));
+      expect(await naFila()).toBe(false);
+    });
   });
 
   it("três dias de atraso: R$ 1.500,00 de diárias + R$ 250,00 de multa, como PARCELA", async () => {

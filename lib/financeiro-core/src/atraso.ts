@@ -1,4 +1,5 @@
 import { brl, centavos, reais } from "./dinheiro";
+import { addDias, diaDeNegocio, diaLocal } from "./datas";
 
 /**
  * **O atraso na devolução** — cláusula 16ª e seus dois parágrafos do instrumento
@@ -105,6 +106,36 @@ export type CobrancaDoAtraso = {
   /** O maior atraso da cobrança — o que a tela usa para o título. */
   maiorAtraso: number;
 };
+
+/**
+ * **E244 — o dia até o qual a peça pode estar fora sem atraso: o que o PAPEL
+ * manda, senão a janela.**
+ *
+ * A 16ª contava o atraso do fim da JANELA de uso (`casamento + usoDiasDepois`),
+ * e o instrumento (E224) imprime outra data de devolução: a sugestão empurra
+ * a devolução para a frente até dia de expediente (36 de 127 reservas caíam
+ * em dia fechado — domingo e segunda no padrão da loja). Casamento sábado
+ * 12/09, `usoDiasDepois = 2` → a janela termina segunda 14/09 (fechado) → o
+ * papel diz **terça 15/09 18:00**; na terça de manhã `dias = 1`, a noiva
+ * entrava na fila de atrasos e a 16ª §1º cobrava R$ 500,00 + R$ 250,00 =
+ * **R$ 750,00 por devolver no dia que o papel manda.**
+ *
+ * Decisão (16/08/2026, na recomendação): **o papel é a régua** — é o que a
+ * noiva assinou. Quando o contrato tem `dataDevolucao`, o fim previsto é o
+ * DIA dela (instante lido em SP); sem ela (contrato anterior ao E224, ou
+ * peça órfã sem contrato ativo), a janela continua sendo a régua. UMA função
+ * nos três sítios da conta (a prévia/cobrança, a fila, as órfãs), pela lição
+ * do E187 — a terceira grafia é a que diverge.
+ */
+export function fimPrevistoDaDevolucao(p: {
+  casamentoData: Date | string;
+  usoDiasDepois: number;
+  /** `contratos.data_devolucao` — INSTANTE (E224); `null`/ausente = sem papel. */
+  dataDevolucao?: Date | string | null;
+}): string {
+  if (p.dataDevolucao) return diaLocal(p.dataDevolucao);
+  return addDias(diaDeNegocio(p.casamentoData), p.usoDiasDepois);
+}
 
 /**
  * Dias de atraso entre o fim do uso previsto e a volta, em dias de NEGÓCIO

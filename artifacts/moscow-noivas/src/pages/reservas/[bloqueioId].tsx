@@ -280,6 +280,11 @@ export default function ReservaDetalhe() {
   // E232/S-C98 — a avaria cuja cobrança está sendo montada, e o prazo dela.
   const [avariaCobrar, setAvariaCobrar] = useState<{ id: string } | null>(null);
   const [prazoCobranca, setPrazoCobranca] = useState(String(PRAZO_DA_COBRANCA_DE_REPARO_DIAS));
+  // E244 (C5): a porta do atraso aceita `prazoDias` desde o E212 e a tela
+  // mandava `{}` — o vencimento caía sempre nos dias do servidor, sem ninguém
+  // escolher (o formato da S-C98, fechado para a avaria no E232 e não para o
+  // atraso). Abre com a MESMA constante que a porta pratica.
+  const [prazoAtraso, setPrazoAtraso] = useState(String(PRAZO_DA_COBRANCA_DE_REPARO_DIAS));
   const [avariaJustificativa, setAvariaJustificativa] = useState("");
   const [avariaFotoBase64, setAvariaFotoBase64] = useState<string | null>(null);
   const [avariaFotoNome, setAvariaFotoNome] = useState<string | null>(null);
@@ -546,7 +551,7 @@ export default function ReservaDetalhe() {
         await cobrarAtraso.mutateAsync({
           lojaId: activeLojaId!,
           contratoId: contratoAtivo.id,
-          data: {},
+          data: { prazoDias: Number(prazoAtraso) },
         });
         // Mesma régua do reparo: cobrar o atraso CRIA parcela no carnê, então
         // é movimento de caixa e passa pela invalidação do D9/E93 — não só
@@ -1126,14 +1131,31 @@ export default function ReservaDetalhe() {
                 </p>
               ) : (
                 podeCobrarAtraso && (
-                  <Button
-                    size="sm"
-                    disabled={cobrarAtraso.isPending}
-                    onClick={cobrarAtrasoDaDevolucaoDoContrato}
-                    data-testid="cobrar-atraso"
-                  >
-                    Cobrar o atraso
-                  </Button>
+                  <div className="flex flex-wrap items-end gap-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="prazo-cobranca-atraso" className="text-xs">Vence em (dias)</Label>
+                      <Input
+                        id="prazo-cobranca-atraso"
+                        type="number"
+                        min={0}
+                        max={365}
+                        inputMode="numeric"
+                        className="w-24"
+                        value={prazoAtraso}
+                        onChange={(e) => setPrazoAtraso(e.target.value)}
+                        data-testid="input-prazo-cobranca-atraso"
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      // C10: prazo vazio não vira 0 dias — `Number("")` é 0.
+                      disabled={cobrarAtraso.isPending || prazoAtraso.trim() === "" || Number.isNaN(Number(prazoAtraso))}
+                      onClick={cobrarAtrasoDaDevolucaoDoContrato}
+                      data-testid="cobrar-atraso"
+                    >
+                      Cobrar o atraso
+                    </Button>
+                  </div>
                 )
               )}
             </CardContent>
@@ -1762,7 +1784,8 @@ export default function ReservaDetalhe() {
               Voltar
             </Button>
             <Button
-              disabled={cobrarAvaria.isPending || Number.isNaN(Number(prazoCobranca))}
+              // C10 (E244): prazo vazio não vira 0 dias — `Number("")` é 0 e a parcela vencia hoje.
+              disabled={cobrarAvaria.isPending || prazoCobranca.trim() === "" || Number.isNaN(Number(prazoCobranca))}
               onClick={() => {
                 if (!avariaCobrar) return;
                 void cobrarReparo(avariaCobrar, Number(prazoCobranca));

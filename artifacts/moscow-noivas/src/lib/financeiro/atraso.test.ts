@@ -8,6 +8,7 @@ import {
   diasDeAtraso,
   explicacaoDoAtraso,
   tipoDoAtraso,
+  fimPrevistoDaDevolucao,
 } from "@workspace/financeiro-core";
 
 /**
@@ -46,6 +47,38 @@ describe("diasDeAtraso — o dia do fim previsto ainda é dentro do prazo", () =
 
   it("atravessa a virada do mês e a do ano sem contar errado", () => {
     expect(diasDeAtraso("2028-12-30", "2029-01-03")).toBe(4);
+  });
+});
+
+/**
+ * E244 — o dia até o qual a peça pode estar fora sem atraso é o que o PAPEL
+ * manda, senão a janela. Casamento sábado 12/09/2026, `usoDiasDepois = 2`:
+ * a janela termina segunda 14/09 (fechado no padrão da loja) e o E224 imprime
+ * a devolução na terça 15/09 às 18:00. Contar da janela cobrava R$ 750,00 de
+ * quem devolveu no dia do papel.
+ */
+describe("fimPrevistoDaDevolucao — o papel manda, senão a janela (E244)", () => {
+  it("com a data do contrato, o fim previsto é o DIA dela em São Paulo — não a janela", () => {
+    expect(
+      fimPrevistoDaDevolucao({
+        casamentoData: "2026-09-12",
+        usoDiasDepois: 2,
+        dataDevolucao: "2026-09-15T21:00:00.000Z", // 18:00 em SP
+      }),
+    ).toBe("2026-09-15");
+    // E o dia é o de SP: 15/09 às 23:30 SP já é 16/09 em UTC.
+    expect(
+      fimPrevistoDaDevolucao({ casamentoData: "2026-09-12", usoDiasDepois: 2, dataDevolucao: "2026-09-16T02:30:00.000Z" }),
+    ).toBe("2026-09-15");
+  });
+  it("sem a data do contrato (anterior ao E224, ou órfã), a janela continua sendo a régua", () => {
+    expect(fimPrevistoDaDevolucao({ casamentoData: "2026-09-12", usoDiasDepois: 2, dataDevolucao: null })).toBe("2026-09-14");
+    expect(fimPrevistoDaDevolucao({ casamentoData: "2026-09-12", usoDiasDepois: 2 })).toBe("2026-09-14");
+  });
+  it("devolver no dia do papel é zero dias — e um dia depois é UM, não três", () => {
+    const fim = fimPrevistoDaDevolucao({ casamentoData: "2026-09-12", usoDiasDepois: 2, dataDevolucao: "2026-09-15T21:00:00.000Z" });
+    expect(diasDeAtraso(fim, "2026-09-15")).toBe(0);
+    expect(diasDeAtraso(fim, "2026-09-16")).toBe(1);
   });
 });
 
