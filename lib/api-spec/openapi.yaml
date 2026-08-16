@@ -6109,7 +6109,8 @@ components:
         enderecoBairro: { type: ["string", "null"] }
         enderecoCep: { type: ["string", "null"] }
         enderecoCidade: { type: ["string", "null"] }
-        enderecoEstado: { type: ["string", "null"] }
+        # C11 da conferência (16/08, S-M9): a mesma régua da criação — UF são DUAS letras (a edição aceitava 1).
+        enderecoEstado: { type: ["string", "null"], minLength: 2, maxLength: 2 }
     LeadInteresse:
       type: object
       required: [leadId]
@@ -7099,8 +7100,9 @@ components:
         # Aconteceu: uma linha `CONTA_PAGAR_REMOVIDA` no banco de dev derrubou
         # a lista toda, e a suíte E2E foi quem pegou.
         #
-        # Os valores conhecidos vivem em `api-server/src/lib/auditoria.ts`
-        # (`ACOES_AUDITORIA`), onde o TypeScript cobra o rótulo de cada um.
+        # Os valores conhecidos vivem em `lib/financeiro-core/src/auditoria.ts`
+        # (`ACOES_AUDITORIA`, desde a S-O52 — o `api-server` só reexporta), onde
+        # o TypeScript cobra o rótulo de cada um. (E4 da conferência de 16/08.)
         acao:
           type: string
           description: >

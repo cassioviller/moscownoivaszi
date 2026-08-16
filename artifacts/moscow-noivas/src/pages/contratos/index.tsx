@@ -150,6 +150,16 @@ export default function Contratos() {
       {/* S-C32 — o que está fora da arara vem antes do catálogo. A seção só
           existe quando há peça fora do prazo: fila vazia é o normal, e um card
           permanente dizendo "nada" vira ruído que ninguém lê mais. */}
+      {/* C12 da conferência (16/08): erro NÃO é "sem atraso". A fila que não
+          respondeu dizia o mesmo que a fila vazia — nada — e a peça fora da
+          arara sumia da tela junto com o 500. */}
+      {atrasos.isError && (
+        <Erro
+          titulo="Não deu para ler a fila de atrasos"
+          erro={atrasos.error}
+          onTentarNovamente={() => void atrasos.refetch()}
+        />
+      )}
       {aviso && (fila.length > 0 || orfas.length > 0) && (
         <Card
           className={aviso.urgente ? "border-destructive" : "border-aviso/70"}

@@ -157,6 +157,17 @@ export function SinoNotificacoes() {
     // S-C32: a peça fora da arara, logo depois do caixa. Ela é dinheiro que
     // CRESCE sozinho — a única cobrança do sistema de que isso é verdade — e
     // uma peça que outra noiva não pode reservar enquanto não volta.
+    // C12 da conferência (16/08): a fila que não respondeu não é fila vazia. O
+    // sino diz que não leu, em vez de calar como se não houvesse peça fora.
+    if (atrasos.isError) {
+      lista.push({
+        id: "ATRASO:erro",
+        titulo: "Não consegui ler a fila de atrasos",
+        detalhe: "A peça fora da arara pode estar somando diária — abra Contratos e tente de novo.",
+        href: `${base}/contratos`,
+        urgente: false,
+      });
+    }
     const atraso = avisoDoAtraso(atrasos.data);
     if (atraso) {
       lista.push({
@@ -214,7 +225,7 @@ export function SinoNotificacoes() {
     }
 
     return lista;
-  }, [alertaCaixa.data, atrasos.data, pendencias.data, parados.data, atendimentos.data, base]);
+  }, [alertaCaixa.data, atrasos.data, atrasos.isError, pendencias.data, parados.data, atendimentos.data, base]);
 
   const chave = user && activeLojaId ? chaveDispensadas(user.id, activeLojaId) : null;
   const visiveis = useMemo(() => {

@@ -61,9 +61,21 @@
 
 const TTL_MS = 5 * 60_000;
 
-type Entrada = { em: number; corpo: unknown };
+type Entrada = { em: number; corpo: unknown; geracao: number };
 
 const porLoja = new Map<string, Entrada>();
+/**
+ * B7 da conferência (16/08): a GERAÇÃO por loja. Um `derrubar` no meio de um
+ * GET (a rota lê o banco, alguém cobra o atraso, o GET grava a fila velha)
+ * deixava o corpo antigo até 5 min. Cada `derrubar` sobe a geração; o
+ * `guardar` só grava se a geração que a rota leu ANTES de consultar o banco
+ * ainda é a atual. Nenhuma escrita depende do cache — o custo do defeito era
+ * uma fila envelhecida por 5 min, e o conserto é uma comparação.
+ */
+const geracaoPorLoja = new Map<string, number>();
+export function geracaoDaFila(lojaId: string): number {
+  return geracaoPorLoja.get(lojaId) ?? 0;
+}
 
 /** A resposta pronta da loja, ou null se não há (ou envelheceu). */
 export function lerFilaDeAtrasos(lojaId: string): unknown | null {
@@ -76,12 +88,19 @@ export function lerFilaDeAtrasos(lojaId: string): unknown | null {
   return entrada.corpo;
 }
 
-export function guardarFilaDeAtrasos(lojaId: string, corpo: unknown): void {
-  porLoja.set(lojaId, { em: Date.now(), corpo });
+/** `geracaoLida`: a geração que a rota leu ANTES de ir ao banco (B7). Sem ela, grava sempre. */
+export function guardarFilaDeAtrasos(lojaId: string, corpo: unknown, geracaoLida?: number): void {
+  if (geracaoLida !== undefined && geracaoLida !== geracaoDaFila(lojaId)) return;
+  porLoja.set(lojaId, { em: Date.now(), corpo, geracao: geracaoDaFila(lojaId) });
 }
 
 /** Sem argumento derruba TUDO — é o gesto dos testes e do seed, não das rotas. */
 export function derrubarFilaDeAtrasos(lojaId?: string): void {
-  if (lojaId === undefined) porLoja.clear();
-  else porLoja.delete(lojaId);
+  if (lojaId === undefined) {
+    porLoja.clear();
+    for (const [id, g] of geracaoPorLoja) geracaoPorLoja.set(id, g + 1);
+  } else {
+    porLoja.delete(lojaId);
+    geracaoPorLoja.set(lojaId, geracaoDaFila(lojaId) + 1);
+  }
 }

@@ -156,13 +156,19 @@ describe("varredura — o enum do banco cabe no enum do spec (S-C34)", () => {
    * O caso que existe para provar que a varredura MORDE. Sem ele, um bug no
    * casamento faria tudo passar em silêncio, que é a régua que autoriza.
    */
-  it("a régua reconhece o defeito do E212 quando ele é reencenado", () => {
-    const doBancoFake = ["PLANO", "AVULSA", "AVARIA", "REAJUSTE_DATA", "ATRASO_DEVOLUCAO"];
+  it("a régua reconhece o defeito do E212 quando ele é reencenado — pela PENEIRA, não por uma cópia dela", () => {
+    // G14 da conferência (16/08): o plantado reencenava a lógica no próprio
+    // teste (um `.filter` local) — passaria mesmo com a peneira quebrada.
+    // Agora ele passa a lista falsa pelo MESMO `donoDaLista` que o it de
+    // baixo usa contra o banco real: se o casamento parar de achar o dono, ou
+    // de listar o que falta, é aqui que reprova.
     const doSpecFake = ["PLANO", "AVULSA", "AVARIA", "REAJUSTE_DATA"];
-    const compartilha = doSpecFake.some((v) => doBancoFake.includes(v));
-    const faltando = doBancoFake.filter((v) => !doSpecFake.includes(v));
-    expect(compartilha).toBe(true);
-    expect(faltando).toEqual(["ATRASO_DEVOLUCAO"]);
+    const dono = donoDaLista(doSpecFake);
+    expect(dono?.nome).toBe("parcela_origem");
+    const faltando = dono!.valores.filter((v) => !doSpecFake.includes(v));
+    expect(faltando).toContain("ATRASO_DEVOLUCAO");
+    // E o dono é o MAIS ESPECÍFICO quando dois enums compartilham valores.
+    expect(donoDaLista(["CANCELADA"])?.nome).toBeDefined();
   });
 
   /**

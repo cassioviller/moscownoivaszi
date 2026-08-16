@@ -193,9 +193,12 @@ function ConsolidadoRede() {
  * frase do 409 que a porta já dizia. Apagar é para o que está VAZIO; com
  * histórico, o caminho continua sendo desativar (E106/S1, E91/B2).
  */
+// C8 da conferência (16/08): LOJA_COM_HISTORICO e USUARIO_COM_HISTORICO saíram
+// daqui de propósito — o servidor devolve no `detalhe` a CONTAGEM ("3
+// parcela(s), 2 contrato(s), 5 noiva(s)…"), e o dicionário da tela a vencia
+// (`mensagemApi` prefere o dicionário ao `detalhe`). O que a porta conta é o
+// que a dona precisa ler para decidir se desativa.
 const MENSAGENS_ERRO_ADMIN: Record<string, string> = {
-  LOJA_COM_HISTORICO: "Esta loja tem histórico (noivas, contratos, acervo) — não se apaga. Desative-a pela edição: ela some dos seletores e tudo fica guardado.",
-  USUARIO_COM_HISTORICO: "Esta pessoa tem histórico (contrato, orçamento, atendimento ou comissão) — não se apaga. Inative-a pela edição.",
   LOJA_NAO_ENCONTRADA: "Esta loja já não existe.",
   USUARIO_NAO_ENCONTRADO: "Esta pessoa já não existe.",
 };

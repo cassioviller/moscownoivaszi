@@ -62,6 +62,7 @@ import { erroDeValidacao } from "../lib/erros";
 import {
   lerFilaDeAtrasos,
   guardarFilaDeAtrasos,
+  geracaoDaFila,
   derrubarFilaDeAtrasos,
 } from "../lib/fila-de-atrasos-cache";
 // S-O56/E185: a régua do dono saiu daqui para `lib/dono-do-bloqueio.ts` — ela
@@ -600,9 +601,13 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
        * gestos desalinhados no dia em que alguém movesse a data por outra porta.
        *
        * O reajuste vira **parcela**, não aumento de `valorTotal`: mesmo desenho
-       * da avaria (`:1588`), para aparecer na cobrança e na comissão como
-       * qualquer dinheiro — e para a base do próximo reajuste continuar sendo o
-       * que foi ASSINADO, não o que já foi reajustado.
+       * da avaria (`:1588`), para aparecer na cobrança e no caixa como qualquer
+       * dinheiro — e para a base do próximo reajuste continuar sendo o que foi
+       * ASSINADO, não o que já foi reajustado. **Ele NÃO entra na comissão** (A7
+       * da conferência de 16/08): a base da comissão é `contratos.valorTotal`
+       * (`comissao.ts` não lê `parcelas`), e uma parcela de reajuste não a
+       * altera — que é o desenho, não um esquecimento: a vendedora ganha sobre
+       * o que vendeu, não sobre a mudança de data.
        */
       const reajustes: { contratoId: string; percentual: number; valor: number }[] = [];
       if (mudouDeDia && contratosAtualizados.length > 0) {
@@ -2814,8 +2819,11 @@ router.get(
       res.json(ListContratosComAtrasoResponse.parse(emCache));
       return;
     }
+    // B7: a geração lida ANTES do banco — se alguém derrubar no meio, esta
+    // resposta não volta ao cache como se fosse a atual.
+    const geracaoLida = geracaoDaFila(lojaId);
     const fila = await filaDeAtrasosDaLoja(lojaId);
-    guardarFilaDeAtrasos(lojaId, fila);
+    guardarFilaDeAtrasos(lojaId, fila, geracaoLida);
     res.json(ListContratosComAtrasoResponse.parse(fila));
   },
 );

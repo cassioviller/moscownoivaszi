@@ -906,7 +906,11 @@ export interface LeadUpdate {
   enderecoCep?: string | null;
   /** @nullable */
   enderecoCidade?: string | null;
-  /** @nullable */
+  /**
+     * @minLength 2
+     * @maxLength 2
+     * @nullable
+     */
   enderecoEstado?: string | null;
 }
 

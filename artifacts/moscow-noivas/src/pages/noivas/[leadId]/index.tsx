@@ -770,6 +770,14 @@ export default function NoivaDetalhe() {
                   devolução que a multa da 10ª cobra. Sem nenhuma das duas a
                   régua devolve `null` e não há linha — a mesma escolha do
                   `<Dado>` para todo campo ausente desta ficha. */}
+              {/* C12 da conferência (16/08): a locação que não respondeu não é
+                  "sem locação" — a linha sumia sem frase, igual à ficha sem
+                  contrato. */}
+              {locacaoLida.isError && (
+                <p className="text-sm text-destructive" data-testid="locacao-erro">
+                  Não deu para ler a retirada e a devolução — recarregue a ficha.
+                </p>
+              )}
               {locacao && (
                 <>
                   {/* E231/S-C121 — a REAL vence o combinado: a ficha prometia

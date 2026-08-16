@@ -332,7 +332,10 @@ describe("E221 — o recibo é do PAGAMENTO, e o pagamento pode ser um pedaço",
       .expect(404);
   });
 
-  it("a lista de outra loja é 404, e não os recibos de lá", async () => {
+  // G15 da conferência (16/08): o título dizia 404 e o assert media 403 — e o 403
+  // é o certo: a sessão não tem essa loja (guarda de sessão), a lista nem chega
+  // a ser procurada.
+  it("a lista de outra loja é 403 (a sessão não tem essa loja), e não os recibos de lá", async () => {
     const { contrato } = await noivaComParcela(100, 10);
     const outraLoja = randomUUID();
     await db.insert(lojasTable).values({ id: outraLoja, nome: `Loja Alheia ${outraLoja}` });

@@ -37,13 +37,29 @@ function schemasDoContrato(): Array<[string, any]> {
   return Object.entries<any>(gerado).filter(([, s]) => s?.shape && typeof s.safeParse === "function");
 }
 
-/** Todo campo de todo schema, achatado. */
+/**
+ * Todo campo de todo schema, achatado — E DESCENDO nos aninhados (G9 da
+ * conferência, 16/08): a régua só percorria o `shape` de primeiro nível, e
+ * `CreateContratoBody.parcelas[].vencimento` nunca era perguntado. Objetos
+ * dentro de objetos, itens de array e o miolo de `optional/nullable/default`
+ * entram, com o caminho por extenso.
+ */
 function camposDoContrato(): Array<{ schema: string; campo: string; def: any }> {
   const saida: Array<{ schema: string; campo: string; def: any }> = [];
+  const desce = (schema: string, prefixo: string, def: any, profundidade: number) => {
+    if (!def || profundidade > 6) return;
+    saida.push({ schema, campo: prefixo, def });
+    const d = def._def ?? {};
+    // optional / nullable / default / effects: o miolo
+    if (d.innerType) desce(schema, prefixo, d.innerType, profundidade + 1);
+    if (d.schema) desce(schema, prefixo, d.schema, profundidade + 1);
+    // objeto aninhado
+    if (def.shape) for (const [c, sub] of Object.entries<any>(def.shape)) desce(schema, `${prefixo}.${c}`, sub, profundidade + 1);
+    // array: os itens
+    if (d.type && d.type._def) desce(schema, `${prefixo}[]`, d.type, profundidade + 1);
+  };
   for (const [schema, s] of schemasDoContrato()) {
-    for (const [campo, def] of Object.entries<any>(s.shape)) {
-      saida.push({ schema, campo, def });
-    }
+    for (const [campo, def] of Object.entries<any>(s.shape)) desce(schema, campo, def, 0);
   }
   return saida;
 }
@@ -57,6 +73,10 @@ describe("S-C281 — nulo não é data", () => {
     // objeto vier vazio, não para pregar a contagem exata do spec.
     expect(schemasDoContrato().length).toBeGreaterThan(200);
     expect(camposDoContrato().length).toBeGreaterThan(1000);
+    // G9: a descida alcança o aninhado que a lente apontou — se ele sumir da
+    // lista, a régua voltou a olhar só o primeiro nível.
+    const caminhos = camposDoContrato().map((c) => `${c.schema}.${c.campo}`);
+    expect(caminhos).toContain("CreateContratoBody.parcelas[].vencimento");
   });
 
   it("nenhum campo devolve uma Date quando recebe null", () => {
@@ -67,7 +87,8 @@ describe("S-C281 — nulo não é data", () => {
       })
       .map(({ schema, campo }) => `${schema}.${campo}`);
 
-    // Antes do conserto eram 31, e os quatro primeiros da lista eram de
+    // Antes do conserto eram 31 no primeiro nível (a S-C281 mediu 113 campos ao
+    // todo, contando os aninhados — que esta régua só passou a percorrer no G9), e os quatro primeiros da lista eram de
     // dinheiro. O zero aqui é o que diz que a peneira do `dataDoCorpo()` está
     // ligada — e a lista nomeada é o que diz QUAL campo escapou, no dia em que
     // um escapar.

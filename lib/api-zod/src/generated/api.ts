@@ -1813,6 +1813,9 @@ export const updateLeadBodyCasamentoLocalMax = 300;
 
 export const updateLeadBodyPerdidaDetalheMax = 1000;
 
+export const updateLeadBodyEnderecoEstadoMin = 2;
+export const updateLeadBodyEnderecoEstadoMax = 2;
+
 
 
 export const UpdateLeadBody = zod.object({
@@ -1839,7 +1842,7 @@ export const UpdateLeadBody = zod.object({
   "enderecoBairro": zod.string().nullish(),
   "enderecoCep": zod.string().nullish(),
   "enderecoCidade": zod.string().nullish(),
-  "enderecoEstado": zod.string().nullish()
+  "enderecoEstado": zod.string().min(updateLeadBodyEnderecoEstadoMin).max(updateLeadBodyEnderecoEstadoMax).nullish()
 })
 
 

@@ -1969,7 +1969,11 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
         tipo: "DEVOLUCAO",
         descricao: `Devolução — rescisão do contrato de ${sobTranca.vestidoDescricao ?? "locação"} (${rescisao.explicacao})`,
         valorPrevisto: devolucaoPorContaAPagar,
-        vencimento: inicioDoDia(addDias(diaLocal(agora), PRAZO_DEVOLUCAO_DA_LOJA_DIAS)),
+        // E3 da conferência (regra 26): a MESMA âncora das contas irmãs
+        // (`reservas.ts` — reparo, atraso, reajuste: `ancoraDeNegocio`, meio-dia
+        // SP), e não `inicioDoDia` (03:00Z). Nenhum leitor aplicava `diaLocal` a
+        // `vencimento`, então não havia dia errado — havia a segunda grafia.
+        vencimento: ancoraDeNegocio(addDias(diaLocal(agora), PRAZO_DEVOLUCAO_DA_LOJA_DIAS)),
         origemContratoId: contrato.id,
       });
     }
@@ -2682,6 +2686,13 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("contrat
         recebidoEm: parsed.data.recebidoEm,
         valorRecebido: reais(totalRecebidoC),
         formaRecebimento: parsed.data.formaRecebimento,
+        // A6 da conferência (16/08): um pedaço NOVO numa parcela já conferida
+        // não está conferido — o carimbo da parcela inteira (anterior ao E235,
+        // ou derivado) cobria os atos de então, e a conciliação o herdava para
+        // o pedaço novo (`?? d.conciliadoEm`). O carimbo cai; os atos já
+        // conferidos continuam com o seu em `conciliacao_de_recebimentos`, e a
+        // parcela volta a derivá-lo quando o pedaço novo for conferido.
+        conciliadoEm: null,
       })
       .where(and(
         eq(parcelasTable.id, existente.id),

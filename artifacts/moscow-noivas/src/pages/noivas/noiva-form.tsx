@@ -88,7 +88,13 @@ const noivaSchema = z.object({
   enderecoBairro: z.string().optional(),
   enderecoCep: z.string().optional(),
   enderecoCidade: z.string().optional(),
-  enderecoEstado: z.string().optional(),
+  // C11 da conferência (16/08, S-M9): a tela aceitava 1 letra, a criação
+  // recusava com 400 e a edição aceitava — três réguas para a UF. A da porta é
+  // DUAS letras (`LeadInput`/`LeadUpdate`), e a tela diz antes do clique.
+  enderecoEstado: z
+    .string()
+    .optional()
+    .refine((v) => !v || v.trim().length === 2, "UF são duas letras (ex.: SP)"),
 });
 
 

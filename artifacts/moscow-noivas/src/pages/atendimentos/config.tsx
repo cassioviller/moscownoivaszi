@@ -53,7 +53,11 @@ import { mensagemApi } from "@/lib/erro-api";
 import { minutosDaProva, opcoesDeDuracaoDaProva, slotsDaProva } from "@/lib/duracao-da-prova";
 // E222 — a conversão entre "HH:MM" (a tela) e minutos desde a meia-noite (o
 // servidor) mora no agenda-core, e é a mesma que o recado da recusa usa.
-import { hhmmParaMinutos as minutosDoRelogio, minutosParaHHMM as hhmm } from "@workspace/agenda-core";
+import {
+  EXPEDIENTE_DE_RETIRADA_PADRAO,
+  hhmmParaMinutos as minutosDoRelogio,
+  minutosParaHHMM as hhmm,
+} from "@workspace/agenda-core";
 
 /**
  * Cabines & horário de atendimento (porte da /atendimentos/config do
@@ -230,10 +234,12 @@ export default function ConfigAtendimentos() {
           // contrato, e acompanha o default do schema pela mesma razão escrita
           // na linha dos dias de atendimento: a mesma premissa em três lugares
           // é a mesma que pode divergir em três.
-          retiradaAbertura: hhmm(regra.retiradaAberturaMinutos ?? 630),
-          retiradaFechamento: hhmm(regra.retiradaFechamentoMinutos ?? 1140),
-          retiradaFechamentoSabado: hhmm(regra.retiradaFechamentoSabadoMinutos ?? 1080),
-          retiradaDias: regra.retiradaDias ?? [2, 3, 4, 5, 6],
+          // C9 da conferência (16/08, S-C180): eram 630/1140/1080/[2..6] à mão —
+          // a cópia literal da constante que `agenda-core` já exporta.
+          retiradaAbertura: hhmm(regra.retiradaAberturaMinutos ?? EXPEDIENTE_DE_RETIRADA_PADRAO.aberturaMinutos),
+          retiradaFechamento: hhmm(regra.retiradaFechamentoMinutos ?? EXPEDIENTE_DE_RETIRADA_PADRAO.fechamentoMinutos),
+          retiradaFechamentoSabado: hhmm(regra.retiradaFechamentoSabadoMinutos ?? EXPEDIENTE_DE_RETIRADA_PADRAO.fechamentoSabadoMinutos),
+          retiradaDias: regra.retiradaDias ?? [...EXPEDIENTE_DE_RETIRADA_PADRAO.dias],
           // Dias em que a loja abre (E38): 0=domingo … 6=sábado. O fallback
           // acompanha o default do schema (S-A8: era `[1..6]` aqui e no
           // servidor, e os dois tinham de mudar juntos — a mesma premissa
@@ -700,10 +706,10 @@ export default function ConfigAtendimentos() {
                   // E222 — quem só LÊ a tela também precisa saber que são dois
                   // expedientes; sem esta linha o segundo só existiria para
                   // quem tem permissão de editar.
-                  ` · retirada ${hhmm(regra.retiradaAberturaMinutos ?? 630)}–${hhmm(
-                    regra.retiradaFechamentoMinutos ?? 1140,
-                  )} (sáb. até ${hhmm(regra.retiradaFechamentoSabadoMinutos ?? 1080)}) · ${
-                    (regra.retiradaDias ?? [2, 3, 4, 5, 6]).map((d) => DIAS_ROTULO[d]).join(", ")
+                  ` · retirada ${hhmm(regra.retiradaAberturaMinutos ?? EXPEDIENTE_DE_RETIRADA_PADRAO.aberturaMinutos)}–${hhmm(
+                    regra.retiradaFechamentoMinutos ?? EXPEDIENTE_DE_RETIRADA_PADRAO.fechamentoMinutos,
+                  )} (sáb. até ${hhmm(regra.retiradaFechamentoSabadoMinutos ?? EXPEDIENTE_DE_RETIRADA_PADRAO.fechamentoSabadoMinutos)}) · ${
+                    (regra.retiradaDias ?? EXPEDIENTE_DE_RETIRADA_PADRAO.dias).map((d) => DIAS_ROTULO[d]).join(", ")
                   }`
                 : "Carregando…"}
             </p>

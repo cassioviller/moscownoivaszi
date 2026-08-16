@@ -87,7 +87,9 @@ test.describe.serial("S-O131 — as portas que ganharam tela", () => {
     // A loja da suíte tem histórico: a porta recusa (409 LOJA_COM_HISTORICO) e a tela diz para desativar.
     await page.getByTestId(`apagar-loja-${estado.lojaId}`).click();
     await page.getByTestId("confirmar-apagar-loja").click();
-    await expect(page.getByText(/tem histórico .* não se apaga/).first()).toBeVisible();
+    // C8 (higiene da conferência): a frase é a do SERVIDOR, com a contagem — a tela
+    // não a sobrescreve mais pelo dicionário.
+    await expect(page.getByText(/Esta loja tem .* — excluir apagaria tudo isso/).first()).toBeVisible();
     const [aindaLa] = await db.select({ id: lojasTable.id }).from(lojasTable).where(eq(lojasTable.id, estado.lojaId));
     expect(aindaLa?.id).toBe(estado.lojaId);
 

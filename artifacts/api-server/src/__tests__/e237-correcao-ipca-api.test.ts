@@ -63,7 +63,7 @@ describe("E237 — a mora corrige pelo IPCA informado", () => {
     expect(mora.multa).toBe(20);
   });
 
-  it("gravar o IPCA de cada mês cheio corrige o saldo pelo produto — na fila, no carnê e no portal; a trilha guarda quem gravou", async () => {
+  it("gravar o IPCA de cada mês cheio corrige o saldo pelo produto — na fila e no carnê (o portal lê o mesmo helper e não é aberto aqui); a trilha guarda quem gravou", async () => {
     // Um índice diferente por mês, para o produto não ser uma soma disfarçada.
     const pcts = meses.map((_, i) => Math.round((0.3 + i * 0.1) * 100) / 100);
     for (const [i, m] of meses.entries()) {
