@@ -55,15 +55,18 @@ para o documento que manda.
    tabela do consolidado é a fila; **conte, não deduza.** O rastreador da
    fila é [`2026-08-16-conferencia-do-contrato/EXECUCAO.md`](docs/revisao/2026-08-16-conferencia-do-contrato/EXECUCAO.md)
    e o plano é [`2026-08-16-conferencia-do-contrato-plano.md`](docs/propostas/2026-08-16-conferencia-do-contrato-plano.md).
-   **O E241 está EXECUTADO** (`e9231ce1`, 16/08 à tarde: sob `estornar` a conta
-   `DEVOLUCAO` não nasce) — e a régua dele achou a suíte de API vermelha no
-   `main` desde `ec53e2d6` (a lista travada da varredura do banco virgem sem a
-   migração da S-A27; consertada em `c8dda201`). **Próximo: E242.** Também: as duas
+   **E241 e E242 estão EXECUTADOS** (`e9231ce1`: sob `estornar` a conta
+   `DEVOLUCAO` não nasce; `3029efba`: o IPCA de exemplo só entra sob
+   `SEED_IPCA_EXEMPLO`, o E2E liga, a instalação real nasce sem índice — **era
+   um pedido da dona em 15/08, e a leitura está na tabela de Decisões do
+   rastreador para ela confirmar**) — e a régua do E241 achou a suíte de API
+   vermelha no `main` desde `ec53e2d6` (consertada em `c8dda201`). **Próximo:
+   E243** (a mora é do dia do FATO), já com o vermelho da A3 escrito no `e235`. Também: as duas
    últimas sobras da ótica fecharam (S-O131 "ganha tela" e a S-O146 🟠 que ela
    achou — a edição de atributo caía ao abrir), a S-A27 foi classificada e o
    `heliumdb` perdeu 725 contas e 451 pagamentos fantasmas de E2E.
 
-3. **A régua e a publicação.** Hoje a régua é **API 1845 (267 arquivos) ·
+3. **A régua e a publicação.** Hoje a régua é **API 1846 (267 arquivos) ·
    frontend 1014 (108 arquivos) · E2E 185 · typecheck verde em 5 projetos** —
    medidas em série no fecho do E241 (16/08, tarde). A API inteira leva ~11,6 min no
    `heliumdb`; o E2E, ~6,5 min, e é a régua que **agente nenhum pode rodar**
@@ -75,7 +78,7 @@ para o documento que manda.
    (instalação nova, ~1 min): rode-a antes de mexer em seed, schema ou
    `global-setup`.
 
-   **O `main` está 8+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
+   **O `main` está 11+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
    de manhã; a conferência, o E241 e os docs não estão publicados). Confira com
    `git rev-list --count origin/main..main` antes de assumir — esta linha
    envelhece a cada commit. Todo worktree de agente nasce em `origin/main`

@@ -19,8 +19,8 @@ Contado em 16/08/2026: **0 🔴 · 7 🟠 · 17 🟡 · ~30 🔵**, em **8 épic
 | Épico | Tese | Fecha | Estado |
 |---|---|---|---|
 | ~~**E241**~~ | ~~a rescisão devolve UMA vez~~ | A1=C1 🟠 | ✅ `e9231ce1` · [relatório](execucao/E241.md) — sob `estornar` a conta `DEVOLUCAO` não nasce (o estorno é sempre ≥ a devolução da cláusula, e o clamp "devolucaoTotal − totalEstornado" seria zero sempre); a trilha ganha `devolucaoPorContaAPagar`; a tela troca a frase com o rádio; o `e2e/63` conta `contas_pagar` = 0 — **o `afterAll` da S-O130 já apagava essa conta como sobra de fixture.** Vermelho antes: `expected [ { …(15) } ] to have a length of +0 but got 1`. A régua achou a suíte de API vermelha no `main` desde `ec53e2d6` (S-CF1, `c8dda201`) |
-| **E242** | o seed real não inventa índice | A2 🟠, C4, C7 | aberto |
-| **E243** | a mora é do dia do FATO | A3 🟠, A4=C2, C3, C6 | aberto |
+| ~~**E242**~~ | ~~o seed real não inventa índice~~ | A2 🟠, C4, C7 | ✅ `3029efba` · [relatório](execucao/E242.md) — o bloco 7b só corre sob `SEED_IPCA_EXEMPLO=true` (o E2E liga; a instalação real nasce sem índice); **era um PEDIDO da dona (bb03a0f7) e a leitura está na tabela de Decisões**; Índices gateia por `financeiro.editar` nas duas pontas e a s36 ganha `gravar` (reprovou antes: "chama gravarIndiceMonetario sem afirmar gate nenhum"); a lista amplia de 12 em 12. Vermelho antes: `expected [ …(12) ] to have a length of +0 but got 12`. Banco virgem 16 passed |
+| **E243** | a mora é do dia do FATO | A3 🟠, A4=C2, C3, C6 | em execução |
 | **E244** | a 16ª cobra pelo que o papel manda | E1 🟠 (decisão da dona), C5, C10 | aberto |
 | **E245** | as portas ao lado | B1, A5=B2, B3–B6, B8 | aberto |
 | **E246** | o E2E para de depender do dev | D1–D4, D6–D9 | aberto |
@@ -42,4 +42,5 @@ o viu** (regra 12) e sai riscada no commit que a fecha (regra 21).
 | Épico | Pergunta | Recomendação | Estado |
 |---|---|---|---|
 | E241 | sob `estornar`, a conta a pagar `DEVOLUCAO` nasce? | não nasce — o dinheiro já voltou pelo estorno | executada na recomendação em `e9231ce1` (16/08); corrigível numa linha |
+| E242 | os 12 meses de IPCA DE EXEMPLO (pedido de 15/08, `bb03a0f7`) valem para a instalação de TESTE (E2E, demo) — a REAL nasce sem índice, e a 9ª fica dita até a dona digitar o IPCA. Confirma? | sim; se quiser os exemplos também na real, `SEED_IPCA_EXEMPLO=true` | executada na leitura recomendada em `3029efba`; a dona confirma ou vira uma env |
 | E244 | a 16ª cobra pelo `dataDevolucao` do papel ou pela janela? | o papel | aberta |
