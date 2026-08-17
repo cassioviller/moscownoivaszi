@@ -332,7 +332,7 @@
       <p>No fim da seção, <em data-tela="Proposta válida até">“Proposta válida até …”</em>.</p>
 
       <h3>“Suas próximas provas”</h3>
-      <p><strong>Só as futuras</strong> — o portal aponta para a frente, e prova que já passou não aparece. Cada uma com dia da semana, data por extenso e hora: <em>“segunda-feira, 28 de julho de 2026 às 14:30”</em>.</p>
+      <p><strong>Só as futuras</strong> — o portal aponta para a frente, e prova que já passou não aparece. Cada uma com dia da semana, data por extenso e hora: <em data-grifo="exemplo do formato que o Intl monta (instanteLongo, formatos.ts:229); nenhum caractere dele e literal no fonte">“segunda-feira, 28 de julho de 2026 às 14:30”</em>.</p>
       <p>Ao lado, dois botões: <span class="btn">Confirmar presença</span> e <span class="btn">Não vou poder ir</span>. Depois de clicar, o botão vira selo — <span class="btn">Confirmada</span> ou <span class="btn">Avisamos o ateliê</span> — e não reaparece. Embaixo, a explicação: <em>“Confirmar avisa o ateliê que você vem. Se não puder, avise por aqui — a gente libera o horário e entra em contato para remarcar.”</em></p>
 
       <h3>“Os vestidos que você provou”</h3>
@@ -359,14 +359,14 @@
       <p><strong>A parcela vencida vem com a multa e os juros já somados, e com a conta escrita ao lado</strong> — é a cláusula 9ª, e é o assunto da <a href="#vence">seção 2</a>. O número da direita passa a ser o total <em>com</em> o acréscimo; a linha vermelha embaixo diz de onde ele veio. Parcela em dia e parcela quitada não ganham linha nenhuma.</p>
       <div class="fala aviso">
         <span class="rotulo">O <span>“Falta pagar”</span> do topo NÃO inclui a multa</span>
-        <p>Os dois números saem de contas diferentes: o <strong>“Falta pagar”</strong> e a <strong>“Próxima parcela”</strong> somam só o principal em aberto, e a linha da parcela mostra o total <em>com</em> multa e juros. Numa parcela de R$ 500,00 vencida há 30 dias ela lê <strong>“Falta pagar R$ 500,00”</strong> em cima e <strong>R$ 515,00</strong> na linha logo abaixo.</p>
+        <p>Os dois números saem de contas diferentes: o <strong>“Falta pagar”</strong> e a <strong>“Próxima parcela”</strong> somam só o principal em aberto, e a linha da parcela mostra o total <em>com</em> multa e juros. Numa parcela de R$ 500,00 vencida há 30 dias ela lê <strong data-tela="Falta pagar">“Falta pagar R$ 500,00”</strong> em cima e <strong>R$ 515,00</strong> na linha logo abaixo.</p>
         <p><strong>Não é erro de conta, e é a pergunta que ela vai fazer.</strong> A resposta cabe numa frase: <em data-fala="a vendedora, respondendo à noiva">“R$ 500,00 é a parcela; R$ 515,00 é o que ela custa hoje, com a multa e os juros do atraso. Pagando, para de crescer.”</em></p>
       </div>
       <p>E a linha que devolve a conversa para você: <em>“Para pagar ou combinar valores, fale com a sua vendedora — este extrato é só para você acompanhar.”</em></p>
 
       <h3>“Seus recibos”</h3>
       <p>Logo abaixo do extrato, <strong>um recibo por pagamento</strong>, cada um com o botão <span class="btn">Recibo</span> que baixa o PDF. Quem pagou R$ 300,00 em março e R$ 700,00 em abril tem <strong>dois papéis</strong>, cada um com o seu dia e a sua forma — não um só, datado do último.</p>
-      <p>O recibo diz quem pagou, quanto, quando, por qual forma, a que contrato e parcela se refere, e quem emitiu — com o <strong>CNPJ e o endereço da loja</strong>, que saem de <em>Configurações → Dados da loja</em>. É a cláusula 7ª do contrato dela: <em>“a LOCADORA deverá fornecer todos os recibos de pagamentos efetuados pelo LOCATÁRIO”</em>.</p>
+      <p>O recibo diz quem pagou, quanto, quando, por qual forma, a que contrato e parcela se refere, e quem emitiu — com o <strong>CNPJ e o endereço da loja</strong>, que saem de <em>Configurações → Dados da loja</em>. É a cláusula 7ª do contrato dela: <em>“A LOCADORA deverá fornecer todos os recibos de pagamentos efetuados pelo LOCATÁRIO.”</em>.</p>
       <p><strong>Quando o pagamento quitou parcela e multa juntas, o recibo diz quanto foi de cada uma</strong> — uma linha embaixo do valor: <em data-tela="de multa, juros e correção (cláusula 9ª)">“R$ 500,00 nesta parcela + R$ 15,00 de multa, juros e correção (cláusula 9ª)”</em>. Sem ela, quem pagou R$ 515,00 de uma parcela de R$ 500,00 guarda um papel que não bate com o carnê.</p>
       <div class="fala">
         <span class="rotulo">Recibo estornado some, e é para somer</span>
@@ -400,7 +400,7 @@
 
       <h3 id="vence">A parcela que vence — cláusula 9ª</h3>
       <p>Passado o vencimento, a parcela ganha <strong>multa de 2%</strong>, cobrada uma vez sobre o saldo em aberto, e <strong>juros de 1% ao mês</strong>, contados dia a dia (o mês da conta tem 30 dias fixos, para que a mesma dívida não renda diferente em fevereiro e em março). <strong>Vencer hoje não é estar vencida</strong> — o dia do vencimento ainda é dia de pagar em dia.</p>
-      <p><strong>A multa incide sobre a PARCELA, não sobre o contrato inteiro</strong>, e a diferença é grande: num contrato de R$ 5.000,00 em 10×, são R$ 10,00 e não R$ 100,00 — <strong>dez vezes menos</strong>. A leitura é a do Código de Defesa do Consumidor (art. 52 §1º, <em>“dois por cento do valor da prestação”</em>), e foi decidida assim de propósito. <strong>Se ela perguntar, é a favor dela.</strong></p>
+      <p><strong>A multa incide sobre a PARCELA, não sobre o contrato inteiro</strong>, e a diferença é grande: num contrato de R$ 5.000,00 em 10×, são R$ 10,00 e não R$ 100,00 — <strong>dez vezes menos</strong>. A leitura é a do Código de Defesa do Consumidor (art. 52 §1º, <em data-fala="o Código de Defesa do Consumidor, art. 52 §1º">“dois por cento do valor da prestação”</em>), e foi decidida assim de propósito. <strong>Se ela perguntar, é a favor dela.</strong></p>
 
       <div class="rolagem">
         <table>
@@ -729,7 +729,7 @@
       <div class="fala">
         <span class="rotulo">Corrigido em 12/08/2026</span>
         <p><strong>O link da proposta dura o que a proposta durar.</strong> Se você deu 30 dias de validade, o link vale 30 dias; se deu 10, vale 10. As duas datas são a mesma.</p>
-        <p>Até esta data não era assim: o link morria em <strong>7 dias</strong> — um prazo emprestado do convite de equipe, que é outra coisa — e a noiva que abrisse o WhatsApp no décimo dia lia <em>“link expirado”</em> numa proposta de pé. Era o descompasso que mais gerava print no WhatsApp. <strong>Se ainda acontecer, o remédio é o mesmo de sempre:</strong> clique em <span class="btn">Link para a noiva</span> de novo e mande o endereço novo.</p>
+        <p>Até esta data não era assim: o link morria em <strong>7 dias</strong> — um prazo emprestado do convite de equipe, que é outra coisa — e a noiva que abrisse o WhatsApp no décimo dia lia <em data-grifo="o que a noiva lia ANTES da S-O39; nenhuma tela escreve essa frase, e o portal vencido de hoje diz Portal vencido (portal-vencido.tsx:39)">“link expirado”</em> numa proposta de pé. Era o descompasso que mais gerava print no WhatsApp. <strong>Se ainda acontecer, o remédio é o mesmo de sempre:</strong> clique em <span class="btn">Link para a noiva</span> de novo e mande o endereço novo.</p>
       </div>
     </section>
 

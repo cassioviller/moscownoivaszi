@@ -175,14 +175,41 @@ function arquivosDaTela(): string[] {
   ]).filter((f) => !f.endsWith(".test.ts") && !f.endsWith(".test.tsx"));
 }
 
+/**
+ * **S-RM30 (E267) — o corpus é a TELA, e comentário não é tela.**
+ *
+ * A régua lia o arquivo inteiro, docblocks incluídos, e por isso aprovava
+ * citação que a tela não escreve. O caso vivo é o `recepcao.html:332`, que
+ * cobrava *"você não pode ver"*: a tela escreve *"Você não tem permissão para
+ * ver … desta noiva."* (`sem-lista.tsx:45`), e o verde vinha de um comentário
+ * em `estado-consulta.ts:52`. **O E263 mediu 8 das 549 citações nessa
+ * condição** e as deixou passar declaradas, com a frase verdadeira escrita na
+ * razão — o que preserva a informação e não conserta a régua.
+ *
+ * É a mesma coisa que o E265 e o E266 encontraram nas réguas deles, no mesmo
+ * dia e por acidente: comentário que passa por código.
+ *
+ * O `//` só conta quando não é precedido por `:` — senão a régua comeria o
+ * resto de toda linha que tem `https://` dentro de uma string, e o corpus
+ * ENCOLHERIA em silêncio, que é o pior jeito de uma sonda errar. Os brancos
+ * substituem o comentário em vez de apagá-lo, para não emendar duas frases que
+ * ele separava.
+ */
+function semComentarios(fonte: string): string {
+  return fonte
+    .replace(/\/\*[\s\S]*?\*\//g, (bloco) => bloco.replace(/[^\n]/g, " "))
+    .replace(/(^|[^:])\/\/.*$/gm, (linha, antes: string) => antes + " ".repeat(linha.length - antes.length));
+}
+
 let cache: { cru: string; renderizado: string } | undefined;
 function textoDaTela(): { cru: string; renderizado: string } {
   if (cache) return cache;
   const arquivos = arquivosDaTela();
+  const fontes = arquivos.map((f) => [f, semComentarios(ler(f))] as const);
   cache = {
-    cru: arquivos.map(ler).join("\n"),
-    renderizado: arquivos
-      .map((f) => (f.endsWith(".tsx") ? renderizarJsx(ler(f)) : renderizarTs(ler(f))))
+    cru: fontes.map(([, fonte]) => fonte).join("\n"),
+    renderizado: fontes
+      .map(([f, fonte]) => (f.endsWith(".tsx") ? renderizarJsx(fonte) : renderizarTs(fonte)))
       .join(VALOR),
   };
   return cache;
@@ -484,8 +511,14 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
     // vacuidade, e a régua passaria a atestar o que não olha.
     const citacoes = todas();
     expect(manuais().length).toBe(5);
-    expect(citacoes.filter((c) => c.tipo === "botão").length).toBeGreaterThanOrEqual(140);
-    expect(citacoes.filter((c) => c.tipo === "recado").length).toBeGreaterThanOrEqual(35);
+    // **S-RM33 (E267): os quatro pisos deste arquivo viraram `toBe`.**
+    // O docblock dos rótulos, logo abaixo, já dizia por quê — o E259 publicou
+    // 136 quando eram 139 e o `>=` não pegou. Os pisos de botão e recado
+    // estavam em 140 e 35 sobre populações de **216 e 50**: eles reprovariam a
+    // vacuidade e nada mais. Número exato custa uma linha por edição de manual
+    // e é a única forma de a QUEDA aparecer.
+    expect(citacoes.filter((c) => c.tipo === "botão").length).toBe(216);
+    expect(citacoes.filter((c) => c.tipo === "recado").length).toBe(50);
     // S-RM2: a prosa citada em `<em>` mais a família das cláusulas — **160
     // citações medidas em 17/08, contra as 13 que o E254 alcançava**. Delas,
     // 95 são conferidas LITERALMENTE, sem declaração nenhuma; 59 são molde e
@@ -493,9 +526,16 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
     // maiusculava o `c` de *"confirme com ela antes do horário"*, que é palavra
     // do MEIO da oração em `prova-orfa.ts:77` — corrigida a letra, a declaração
     // saiu.)
-    expect(citacoes.filter((c) => c.tipo === "prosa").length).toBeGreaterThanOrEqual(160);
-    const literais = citacoes.filter((c) => c.tipo === "prosa" && !c.molde && !c.fala);
-    expect(literais.length).toBeGreaterThanOrEqual(95);
+    expect(citacoes.filter((c) => c.tipo === "prosa").length).toBe(160);
+    // **S-RM30 (E267): o `!c.grifo` faltava aqui, e ele existe na irmã abaixo.**
+    // Grifo é a declaração de que aquilo NÃO é tela — contá-lo entre os
+    // literais inflava o número que este arquivo publica como medida de
+    // cobertura. A assimetria entre os dois filtros durou até alguém precisar
+    // do número exato.
+    const literais = citacoes.filter(
+      (c) => c.tipo === "prosa" && !c.molde && !c.fala && !c.grifo,
+    );
+    expect(literais.length).toBe(91);
 
     // S-RM15: a citação com CASA — a aspa curva que é o conteúdo inteiro de um
     // `<strong>`, `<b>`, `<td>`, `<h*>`, `<p>`, `<li>` ou, desde o E263, de um
@@ -512,7 +552,7 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
     const rotulosLiterais = citacoes.filter(
       (c) => c.tipo === "rótulo" && !c.molde && !c.fala && !c.grifo,
     );
-    expect(rotulosLiterais.length).toBe(190);
+    expect(rotulosLiterais.length).toBe(189);
   });
 
   /**
@@ -662,7 +702,7 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
      */
     const citacoes = todas();
     const moldes = citacoes.filter((c) => c.molde);
-    expect(moldes.length).toBe(86);
+    expect(moldes.length).toBe(87);
 
     // O molde tem de ser mais curto que o exibido — senão não é molde, é uma
     // citação literal com um atributo pendurado.
@@ -711,7 +751,7 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
      * declarar. Os outros quatro moldes do E263 têm dois pedaços cada.
      */
     const umPedaco = moldes.filter((m) => m.pedacos.length === 1);
-    expect(umPedaco.length).toBe(52);
+    expect(umPedaco.length).toBe(53);
 
     /**
      * **A fala é a outra exceção, e é a que o E254 não tinha como declarar.**
@@ -738,7 +778,7 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
      * (`recepcao.html:588`).
      */
     const falas = citacoes.filter((c) => c.fala);
-    expect(falas.length).toBe(19);
+    expect(falas.length).toBe(21);
     for (const f of falas) {
       expect(f.pedacos, `${f.manual}:${f.linha}: fala não confere pedaço nenhum`).toEqual([]);
     }
@@ -777,7 +817,7 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
      * (*"não há"*, `recepcao.html:332`; *"a combinar"*, `noiva.html:355`).
      */
     const grifos = citacoes.filter((c) => c.grifo);
-    expect(grifos.length).toBe(35);
+    expect(grifos.length).toBe(37);
     for (const g of grifos) {
       expect(g.pedacos, `${g.manual}:${g.linha}: grifo não confere pedaço nenhum`).toEqual([]);
     }
@@ -794,5 +834,104 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
         .map((m) => `${manual}:${linhaDe(texto, m.index!)} · data-grifo="${m[1]}"`),
     );
     expect(vazias, `grifo sem razão escrita:\n${vazias.join("\n")}`).toEqual([]);
+  });
+
+  /**
+   * **S-RM31 — a cobertura conta SÍTIOS, e o número parece contar FRASES.**
+   *
+   * A sobra dizia "quatro citações conferidas duas vezes, duas cruzando
+   * manuais". Contado com a colheita da própria régua: são muitas mais, e a
+   * repetição é **legítima** — *"Sua sessão expirou. Entre de novo."* aparece
+   * em quatro manuais porque quatro perfis a veem, e apagá-la de três seria
+   * piorar a documentação para melhorar um número.
+   *
+   * O que a sobra pedia de verdade está na última frase dela: *"antes que o
+   * número da cobertura passe a contar a mesma frase duas vezes"*. **Já
+   * contava.** O conserto é publicar os dois — sítios e frases distintas —,
+   * porque quem lê "463 citações conferidas" entende frases, e são sítios.
+   */
+  it("a cobertura publica SÍTIOS e FRASES DISTINTAS, e os dois números são ditos", () => {
+    const citacoes = todas();
+    const distintas = new Set(citacoes.map((c) => c.exibido));
+    expect(citacoes.length).toBe(679);
+    expect(distintas.size).toBe(513);
+    // 166 sítios repetem uma frase que outro sítio já confere — mais de um em
+    // cada quatro. O caso mais repetido é a sessão expirada, em quatro manuais,
+    // e a repetição é LEGÍTIMA: quatro perfis a veem, e apagá-la de três seria
+    // piorar a documentação para melhorar um número.
+    expect(citacoes.length - distintas.size).toBe(166);
+  });
+
+  /**
+   * **S-RM32 — declaração que não DISCRIMINA não prova coisa alguma.**
+   *
+   * A sobra a descreve como "citação de uma palavra", e **o comprimento é o
+   * sintoma, não a doença**: o que torna a declaração nominal é o pedaço
+   * aparecer em toda parte. O *"não"* que a sobra nomeia ocorre **7.964 vezes**
+   * no fonte da tela — renomear o rótulo que ele cita deixa a régua verde do
+   * mesmo jeito. É a fresta da S-RM14 com outra roupa.
+   *
+   * **A régua mede FREQUÊNCIA, e o piso saiu da medição, não de um palpite.**
+   * Contadas as 87 declarações pela ocorrência do seu pedaço mais RARO — porque
+   * `data-tela="casamento em |  dias"` é honesta: *"dias"* aparece 689 vezes,
+   * *"casamento em"* aparece 16, e é a segunda que prende a frase —, a
+   * distribuição tem um degrau limpo:
+   *
+   * ```
+   *   753×  costureira:355   «peça»
+   *   271×  recepcao:432     «→»
+   *    50×  proprietario:596 «Fechar»
+   *    16×  costureira:392   «casamento em |  dias»      ← daqui para baixo, discrimina
+   *     6×  costureira:388   «prova em |  dias»
+   * ```
+   *
+   * Piso **20**: acusa as três de cima e nenhuma das 84 de baixo.
+   *
+   * **E as três são legítimas** — foram lidas uma a uma, e nas três o literal é
+   * genuinamente curto porque a tela monta a frase inteira com valores:
+   * `{feitos}/{checklist.length} peça{s}` (`ajustes/index.tsx:289`),
+   * `Fechar {rotuloCompetencia(competencia)}` (`folha.tsx:498`) e o toast do
+   * agendamento, que só tem a seta entre dois valores. Elas ficam na lista
+   * abaixo **com a razão escrita**, que é o mesmo contrato do `data-grifo`. O
+   * que a régua impede é a quarta nascer calada.
+   */
+  const DECLARACAO_NOMINAL_PERMITIDA: Record<string, string> = {
+    "costureira.html:355":
+      "`{feitos}/{checklist.length} peça{s}` (ajustes/index.tsx:289) — os dois números e o plural são valores; ` peça` é tudo o que o autor escreveu",
+    "recepcao.html:432":
+      "o toast do agendamento monta `{noiva} → {cabine}, {hora}` — a seta é o único caractere literal entre três valores",
+    "proprietario.html:596":
+      "`Fechar {rotuloCompetencia(competencia)}` (folha.tsx:498) — o mês é valor, e `Fechar ` é o literal inteiro",
+  };
+
+  it("nenhum `data-tela` declara um pedaço que não discrimina", () => {
+    const PISO = 20;
+    const { cru } = textoDaTela();
+    const ocorrencias = (pedaco: string) => cru.split(pedaco).length - 1;
+    const nominais = manuais().flatMap((manual) => {
+      const texto = ler(manual);
+      return [...texto.matchAll(/data-tela="([^"]+)"/g)].flatMap((m) => {
+        const raro = Math.min(...m[1]!.split(PEDACOS).map(ocorrencias));
+        if (raro < PISO) return [];
+        const onde = `${path.basename(manual)}:${linhaDe(texto, m.index!)}`;
+        if (DECLARACAO_NOMINAL_PERMITIDA[onde]) return [];
+        return [`${onde} · «${m[1]}» — o pedaço mais raro ocorre ${raro}× na tela`];
+      });
+    });
+    expect(
+      nominais,
+      "declaração que não discrimina: o pedaço aparece em toda parte, então renomear o " +
+        "rótulo citado deixa a régua verde. Declare um pedaço mais raro, ou — se a tela " +
+        "montar a frase inteira com valores — entre na lista com a razão escrita (S-RM32)",
+    ).toEqual([]);
+  });
+
+  it("a lista de declarações nominais permitidas não vira hábito", () => {
+    // A mesma regra 34 pelo avesso do `data-grifo`: razão vazia é permissão
+    // sem justificativa, e três é o número de hoje — a quarta passa por aqui.
+    expect(Object.keys(DECLARACAO_NOMINAL_PERMITIDA).length).toBe(3);
+    for (const [onde, razao] of Object.entries(DECLARACAO_NOMINAL_PERMITIDA)) {
+      expect(razao.length, `${onde}: razão curta demais`).toBeGreaterThan(40);
+    }
   });
 });
