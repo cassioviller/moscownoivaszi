@@ -54,7 +54,11 @@ const editarAtributoSchema = z.object({
   // apenas renomeadas ou desativadas.
   opcoes: z.array(
     z.object({
-      id: z.string(),
+      // **`opcaoId`, e não `id`, de propósito (S-R7).** O `useFieldArray`
+      // publica a chave DELE em `field.id` e sobrescreve o que houver ali: um
+      // campo chamado `id` some da linha renderizada, e foi por isso que o
+      // "apagar" resolvia o alvo por posição em vez de identidade.
+      opcaoId: z.string(),
       valor: z.string().min(1, "Informe o valor"),
       ativo: z.boolean(),
     }),
@@ -145,11 +149,34 @@ function EditarAtributoForm({ atributo }: { atributo: Atributo }) {
       toast({ title: "Não deu para apagar o atributo", description: mensagemApi(err, "Tente novamente."), variant: "destructive" });
     }
   };
+  /**
+   * **S-R7 — a opção que sai é a opção em que se clicou.**
+   *
+   * O alvo era resolvido por POSIÇÃO (`opcoesOrdenadas[index]`), e as duas
+   * listas que essa posição indexa andam em ritmos diferentes: `fields` é do
+   * `useFieldArray` e nasce no mount (a `key` do formulário é o id do
+   * ATRIBUTO, que não muda quando uma opção sai), enquanto `opcoesOrdenadas`
+   * vem da prop e encolhe no refetch. Do segundo clique em diante o índice
+   * apontava para a opção de BAIXO: o X do "Champagne" apagava o "Marfim", e o
+   * clique na última linha era engolido pelo `if (opcao)`.
+   *
+   * Agora o alvo vem do próprio formulário — a mesma fonte que desenhou a
+   * linha —, e é a IDENTIDADE que viaja até o `DELETE`. A lista de linhas
+   * encolhe junto, por `reset`: o `remove()` do `useFieldArray` também
+   * encolheria, mas ligaria `isDirty`, e sair da tela passaria a perguntar
+   * "você tem coisa digitada que ainda não foi salva" logo depois de um gesto
+   * já salvo (a lição da S13/E97 — no Playwright o `confirm` é auto-dismissado
+   * e a navegação morre calada). O que estava digitado nas outras linhas
+   * continua na tela e continua indo no submit, que compara por id contra o
+   * servidor.
+   */
   const onApagarOpcao = async () => {
     if (!opcaoParaApagar) return;
     try {
       await deleteOpcao.mutateAsync({ lojaId: activeLojaId!, opcaoId: opcaoParaApagar.id });
       await queryClient.invalidateQueries({ queryKey: getListAtributosQueryKey(activeLojaId!) });
+      const valores = form.getValues();
+      form.reset({ ...valores, opcoes: valores.opcoes.filter((o) => o.opcaoId !== opcaoParaApagar.id) });
       toast({ title: "Opção apagada", description: `"${opcaoParaApagar.valor}" saiu de "${atributo.nome}".` });
       setOpcaoParaApagar(null);
     } catch (err) {
@@ -165,7 +192,7 @@ function EditarAtributoForm({ atributo }: { atributo: Atributo }) {
     defaultValues: {
       nome: atributo.nome,
       ativo: atributo.ativo,
-      opcoes: opcoesOrdenadas.map((o) => ({ id: o.id, valor: o.valor, ativo: o.ativo })),
+      opcoes: opcoesOrdenadas.map((o) => ({ opcaoId: o.id, valor: o.valor, ativo: o.ativo })),
       novasOpcoes: "",
     },
   });
@@ -191,11 +218,11 @@ function EditarAtributoForm({ atributo }: { atributo: Atributo }) {
         });
       }
       for (const opcao of values.opcoes) {
-        const original = opcoesOrdenadas.find((o) => o.id === opcao.id);
+        const original = opcoesOrdenadas.find((o) => o.id === opcao.opcaoId);
         if (original && (original.valor !== opcao.valor || original.ativo !== opcao.ativo)) {
           await updateOpcao.mutateAsync({
             lojaId: activeLojaId!,
-            opcaoId: opcao.id,
+            opcaoId: opcao.opcaoId,
             data: { valor: opcao.valor, ativo: opcao.ativo },
           });
         }
@@ -278,6 +305,9 @@ function EditarAtributoForm({ atributo }: { atributo: Atributo }) {
               <fieldset className="space-y-2.5">
                 <legend className="text-sm font-medium mb-1.5">Opções</legend>
                 {fields.map((f, index) => (
+                  // `f.id` é a chave do useFieldArray (ele reusa o nome `id` e
+                  // apaga o da opção); a identidade da opção mora no VALOR da
+                  // linha, em `opcoes.${index}.id` — ver S-R7 acima.
                   <div key={f.id} className="flex items-center gap-2.5">
                     <FormField
                       control={form.control}
@@ -314,12 +344,11 @@ function EditarAtributoForm({ atributo }: { atributo: Atributo }) {
                       size="icon"
                       className="h-8 w-8 text-muted-foreground hover:text-destructive"
                       aria-label={`Apagar opção ${f.valor}`}
-                      // `f.id` é a chave do useFieldArray, não a da opção — a opção vem da lista ordenada, no mesmo índice.
                       onClick={() => {
-                        const opcao = opcoesOrdenadas[index];
-                        if (opcao) setOpcaoParaApagar({ id: opcao.id, valor: opcao.valor });
+                        const opcao = form.getValues(`opcoes.${index}`);
+                        setOpcaoParaApagar({ id: opcao.opcaoId, valor: opcao.valor });
                       }}
-                      data-testid={`apagar-opcao-${opcoesOrdenadas[index]?.id ?? index}`}
+                      data-testid={`apagar-opcao-${f.opcaoId}`}
                     >
                       <X className="h-4 w-4" />
                     </Button>

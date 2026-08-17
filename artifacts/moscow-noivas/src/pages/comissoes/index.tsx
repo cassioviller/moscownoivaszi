@@ -2,6 +2,11 @@ import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { podeNoModulo } from "@/lib/permissoes";
 import {
+  chavesDaBaixaDeEstorno,
+  chavesDaEscadaDeComissao,
+  chavesDoFechamentoDeComissao,
+} from "@/lib/comissao-cache";
+import {
   useListComissaoRegras,
   getListComissaoRegrasQueryKey,
   useCreateComissaoRegra,
@@ -292,9 +297,7 @@ export default function Comissoes() {
         fechamentoId: fechamentoReabrindo.id,
       });
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getListComissaoFechamentosQueryKey(activeLojaId!) }),
-        queryClient.invalidateQueries({ queryKey: getListPendenciasComissaoQueryKey(activeLojaId!) }),
-        queryClient.invalidateQueries({ queryKey: getPreviewComissaoQueryKey(activeLojaId!, paramsPreview) }),
+        invalidar(chavesDoFechamentoDeComissao(activeLojaId!, competencia)),
         // D9: fechar/reabrir MEXE em conta a pagar — a curva do alerta de caixa
         // (dashboard e sino) muda com ela, não só a lista de contas.
         invalidarCaixa(queryClient, activeLojaId!),
@@ -353,6 +356,14 @@ export default function Comissoes() {
     return convertidas;
   }
 
+  /**
+   * A régua de invalidação da tela mora em `lib/comissao-cache.ts` (S-R16):
+   * eram cinco grafias para duas famílias, e três delas esqueciam a chave do
+   * preview — o número que a dona lê antes de fechar a competência.
+   */
+  const invalidar = (chaves: readonly (readonly unknown[])[]) =>
+    Promise.all(chaves.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+
   async function onSalvarRegra() {
     if (!vendedoraId) {
       toast({ title: "Escolha a vendedora", variant: "destructive" });
@@ -369,8 +380,7 @@ export default function Comissoes() {
         lojaId: activeLojaId!,
         data: { vendedoraId, bonusAcumulaFaixas: bonusAcumula, faixas: convertidas },
       });
-      await queryClient.invalidateQueries({ queryKey: getListComissaoRegrasQueryKey(activeLojaId!) });
-      await queryClient.invalidateQueries({ queryKey: getPreviewComissaoQueryKey(activeLojaId!, paramsPreview) });
+      await invalidar(chavesDaEscadaDeComissao(activeLojaId!, competencia));
       setFaixas([faixaVazia()]);
       setVendedoraId("");
       setBonusAcumula(false);
@@ -389,7 +399,7 @@ export default function Comissoes() {
   async function onAlternarRegra(regraId: string, ativo: boolean) {
     try {
       await atualizarRegra.mutateAsync({ lojaId: activeLojaId!, regraId, data: { ativo } });
-      await queryClient.invalidateQueries({ queryKey: getListComissaoRegrasQueryKey(activeLojaId!) });
+      await invalidar(chavesDaEscadaDeComissao(activeLojaId!, competencia));
       toast({ title: ativo ? "Regra reativada" : "Regra desativada" });
     } catch (err) {
       toast({
@@ -404,7 +414,7 @@ export default function Comissoes() {
     if (!regraRemovendo) return;
     try {
       await removerRegra.mutateAsync({ lojaId: activeLojaId!, regraId: regraRemovendo.id });
-      await queryClient.invalidateQueries({ queryKey: getListComissaoRegrasQueryKey(activeLojaId!) });
+      await invalidar(chavesDaEscadaDeComissao(activeLojaId!, competencia));
       setRegraRemovendo(null);
       toast({ title: "Regra removida" });
     } catch (err) {
@@ -425,9 +435,9 @@ export default function Comissoes() {
         invalidarCaixa(queryClient, activeLojaId!),
         // O histórico alimenta a série (E52) e a varredura alimenta o alerta
         // (E53): fechar acabou de mudar os dois, e um alerta que sobrevive à
-        // ação que o resolve é pior do que alerta nenhum.
-        queryClient.invalidateQueries({ queryKey: getListComissaoFechamentosQueryKey(activeLojaId!) }),
-        queryClient.invalidateQueries({ queryKey: getListPendenciasComissaoQueryKey(activeLojaId!) }),
+        // ação que o resolve é pior do que alerta nenhum. E o preview troca de
+        // FONTE no fecho — memória do fechamento em vez de cálculo ao vivo.
+        invalidar(chavesDoFechamentoDeComissao(activeLojaId!, competencia)),
       ]);
       toast({
         title: `Fechamento de ${rotuloCompetencia(competencia)} gerado`,
@@ -454,10 +464,7 @@ export default function Comissoes() {
           motivo: motivo || null,
         },
       });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getPreviewComissaoQueryKey(activeLojaId!, paramsPreview) }),
-        queryClient.invalidateQueries({ queryKey: getListBaixasEstornoComissaoQueryKey(activeLojaId!) }),
-      ]);
+      await invalidar(chavesDaBaixaDeEstorno(activeLojaId!, competencia));
       setEstornoBaixando(null);
       setMotivoBaixa("");
       toast({

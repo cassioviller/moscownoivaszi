@@ -11,3 +11,24 @@ import { cleanup } from "@testing-library/react";
  * não tem nada a ver com o que ele pergunta.
  */
 afterEach(cleanup);
+
+/**
+ * **S-R7 — o `ResizeObserver` que o jsdom não tem.**
+ *
+ * Todo componente do Radix que mede a si mesmo (`Checkbox`, `AlertDialog`,
+ * `Popover`, `Select`) chama `new ResizeObserver` num efeito de layout, e o
+ * jsdom não implementa a API. Sem este trecho, montar QUALQUER tela do app cai
+ * em `ReferenceError: ResizeObserver is not defined` — o teste da S-R7 morria
+ * no `render` antes de perguntar o que quer que fosse, e a mensagem não tinha
+ * nada a ver com a pergunta.
+ *
+ * Observar de mentira é o suficiente: nenhum teste daqui pergunta tamanho de
+ * elemento, porque o jsdom não faz layout — ele reporta 0 para tudo.
+ */
+if (!("ResizeObserver" in globalThis)) {
+  globalThis.ResizeObserver = class {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  } as unknown as typeof ResizeObserver;
+}

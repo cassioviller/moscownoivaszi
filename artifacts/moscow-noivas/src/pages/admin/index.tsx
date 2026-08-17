@@ -48,6 +48,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { chavesDoAtoDeApagar, chavesDoAtoSobreLoja } from "@/lib/admin-cache";
 import { instanteCurto } from "@/lib/formatos";
 import { rotuloDaAcao } from "@/lib/financeiro/auditoria";
 import { brl } from "@/lib/formatos";
@@ -287,11 +288,23 @@ export default function AdminConsole() {
   const [lojaParaApagar, setLojaParaApagar] = useState<Loja | null>(null);
   const [usuarioParaApagar, setUsuarioParaApagar] = useState<Usuario | null>(null);
 
+  /**
+   * **S-R19 — os cartões da mesma tela param de contar histórias diferentes.**
+   *
+   * A régua de `o que este ato muda` mora em `lib/admin-cache.ts`: apagar é o
+   * único ato do console que deixa trilha GLOBAL (`loja_id` nulo), e é
+   * exatamente a lista que a Auditoria global desta tela existe para mostrar.
+   * Loja mexida — nascida, editada ou apagada — muda também o consolidado da
+   * rede, que é uma linha por loja ATIVA.
+   */
+  const invalidar = (chaves: readonly (readonly unknown[])[]) =>
+    Promise.all(chaves.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+
   const onApagarLoja = async () => {
     if (!lojaParaApagar) return;
     try {
       await deleteLoja.mutateAsync({ lojaId: lojaParaApagar.id });
-      await queryClient.invalidateQueries({ queryKey: getListLojasQueryKey() });
+      await invalidar(chavesDoAtoDeApagar("loja"));
       toast({ title: "Loja apagada", description: `${lojaParaApagar.nome} saiu do sistema.` });
       setLojaParaApagar(null);
     } catch (err) {
@@ -302,7 +315,7 @@ export default function AdminConsole() {
     if (!usuarioParaApagar) return;
     try {
       await deleteUsuario.mutateAsync({ usuarioId: usuarioParaApagar.id });
-      await queryClient.invalidateQueries({ queryKey: getListUsuariosQueryKey() });
+      await invalidar(chavesDoAtoDeApagar("pessoa"));
       toast({ title: "Pessoa apagada", description: `${usuarioParaApagar.nome} saiu do sistema.` });
       setUsuarioParaApagar(null);
     } catch (err) {
@@ -366,7 +379,7 @@ export default function AdminConsole() {
     if (!lojaEmEdicao) return;
     try {
       await updateLoja.mutateAsync({ lojaId: lojaEmEdicao.id, data: values });
-      await queryClient.invalidateQueries({ queryKey: getListLojasQueryKey() });
+      await invalidar(chavesDoAtoSobreLoja());
       toast({ title: "Loja atualizada" });
       setLojaEmEdicao(null);
     } catch (err) {
@@ -407,7 +420,7 @@ export default function AdminConsole() {
   const onCriarLoja = async (values: NovaLojaValues) => {
     try {
       await createLoja.mutateAsync({ data: { nome: values.nome } });
-      await queryClient.invalidateQueries({ queryKey: getListLojasQueryKey() });
+      await invalidar(chavesDoAtoSobreLoja());
       toast({ title: "Loja criada" });
       formLoja.reset();
     } catch (err) {

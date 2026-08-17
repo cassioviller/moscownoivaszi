@@ -161,7 +161,20 @@ export function SinoNotificacoes() {
     // sino diz que não leu, em vez de calar como se não houvesse peça fora.
     if (atrasos.isError) {
       lista.push({
-        id: "ATRASO:erro",
+        /**
+         * **S-R17 — a assinatura deste aviso é o DIA.**
+         *
+         * Ele nasceu com o id constante `"ATRASO:erro"`, e as dispensas moram
+         * no `localStorage` por pessoa×loja: um clique no X calava para sempre
+         * o único aviso de que pode haver peça fora somando diária. Os cinco
+         * irmãos aqui derivam o id do conteúdo do fato, como o docblock deste
+         * arquivo promete.
+         *
+         * O erro não tem número para assinar — mas o que ele esconde cresce
+         * por DIA (R$ 500,00 num vestido de R$ 3.000,00), e é essa a unidade
+         * em que "o fato mudou". Dispensar hoje não cala amanhã.
+         */
+        id: `ATRASO:erro:${hojeLocal()}`,
         titulo: "Não consegui ler a fila de atrasos",
         detalhe: "A peça fora da arara pode estar somando diária — abra Contratos e tente de novo.",
         href: `${base}/contratos`,
