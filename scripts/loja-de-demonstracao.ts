@@ -292,8 +292,8 @@ async function main(): Promise<void> {
   const [perfilDono] = await db
     .select()
     .from(perfisTable)
-    .where(eq(perfisTable.nome, "Proprietária"));
-  if (!perfilDono) throw new Error("loja-de-demonstracao: perfil 'Proprietária' não existe no banco");
+    .where(eq(perfisTable.nome, "Proprietário"));
+  if (!perfilDono) throw new Error("loja-de-demonstracao: perfil 'Proprietário' não existe no banco");
   await db
     .insert(usuariosLojasTable)
     .values({ usuarioId: admin.id, lojaId: LOJA_DEMO_ID, perfilId: perfilDono.id })
@@ -344,7 +344,7 @@ async function main(): Promise<void> {
    * vendedora tinha prints; os outros quatro manuais eram só prosa.
    */
   for (const p of [
-    { id: "demo-usuario-dona", nome: "Helena Moscow", email: DONA_EMAIL, perfil: "Proprietária" },
+    { id: "demo-usuario-dona", nome: "Helena Moscow", email: DONA_EMAIL, perfil: "Proprietário" },
     { id: "demo-usuario-recepcao", nome: "Renata Prado", email: RECEPCAO_EMAIL, perfil: "Recepção" },
     { id: "demo-usuario-costureira", nome: "Lourdes Bastos", email: COSTUREIRA_EMAIL, perfil: "Costureira" },
   ]) {

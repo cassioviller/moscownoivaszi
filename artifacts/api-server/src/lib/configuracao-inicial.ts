@@ -72,9 +72,12 @@ export type PerfilPadrao = {
  *
  * - **Admin** é o perfil do sistema (E80). Ele existe para a rede e é o único
  *   com `sistema: true`.
- * - **Proprietária** tem os mesmos sete módulos, com `sistema: false`. É a
- *   persona real da dona — e é ela quem EXERCITA o gate de permissão, coisa
- *   que um superadmin nunca faz, porque passa por todo `requireModulo`.
+ * - **Proprietário** tem os mesmos sete módulos, com `sistema: false`. É a
+ *   persona real de quem manda na loja — e é ELE quem EXERCITA o gate de
+ *   permissão, coisa que um superadmin nunca faz, porque passa por todo
+ *   `requireModulo`. **O nome está no masculino desde o E271**, porque o
+ *   proprietário deste ateliê é o Renato do contrato (`representanteNome`), e
+ *   um sistema que chama o dono pelo gênero errado erra na primeira tela.
  * - **Vendedora** vende e atende: noivas, propostas, contratos, agenda e acervo
  *   inteiros; dinheiro e comissão da loja, não. (Ela continua vendo a PRÓPRIA
  *   comissão — "Minha comissão" não tem módulo, de propósito.) Esta linha é
@@ -137,7 +140,7 @@ export const PERFIS_PADRAO: PerfilPadrao[] = [
   },
   {
     id: "perfil-proprietaria",
-    nome: "Proprietária",
+    nome: "Proprietário",
     sistema: false,
     acessos: { leads: TUDO, orcamentos: TUDO, contratos: TUDO, agenda: TUDO, vestidos: TUDO, financeiro: TUDO, comissao: TUDO, admin: TUDO },
   },
@@ -411,8 +414,8 @@ export type RecorrenciaPadrao = {
  * projeção ter degrau.
  *
  * **Salário não entra**, e não é esquecimento: uma recorrência de SALARIO exige
- * `usuarioId`, e no primeiro dia a equipe é uma pessoa só — a dona, que não
- * tira salário de si mesma por uma linha de seed. Salário nasce quando alguém
+ * `usuarioId`, e no primeiro dia a equipe é uma pessoa só — o proprietário, que
+ * não tira salário de si mesmo por uma linha de seed. Salário nasce quando alguém
  * entra na equipe, na mesma tela.
  */
 export const RECORRENCIAS_PADRAO: RecorrenciaPadrao[] = [
@@ -457,9 +460,9 @@ export const LOJA_PADRAO = {
   pixTitular: "Karina Shabalina",
 } as const;
 
-export const DONA_PADRAO = {
+export const PROPRIETARIO_PADRAO = {
   id: "66df29bc-77a2-438a-9825-a7e11233896a",
-  nome: "Super Admin",
+  nome: "Renato Nascimento de Brito",
   email: "admin@moscownoivas.com",
   senha: "admin123",
 } as const;
@@ -480,7 +483,7 @@ export type OpcoesConfiguracao = {
     pixChave?: string | null;
     pixTitular?: string | null;
   };
-  dona: { id: string; nome: string; email: string; senha: string; superAdmin: boolean };
+  proprietario: { id: string; nome: string; email: string; senha: string; superAdmin: boolean };
   /** Escada de comissão e recorrências. Desligado, a loja fica sem valor nenhum. */
   comExemplosFinanceiros: boolean;
   /**
@@ -514,12 +517,12 @@ export const MARCA_DO_IPCA_DE_EXEMPLO = "seed (valor de exemplo — troque pelo 
 export type ResumoConfiguracao = {
   lojaId: string;
   lojaNome: string;
-  donaEmail: string;
+  proprietarioEmail: string;
   /** O que ESTA execução criou. Segunda execução devolve tudo zerado. */
   criado: {
     loja: boolean;
     perfis: number;
-    dona: boolean;
+    proprietario: boolean;
     vinculo: boolean;
     cabines: number;
     horario: boolean;
@@ -565,16 +568,16 @@ export function configuracaoDoAmbiente(env: NodeJS.ProcessEnv = process.env): Op
       pixChave: texto("SEED_LOJA_PIX_CHAVE", LOJA_PADRAO.pixChave),
       pixTitular: texto("SEED_LOJA_PIX_TITULAR", LOJA_PADRAO.pixTitular),
     },
-    dona: {
-      id: texto("SEED_DONA_ID", DONA_PADRAO.id),
-      nome: texto("SEED_DONA_NOME", DONA_PADRAO.nome),
-      email: texto("SEED_DONA_EMAIL", DONA_PADRAO.email).toLowerCase(),
-      senha: texto("SEED_DONA_SENHA", DONA_PADRAO.senha),
-      // A dona é superadmin por default porque, num banco recém-nascido, ela é
-      // a ÚNICA pessoa que existe — e sem o bypass ninguém abre a segunda loja
-      // nem alcança o console da rede. Quem quiser a dona exercitando o gate
-      // (o perfil Proprietária faz isso) põe SEED_DONA_SUPERADMIN=false.
-      superAdmin: texto("SEED_DONA_SUPERADMIN", "true") !== "false",
+    proprietario: {
+      id: texto("SEED_PROPRIETARIO_ID", PROPRIETARIO_PADRAO.id),
+      nome: texto("SEED_PROPRIETARIO_NOME", PROPRIETARIO_PADRAO.nome),
+      email: texto("SEED_PROPRIETARIO_EMAIL", PROPRIETARIO_PADRAO.email).toLowerCase(),
+      senha: texto("SEED_PROPRIETARIO_SENHA", PROPRIETARIO_PADRAO.senha),
+      // O proprietário é superadmin por default porque, num banco recém-nascido,
+      // ele é a ÚNICA pessoa que existe — e sem o bypass ninguém abre a segunda loja
+      // nem alcança o console da rede. Quem quiser o proprietário exercitando o gate
+      // (o perfil Proprietário faz isso) põe SEED_PROPRIETARIO_SUPERADMIN=false.
+      superAdmin: texto("SEED_PROPRIETARIO_SUPERADMIN", "true") !== "false",
     },
     comExemplosFinanceiros: texto("SEED_EXEMPLOS_FINANCEIROS", "true") !== "false",
     comIpcaDeExemplo: texto("SEED_IPCA_EXEMPLO", "false") === "true",
@@ -591,11 +594,11 @@ export function configuracaoDoAmbiente(env: NodeJS.ProcessEnv = process.env): Op
  * A partir daqui, toda escrita passa pelas rotas e deixa rastro.
  */
 export async function aplicarConfiguracaoInicial(opts: OpcoesConfiguracao): Promise<ResumoConfiguracao> {
-  const { loja, dona } = opts;
+  const { loja, proprietario } = opts;
   const criado: ResumoConfiguracao["criado"] = {
     loja: false,
     perfis: 0,
-    dona: false,
+    proprietario: false,
     vinculo: false,
     cabines: 0,
     horario: false,
@@ -642,20 +645,20 @@ export async function aplicarConfiguracaoInicial(opts: OpcoesConfiguracao): Prom
     .returning({ id: perfisTable.id });
   criado.perfis = perfisInseridos.length;
 
-  // 3. A dona. O e-mail é único GLOBAL — quem já existe é reusado, nunca
+  // 3. O proprietário. O e-mail é único GLOBAL — quem já existe é reusado, nunca
   //    recriado, e a senha de quem já existe não se toca.
-  const [existente] = await db.select().from(usuariosTable).where(eq(usuariosTable.email, dona.email));
-  const donaId = existente?.id ?? dona.id;
+  const [existente] = await db.select().from(usuariosTable).where(eq(usuariosTable.email, proprietario.email));
+  const proprietarioId = existente?.id ?? proprietario.id;
   if (!existente) {
     await db
       .insert(usuariosTable)
       .values({
-        id: donaId,
-        nome: dona.nome,
-        email: dona.email,
-        senhaHash: await bcrypt.hash(dona.senha, 12),
+        id: proprietarioId,
+        nome: proprietario.nome,
+        email: proprietario.email,
+        senhaHash: await bcrypt.hash(proprietario.senha, 12),
         ativo: true,
-        isSuperAdmin: dona.superAdmin,
+        isSuperAdmin: proprietario.superAdmin,
         // Deliberadamente `false`: marcar aqui manda a pessoa para a tela de
         // troca de senha antes de qualquer outra, e este seed também é o que
         // provisiona o ambiente automatizado. Quem instala com a senha padrão
@@ -663,18 +666,18 @@ export async function aplicarConfiguracaoInicial(opts: OpcoesConfiguracao): Prom
         precisaTrocarSenha: false,
       })
       .onConflictDoNothing();
-    criado.dona = true;
+    criado.proprietario = true;
   }
 
-  // 4. O vínculo dona ↔ loja, pelo perfil Proprietária.
+  // 4. O vínculo proprietário ↔ loja, pelo perfil Proprietário.
   const [vinculo] = await db
     .select()
     .from(usuariosLojasTable)
-    .where(and(eq(usuariosLojasTable.usuarioId, donaId), eq(usuariosLojasTable.lojaId, loja.id)));
+    .where(and(eq(usuariosLojasTable.usuarioId, proprietarioId), eq(usuariosLojasTable.lojaId, loja.id)));
   if (!vinculo) {
     await db
       .insert(usuariosLojasTable)
-      .values({ usuarioId: donaId, lojaId: loja.id, perfilId: "perfil-proprietaria" })
+      .values({ usuarioId: proprietarioId, lojaId: loja.id, perfilId: "perfil-proprietaria" })
       .onConflictDoNothing();
     criado.vinculo = true;
   }
@@ -737,7 +740,7 @@ export async function aplicarConfiguracaoInicial(opts: OpcoesConfiguracao): Prom
     .returning({ id: atributoOpcoesTable.id });
   criado.opcoes = opcoesInseridas.length;
 
-  if (!opts.comExemplosFinanceiros) return { lojaId: loja.id, lojaNome: loja.nome, donaEmail: dona.email, criado };
+  if (!opts.comExemplosFinanceiros) return { lojaId: loja.id, lojaNome: loja.nome, proprietarioEmail: proprietario.email, criado };
 
   // 7b. O IPCA dos últimos 12 meses — VALORES DE EXEMPLO (P4/E237, a pedido
   //     da dona em 15/08: a instalação de TESTE sai com a correção da 9ª
@@ -776,7 +779,7 @@ export async function aplicarConfiguracaoInicial(opts: OpcoesConfiguracao): Prom
     }
   }
 
-  // 8. A escada de comissão da dona.
+  // 8. A escada de comissão do proprietário.
   //
   //    A vigência começa no dia 1º do mês da instalação, e não "hoje": fechar a
   //    competência corrente no mês que vem tem de encontrar regra valendo desde
@@ -788,7 +791,7 @@ export async function aplicarConfiguracaoInicial(opts: OpcoesConfiguracao): Prom
     .values({
       id: regraId,
       lojaId: loja.id,
-      vendedoraId: donaId,
+      vendedoraId: proprietarioId,
       vigenciaInicio: ancoraDeNegocio(primeiroDiaDoMes(hojeLocal())),
       bonusAcumulaFaixas: false,
       ativo: true,
@@ -832,7 +835,7 @@ export async function aplicarConfiguracaoInicial(opts: OpcoesConfiguracao): Prom
     .returning({ id: recorrenciasTable.id });
   criado.recorrencias = recorrenciasInseridas.length;
 
-  return { lojaId: loja.id, lojaNome: loja.nome, donaEmail: dona.email, criado };
+  return { lojaId: loja.id, lojaNome: loja.nome, proprietarioEmail: proprietario.email, criado };
 }
 
 /**

@@ -27,7 +27,7 @@ import {
  *    tão calado quanto telefone vazio.**
  *
  * A rota é escopada por loja e gateada por `admin.editar`, que é o módulo de
- * quem administra a loja: a Proprietária tem, a Vendedora não. E `ativo` fica
+ * quem administra a loja: o Proprietário tem, a Vendedora não. E `ativo` fica
  * de FORA de propósito — desativar a própria loja é ato de superadmin, e é a
  * única coisa deste formulário que não teria caminho de volta pela tela.
  */

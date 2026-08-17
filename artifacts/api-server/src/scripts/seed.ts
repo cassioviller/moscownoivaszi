@@ -15,7 +15,7 @@
  * Parametrização (tudo opcional; os defaults são os do desenvolvimento):
  *
  *   SEED_LOJA_ID SEED_LOJA_NOME SEED_LOJA_CNPJ SEED_LOJA_ENDERECO SEED_LOJA_TELEFONE
- *   SEED_DONA_ID SEED_DONA_NOME SEED_DONA_EMAIL SEED_DONA_SENHA SEED_DONA_SUPERADMIN
+ *   SEED_PROPRIETARIO_ID SEED_PROPRIETARIO_NOME SEED_PROPRIETARIO_EMAIL SEED_PROPRIETARIO_SENHA SEED_PROPRIETARIO_SUPERADMIN
  *   SEED_EXEMPLOS_FINANCEIROS=false   (sem escada de comissão nem recorrências)
  */
 import { pool } from "@workspace/db";
@@ -24,7 +24,7 @@ import {
   configuracaoDoAmbiente,
   contarConfiguracao,
   descreverHorario,
-  DONA_PADRAO,
+  PROPRIETARIO_PADRAO,
   ESCADA_PADRAO,
   RECORRENCIAS_PADRAO,
 } from "../lib/configuracao-inicial";
@@ -67,7 +67,7 @@ async function main(): Promise<void> {
   // não tem `lojaId`; numa rede, a loja B lê aqui os perfis da rede inteira,
   // e o cabeçalho acima diz "a loja". As outras linhas são da loja mesmo.
   console.log(linha("Perfis do sistema", c.perfis, novo.perfis));
-  console.log(linha("Dona", resumo.donaEmail, novo.dona || novo.vinculo));
+  console.log(linha("Proprietário", resumo.proprietarioEmail, novo.proprietario || novo.vinculo));
   console.log(linha("Cabines", c.cabines, novo.cabines));
   // S-D41: o horário sai do que o banco guarda. A frase cravada dizia
   // "seg–sáb, 9h–19h" e as duas metades estavam erradas desde a S-A8.
@@ -88,9 +88,9 @@ async function main(): Promise<void> {
   console.log(`\nO que falta, e é trabalho da loja: cadastrar os primeiros vestidos.`);
   console.log(`Depois deles: noivas, provas e atendimentos entram pela tela.\n`);
 
-  if (opcoes.dona.senha === DONA_PADRAO.senha) {
-    console.log(`ATENÇÃO: a dona está com a senha padrão ("${DONA_PADRAO.senha}").`);
-    console.log(`Defina SEED_DONA_SENHA antes de usar isto fora do desenvolvimento.\n`);
+  if (opcoes.proprietario.senha === PROPRIETARIO_PADRAO.senha) {
+    console.log(`ATENÇÃO: o proprietário está com a senha padrão ("${PROPRIETARIO_PADRAO.senha}").`);
+    console.log(`Defina SEED_PROPRIETARIO_SENHA antes de usar isto fora do desenvolvimento.\n`);
   }
 }
 

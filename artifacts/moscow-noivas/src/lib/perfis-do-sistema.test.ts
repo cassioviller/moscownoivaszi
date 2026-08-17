@@ -10,7 +10,7 @@ import { SEM_PERFIS_TITULO } from "./perfis-do-sistema";
  *
  * `GET /admin/perfis` (`admin.ts:221`) não filtra por loja: é a lista do
  * SISTEMA. A instalação nasce com quatro perfis (`configuracao-inicial.ts:85`
- * — Admin, Proprietária, Vendedora e Recepção), e o `DELETE` recusa o do
+ * — Admin, Proprietário, Vendedora e Recepção), e o `DELETE` recusa o do
  * sistema (`admin.ts:289-293`). Uma lista vazia aqui não é "esta loja ainda
  * não tem"; é uma base sem configuração inicial — e nenhuma tela do app cria
  * perfil (zero usos de `useCreatePerfil`).

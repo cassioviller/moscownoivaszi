@@ -455,7 +455,7 @@ const MANUAIS: Record<string, Manual> = {
       {
         nome: "menu",
         rota: `/loja/${LOJA}/dashboard`,
-        legenda: "A tela de entrada da dona: as dezenove linhas do menu abrem para o seu perfil.",
+        legenda: "A tela de entrada do proprietário: as dezenove linhas do menu abrem para o seu perfil.",
         realces: [
           { alvo: "aside >> text=Financeiro", nota: "Financeiro — o mapa do dinheiro, e a porta das telas do mês.", numeroEm: "esquerda" },
           { alvo: "aside >> text=Folha do mês", nota: "Folha do mês — o roteiro de fechar o mês, em três passos.", numeroEm: "esquerda" },

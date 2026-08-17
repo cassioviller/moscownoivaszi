@@ -51,7 +51,7 @@ async function main(): Promise<void> {
   const jornal = path.join(pasta, "meta", "_journal.json");
   if (!existsSync(jornal)) {
     throw new Error(
-      `Não há migrações em "${pasta}" (falta ${jornal}). ` +
+      `Não há migrações em “${pasta}” (falta ${jornal}). ` +
         "Aponte MIGRACOES_DIR para a pasta `lib/db/migrations` da imagem.",
     );
   }

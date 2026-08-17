@@ -28,7 +28,7 @@ export async function seedInicial(): Promise<void> {
   logger.info(
     {
       loja: resumo.lojaNome,
-      dona: resumo.donaEmail,
+      proprietario: resumo.proprietarioEmail,
       // S-O71: o log da SUBIDA também conta os perfis. Os dois caminhos aplicam
       // a mesma configuração e agora relatam a mesma lista de números.
       perfis: contagem.perfis,
@@ -41,10 +41,10 @@ export async function seedInicial(): Promise<void> {
     "Configuração inicial concluída — falta cadastrar os primeiros vestidos.",
   );
 
-  if (opcoes.dona.senha === "admin123") {
+  if (opcoes.proprietario.senha === "admin123") {
     logger.warn(
-      { email: resumo.donaEmail },
-      "A dona entrou com a SENHA PADRÃO. Defina SEED_DONA_SENHA antes de usar isto fora do desenvolvimento.",
+      { email: resumo.proprietarioEmail },
+      "O proprietário entrou com a SENHA PADRÃO. Defina SEED_PROPRIETARIO_SENHA antes de usar isto fora do desenvolvimento.",
     );
   }
 }

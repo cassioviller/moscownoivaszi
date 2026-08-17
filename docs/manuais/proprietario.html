@@ -249,7 +249,7 @@
     <h1>Manual do Proprietário</h1>
     <p class="subtitulo">A loja inteira, e o dinheiro — o que só você vê, e o mês que só você fecha.</p>
     <div class="contexto">
-      <span>Perfil: <b>Proprietária</b> (o nome na tela)</span>
+      <span>Perfil: <b>Proprietário</b> (o nome na tela)</span>
       <span>Nada fica escondido de você</span>
       <span>Atualizado em <b>15/08/2026</b></span>
     </div>
@@ -290,7 +290,7 @@
       <p class="resumo"><strong>Tudo.</strong> As dezenove linhas do menu abrem para o seu perfil, e nenhuma tela do sistema é negada a você.</p>
       <figure class="print" data-print="menu"></figure>
 
-      <div class="colunas inteira" data-perfil="Proprietária">
+      <div class="colunas inteira" data-perfil="Proprietário">
         <div class="caixa ve" data-menu="ve">
           <h4>No seu menu — as dezenove</h4>
           <ul>
@@ -305,10 +305,10 @@
 
       <p><strong>Oito áreas</strong> do sistema decidem quem vê o quê — <strong>a ficha da noiva, orçamentos, contratos, agenda, acervo, financeiro, comissão e administração</strong> —, e o seu perfil abre as oito. Os outros perfis abrem só algumas. (Eram seis até 12/08/2026: orçamento e contrato moravam dentro de <span>“noivas”</span>, e é essa a mudança que a seção <a href="#decisoes">O que espera uma decisão sua</a> conta.)</p>
 
-      <div class="fala aviso">
-        <span class="rotulo">Um nome errado, e ele é seu</span>
-        <p>O perfil se chama <strong>“Proprietária”</strong> na tela, no feminino, e o proprietário do ateliê é você. O nome está gravado no cadastro inicial e ecoa em mais quatro lugares.</p>
-        <p>Corrigir mexe na semente do sistema — pede um script para as instalações que já gravaram o nome antigo —, então está declarado e esperando. <strong>Este manual escreve <span>“Proprietária”</span> porque é o que a tela mostra</strong>; no dia em que a tela mudar, muda aqui também.</p>
+      <div class="fala">
+        <span class="rotulo">O nome do seu perfil, corrigido</span>
+        <p>Até 17/08/2026 o perfil se chamava <strong>Proprietária</strong> na tela, no feminino, e o proprietário do ateliê é você. <strong>Hoje ele se chama <span>“Proprietário”</span></strong> — o cadastro inicial grava assim, e este manual escreve o que a tela mostra.</p>
+        <p>Quem já tinha o sistema instalado antes dessa data roda uma linha de SQL para a base acompanhar o nome novo (<code>docs/migracoes/2026-08-17-e271-perfil-proprietario.sql</code>); as permissões, o vínculo e o histórico não mudam nada.</p>
       </div>
     </section>
 
@@ -670,7 +670,7 @@
         <table>
           <thead><tr><th>Perfil</th><th>Noivas</th><th>Orçamentos</th><th>Contratos</th><th>Agenda</th><th>Acervo</th><th>Dinheiro</th><th>Admin</th></tr></thead>
           <tbody>
-            <tr><td><strong>Proprietária</strong></td><td>tudo</td><td>tudo</td><td>tudo</td><td>tudo</td><td>tudo</td><td>tudo</td><td>tudo</td></tr>
+            <tr><td><strong>Proprietário</strong></td><td>tudo</td><td>tudo</td><td>tudo</td><td>tudo</td><td>tudo</td><td>tudo</td><td>tudo</td></tr>
             <tr><td><strong>Vendedora</strong></td><td>tudo</td><td>tudo</td><td>tudo</td><td>tudo</td><td>tudo</td><td>—</td><td>—</td></tr>
             <tr><td><strong>Recepção</strong></td><td>tudo</td><td>só ver</td><td>—</td><td>tudo</td><td>só ver</td><td>—</td><td>—</td></tr>
             <tr><td><strong>Costureira</strong></td><td>—</td><td>—</td><td>—</td><td>tudo</td><td>só ver</td><td>—</td><td>—</td></tr>
@@ -818,7 +818,6 @@
       <h3>A menor, ainda de pé — e a que saiu</h3>
       <ul>
         <li><strong>A confecção já tem prazo próprio</strong> (desde 15/08/2026): a costureira diz <em data-fala="a costureira, na ficha do trabalho">“esta eu preciso pronta no dia 10”</em> na própria ficha do trabalho, a fila ordena por esse prazo, e o manual dela ensina como. Saiu desta lista.</li>
-        <li><strong>O perfil <span>“Proprietária”</span> está no gênero errado.</strong> O nome está gravado no cadastro inicial e ecoa em mais quatro lugares; corrigir pede um script para quem já instalou.</li>
       </ul>
 
       <h3>A rodada de 14/08 — decidida em bloco, e já no sistema</h3>

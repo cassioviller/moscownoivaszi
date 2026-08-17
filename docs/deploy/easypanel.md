@@ -44,6 +44,8 @@ Vite quando `FRONTEND_DIR` aponta para ele (a imagem aponta).
 | `docker-entrypoint.sh` | Aplica as migrações, ajusta o dono do volume de backups e troca para o usuário `node` |
 | `artifacts/api-server/src/scripts/migrar.ts` | O migrador de produção: drizzle migrator + os extras de SQL, sem `drizzle-kit` e sem `tsx` |
 | `artifacts/api-server/src/__tests__/varredura-do-conteiner.test.ts` | A régua que impede a imagem de envelhecer calada |
+| `artifacts/api-server/src/scripts/importar-legado.ts` + `docs/legado/*.json` | O caderno de papel do ateliê, para importar depois da primeira subida — ver [`importar-o-legado.md`](importar-o-legado.md) |
+| `docs/migracoes/2026-08-17-e271-perfil-proprietario.sql` | Só para bases que já existiam: o perfil `Proprietária` vira `Proprietário`. **A instalação nova já nasce certa** |
 
 E três mudanças pequenas no sistema, todas exigidas pelo contêiner:
 
@@ -81,9 +83,9 @@ desejado, **Target Port `5002`**, HTTPS/Let's Encrypt ligado. O caminho é
 | Variável | Valor | Por quê |
 |---|---|---|
 | `DATABASE_URL` | `postgres://postgres:SENHA@moscow_moscow:5432/moscow?sslmode=disable` | O **único** nome que a biblioteca de banco lê, e isso é invariante escrito no código (`lib/db/src/index.ts:9-19`). `sslmode=disable` porque o PostgreSQL do EasyPanel não fala TLS na rede interna e o `pg` não tenta TLS sem pedido — o parâmetro é explícito, não mágico |
-| `SEED_DONA_EMAIL` | o e-mail do superadministrador | **Sem ela o sistema nasce com `admin@moscownoivas.com`** |
-| `SEED_DONA_SENHA` | uma senha forte | **Sem ela o sistema nasce com `admin123`** e o log grita isso na subida |
-| `SEED_DONA_NOME` | `Renato Nascimento de Brito` | O nome que aparece na tela e no rastro de quem fez cada coisa |
+| `SEED_PROPRIETARIO_EMAIL` | o e-mail do superadministrador | **Sem ela o sistema nasce com `admin@moscownoivas.com`** |
+| `SEED_PROPRIETARIO_SENHA` | uma senha forte | **Sem ela o sistema nasce com `admin123`** e o log grita isso na subida |
+| `SEED_PROPRIETARIO_NOME` | `Renato Nascimento de Brito` | O nome que aparece na tela e no rastro de quem fez cada coisa. **Desde o E271 este é o default** — a variável só é necessária para instalar em nome de outra pessoa |
 
 **Opcionais** — só se você quiser mudar o default:
 
@@ -183,18 +185,28 @@ schema está aplicado". A imagem traz o mesmo teste como `HEALTHCHECK`.
 1. **Troque a senha do PostgreSQL.** Ela apareceu num print e numa conversa;
    trate-a como vazada. EasyPanel → serviço `moscow` → alterar a senha → e
    atualizar a `DATABASE_URL` do app.
-2. **Cadastre `SEED_DONA_EMAIL` e `SEED_DONA_SENHA` ANTES da primeira
+2. **Cadastre `SEED_PROPRIETARIO_EMAIL` e `SEED_PROPRIETARIO_SENHA` ANTES da primeira
    subida.** Depois da primeira subida o banco tem usuário, o seed nunca mais
    roda, e trocar a conta do proprietário passa a ser trabalho de tela.
-3. **Réplicas = 1.** O rate-limit de login é por processo, o backup grava num
+3. **O dinheiro que o seed cria é EXEMPLO, e a loja corrige no primeiro dia.**
+   Com `SEED_EXEMPLOS_FINANCEIROS=true` (o default, e o recomendado) a
+   instalação nasce com a ESTRUTURA financeira de pé: quatro contas fixas —
+   aluguel R$ 4.500, energia R$ 380, internet R$ 180 e a quarta —, que somam
+   R$ 5.710/mês, e a escada de comissão 5% / 6% / 7% + R$ 500. **Os números são
+   exemplo; a estrutura é que não é** — sem eles a projeção de caixa mente por
+   omissão, mostrando a entrada da noiva e escondendo o aluguel. Corrija os
+   valores em *Financeiro → Folha* e *Comissão* antes de fechar o primeiro mês.
+   Quem preferir começar do zero põe `SEED_EXEMPLOS_FINANCEIROS=false` e
+   cadastra as quatro na tela.
+4. **Réplicas = 1.** O rate-limit de login é por processo, o backup grava num
    disco só, e duas réplicas subindo juntas rodariam migração ao mesmo tempo.
-4. **A primeira subida é a mais lenta**: o build instala o workspace inteiro e
+5. **A primeira subida é a mais lenta**: o build instala o workspace inteiro e
    constrói a tela (~20 s de Vite) e a API. As subidas seguintes reaproveitam a
    camada de dependências enquanto o `pnpm-lock.yaml` não mudar.
-5. **HTTPS é obrigatório**, não opcional: com `NODE_ENV=production` o cookie de
+6. **HTTPS é obrigatório**, não opcional: com `NODE_ENV=production` o cookie de
    sessão sai `Secure` e o navegador não o guarda em HTTP. Se o domínio subir
    sem certificado, ninguém consegue entrar.
-6. **O `pg_dump` da imagem é o 17.** Ele lê servidor 16 e 17; se o PostgreSQL do
+7. **O `pg_dump` da imagem é o 17.** Ele lê servidor 16 e 17; se o PostgreSQL do
    EasyPanel for **18 ou mais novo**, o botão de backup falha com *server
    version mismatch* e o cliente da imagem precisa subir junto.
 
@@ -217,9 +229,9 @@ createdb moscow_local
 #    endereço; no Docker Desktop use host.docker.internal)
 docker run --rm -p 5002:5002 \
   -e DATABASE_URL='postgres://postgres:SENHA@host.docker.internal:5432/moscow_local' \
-  -e SEED_DONA_EMAIL='voce@exemplo.com' \
-  -e SEED_DONA_SENHA='uma-senha-forte' \
-  -e SEED_DONA_NOME='Renato Nascimento de Brito' \
+  -e SEED_PROPRIETARIO_EMAIL='voce@exemplo.com' \
+  -e SEED_PROPRIETARIO_SENHA='uma-senha-forte' \
+  -e SEED_PROPRIETARIO_NOME='Renato Nascimento de Brito' \
   -v moscow-backups:/app/backups \
   moscow-app
 ```

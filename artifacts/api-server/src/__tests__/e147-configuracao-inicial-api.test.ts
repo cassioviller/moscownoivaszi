@@ -48,7 +48,7 @@ function opcoesDe(sufixo: string, comExemplosFinanceiros = true): OpcoesConfigur
       endereco: "Rua do Teste, 1",
       telefone: "(11) 90000-0000",
     },
-    dona: {
+    proprietario: {
       id: `cfg-dona-${sufixo}`,
       nome: `Dona ${sufixo}`,
       email: `dona-${sufixo}@teste.local`,
@@ -81,7 +81,7 @@ describe("E147 — aplicar a configuração inicial numa loja nova", () => {
     await db.delete(lojasTable).where(eq(lojasTable.id, opts.loja.id));
     await db.delete(lojasTable).where(eq(lojasTable.id, `cfg-loja-sem-dinheiro-${sufixo}`));
     await db.delete(lojasTable).where(eq(lojasTable.id, `cfg-loja-ipca-${sufixo}`));
-    await db.delete(usuariosTable).where(eq(usuariosTable.email, opts.dona.email));
+    await db.delete(usuariosTable).where(eq(usuariosTable.email, opts.proprietario.email));
     await db.delete(usuariosTable).where(eq(usuariosTable.email, `dona-sem-dinheiro-${sufixo}@teste.local`));
     await db.delete(usuariosTable).where(eq(usuariosTable.email, `dona-ipca-${sufixo}@teste.local`));
     if (perfisCriadosAqui.length > 0) {
@@ -93,7 +93,7 @@ describe("E147 — aplicar a configuração inicial numa loja nova", () => {
   it("a primeira execução deixa a loja configurada, e só falta cadastrar vestido", async () => {
     const resumo = await aplicarConfiguracaoInicial(opts);
     expect(resumo.criado.loja).toBe(true);
-    expect(resumo.criado.dona).toBe(true);
+    expect(resumo.criado.proprietario).toBe(true);
     expect(resumo.criado.vinculo).toBe(true);
 
     const c = await contarConfiguracao(opts.loja.id);
@@ -167,7 +167,7 @@ describe("E147 — aplicar a configuração inicial numa loja nova", () => {
     expect(resumo.criado).toEqual({
       loja: false,
       perfis: 0,
-      dona: false,
+      proprietario: false,
       vinculo: false,
       cabines: 0,
       horario: false,
@@ -243,7 +243,7 @@ describe("E147 — aplicar a configuração inicial numa loja nova", () => {
   it("sem exemplos financeiros, a loja fica com agenda e catálogo e nenhum valor", async () => {
     const semDinheiro: OpcoesConfiguracao = {
       loja: { id: `cfg-loja-sem-dinheiro-${sufixo}`, nome: `Ateliê Sem Dinheiro ${sufixo}` },
-      dona: {
+      proprietario: {
         id: `cfg-dona-sem-dinheiro-${sufixo}`,
         nome: "Dona Sem Dinheiro",
         email: `dona-sem-dinheiro-${sufixo}@teste.local`,

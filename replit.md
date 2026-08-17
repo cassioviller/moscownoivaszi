@@ -30,7 +30,7 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   SUBIDA quando o banco não tem nenhum usuário (`lib/seed.ts`), então um banco
   provisionado do zero e um configurado à mão terminam idênticos.
   Parametrização por env (branco = default): `SEED_LOJA_ID|NOME|CNPJ|ENDERECO|
-  TELEFONE`, `SEED_DONA_ID|NOME|EMAIL|SENHA|SUPERADMIN`,
+  TELEFONE`, `SEED_PROPRIETARIO_ID|NOME|EMAIL|SENHA|SUPERADMIN`,
   `SEED_EXEMPLOS_FINANCEIROS=false` (sem escada nem recorrências),
   `SEED_IPCA_EXEMPLO=true` (**E242** — os 12 meses de IPCA DE EXEMPLO da P4/E237;
   **default false**: a instalação real nasce sem índice, porque a mora trata

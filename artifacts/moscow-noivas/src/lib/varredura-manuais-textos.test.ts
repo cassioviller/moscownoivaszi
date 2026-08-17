@@ -548,11 +548,15 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
     // 139 antigas virou grifo: o `recepcao.html:332` citava *"você não pode
     // ver"*, que a tela não escreve — ela escreve *"Você não tem permissão para
     // ver … desta noiva."*, e a citação passava porque um COMENTÁRIO a tem).
-    expect(citacoes.filter((c) => c.tipo === "rótulo").length).toBe(253);
+    // E271: 253 → 251. O manual do proprietário parou de citar “Proprietária”
+    // em três sítios (o aviso do gênero errado, que virou nota de correção, e a
+    // linha da lista de decisões pendentes, que saiu) e passou a citar
+    // “Proprietário” em um — o perfil mudou de nome no seed.
+    expect(citacoes.filter((c) => c.tipo === "rótulo").length).toBe(251);
     const rotulosLiterais = citacoes.filter(
       (c) => c.tipo === "rótulo" && !c.molde && !c.fala && !c.grifo,
     );
-    expect(rotulosLiterais.length).toBe(189);
+    expect(rotulosLiterais.length).toBe(187); // E271: −2, as citações de “Proprietária”
   });
 
   /**
@@ -612,8 +616,8 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
       `aspa curva sem casa — embrulhe cada uma num <span> próprio:\n${soltas.join("\n")}`,
     ).toEqual([]);
     expect(repetidas.length, `duplicatas de recado:\n${repetidas.join("\n")}`).toBe(3);
-    expect(colhidas).toBe(463);
-    expect(aspas).toBe(466);
+    expect(colhidas).toBe(461); // E271: −2, as citações de “Proprietária” que saíram do manual
+    expect(aspas).toBe(464); // E271: −2 — três saíram e uma (“Proprietário”) entrou
   });
 
   it("todo botão, todo recado e toda citação de prosa existem na tela", () => {
@@ -853,13 +857,16 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
   it("a cobertura publica SÍTIOS e FRASES DISTINTAS, e os dois números são ditos", () => {
     const citacoes = todas();
     const distintas = new Set(citacoes.map((c) => c.exibido));
-    expect(citacoes.length).toBe(679);
+    expect(citacoes.length).toBe(677); // E271: −2 (ver acima)
     expect(distintas.size).toBe(513);
     // 166 sítios repetem uma frase que outro sítio já confere — mais de um em
     // cada quatro. O caso mais repetido é a sessão expirada, em quatro manuais,
     // e a repetição é LEGÍTIMA: quatro perfis a veem, e apagá-la de três seria
     // piorar a documentação para melhorar um número.
-    expect(citacoes.length - distintas.size).toBe(166);
+    // E271: 166 → 164. As duas que saíram eram REPETIDAS — “Proprietária”
+    // aparecia três vezes no mesmo manual —, e por isso o número de frases
+    // DISTINTAS não se mexeu: continua 513.
+    expect(citacoes.length - distintas.size).toBe(164);
   });
 
   /**

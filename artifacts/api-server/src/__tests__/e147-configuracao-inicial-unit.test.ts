@@ -8,7 +8,7 @@ import {
   RECORRENCIAS_PADRAO,
   configuracaoDoAmbiente,
   LOJA_PADRAO,
-  DONA_PADRAO,
+  PROPRIETARIO_PADRAO,
   descreverDias,
   descreverHorario,
 } from "../lib/configuracao-inicial";
@@ -105,8 +105,8 @@ describe("E147 — os perfis padrão", () => {
     expect(acessos.admin.ver).toBe(false);
   });
 
-  it("Proprietária abre os seis módulos sem ser perfil de sistema", () => {
-    const dona = PERFIS_PADRAO.find((p) => p.nome === "Proprietária");
+  it("Proprietário abre os seis módulos sem ser perfil de sistema", () => {
+    const dona = PERFIS_PADRAO.find((p) => p.nome === "Proprietário");
     expect(dona?.sistema).toBe(false);
     const acessos = normalizarAcessos(dona?.acessos);
     for (const modulo of MODULOS) {
@@ -157,7 +157,7 @@ describe("E147 — os perfis padrão", () => {
     // A decisão da dona em 2026-08-12: o poder é o mesmo de sempre; o que mudou
     // é que ele deixou de vir embutido em `leads`, onde ninguém o encontrava.
     const comContrato = PERFIS_PADRAO.filter((p) => normalizarAcessos(p.acessos).contratos.criar).map((p) => p.nome);
-    expect(comContrato).toEqual(["Admin", "Proprietária", "Vendedora"]);
+    expect(comContrato).toEqual(["Admin", "Proprietário", "Vendedora"]);
   });
 
   it("nenhum perfil sobrevive à normalização com chave inventada", () => {
@@ -298,21 +298,21 @@ describe("E147 — agenda e ambiente", () => {
   it("sem env, a configuração é a do desenvolvimento de sempre", () => {
     const c = configuracaoDoAmbiente({});
     expect(c.loja.id).toBe(LOJA_PADRAO.id);
-    expect(c.dona.email).toBe(DONA_PADRAO.email);
-    expect(c.dona.superAdmin).toBe(true);
+    expect(c.proprietario.email).toBe(PROPRIETARIO_PADRAO.email);
+    expect(c.proprietario.superAdmin).toBe(true);
     expect(c.comExemplosFinanceiros).toBe(true);
   });
 
   it("as variáveis mandam, e o e-mail entra em minúscula", () => {
     const c = configuracaoDoAmbiente({
       SEED_LOJA_NOME: "Ateliê da Rua Augusta",
-      SEED_DONA_EMAIL: "Dona@Atelie.com.br",
-      SEED_DONA_SUPERADMIN: "false",
+      SEED_PROPRIETARIO_EMAIL: "Dona@Atelie.com.br",
+      SEED_PROPRIETARIO_SUPERADMIN: "false",
       SEED_EXEMPLOS_FINANCEIROS: "false",
     });
     expect(c.loja.nome).toBe("Ateliê da Rua Augusta");
-    expect(c.dona.email).toBe("dona@atelie.com.br");
-    expect(c.dona.superAdmin).toBe(false);
+    expect(c.proprietario.email).toBe("dona@atelie.com.br");
+    expect(c.proprietario.superAdmin).toBe(false);
     expect(c.comExemplosFinanceiros).toBe(false);
   });
 
