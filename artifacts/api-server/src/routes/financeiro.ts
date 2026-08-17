@@ -845,11 +845,43 @@ router.post(
       const derivadas: string[] = [];
       const parcelasTocadas = [...new Set(atos.map((a) => a.parcelaId))];
       if (parcelasTocadas.length > 0) {
-        const parcelas = await tx.query.parcelasTable.findMany({
-          where: and(eq(parcelasTable.lojaId, lojaId), inArray(parcelasTable.id, parcelasTocadas), isNull(parcelasTable.conciliadoEm)),
-        });
+        /**
+         * **E251/S-R11 — a derivação decidia sobre linhas que ninguém segurava.**
+         *
+         * O E245 (B4) fechou o lado do ESTORNO repetindo `recebido_em IS NOT
+         * NULL` na escrita. O outro lado ficou aberto: um recebimento NOVO que
+         * commita entre esta leitura e o `UPDATE` de baixo cria um ato
+         * `PARCELA_RECEBIDA` que a trilha lida não tem — e a parcela ganha o
+         * carimbo "conferida com o extrato" com um ato que ninguém conferiu. Ele
+         * atravessa a guarda do B4 porque `receber` deixa `recebido_em`
+         * preenchido; e o `conciliadoEm: null` que o receber grava é sobrescrito
+         * logo em seguida por este `agora`. **Medido:** parcela de R$ 1.000,00
+         * recebida em duas metades, a primeira conferida; a recepção lança a
+         * segunda de R$ 500,00 no mesmo segundo, e a parcela fica `conciliado_em`
+         * preenchido com R$ 500,00 que nunca bateram com extrato nenhum.
+         *
+         * A tranca é o que fecha: `FOR UPDATE` nas parcelas tocadas serializa
+         * com o `UPDATE` do `POST /receber`. Quem chegar antes commita e a
+         * trilha o enxerga (o ato entra sem carimbo, e a parcela não deriva);
+         * quem chegar depois espera esta transação e reencontra
+         * `conciliado_em` para zerar pela régua do A6. ORDENADAS por id —
+         * dois lotes de conciliação com as mesmas parcelas em ordens
+         * diferentes se serializariam em deadlock.
+         *
+         * E a trilha passa a ser lida pelo `tx` (o executor novo): decidir
+         * dentro de uma transação com uma leitura que sai por outra conexão é o
+         * defeito que este épico inteiro fecha.
+         */
+        const parcelas = (await tx.select().from(parcelasTable)
+          .where(and(eq(parcelasTable.lojaId, lojaId), inArray(parcelasTable.id, parcelasTocadas)))
+          .orderBy(parcelasTable.id)
+          .for("update"))
+          // O filtro sai do `where` para cá de propósito: as linhas são LIDAS
+          // sob a tranca e o `conciliado_em` é decidido depois dela, sobre o
+          // que a tranca leu — não sobre o que o pool dizia antes.
+          .filter((p) => p.conciliadoEm === null);
         if (parcelas.length > 0) {
-          const trilha = await trilhaDosRecebimentos(lojaId, parcelas.flatMap((p) => [p.id, p.contratoId]));
+          const trilha = await trilhaDosRecebimentos(lojaId, parcelas.flatMap((p) => [p.id, p.contratoId]), tx);
           const carimbados = await tx
             .select({ atoId: conciliacaoDeRecebimentosTable.atoId })
             .from(conciliacaoDeRecebimentosTable)

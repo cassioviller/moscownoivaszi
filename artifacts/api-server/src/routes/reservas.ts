@@ -343,7 +343,107 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
         })
         .where(eq(reservasTable.id, reserva.id));
 
-      if (dados.status === "CANCELADA") {
+      /**
+       * **E251/S-R8 — os dois ramos que escrevem tomam as MESMAS trancas, na
+       * MESMA ordem, e é aqui que elas são tomadas.**
+       *
+       * Antes cada ramo pegava as suas: o CANCELADA trancava os bloqueios
+       * (R1), o da data trancava os vestidos (R3) e escrevia em `contratos`
+       * pela tranca implícita do `UPDATE`, lá embaixo. Ler o arquivo de cima
+       * para baixo dava **bloqueios (degrau 7) antes de contratos (degrau 5)**
+       * — e a varredura da ordem, que não sabe que os dois ramos são
+       * excludentes, cobrou exatamente isso: *"`reservas.ts:491` tranca
+       * `contratosTable` (degrau 5) DEPOIS de `bloqueioVestidosTable` (degrau
+       * 7)"*. A régua está certa em cobrar: um leitor humano lê a mesma
+       * armadilha, e o próximo ramo que precise das duas herdaria a ordem
+       * errada.
+       *
+       * Uma leitura dos bloqueios para os dois ramos (era a MESMA consulta
+       * escrita duas vezes), uma tranca de `contratos`, uma de `bloqueios`, e
+       * só então cada ramo faz o seu. O ramo que não escreve em vinculado
+       * nenhum sai antes de tomar qualquer tranca.
+       */
+      const cancela = dados.status === "CANCELADA";
+      if (!cancela && dados.casamentoData === undefined) return { ok: true as const };
+
+      const vinculados = await tx.select().from(bloqueioVestidosTable)
+        .where(and(
+          eq(bloqueioVestidosTable.reservaId, reserva.id),
+          isNull(bloqueioVestidosTable.canceladoEm),
+        ));
+      const idsVinculados = vinculados.map((b) => b.id);
+
+      /**
+       * O degrau 5 — `contratos` —, com `FOR UPDATE` explícito e ORDENADO por
+       * id (dois contratos na mesma reserva tomados em ordens diferentes se
+       * serializariam em deadlock entre si).
+       *
+       * O E245 (B5) pôs no `PATCH /bloqueios` uma tranca em `contratos` ANTES
+       * do vestido e escreveu no comentário *"na ordem do módulo (contratos →
+       * bloqueios → vestidos)"*. Esta rota tomava as mesmas duas linhas na
+       * ordem INVERSA — `vestidos` com `FOR UPDATE` e `contratos` só pela
+       * tranca implícita do `UPDATE`. Mover a data de uma reserva e desfazer a
+       * retirada da MESMA peça no mesmo segundo davam **40P01 `deadlock
+       * detected`**, e uma das duas rotas caía com 500: qual delas morre é
+       * decisão do escalonador do Postgres, não do código. Ciclo não se
+       * conserta num lado só — o outro lado é `PATCH /bloqueios`, no mesmo
+       * commit.
+       */
+      const contratosDosBloqueios = idsVinculados.length > 0
+        ? await tx.select({
+            bloqueioId: contratoBloqueiosTable.bloqueioId,
+            contratoId: contratoBloqueiosTable.contratoId,
+          })
+            .from(contratoBloqueiosTable)
+            .where(inArray(contratoBloqueiosTable.bloqueioId, idsVinculados))
+        : [];
+      const idsDeContrato = [...new Set(contratosDosBloqueios.map((c) => c.contratoId))].sort();
+      const alvos = idsDeContrato.length > 0
+        ? await tx
+            .select({
+              id: contratosTable.id,
+              valorTotal: contratosTable.valorTotal,
+              reajustesDeData: contratosTable.reajustesDeData,
+              dataRetirada: contratosTable.dataRetirada,
+              dataDevolucao: contratosTable.dataDevolucao,
+            })
+            .from(contratosTable)
+            .where(and(
+              eq(contratosTable.status, "ATIVO"),
+              eq(contratosTable.lojaId, lojaId),
+              inArray(contratosTable.id, idsDeContrato),
+            ))
+            .orderBy(contratosTable.id)
+            .for("update")
+        : [];
+
+      /**
+       * O degrau 7 — `bloqueios` —, ORDENADO por id.
+       *
+       * R1 — a contagem de contratos ATIVOS que a S-M24 pôs no ramo CANCELADA
+       * rodava SEM tranca nas linhas de bloqueio. O `POST /contratos` tranca b1
+       * (`contratos.ts:543`) e commita no meio; o cancelamento, que já tinha
+       * lido zero, gravava `canceladoEm` por cima. **Medido:** contrato ATIVO
+       * de R$ 5.000,00 cobrando as 9 parcelas com o vestido solto de volta ao
+       * mercado — o bloqueio soft-cancelado sai da disponibilidade
+       * (`disponibilidade.ts:409`) E do EXCLUDE do banco (`WHERE cancelado_em
+       * IS NULL`), então outra noiva reserva a MESMA peça para a MESMA data. A
+       * ordem por id é a mesma do `POST /contratos`, porque as duas portas
+       * disputam as mesmas linhas.
+       *
+       * **E251/S-R8 — e o ramo da DATA passou a tomá-la também.** Ele escrevia
+       * em `bloqueio_vestidos` pela tranca implícita do `UPDATE`, depois do
+       * vestido: bloqueios (7) DEPOIS de vestidos (8), a ordem invertida em
+       * relação ao `PATCH /bloqueios` e ao `POST /contratos`.
+       */
+      for (const bloqueioId of [...idsVinculados].sort()) {
+        await tx.select({ id: bloqueioVestidosTable.id })
+          .from(bloqueioVestidosTable)
+          .where(eq(bloqueioVestidosTable.id, bloqueioId))
+          .for("update");
+      }
+
+      if (cancela) {
         /**
          * S-M24 (rodada 2, achado 6#2): esta porta soltava os vestidos de um
          * contrato ATIVO — os dois DELETEs contam o vínculo e recusam com 409,
@@ -354,35 +454,8 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
          * DELETEs roda aqui (dentro da transação, achado 3#7), e o
          * cancelamento deixa trilha — não deixava nenhuma.
          */
-        const bloqueiosDaReserva = await tx.select({ id: bloqueioVestidosTable.id })
-          .from(bloqueioVestidosTable)
-          .where(and(
-            eq(bloqueioVestidosTable.reservaId, reserva.id),
-            isNull(bloqueioVestidosTable.canceladoEm),
-          ));
+        const bloqueiosDaReserva = vinculados;
         if (bloqueiosDaReserva.length > 0) {
-          /**
-           * R1 — a contagem de contratos ATIVOS que a S-M24 pôs aqui rodava
-           * SEM tranca nas linhas de bloqueio.
-           *
-           * O `POST /contratos` tranca b1 (`contratos.ts:543`) e commita no
-           * meio; este cancelamento, que já tinha lido zero, grava
-           * `canceladoEm` por cima. **Medido:** contrato ATIVO de R$ 5.000,00
-           * cobrando as 9 parcelas com o vestido solto de volta ao mercado —
-           * o bloqueio soft-cancelado sai da disponibilidade
-           * (`disponibilidade.ts:409`) E do EXCLUDE do banco
-           * (`WHERE cancelado_em IS NULL`), então outra noiva reserva a MESMA
-           * peça para a MESMA data. A dupla promessa só aparece na retirada.
-           *
-           * A tranca vai ORDENADA por id — a mesma ordem do `POST /contratos`,
-           * porque as duas portas disputam as mesmas linhas.
-           */
-          for (const b of [...bloqueiosDaReserva].sort((x, y) => (x.id < y.id ? -1 : 1))) {
-            await tx.select({ id: bloqueioVestidosTable.id })
-              .from(bloqueioVestidosTable)
-              .where(eq(bloqueioVestidosTable.id, b.id))
-              .for("update");
-          }
           const presos = await tx.select({ contratoId: contratoBloqueiosTable.contratoId })
             .from(contratoBloqueiosTable)
             .innerJoin(contratosTable, eq(contratosTable.id, contratoBloqueiosTable.contratoId))
@@ -449,15 +522,42 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
         return { ok: true as const };
       }
 
+      // Reserva é a fonte da verdade da data operacional → propaga a nova data
+      // a todos os bloqueios vinculados (já lidos e trancados acima),
+      // revalidando cada um.
       if (dados.casamentoData === undefined) return { ok: true as const };
 
-      // Reserva é a fonte da verdade da data operacional → propaga a nova
-      // data a todos os bloqueios vinculados, revalidando cada um.
-      const vinculados = await tx.select().from(bloqueioVestidosTable)
-        .where(and(
-          eq(bloqueioVestidosTable.reservaId, reserva.id),
-          isNull(bloqueioVestidosTable.canceladoEm),
-        ));
+      /**
+       * **E251/S-RM1 — o papel novo entra na conta ANTES do 409, não depois.**
+       *
+       * Desde o E249/S-R3, `fimUsoPrevisto` da disponibilidade é
+       * `fimPrevistoDaDevolucao` — e o papel do E224 anda para a frente até dia
+       * de expediente, logo é **≥ `casamento + usoDiasDepois`**. Esta rota
+       * validava o candidato pela JANELA e, dez linhas abaixo, gravava um papel
+       * que podia ir dois dias além: **casamento sábado, janela até segunda
+       * (que a 4ª fecha), papel na terça — e a terça ficava ocupada por uma
+       * escrita que o 409 nunca viu.** Outra noiva com a peça reservada para
+       * aquela terça descobria o choque na retirada.
+       *
+       * O papel é calculado aqui, uma vez para os N contratos (a régua da loja
+       * é uma linha só — ler por contrato seria a S-C280 de volta), e desce
+       * DENTRO do candidato em `dataDevolucaoDoPapel`. Assim a disponibilidade
+       * mede exatamente os dias que a escrita vai ocupar.
+       */
+      const papel = alvos.some((c) => c.dataRetirada || c.dataDevolucao)
+        ? await papelParaOCasamentoNovo(lojaId, diaDeNegocio(dados.casamentoData), tx)
+        : null;
+      const novasPorContrato = new Map(
+        alvos.map((c) => [c.id, papel?.datasDe(c) ?? null] as const),
+      );
+      // O bloqueio herda o papel do contrato ATIVO que o prende. Bloqueio sem
+      // contrato ATIVO não tem papel — e ausente é a resposta certa: vale a
+      // janela, que é o que a `BloqueioJanelasInput` documenta.
+      const papelDoBloqueio = new Map<string, Date>();
+      for (const v of contratosDosBloqueios) {
+        const novas = novasPorContrato.get(v.contratoId);
+        if (novas?.dataDevolucao) papelDoBloqueio.set(v.bloqueioId, novas.dataDevolucao);
+      }
 
       /**
        * R3 — a propagação de data revalidava SEM `FOR UPDATE` no vestido.
@@ -490,6 +590,10 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
           lavagemConcluidaEm: bloqueio.lavagemConcluidaEm,
           inicio: bloqueio.inicio,
           fim: bloqueio.fim,
+          // E251/S-RM1: os dias que a escrita vai ocupar, e não os que a janela
+          // ocuparia — o papel é o que manda na 16ª desde o E244 e na janela
+          // física desde o E249.
+          dataDevolucaoDoPapel: papelDoBloqueio.get(bloqueio.id) ?? null,
         };
         const resultado = await verificarDisponibilidade({
           lojaId,
@@ -561,40 +665,17 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
        * escritas seria uma PORTA a mais em `contratos` para a varredura do
        * E171 contar, e a segunda nasceria ABERTA. A leitura vem antes, e cada
        * contrato recebe as três colunas de uma vez.
+       *
+       * **E251/S-R8 — e a leitura subiu ainda mais.** `alvos` e `papel` são
+       * lidos lá em cima, antes dos bloqueios e do vestido, porque a tranca de
+       * `contratos` tem de vir ANTES da de `vestidos` (a ordem do E159) e
+       * porque a disponibilidade precisa do papel novo para medir os dias que
+       * esta escrita vai ocupar (S-RM1). Aqui sobrou a ESCRITA.
        */
-      const idsVinculados = vinculados.map((b) => b.id);
-      const alvos = idsVinculados.length > 0
-        ? await tx
-            .select({
-              id: contratosTable.id,
-              valorTotal: contratosTable.valorTotal,
-              reajustesDeData: contratosTable.reajustesDeData,
-              dataRetirada: contratosTable.dataRetirada,
-              dataDevolucao: contratosTable.dataDevolucao,
-            })
-            .from(contratosTable)
-            .where(and(
-              eq(contratosTable.status, "ATIVO"),
-              eq(contratosTable.lojaId, lojaId),
-              inArray(
-                contratosTable.id,
-                tx.select({ id: contratoBloqueiosTable.contratoId })
-                  .from(contratoBloqueiosTable)
-                  .where(inArray(contratoBloqueiosTable.bloqueioId, idsVinculados)),
-              ),
-            ))
-        : [];
-
-      // A régua da loja lida UMA vez para os N contratos: ler por contrato
-      // seria a S-C280 de volta, a consulta por linha que o E244 desfez.
-      const papel = alvos.some((c) => c.dataRetirada || c.dataDevolucao)
-        ? await papelParaOCasamentoNovo(lojaId, diaDeNegocio(dados.casamentoData), tx)
-        : null;
-
       const contratosAtualizados: typeof alvos = [];
       const papelMovido: { contratoId: string; retirada: string | null; devolucao: string | null }[] = [];
       for (const contrato of alvos) {
-        const novas = papel?.datasDe(contrato) ?? null;
+        const novas = novasPorContrato.get(contrato.id) ?? null;
         await tx.update(contratosTable)
           .set({ dataCasamento: dados.casamentoData, ...(novas ?? {}), updatedAt: new Date() })
           .where(and(
@@ -1363,6 +1444,24 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
     if (desfazARetirada && (await atrasoCobradoSobreEstaRetirada(tx, true))) {
       return { atrasoCobrado: true as const };
     }
+    /**
+     * **E251/S-R8 — o degrau que faltava entre o contrato e o vestido.**
+     *
+     * O comentário do E245 acima diz *"na ordem do módulo (contratos →
+     * bloqueios → vestidos)"* e o código fazia contratos → **vestidos** →
+     * bloqueios: a tranca do bloqueio só existia implícita, no `UPDATE` do fim.
+     * Do outro lado, o `PATCH /reservas` tomava `vestidos` antes de
+     * `contratos` — ordens inversas nas mesmas duas linhas, **40P01**, uma das
+     * duas rotas caindo com 500. Ciclo não se conserta num lado só: as duas
+     * portas passaram a obedecer a ordem que o E159 declara no topo deste
+     * arquivo, e esta linha é a metade daqui.
+     *
+     * A tranca é do bloqueio ALVO, um só — a rota edita um. Ordenar não faz
+     * sentido para um elemento; a ordem que importa é a das TABELAS.
+     */
+    await tx.select({ id: bloqueioVestidosTable.id }).from(bloqueioVestidosTable)
+      .where(and(eq(bloqueioVestidosTable.id, bloqueioId), eq(bloqueioVestidosTable.lojaId, lojaId)))
+      .for("update");
     let regra;
     if (mudouJanelas) {
       await tx.select({ id: vestidosTable.id }).from(vestidosTable)
@@ -2942,30 +3041,17 @@ router.post(
       return;
     }
 
-    const { pecas, semAluguel } = await pecasAtrasadasDoContrato(contratoId, lojaId);
-    const cobranca = cobrancaDoAtraso(pecas);
-    if (!cobranca) {
-      // Peça atrasada que não está no rol é o único caso em que "sem conta" não
-      // significa "sem atraso" — e dizer só `SEM_ATRASO` esconderia o defeito de
-      // cadastro atrás de uma resposta tranquilizadora.
-      if (semAluguel.length > 0) {
-        res.status(422).json({
-          error: "ATRASO_SEM_ALUGUEL",
-          detalhe:
-            `${semAluguel.join(", ")} — esta(s) peça(s) atrasou(aram) e não está(ão) no rol de itens ` +
-            "do contrato. A cláusula 16ª cobra sobre o aluguel de cada peça, e não há de onde tirá-lo.",
-        });
-        return;
-      }
-      res.status(422).json({
-        error: "SEM_ATRASO",
-        detalhe: "Nenhuma peça deste contrato passou da data prevista de devolução",
-      });
-      return;
-    }
-
     const parcelaId = randomUUID();
-    const desfecho = await db.transaction(async (tx) => {
+    /**
+     * Os quatro desfechos possíveis, nomeados: sem o tipo explícito o TS funde
+     * os ramos num objeto de campos opcionais e o `in` deixa de estreitar.
+     */
+    type DesfechoDaCobranca =
+      | { contratoNaoAtivo: true }
+      | { jaCobrada: true }
+      | { semCobranca: true; pecasSemAluguel: string[] }
+      | { cobranca: NonNullable<ReturnType<typeof cobrancaDoAtraso>>; semAluguel: string[] };
+    const desfecho: DesfechoDaCobranca = await db.transaction(async (tx): Promise<DesfechoDaCobranca> => {
       /**
        * **E245 (B1) — a tranca que a avaria ganhou no E159 e o E212 não copiou.**
        *
@@ -2991,6 +3077,30 @@ router.post(
       if (sobTranca.atrasoParcelaId && (await cobrancaViva(sobTranca.atrasoParcelaId, tx))) {
         throw new AtrasoJaCobrado();
       }
+
+      /**
+       * **E251/S-R10 — a tranca relia o ESTADO e não o VALOR.**
+       *
+       * O E245 (B1) trancou o contrato e releu `status` e `atrasoParcelaId`; a
+       * CONTA continuava vindo de um `pecasAtrasadasDoContrato` lido no POOL,
+       * antes da transação. É a única cobrança do sistema cujo valor depende do
+       * dia — uma diária por dia por peça —, e os fatos de que ela depende
+       * (`devolucaoDataReal`, `retiradaDataReal`, `contratos.data_devolucao`)
+       * mudam por outras portas no mesmo segundo.
+       *
+       * **Medido:** uma peça de R$ 3.000,00 (diária R$ 500,00) fora há 8 dias.
+       * A loja registra a devolução de ontem enquanto a dona clica em cobrar: a
+       * parcela nascia com **R$ 4.250,00** (8 × R$ 500,00 + R$ 250,00 da multa
+       * do §1º) sobre um atraso que já é de 7 — **R$ 500,00 cobrados a mais**,
+       * numa parcela que o carnê e o portal imprimem com a conta por extenso.
+       *
+       * A conta agora roda com o `tx`, DEPOIS da tranca: quem registrar a
+       * devolução na janela ou espera a transação, ou já commitou e a conta o
+       * enxerga. Uma leitura só, e é a que decide o número gravado.
+       */
+      const { pecas, semAluguel } = await pecasAtrasadasDoContrato(contratoId, lojaId, tx);
+      const cobranca = cobrancaDoAtraso(pecas);
+      if (!cobranca) return { semCobranca: true as const, pecasSemAluguel: semAluguel };
 
       // Mesma conta da rota irmã do E97: `numero: 0` é a ENTRADA do carnê, e
       // com `unique(contratoId, numero)` um zero fixo devolveria
@@ -3069,8 +3179,10 @@ router.post(
           semAluguel,
         },
       });
-      return { ok: true as const };
-    }).catch((err) => {
+      // E251/S-R10: a conta que a resposta imprime é a MESMA que a parcela
+      // gravou — ela sobe de dentro da transação, e não de uma leitura de fora.
+      return { cobranca, semAluguel };
+    }).catch((err): DesfechoDaCobranca => {
       if (err instanceof AtrasoJaCobrado) return { jaCobrada: true as const };
       throw err;
     });
@@ -3087,13 +3199,32 @@ router.post(
       });
       return;
     }
+    if ("semCobranca" in desfecho) {
+      // Peça atrasada que não está no rol é o único caso em que "sem conta" não
+      // significa "sem atraso" — e dizer só `SEM_ATRASO` esconderia o defeito de
+      // cadastro atrás de uma resposta tranquilizadora.
+      if (desfecho.pecasSemAluguel.length > 0) {
+        res.status(422).json({
+          error: "ATRASO_SEM_ALUGUEL",
+          detalhe:
+            `${desfecho.pecasSemAluguel.join(", ")} — esta(s) peça(s) atrasou(aram) e não está(ão) no rol de itens ` +
+            "do contrato. A cláusula 16ª cobra sobre o aluguel de cada peça, e não há de onde tirá-lo.",
+        });
+        return;
+      }
+      res.status(422).json({
+        error: "SEM_ATRASO",
+        detalhe: "Nenhuma peça deste contrato passou da data prevista de devolução",
+      });
+      return;
+    }
 
     // S-C89: `jaCobrada` é uma coluna da fila — a cobrança recém-nascida tem
     // de aparecer no próximo GET, não daqui a 5 min.
     derrubarFilaDeAtrasos(lojaId);
     res.status(201).json(
       CobrarAtrasoDaDevolucaoResponse.parse(
-        envelopeDoAtraso(cobranca, semAluguel, { jaCobrada: true, parcelaId }),
+        envelopeDoAtraso(desfecho.cobranca, desfecho.semAluguel, { jaCobrada: true, parcelaId }),
       ),
     );
   },

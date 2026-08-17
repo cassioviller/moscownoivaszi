@@ -240,7 +240,29 @@ const sitio = (p: Porta): string => `${p.arquivo}:${p.linha} ${p.verbo}(${p.tabe
  */
 // E245: 43/14/15 → 45/13/14 — a cobrança do atraso (B1) sai de CAS para TRANCA
 // e o nascimento dela sai da dívida; o reabrir (A5=B2) ganha a segunda tranca.
-const RETRATO = { TRANCA: 45, CAS: 13, ABERTA: 14 } as const;
+/**
+ * **E251: 45/13/14 → 50/10/12.** O total continua 72 — nenhuma porta nasceu ou
+ * morreu; cinco mudaram de disciplina, e as cinco pelo mesmo gesto (decidir sob
+ * a tranca da linha em vez de por CAS sobre o que se leu no pool).
+ *
+ * **Três de CAS para TRANCA:**
+ * - `contratos.ts`, o `perdoar-mora` (S-R4): o CAS incluía `status`, e um
+ *   recebimento PARCIAL concorrente o fazia casar zero linhas — a rota
+ *   respondia **200 sem gravar nada**. Agora a parcela é trancada e a guarda
+ *   `SEM_MORA` é reperguntada sob ela.
+ * - `financeiro.ts`, o carimbo DERIVADO da conciliação (S-R11): as parcelas
+ *   tocadas passam por `FOR UPDATE` ordenado antes de a trilha ser lida, e a
+ *   trilha é lida pelo `tx`.
+ * - `reservas.ts`, a propagação de `dataCasamento` do `PATCH /reservas`
+ *   (S-R8): o `status = ATIVO` do `where` continua lá, e agora há tranca.
+ *
+ * **Duas de ABERTA para TRANCA**, as duas em `reservas.ts` e as duas de
+ * brinde da mesma subida (S-R8): o `UPDATE contratos SET reajustes_de_data` da
+ * cláusula 17ª e o `INSERT` da parcela de `REAJUSTE_DATA` passam a correr sob
+ * a tranca dos contratos que o épico moveu para antes do vestido. A dívida de
+ * `reservas.ts` cai de 3 para 1 — sobra o nascimento do `POST /reservas`.
+ */
+const RETRATO = { TRANCA: 50, CAS: 10, ABERTA: 12 } as const;
 
 /**
  * O retrato da ORDEM, travado pelo mesmo critério — e é ele que estava 1 e 2
@@ -280,7 +302,36 @@ const RETRATO = { TRANCA: 45, CAS: 13, ABERTA: 14 } as const;
  */
 // E245: 30/45 → 31/47 — a transação da cobrança do atraso passa a trancar (B1),
 // e o reabrir do fechamento tranca a linha-alvo antes de ler os posteriores (A5=B2).
-const RETRATO_DA_ORDEM = { transacoes: 31, trancas: 47 } as const;
+/**
+ * **E251: 31/47 → 33/51.** Duas transações que não trancavam passam a trancar —
+ * o `perdoar-mora` (S-R4) e o carimbo derivado da conciliação (S-R11), as duas
+ * decidindo hoje sob a tranca da própria linha.
+ *
+ * As quatro trancas a mais são **cinco novas menos uma que saiu**:
+ * `contratos` no `PATCH /reservas` (S-R8, o degrau 5 antes do 8), o laço
+ * ordenado de `bloqueios` do mesmo `PATCH /reservas` — que substitui o laço do
+ * ramo CANCELADA, agora único para os dois ramos, e é a que saiu —, o bloqueio
+ * alvo do `PATCH /bloqueios` (S-R8, a metade de lá do ciclo), a parcela do
+ * `perdoar-mora` e as parcelas da conciliação.
+ *
+ * **E é aqui que a régua da ORDEM pagou o próprio preço.** A primeira versão
+ * deste épico deixou o laço de bloqueios do ramo CANCELADA onde estava e pôs a
+ * tranca de `contratos` só no ramo da data; estaticamente o arquivo passou a
+ * ler *bloqueios (7) e depois contratos (5)*, e a varredura cobrou com o
+ * sítio na frente:
+ *
+ *     "artifacts/api-server/src/routes/reservas.ts:491 tranca contratosTable
+ *      (degrau 5) DEPOIS de bloqueioVestidosTable (degrau 7), na transação de
+ *      artifacts/api-server/src/routes/reservas.ts:313"
+ *
+ * Os dois ramos são excludentes e o deadlock não seria possível — mas a régua
+ * está certa em cobrar: quem lê o arquivo lê a mesma armadilha, e o ramo
+ * seguinte que precisasse das duas herdaria a ordem errada. O conserto foi
+ * hoistar a leitura dos bloqueios (que era a MESMA consulta escrita duas
+ * vezes) e as duas trancas para antes do `if`, de modo que os dois ramos
+ * tomem as mesmas linhas na mesma ordem.
+ */
+const RETRATO_DA_ORDEM = { transacoes: 33, trancas: 51 } as const;
 
 /**
  * A dívida reconhecida: as portas que hoje não são TRANCA nem CAS.
@@ -441,8 +492,20 @@ const SEM_DISCIPLINA: Record<string, number> = {
    * o `INSERT` da parcela passou a nascer sob ela: deixa de ser nascimento
    * solto e sai desta lista. A transação inteira mede TRANCA agora (o CAS do
    * `atraso_parcela_id` continua lá, relendo status também).
+   *
+   * **De 3 para 1 no E251 (S-R8)**, e as duas de brinde: o `PATCH /reservas`
+   * passou a trancar os `contratos` da reserva ANTES dos bloqueios e do
+   * vestido — porque a ordem inversa fazia ciclo ABBA com o `PATCH /bloqueios`
+   * —, e as duas escritas da cláusula 17ª que corriam soltas debaixo dessa
+   * leitura passaram a correr sob a tranca: o `UPDATE contratos SET
+   * reajustes_de_data` e o `INSERT` da parcela de `REAJUSTE_DATA`. Nenhuma das
+   * duas foi o alvo do épico; as duas eram nascimento solto na mesma
+   * transação, e o conserto da ordem as alcançou de graça.
+   *
+   * **O 1 que resta é o nascimento do `POST /reservas`** (`:250`) — a reserva
+   * nasce, e não há linha anterior para trancar.
    */
-  "artifacts/api-server/src/routes/reservas.ts": 3,
+  "artifacts/api-server/src/routes/reservas.ts": 1,
   // Era 6; a sétima é o carnê (`:525`), que só ficou visível quando `parcelas`
   // virou tabela quente no E180. Mesma família das outras seis, mesmo veredito.
   "scripts/loja-de-demonstracao.ts": 7,
@@ -1311,7 +1374,7 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
     expect(hoje).toEqual(SEM_DISCIPLINA);
   });
 
-  it("o total da dívida é 14 — 7 de nascimento/serialização implícita e 7 do gerador da demo (as 2 da S-O120 fecharam; a do atraso, no E245)", () => {
+  it("o total da dívida é 12 — 5 de nascimento/serialização implícita e 7 do gerador da demo (as 2 da cláusula 17ª fecharam no E251)", () => {
     expect(abertas.length).toBe(TOTAL_SEM_DISCIPLINA);
     expect(Object.values(SEM_DISCIPLINA).reduce((s, n) => s + n, 0)).toBe(TOTAL_SEM_DISCIPLINA);
   });
@@ -1339,7 +1402,7 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
    * - **8 → 11 por CAS** é drift ANTERIOR, medido pela S-C11 e não causado por
    *   ela: os pisos eram `>=` e ninguém os subiu depois do E212 e do E213.
    */
-  it("e o censo das disciplinas é o retrato — 45 TRANCA · 13 CAS · 14 ABERTA", () => {
+  it("e o censo das disciplinas é o retrato — 50 TRANCA · 10 CAS · 12 ABERTA", () => {
     const conta = { TRANCA: 0, CAS: 0, ABERTA: 0 };
     for (const p of portas) conta[p.disciplina] += 1;
     expect(conta).toEqual(RETRATO);
@@ -1396,7 +1459,7 @@ describe("varredura — as trancas sobem a cadeia, e nunca descem", () => {
    * commit sobre as quatro pastas varridas. É o caso vivo da S-C46: *piso não
    * obriga a remedir, e a prosa envelhece calada.*
    */
-  it("olha para as transações de verdade — 31 transações trancam, e são 47 trancas", () => {
+  it("olha para as transações de verdade — 33 transações trancam, e são 51 trancas", () => {
     const porTransacao = trancasPorTransacao();
     expect({
       transacoes: porTransacao.size,

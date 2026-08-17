@@ -113,6 +113,26 @@ import { relogio } from "../lib/relogio";
 
 const router: IRouter = Router();
 
+/**
+ * E251/S-R13 — a recusa da qualificação, escrita UMA vez.
+ *
+ * O `POST /contratos` faz a mesma pergunta duas vezes de propósito: a guarda
+ * rápida no pool (o 422 completo sem custo de transação) e a releitura sob a
+ * tranca do lead, que é a última palavra. Duas grafias da mesma frase seriam a
+ * regra 26 na letra — e a que divergisse seria a de dentro, que quase nunca
+ * roda.
+ */
+function recusaDeQualificacao(faltas: { campo: string; motivo: string }[]) {
+  return {
+    error: "QUALIFICACAO_INCOMPLETA",
+    detalhe:
+      "O contrato qualifica quem assina, e a ficha da noiva ainda não tem " +
+      `${faltas.length === 1 ? "um dado" : `${faltas.length} dados`}. ` +
+      "Complete a ficha e feche o contrato em seguida.",
+    campos: faltas,
+  };
+}
+
 router.use(requireSessaoComLoja);
 /**
  * E172/S-O40 — o contrato tem módulo próprio desde 2026-08-12.
@@ -312,11 +332,7 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
    */
   const faltas = faltasDaQualificacao(lead);
   if (faltas.length > 0) {
-    res.status(422).json({
-      error: "QUALIFICACAO_INCOMPLETA",
-      detalhe: `O contrato qualifica quem assina, e a ficha da noiva ainda não tem ${faltas.length === 1 ? "um dado" : `${faltas.length} dados`}. Complete a ficha e feche o contrato em seguida.`,
-      campos: faltas,
-    });
+    res.status(422).json(recusaDeQualificacao(faltas));
     return;
   }
 
@@ -751,10 +767,28 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       });
       return;
     }
+    /**
+     * **E251/S-RM1 — o papel que este contrato vai imprimir entra na conta.**
+     *
+     * `dataDevolucao` vem da sugestão da tela (E224), que empurra a devolução
+     * para a frente até dia de expediente da 4ª: ela é **≥ `casamento +
+     * usoDiasDepois`**. Desde o E249/S-R3 é ela, e não a janela, que decide até
+     * quando a peça está ocupada — e esta porta gravava o campo sem consultar
+     * disponibilidade nenhuma, medindo o candidato pela janela curta.
+     *
+     * **Medido:** casamento sábado 12/09, `usoDiasDepois = 2` → janela até
+     * segunda 14/09, que a 4ª fecha → o papel imprime **terça 15/09**. Outra
+     * noiva com a peça reservada a partir de 15/09 não conflitava com nada, e o
+     * choque das duas só aparecia na retirada. Com o papel dentro do candidato,
+     * a mesma cena responde **409 `VESTIDO_INDISPONIVEL`**.
+     *
+     * Sem `dataDevolucao` no corpo, `null` — e `null` é a resposta certa: sem
+     * papel vale a janela, que é o que a `BloqueioJanelasInput` documenta.
+     */
     const resultado = await verificarDisponibilidade({
       lojaId,
       vestidoId: bloqueio.vestidoId,
-      candidato: bloqueio,
+      candidato: { ...bloqueio, dataDevolucaoDoPapel: contratoData.dataDevolucao ?? null },
       ignorarBloqueioId: bloqueio.id,
       hoje: new Date(),
     });
@@ -853,7 +887,20 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
   }
 
   // Persistência atômica: contrato + parcelas + snapshot de itens.
-  const result = await db.transaction(async (tx) => {
+  /**
+   * Os desfechos da transação do fecho, nomeados. Sem o tipo explícito o TS
+   * funde os ramos num objeto de campos opcionais, e o `in` de baixo deixa de
+   * estreitar — o que só aparece quando um ramo carrega PAYLOAD, como o
+   * `faltas` da qualificação relida sob a tranca (E251/S-R13).
+   */
+  type DesfechoDoFecho =
+    | { leadSumiu: true }
+    | { qualificacaoIncompleta: true; faltas: { campo: string; motivo: string }[] }
+    | { duplicado: true }
+    | { reservaMorreu: true }
+    | { corrida: true }
+    | { contrato: typeof contratosTable.$inferSelect };
+  const result: DesfechoDoFecho = await db.transaction(async (tx): Promise<DesfechoDoFecho> => {
     /**
      * E158 — A ORDEM DAS TRANCAS DO MÓDULO, escrita uma vez:
      *
@@ -888,6 +935,27 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       .where(and(eq(leadsTable.id, contratoData.leadId), eq(leadsTable.lojaId, lojaId)))
       .for("update");
     if (!leadSobTranca) return { leadSumiu: true as const };
+    /**
+     * **E251/S-R13 — validação e snapshot voltam a ser o MESMO objeto.**
+     *
+     * O E245 (B8) mandou a qualificação CONGELAR do lead sob a tranca, e com
+     * razão: o CPF que a recepção corrigiu na janela entrava velho no papel. Só
+     * que a guarda `QUALIFICACAO_INCOMPLETA` (`:313`) ficou lendo o lead do
+     * POOL — a porta conferia uma ficha e congelava outra. **Medido:** a
+     * recepção APAGA o CPF entre a guarda e a tranca e o contrato nasce ATIVO
+     * com `cpf: null` congelado, sem que a régua do E215 tenha dito uma
+     * palavra; o instrumento imprime a linha de qualificação em branco nos dois
+     * lugares em que ela aparece.
+     *
+     * A pergunta é reperguntada sobre o que a tranca leu, com a MESMA função —
+     * a guarda de cima FICA porque dá o 422 completo sem custo de transação
+     * para o caminho errado, e deixa de ser a última palavra (o idioma do
+     * K2/K3 e do R4/V10 do `PATCH /reservas`).
+     */
+    const faltasSobTranca = faltasDaQualificacao(leadSobTranca);
+    if (faltasSobTranca.length > 0) {
+      return { qualificacaoIncompleta: true as const, faltas: faltasSobTranca };
+    }
     const [ativoAgora] = await tx.select({ id: contratosTable.id }).from(contratosTable)
       .where(and(
         eq(contratosTable.leadId, contratoData.leadId),
@@ -1120,21 +1188,32 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
      * vira CONTRATO_FECHADO e os carimbos de perda são limpos — a história da
      * perda continua na trilha de auditoria, que é onde história mora.
      */
-    const voltouDoPerdido = lead.etapa === "PERDIDO";
+    /**
+     * **E251/S-R13 — e este bookkeeping lia o lead do POOL.**
+     *
+     * `lead` foi lido em `:278`, fora da transação. A noiva marcada PERDIDA na
+     * janela entrava aqui como `etapa` antiga: `voltouDoPerdido` era `false`, a
+     * limpeza dos carimbos não rodava, e o contrato commitava com a etapa em
+     * `CONTRATO_FECHADO` E `perdida_em` preenchido — o estado exato que a
+     * S-M24 existe para impedir, com a noiva entrando na janela do expurgo LGPD
+     * com contrato ATIVO. `leadSobTranca` é o mesmo objeto que a guarda
+     * reperguntou e que a qualificação congelou.
+     */
+    const voltouDoPerdido = leadSobTranca.etapa === "PERDIDO";
     const etapaNova = voltouDoPerdido
       ? ("CONTRATO_FECHADO" as const)
-      : avancarEtapaLead(lead.etapa, "CONTRATO_FECHADO");
-    if (etapaNova !== lead.etapa || !lead.contratoFechadoEm) {
+      : avancarEtapaLead(leadSobTranca.etapa, "CONTRATO_FECHADO");
+    if (etapaNova !== leadSobTranca.etapa || !leadSobTranca.contratoFechadoEm) {
       await tx.update(leadsTable)
         .set({
           etapa: etapaNova,
-          contratoFechadoEm: lead.contratoFechadoEm ?? new Date(),
+          contratoFechadoEm: leadSobTranca.contratoFechadoEm ?? new Date(),
           ...(voltouDoPerdido
             ? { perdidaEm: null, perdidaMotivo: null, perdidaDetalhe: null }
             : {}),
           updatedAt: new Date(),
         })
-        .where(eq(leadsTable.id, lead.id));
+        .where(eq(leadsTable.id, leadSobTranca.id));
     }
 
     return { contrato };
@@ -1151,6 +1230,12 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
   // 422 da guarda lenta (`:295`).
   if ("leadSumiu" in result) {
     res.status(422).json({ error: "LEAD_INVALIDO", detalhe: "Lead não encontrado nesta loja" });
+    return;
+  }
+  // E251/S-R13: a ficha perdeu um dado obrigatório entre a guarda de cima e a
+  // tranca — o MESMO 422 da guarda lenta, pela MESMA frase.
+  if ("qualificacaoIncompleta" in result) {
+    res.status(422).json(recusaDeQualificacao(result.faltas));
     return;
   }
 
@@ -2913,47 +2998,57 @@ router.post(
       res.status(400).json(erroDeValidacao(parsed.error));
       return;
     }
-    const [existente] = await db.select().from(parcelasTable)
-      .where(and(eq(parcelasTable.id, parcelaId), eq(parcelasTable.lojaId, lojaId)));
-    if (!existente) {
-      res.status(404).json({ error: "PARCELA_NAO_ENCONTRADA", detalhe: "Esta parcela não existe nesta loja." });
-      return;
-    }
-    /**
-     * Perdoar o que não é devido não é inofensivo: gravaria um selo permanente
-     * de "multa perdoada" numa parcela em dia, e a próxima leitura acreditaria
-     * que houve uma dívida que nunca existiu. A régua é a mesma que a conta usa
-     * — `moraDe` com o perdão IGNORADO, senão o segundo clique se
-     * autoconfirmaria.
-     */
     const ipcaPerdao = await ipcaDaLoja(lojaId as string); // P4
-    if (moraDe({ ...existente, moraPerdoadaEm: null }, ipcaPerdao) === null) {
-      res.status(422).json({
-        error: "SEM_MORA",
-        detalhe: "Esta parcela não está vencida com saldo em aberto — não há multa nem juros a perdoar.",
-      });
-      return;
-    }
-
     const motivo = parsed.data.motivo.trim();
     const perdoadaEm = new Date();
-    const atualizada = await db.transaction(async (tx) => {
-      // CAS: a escrita repete a condição LIDA (`mora_perdoada_em IS NULL`).
-      // Dois cliques no mesmo segundo — o que acontece quando a rede demora —
-      // gravariam dois perdões e duas linhas de trilha para uma decisão.
+    /**
+     * **E251/S-R4 — o CAS do E245 criou um 200 que MENTE, e a tranca o desfaz.**
+     *
+     * O E245 (B3) pôs `status` no CAS do perdão, com razão: perdoar uma parcela
+     * que o recebimento quitou no meio carimbaria uma parcela PAGA. Só que o
+     * CAS falha para QUALQUER mudança de status, e o recebimento PARCIAL é uma
+     * delas — `PENDENTE`/`ATRASADA` vira `PARCIAL` com saldo ainda em aberto. O
+     * UPDATE casava 0 linhas, o fallback só devolvia 422 quando `moraDe` era
+     * `null`, e com saldo vivo ele caía no `res.json(200)`: **a tela toastava
+     * "Multa e juros perdoados", nada era gravado, não nascia linha
+     * `MORA_PERDOADA` na trilha, e a noiva seguia sendo cobrada.** Medido:
+     * parcela de R$ 500,00 vencida há 30 dias, R$ 15,00 de acréscimo; a
+     * recepção lança R$ 100,00 no mesmo segundo; a dona lê 200 e os R$ 15,00
+     * continuam no carnê.
+     *
+     * O conserto é a régua deste épico: **decidir sob a tranca da linha, não
+     * por CAS sobre o que se leu no pool.** O `SELECT … FOR UPDATE` serializa
+     * com o `UPDATE` do `POST /receber` (que toma a mesma linha), a guarda
+     * `SEM_MORA` é reperguntada sobre o que a tranca leu e a escrita passa a
+     * ser sobre um estado que ninguém pode mais mudar. Uma grafia da guarda em
+     * vez de três (regra 26): a de cima, a do CAS e a do fallback eram a mesma
+     * pergunta escrita de três jeitos, e a do fallback é que estava errada.
+     */
+    const desfecho = await db.transaction(async (tx) => {
+      const [sobTranca] = await tx.select().from(parcelasTable)
+        .where(and(eq(parcelasTable.id, parcelaId), eq(parcelasTable.lojaId, lojaId)))
+        .for("update");
+      if (!sobTranca) return { naoExiste: true as const };
+      /**
+       * Duplo clique: o perdão já está de pé e o estado final É o pedido —
+       * devolver a parcela como está é a resposta certa, e gravar de novo
+       * daria dois perdões e duas linhas de trilha para uma decisão.
+       */
+      if (sobTranca.moraPerdoadaEm) return { linha: sobTranca };
+      /**
+       * Perdoar o que não é devido não é inofensivo: gravaria um selo
+       * permanente de "multa perdoada" numa parcela em dia, e a próxima leitura
+       * acreditaria que houve uma dívida que nunca existiu. A régua é a mesma
+       * que a conta usa — `moraDe` com o perdão IGNORADO, senão o segundo
+       * clique se autoconfirmaria.
+       */
+      const mora = moraDe({ ...sobTranca, moraPerdoadaEm: null }, ipcaPerdao);
+      if (mora === null) return { semMora: true as const };
+
       const [linha] = await tx.update(parcelasTable)
         .set({ moraPerdoadaEm: perdoadaEm, moraPerdoadaMotivo: motivo })
-        .where(and(
-          eq(parcelasTable.id, parcelaId),
-          eq(parcelasTable.lojaId, lojaId),
-          isNull(parcelasTable.moraPerdoadaEm),
-          // E245 (B3): e o STATUS lido — a guarda `SEM_MORA` acima decidiu
-          // sobre uma parcela aberta; se o recebimento passou no meio e a
-          // quitou, perdoar carimbaria uma parcela PAGA.
-          eq(parcelasTable.status, existente.status),
-        ))
+        .where(eq(parcelasTable.id, parcelaId))
         .returning();
-      if (!linha) return null;
       await registrarAuditoria(tx, {
         lojaId,
         usuario: req.usuario!,
@@ -2961,33 +3056,27 @@ router.post(
         entidade: "parcela",
         entidadeId: parcelaId,
         detalhe: {
-          contratoId: existente.contratoId,
+          contratoId: sobTranca.contratoId,
           motivo,
           // O acréscimo do DIA do perdão: ele cresce, então o número que a
           // decisão dispensou só existe aqui.
-          acrescimoDispensado: moraDe({ ...existente, moraPerdoadaEm: null }, ipcaPerdao)?.acrescimo ?? 0,
+          acrescimoDispensado: mora.acrescimo,
         },
       });
-      return linha;
+      return { linha: linha! };
     });
-    if (!atualizada) {
-      // Perdeu a corrida do duplo clique: o perdão já está de pé, e devolver a
-      // parcela como está é a resposta certa — o estado final é o pedido.
-      const [linha] = await db.select().from(parcelasTable).where(eq(parcelasTable.id, parcelaId));
-      // E245 (B3): ou perdeu para o RECEBIMENTO — a parcela quitou no meio e já
-      // não há mora a perdoar. Aí o estado final NÃO é o pedido, e a resposta é
-      // a mesma que a guarda de cima daria agora.
-      if (linha && !linha.moraPerdoadaEm && moraDe({ ...linha, moraPerdoadaEm: null }, ipcaPerdao) === null) {
-        res.status(422).json({
-          error: "SEM_MORA",
-          detalhe: "Esta parcela não está vencida com saldo em aberto — não há multa nem juros a perdoar.",
-        });
-        return;
-      }
-      res.json(PerdoarMoraResponse.parse(await comOContratoDela(linha!)));
+    if ("naoExiste" in desfecho) {
+      res.status(404).json({ error: "PARCELA_NAO_ENCONTRADA", detalhe: "Esta parcela não existe nesta loja." });
       return;
     }
-    res.json(PerdoarMoraResponse.parse(await comOContratoDela(atualizada)));
+    if ("semMora" in desfecho) {
+      res.status(422).json({
+        error: "SEM_MORA",
+        detalhe: "Esta parcela não está vencida com saldo em aberto — não há multa nem juros a perdoar.",
+      });
+      return;
+    }
+    res.json(PerdoarMoraResponse.parse(await comOContratoDela(desfecho.linha)));
   },
 );
 

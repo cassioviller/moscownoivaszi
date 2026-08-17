@@ -3,6 +3,7 @@ import { and, eq, gte, inArray, isNotNull, lt, or, sql } from "drizzle-orm";
 import { addDias, inicioDoDia } from "@workspace/financeiro-core";
 import type { LinhaDaTrilha } from "./recibo-do-papel";
 import { porRecebimento, type ParcelaDoCaixa } from "./recebimentos-do-caixa";
+import type { DbExecutor } from "./disponibilidade";
 
 /**
  * E221 — as linhas de trilha que o recibo lê, num tiro só.
@@ -26,8 +27,9 @@ export async function trilhaDosRecibos(
   lojaId: string,
   contratoId: string,
   parcelaIds: string[],
+  executor: DbExecutor = db,
 ): Promise<LinhaDaTrilha[]> {
-  return trilhaDosRecebimentos(lojaId, [...parcelaIds, contratoId]);
+  return trilhaDosRecebimentos(lojaId, [...parcelaIds, contratoId], executor);
 }
 
 /**
@@ -44,10 +46,25 @@ export async function trilhaDosRecibos(
 export async function trilhaDosRecebimentos(
   lojaId: string,
   alvos: readonly string[],
+  /**
+   * **E251/S-R11 — quem chama de dentro de uma transação passa o `tx`.**
+   *
+   * A função lia sempre no `db`, e a conciliação (`financeiro.ts`, a derivação
+   * do carimbo) a chamava de DENTRO da transação: a leitura saía por outra
+   * conexão, fora das trancas que a transação segura. Duas coisas mordem nisso
+   * — a decisão passa a ser tomada sobre linhas que ninguém está segurando, e
+   * uma leitura no pool a partir de uma transação é a forma clássica de
+   * esgotar o pool esperando por si mesma.
+   *
+   * Opcional de propósito: as outras três leitoras (o recibo da loja, o do
+   * portal e o caixa realizado) são de leitura pura e não têm transação para
+   * passar.
+   */
+  executor: DbExecutor = db,
 ): Promise<LinhaDaTrilha[]> {
   const unicos = [...new Set(alvos)];
   if (unicos.length === 0) return [];
-  return db
+  return executor
     .select({
       id: auditLogTable.id,
       acao: auditLogTable.acao,
@@ -92,9 +109,10 @@ export async function parcelasComRecebimentoNaJanela(
   lojaId: string,
   de: Date,
   ate: Date,
+  executor: DbExecutor = db,
 ): Promise<string[]> {
   const diaDoAto = sql`coalesce((${auditLogTable.detalhe} ->> 'recebidoEm')::timestamptz, ${auditLogTable.criadoEm})`;
-  const linhas = await db
+  const linhas = await executor
     .selectDistinct({ entidadeId: auditLogTable.entidadeId })
     .from(auditLogTable)
     .where(
@@ -134,16 +152,33 @@ export async function parcelasComRecebimentoNaJanela(
 export async function realizadoPorRecebimento<T extends ParcelaDoCaixa>(
   lojaId: string,
   parcelas: readonly T[],
+  executor: DbExecutor = db,
 ): Promise<T[]> {
   const alvos = parcelas.flatMap((p) => [p.id, p.contratoId]);
-  return porRecebimento(parcelas, await trilhaDosRecebimentos(lojaId, alvos));
+  return porRecebimento(parcelas, await trilhaDosRecebimentos(lojaId, alvos, executor));
 }
 
-/** O `WHERE` do passo 1: o `recebido_em` da janela ou um ato dentro dela. */
-export async function recebidasNaJanela(lojaId: string, iniYMD: string, fimYMD: string) {
+/**
+ * O `WHERE` do passo 1: o `recebido_em` da janela ou um ato dentro dela.
+ *
+ * **E251/S-R11 — o executor é opcional nas QUATRO leituras deste arquivo, e não
+ * só na que a sobra nomeia.** A sobra aponta a conciliação (`financeiro.ts`, a
+ * derivação do carimbo), que é o único chamador que hoje roda dentro de uma
+ * transação — as outras três (o recibo da loja, o do portal, e o caixa do
+ * fluxo/DRE/CSV) são rotas de leitura pura, medidas uma a uma em 17/08. O
+ * parâmetro entra nas quatro assim mesmo, porque o cuidado escrito em uma só
+ * das irmãs é a regra 26 esperando o próximo chamador: quem precisar do `tx`
+ * amanhã acrescenta um argumento, e não uma sobra.
+ */
+export async function recebidasNaJanela(
+  lojaId: string,
+  iniYMD: string,
+  fimYMD: string,
+  executor: DbExecutor = db,
+) {
   const de = inicioDoDia(iniYMD);
   const ate = inicioDoDia(addDias(fimYMD, 1));
-  const comAto = await parcelasComRecebimentoNaJanela(lojaId, de, ate);
+  const comAto = await parcelasComRecebimentoNaJanela(lojaId, de, ate, executor);
   return and(
     eq(parcelasTable.lojaId, lojaId),
     or(
