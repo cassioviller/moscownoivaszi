@@ -8,6 +8,7 @@ import {
   diasEntre,
   instanteNoIntervalo,
   negocioNoIntervalo,
+  pontasTrocadas,
   resolverIntervalo,
   rotuloCompetencia,
   ultimasCompetencias,
@@ -111,6 +112,52 @@ describe("resolverIntervalo", () => {
       iniYMD: "2027-01-05",
       fimYMD: "2027-02-10",
     });
+  });
+});
+
+/**
+ * S-RM28 (E265) — a troca de pontas do `resolverIntervalo` é a mesma decisão
+ * vista de fora. O par existe para que a tela possa DIZER que trocou; o que
+ * estes casos pregam é que os dois nunca discordam.
+ */
+describe("pontasTrocadas", () => {
+  it("não trocou quando as duas pontas chegam em ordem", () => {
+    expect(pontasTrocadas("2027-01-05", "2027-02-10", "2027-07-16")).toBe(false);
+  });
+
+  it("não trocou quando as duas faltam — o mês de hoje já nasce em ordem", () => {
+    expect(pontasTrocadas(undefined, undefined, "2027-07-16")).toBe(false);
+  });
+
+  it("trocou quando a pessoa inverte as duas pontas", () => {
+    expect(pontasTrocadas("2027-07-31", "2027-07-01", "2027-07-16")).toBe(true);
+  });
+
+  /**
+   * O caminho que custa dinheiro, e o que a sobra não enxergava: uma ponta
+   * SOZINHA na URL. O `ini` cai no 1º do mês corrente, fica depois do `fim`
+   * digitado, e a janela vira dois anos e quatro meses — a forma dos 302
+   * recebimentos do E260, alcançável hoje por um link.
+   */
+  it("trocou quando só o fim vem, e o default do mês fica do lado errado", () => {
+    expect(pontasTrocadas(null, "2024-04-04", "2026-08-17")).toBe(true);
+    expect(resolverIntervalo(null, "2024-04-04", "2026-08-17")).toEqual({
+      iniYMD: "2024-04-04",
+      fimYMD: "2026-08-01",
+    });
+  });
+
+  it("o predicado nunca discorda da função que ele descreve", () => {
+    const pontas = [null, "2024-04-04", "2026-08-31", "2026-01-01", "nao-e-data"];
+    for (const ini of pontas) {
+      for (const fim of pontas) {
+        const { iniYMD, fimYMD } = resolverIntervalo(ini, fim, "2026-08-17");
+        // Trocou ⇔ alguma ponta VÁLIDA saiu do lado em que entrou.
+        const iniSaiuDoLugar = ini !== null && ini !== "nao-e-data" && iniYMD !== ini;
+        const fimSaiuDoLugar = fim !== null && fim !== "nao-e-data" && fimYMD !== fim;
+        expect(pontasTrocadas(ini, fim, "2026-08-17")).toBe(iniSaiuDoLugar || fimSaiuDoLugar);
+      }
+    }
   });
 });
 

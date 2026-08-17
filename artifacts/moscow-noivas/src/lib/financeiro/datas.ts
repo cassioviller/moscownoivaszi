@@ -15,6 +15,7 @@ export {
   diasEntre,
   ultimasCompetencias,
   resolverIntervalo,
+  pontasTrocadas,
   intervaloDaCompetencia,
   instanteNoIntervalo,
   negocioNoIntervalo,

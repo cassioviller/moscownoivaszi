@@ -12,6 +12,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AvisoPontasTrocadas } from "@/components/aviso-pontas-trocadas";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Download } from "lucide-react";
@@ -202,6 +203,8 @@ export default function FluxoCaixa() {
           </a>
         </Button>
       </div>
+
+      <AvisoPontasTrocadas ini={searchParams.get("ini")} fim={searchParams.get("fim")} />
 
       {erro ? (
         <ErroListagem

@@ -350,4 +350,42 @@ describe("a escrita na URL passa pelo hook, e a varredura cobra isso", () => {
     expect(sitios).toBe(31);
     expect(foraDaRegua).toEqual([]);
   });
+
+  /**
+   * **S-RM29 (E265) — a suposição do acumulador vira régua.**
+   *
+   * O acumulador do frame vive no MÓDULO (`use-escrita-na-url.ts:52-54`), e
+   * isso supõe **um roteador por contexto de JS**. A suposição é verdadeira
+   * hoje e estava escrita só num comentário; comentário não reprova. Se
+   * nascer um segundo roteador de produção, dois trechos da árvore passam a
+   * disputar o mesmo `acumulado` — o hook se cura no primeiro render em que a
+   * URL real difere da última pedida, mas as escritas do MESMO frame vindas
+   * dos dois roteadores se atropelam, que é exatamente o que ele existe para
+   * impedir.
+   *
+   * A régua não proíbe o segundo roteador: ela obriga quem o criar a passar
+   * por aqui e decidir o que fazer com o acumulador.
+   */
+  it("o app tem UM roteador, que é o que o acumulador do frame supõe", () => {
+    const criacoes: string[] = [];
+    for (const rel of fontes()) {
+      // Teste monta o roteador que quiser: `createMemoryRouter` é a régua deste
+      // próprio arquivo em oito sítios. Quem carrega a suposição é a PRODUÇÃO.
+      if (/\.test\.tsx?$/.test(rel)) continue;
+      const fonte = readFileSync(path.resolve(raiz, rel), "utf8");
+      // O comentário não cria roteador nenhum, e cobrá-lo é a S-RM30 de novo:
+      // `use-confirmar-saida.ts:27` narra o dia em que o `App.tsx` virou
+      // `createBrowserRouter(...)`, e a régua leria a narrativa como código. As
+      // posições são preservadas para a âncora continuar apontando o lugar
+      // certo do arquivo.
+      const semComentario = fonte
+        .replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, " "))
+        .replace(/\/\/[^\n]*/g, (c) => " ".repeat(c.length));
+      for (const m of semComentario.matchAll(/\bcreate(Browser|Hash|Memory)Router\s*\(/g)) {
+        const linha = semComentario.slice(0, m.index).split("\n").length;
+        criacoes.push(`${rel}:${linha} — ${m[0].trim()}`);
+      }
+    }
+    expect(criacoes).toEqual(["artifacts/moscow-noivas/src/App.tsx:356 — createBrowserRouter("]);
+  });
 });

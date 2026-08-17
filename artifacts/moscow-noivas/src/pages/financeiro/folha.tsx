@@ -38,6 +38,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AvisoPontasTrocadas } from "@/components/aviso-pontas-trocadas";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -898,6 +899,10 @@ export default function Folha() {
               {enviarContabilidade.isPending ? "Marcando…" : "Declarar o mês"}
             </Button>
           </div>
+
+          {/* S-RM28 — o aviso fica ENTRE os campos e o "Declarar o mês", que é
+              o carimbo de mão única desta tela. */}
+          <AvisoPontasTrocadas ini={searchParams.get("ini")} fim={searchParams.get("fim")} />
 
           {pagamentos.isError ? (
             <ErroListagem

@@ -26,6 +26,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AvisoPontasTrocadas } from "@/components/aviso-pontas-trocadas";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -298,6 +299,8 @@ export default function Receber() {
           />
         </div>
       </div>
+
+      <AvisoPontasTrocadas ini={searchParams.get("ini")} fim={searchParams.get("fim")} />
 
       <div className="flex flex-wrap gap-3">
         {/* S-C231 — cada cartão DIZ a convenção que usa: projeção sem multas,

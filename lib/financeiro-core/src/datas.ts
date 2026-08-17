@@ -174,6 +174,23 @@ const diaValido = (s: string | undefined | null): s is string =>
   !!s && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(new Date(`${s}T12:00:00Z`).getTime());
 
 /**
+ * As duas pontas ANTES da troca: ausentes/inválidas caem no 1º/último dia do
+ * mês de hoje. Existe separada porque `resolverIntervalo` e `pontasTrocadas`
+ * precisam da MESMA resolução — duas grafias do mesmo default divergiriam no
+ * dia em que uma delas mudasse (regra 26).
+ */
+function pontasCruas(
+  iniRaw: string | undefined | null,
+  fimRaw: string | undefined | null,
+  hoje: string,
+): { ini: string; fim: string } {
+  return {
+    ini: diaValido(iniRaw) ? iniRaw : primeiroDiaDoMes(hoje),
+    fim: diaValido(fimRaw) ? fimRaw : ultimoDiaDoMes(hoje),
+  };
+}
+
+/**
  * Resolve o intervalo a partir dos params crus. Ausentes/inválidos caem no
  * 1º/último dia do mês de hoje; `ini > fim` troca para um intervalo coerente.
  */
@@ -182,11 +199,41 @@ export function resolverIntervalo(
   fimRaw: string | undefined | null,
   hoje: string = hojeLocal(),
 ): Intervalo {
-  let ini = diaValido(iniRaw) ? iniRaw : primeiroDiaDoMes(hoje);
-  let fim = diaValido(fimRaw) ? fimRaw : ultimoDiaDoMes(hoje);
+  let { ini, fim } = pontasCruas(iniRaw, fimRaw, hoje);
   // Comparação lexicográfica vale para YYYY-MM-DD.
   if (ini > fim) [ini, fim] = [fim, ini];
   return { iniYMD: ini, fimYMD: fim };
+}
+
+/**
+ * S-RM28 (E265) — **a troca de pontas aconteceu?**
+ *
+ * A troca do `resolverIntervalo` existe para ser tolerante com URL montada à
+ * mão, e as duas rotas que a consomem (`routes/financeiro.ts:1215` e `:1291`)
+ * dependem dela: tirá-la do núcleo consertaria quatro telas quebrando duas
+ * portas. O que falta não é a troca — é a tela DIZER que trocou.
+ *
+ * São dois caminhos até ela, e o segundo é o que custa dinheiro:
+ *
+ * 1. as duas pontas válidas e invertidas — quem digita `De = 2026-08-31` sobre
+ *    um `Até = 2026-01-01` vê o campo "De" passar a exibir outra data;
+ * 2. **uma ponta ausente**, com o default do mês corrente ficando do lado
+ *    errado da que sobrou: `?fim=2024-04-04` sozinho resolve `ini` para o 1º
+ *    de agosto de 2026, a troca dispara e a janela vira **dois anos e quatro
+ *    meses** — a mesma janela dos 302 recebimentos que o E260 carimbou. O E261
+ *    fechou a CAUSA daquele caso (a escrita perdida no frame); a forma
+ *    continua alcançável por um link.
+ *
+ * Este predicado responde pela mesma resolução que a função irmã usa, então
+ * ele nunca diz "não trocou" sobre um intervalo trocado.
+ */
+export function pontasTrocadas(
+  iniRaw: string | undefined | null,
+  fimRaw: string | undefined | null,
+  hoje: string = hojeLocal(),
+): boolean {
+  const { ini, fim } = pontasCruas(iniRaw, fimRaw, hoje);
+  return ini > fim;
 }
 
 /** O intervalo de uma competência "YYYY-MM", com fim inclusivo. */
