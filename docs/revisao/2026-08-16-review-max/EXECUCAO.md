@@ -132,6 +132,7 @@ trabalho vai abrir, e nenhum plano deste repositório soube dizer isso ainda.**
 | Pergunta | Recomendação | Estado |
 |---|---|---|
 | **E249** — casamento adiado: a data de devolução do papel recalcula pela janela nova, anda os mesmos dias, ou fica onde está? | **Recalcula pela janela nova** (E224: janela de uso andando até dia de expediente), preservando a hora; a retirada anda junto | aberta — executada na recomendação |
+| **S-RM16** (E259) — a tela escreve `"Marfim" classifica…` com aspas retas e o manual cita sem elas: quem cede? | **A TELA perde as aspas retas, e o manual não muda** — `routes/catalogo.ts:109` e `:217`. O repositório tem 9 aspas retas coladas a interpolação e **7 são protocolo** (ETag, `Content-Disposition`); as únicas duas em frase que uma pessoa lê são estas, e `routes/agenda.ts:232` já nomeia sem aspa nenhuma. Nenhum teste afirma a frase | **DECIDIDA pela dona em 17/08, na recomendação** — a citação continua molde (nome e dois números interpolados); o que muda é que quem procurar na tela o que leu no manual passa a achar |
 
 ## Sobras
 

@@ -127,7 +127,13 @@ O E258 **não tem essa permissão**. As dez leituras têm código atrás e o
 `useDiaLocal()` já existe; o que ele pode fazer é **desmentir o julgamento
 prévio deste plano** em qualquer uma das dez, dizendo por quê.
 
-## A decisão que é da dona — e a recomendação já medida
+## A decisão que era da dona — DECIDIDA em 17/08, na recomendação
+
+> **A dona respondeu: a tela perde as aspas retas, e o manual não muda.** Está
+> na tabela de Decisões do
+> [rastreador](../revisao/2026-08-16-review-max/EXECUCAO.md#decisões). O E259
+> executa as duas linhas de `routes/catalogo.ts` sem perguntar de novo.
+
 
 **S-RM16, primeira metade: as aspas retas do `catalogo.ts`.** As rotas escrevem
 `"${alvo.nome}" classifica 3 peça(s) e 1 noiva(s) — apagar levaria essa
