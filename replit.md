@@ -384,6 +384,30 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   desenho não é a soma deles**, e sim a entrada mais os `modulepreload` do
   `dist/public/index.html` — o resto só desce quando alguém abre a rota.
 
+- **A instalação de PRODUÇÃO é uma imagem Docker, e ela existe desde 17/08/2026**
+  (E270): `docker build -t moscow-app .` na raiz produz **369 MB** com UM
+  processo servindo a tela e a API na porta **5002**. O guia inteiro — variáveis
+  do EasyPanel, volume, health check, o que conferir antes de implantar — está
+  em [`docs/deploy/easypanel.md`](docs/deploy/easypanel.md). O que se precisa
+  saber para operar:
+  - **o contêiner aplica as migrações antes de abrir a porta** (`dist/migrar.mjs`,
+    o migrador do drizzle sobre `lib/db/migrations` + os extras de SQL). É
+    idempotente e não destrói nada; `MIGRAR_NA_SUBIDA=false` desliga. **O
+    schema que ele produz é IDÊNTICO ao do `push`** — medido nos dois caminhos
+    em bancos virgens: 506 colunas, 120 índices, 174 constraints, 22 enums;
+  - **a tela sai do Express quando `FRONTEND_DIR` aponta para o `dist` do
+    Vite**, e o servidor RECUSA subir se não houver `index.html` ali. Sem a
+    variável (dev, E2E) nada muda: quem serve a tela é o Vite;
+  - **`/app/backups` é o único volume**, porque é o único lugar em que o
+    sistema escreve (o `pg_dump` do botão de administração, que roda dentro do
+    contêiner — daí o `postgresql-client-17` na imagem);
+  - **o adeus é tratado**: `SIGTERM` fecha a porta, espera o que está em voo e
+    devolve o pool — `docker stop` em **316 ms**, contra os 10 s de prazo que um
+    Node sem tratador leva até o `SIGKILL`;
+  - a base é **Debian**, e não Alpine, porque o `pnpm-workspace.yaml` remove dos
+    overrides os binários musl do rollup, do lightningcss e do oxide — em Alpine
+    o `vite build` não teria o que carregar.
+
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9

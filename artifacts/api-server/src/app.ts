@@ -1,4 +1,6 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
@@ -15,7 +17,10 @@ import { classificarErro } from "./lib/erros";
 
 const app: Express = express();
 
-// Atrás do proxy do Replit — necessário para o rate-limit ver o IP real.
+// Atrás do proxy do Replit — necessário para o rate-limit ver o IP real. O
+// mesmo `1` vale para o proxy do EasyPanel (Traefik), que é um salto só: ele
+// põe o IP da internet em `X-Forwarded-For` e `https` em `X-Forwarded-Proto`,
+// e é daí que o Express tira `req.ip` e `req.protocol`.
 app.set("trust proxy", 1);
 
 app.use(
@@ -37,7 +42,30 @@ app.use(
     },
   }),
 );
-app.use(helmet());
+/**
+ * O `helmet()` inteiro, com UMA diretiva mexida: `img-src` ganha `blob:`.
+ *
+ * Até aqui o CSP só alcançava resposta de API — o HTML saía do Vite, que não
+ * passa por este processo. Servindo a tela pelo mesmo Express (`FRONTEND_DIR`,
+ * lá embaixo), o CSP do helmet passa a valer para a PÁGINA, e o default
+ * `img-src 'self' data:` derrubaria a pré-visualização da foto do vestido:
+ * `vestidos/[id]/editar.tsx:54` desenha o arquivo escolhido com
+ * `URL.createObjectURL(file)`, que é uma URL `blob:`.
+ *
+ * O resto do default do helmet 8.3 já serve esta tela e fica como está:
+ * `style-src` traz `https:` e `'unsafe-inline'` (o CSS do Google Fonts que o
+ * `index.html` importa, e o `style=` que Radix e framer-motion escrevem),
+ * `font-src` traz `https:` (o `fonts.gstatic.com` do mesmo import),
+ * `script-src 'self'` cobre os módulos que o Vite emite, e `connect-src` cai
+ * no `default-src 'self'` — que é o bastante porque a API é a MESMA origem.
+ */
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: { "img-src": ["'self'", "data:", "blob:"] },
+    },
+  }),
+);
 
 // CORS restrito: frontend e API são same-origin (Vite proxy/deploy conjunto),
 // então cross-origin só é liberado para origens explicitamente listadas em
@@ -157,6 +185,56 @@ app.use("/api", (_req, res) => {
   // porque ele mora em `app.ts` e a varredura parava em `routes/`.
   res.status(404).json({ error: "ROTA_NAO_ENCONTRADA" });
 });
+
+/**
+ * **A tela, servida pela MESMA origem que a API — só quando `FRONTEND_DIR` diz
+ * onde ela está.**
+ *
+ * O cliente gerado chama caminho RELATIVO (`/api/…`): `custom-fetch.ts:64`
+ * volta a entrada intacta enquanto ninguém chamar `setBaseUrl`, e **ninguém
+ * chama** — o repositório inteiro só a exporta. Same-origin não é uma
+ * conveniência do empacotamento, então: é o que faz o cookie de sessão
+ * (`httpOnly`, `sameSite: "lax"`) chegar à API sem CORS e sem `SameSite=None`.
+ *
+ * No Replit e no E2E quem serve a tela é o Vite, e esta variável fica vazia —
+ * o bloco inteiro some e nada muda. No contêiner ela aponta para o `dist` do
+ * `vite build`, e um processo só atende a tela e a API na mesma porta.
+ *
+ * O caminho ERRADO reprova na SUBIDA, e não no primeiro acesso: sem o
+ * `index.html` ali, todo pedido de tela cairia num 404 mudo depois do deploy
+ * verde, que é a classe de defeito que só aparece no celular de quem usa.
+ */
+const frontendDir = process.env.FRONTEND_DIR;
+
+if (frontendDir) {
+  const indexHtml = path.join(frontendDir, "index.html");
+  if (!existsSync(indexHtml)) {
+    throw new Error(
+      `FRONTEND_DIR aponta para "${frontendDir}", e não há index.html ali — ` +
+        "a tela não foi construída (`vite build`) ou o caminho está errado.",
+    );
+  }
+
+  // O que o Vite emite com hash no nome pode ser guardado para sempre; o
+  // `index.html` NÃO — ele é o que aponta para os hashes novos a cada deploy, e
+  // um navegador com a cópia velha pediria pedaços que já não existem. Por isso
+  // o `index: false`: a página só sai pelo caminho abaixo, com `no-cache`.
+  app.use(express.static(frontendDir, { index: false, maxAge: "1y" }));
+
+  app.use((req, res, next) => {
+    // A tela é um roteador de navegador (`App.tsx:356`): qualquer caminho que
+    // não é arquivo devolve a página, e o React decide o que desenhar. Só GET e
+    // HEAD — um POST para caminho inexistente é erro de cliente, não tela.
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      next();
+      return;
+    }
+    res.setHeader("Cache-Control", "no-cache");
+    res.sendFile(indexHtml, (err) => {
+      if (err) next(err);
+    });
+  });
+}
 
 app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
   const log = req.log ?? logger;

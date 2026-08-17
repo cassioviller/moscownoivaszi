@@ -1,0 +1,66 @@
+# O que NÃO entra no contexto do build.
+#
+# A régua deste arquivo é o tamanho do contexto: sem ele o `docker build` deste
+# repositório sobe ~7 GB — 4,7 GB só de `.claude/worktrees` (as árvores dos
+# agentes), 1,4 GB de `.local`, 815 MB de `.cache`, 518 MB de `node_modules` e
+# 195 MB de `.git`. Medido em 17/08/2026.
+#
+# O que a imagem precisa é pequeno: o código-fonte, os manifestos, o lockfile e
+# os PDFs dos manuais.
+
+# --- ferramenta e história ---
+.git
+.github
+.gitignore
+.claude
+.replit
+.replitignore
+.cache
+.config
+.local
+.upm
+
+# --- dependências e saídas de build (a imagem reinstala e reconstrói) ---
+node_modules
+**/node_modules
+dist
+**/dist
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# --- segredos: nunca, em nenhuma forma ---
+.env
+.env.*
+*.pem
+*.key
+
+# --- dados de execução, que são do disco de quem rodou ---
+backups
+**/backups
+test-results
+**/test-results
+playwright-report
+**/playwright-report
+e2e/.auth
+*.log
+
+# --- o E2E não roda dentro da imagem ---
+e2e
+playwright.config.ts
+
+# --- pesos mortos ---
+*.zip
+attached_assets
+
+# --- a documentação inteira fica FORA, menos os PDFs que o sistema serve ---
+#
+# `docs/` são 64 MB (o HTML dos manuais, as capturas, as trilhas de revisão), e
+# a imagem precisa de 15 MB deles: os cinco PDFs que `GET /api/manuais/:qual.pdf`
+# entrega a quem tem sessão (E236). A exceção é reincluída na linha seguinte —
+# e o Dockerfile copia essa pasta para `/app/manuais`.
+docs
+!docs/manuais/pdf
+
+# --- o próprio Docker ---
+Dockerfile
+.dockerignore

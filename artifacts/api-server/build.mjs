@@ -15,7 +15,18 @@ async function buildAll() {
   await rm(distDir, { recursive: true, force: true });
 
   await esbuild({
-    entryPoints: [path.resolve(artifactDir, "src/index.ts")],
+    // Duas entradas: o servidor, e o migrador que o contêiner roda ANTES dele
+    // (E270). O migrador é um pacote próprio porque ele tem de terminar e sair
+    // — encadeá-lo na subida do servidor faria toda reinicialização esperar o
+    // banco, e faria um erro de migração parecer erro de porta.
+    // Os nomes de saída são declarados (`out`), e não deduzidos: com duas
+    // entradas em pastas diferentes o esbuild escolheria a raiz comum e o
+    // migrador sairia em `dist/scripts/migrar.mjs`, que não é o caminho que o
+    // entrypoint da imagem chama.
+    entryPoints: [
+      { in: path.resolve(artifactDir, "src/index.ts"), out: "index" },
+      { in: path.resolve(artifactDir, "src/scripts/migrar.ts"), out: "migrar" },
+    ],
     platform: "node",
     bundle: true,
     format: "esm",

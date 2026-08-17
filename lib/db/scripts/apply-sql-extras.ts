@@ -3,10 +3,16 @@
  * EXCLUDE constraints). Idempotente — roda após todo `push`.
  *
  * Uso: tsx scripts/apply-sql-extras.ts (encadeado no script npm "push").
+ *
+ * **E270 — e também `import`, porque a produção não tem tsx.** No contêiner
+ * quem aplica o schema é `dist/migrar.mjs`, um pacote de esbuild: ele importa
+ * `aplicarExtras` por `@workspace/db/sql-extras` e a chama depois do migrador
+ * do drizzle. O `main()` de linha de comando fica, e é o mesmo corpo — senão as
+ * duas formas de provisionar um banco divergiriam sem ninguém ver.
  */
 import { pool } from "../src/index";
 
-async function main(): Promise<void> {
+export async function aplicarExtras(): Promise<void> {
   // 1. btree_gist: necessário para EXCLUDE USING gist com igualdade em text.
   await pool.query(`CREATE EXTENSION IF NOT EXISTS btree_gist;`);
 
@@ -70,9 +76,21 @@ async function main(): Promise<void> {
   console.log("[apply-sql-extras] extensões btree_gist/pg_trgm + constraints + índices aplicados");
 }
 
-main()
-  .catch((err) => {
-    console.error("[apply-sql-extras] falhou:", err);
-    process.exitCode = 1;
-  })
-  .finally(() => pool.end());
+/**
+ * **A linha de comando só roda quando ELA é o comando.**
+ *
+ * `import.meta.url === argv[1]` seria a forma idiomática e aqui ela MENTIRIA:
+ * o esbuild reescreve `import.meta.url` para a URL do PACOTE, e dentro de
+ * `dist/migrar.mjs` os dois lados passariam a ser o mesmo arquivo — o migrador
+ * chamaria este `main()` no `import`, fecharia o pool com o `finally` e o
+ * `migrate` seguinte morreria com o banco já desligado. O nome do arquivo em
+ * `argv[1]` sobrevive ao empacotamento porque não é reescrito por ninguém.
+ */
+if (process.argv[1]?.endsWith("apply-sql-extras.ts")) {
+  aplicarExtras()
+    .catch((err) => {
+      console.error("[apply-sql-extras] falhou:", err);
+      process.exitCode = 1;
+    })
+    .finally(() => pool.end());
+}

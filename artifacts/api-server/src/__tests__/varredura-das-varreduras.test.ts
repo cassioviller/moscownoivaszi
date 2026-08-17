@@ -141,13 +141,20 @@ describe("S-C260 — toda varredura diz o tamanho do que olhou", () => {
     // restantes passaram a dizer na letra que são piso. **E esta régua se
     // acusou na primeira execução**, porque o `includes(".toBeGreaterThanOrEqual(")
     // que procura o padrão é o padrão: ela se exclui, com a razão escrita.
-    expect(todas.length, `varreduras encontradas:\n${todas.join("\n")}`).toBe(39);
+    // E270: 39 → 40. A `varredura-do-conteiner` (API — a imagem de produção
+    // acompanha o workspace). O `Dockerfile` copia os `package.json` um a um
+    // ANTES do `pnpm install --frozen-lockfile`, para a camada das dependências
+    // sobreviver a toda edição de código, e o preço é uma lista à mão: pacote
+    // novo no workspace derruba o build da IMAGEM e nenhuma das quatro suítes
+    // constrói imagem. É a forma da regra 25 — a régua que pega o defeito não é
+    // a que roda no gesto que o causa.
+    expect(todas.length, `varreduras encontradas:\n${todas.join("\n")}`).toBe(40);
 
     // E as duas dimensões, nomeadas: a sobra descrevia só a grafia, e o
     // julgamento de 14/08 também tinha perdido as 5 da primeira grafia que
     // moram no frontend.
     const porGrafia = (re: RegExp) => todas.filter((r) => re.test(path.basename(r))).length;
-    expect(porGrafia(/^varredura-/)).toBe(27); // E268: +1, a `varredura-dos-pisos`; E236: +1, a `varredura-manuais-prints`; E239: +3, na API; E250: +1, a `varredura-migracoes-por-loja`; E262: +1, a `varredura-aspa-reta`
+    expect(porGrafia(/^varredura-/)).toBe(28); // E270: +1, a `varredura-do-conteiner`; E268: +1, a `varredura-dos-pisos`; E236: +1, a `varredura-manuais-prints`; E239: +3, na API; E250: +1, a `varredura-migracoes-por-loja`; E262: +1, a `varredura-aspa-reta`
     expect(porGrafia(/-varredura\./)).toBe(12); // E256: +1, a `campo-id-em-field-array-varredura`
     expect(todas.filter((r) => r.startsWith("artifacts/moscow-noivas/")).length).toBe(18); // E236: +1, no frontend; E256: +1; E262: +1
   });
