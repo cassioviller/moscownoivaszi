@@ -107,6 +107,10 @@ COPY --from=oficina /app/lib/db/migrations                ./migrations
 # mesma pasta versiona o HTML de impressão de cada um (15 MB que servidor nenhum
 # lê), e `caminhoDoManual` só monta `<qual>.pdf`.
 COPY --from=oficina /app/docs/manuais/pdf/*.pdf           ./manuais/
+# O caderno de papel do ateliê, empacotado (E272): 157 KB que viajam na imagem
+# para a importação ser um comando no console, sem upload de arquivo. Como
+# rodá-la está em `docs/deploy/importar-o-legado.md`.
+COPY --from=oficina /app/docs/legado                      ./legado
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \

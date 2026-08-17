@@ -26,6 +26,9 @@ async function buildAll() {
     entryPoints: [
       { in: path.resolve(artifactDir, "src/index.ts"), out: "index" },
       { in: path.resolve(artifactDir, "src/scripts/migrar.ts"), out: "migrar" },
+      // E272 — a importação do caderno de papel. Ela roda UMA vez, pelo console
+      // do serviço, e por isso é entrada própria: `tsx` não existe na imagem.
+      { in: path.resolve(artifactDir, "src/scripts/importar-legado.ts"), out: "importar-legado" },
     ],
     platform: "node",
     bundle: true,

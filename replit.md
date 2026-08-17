@@ -407,6 +407,16 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   - a base é **Debian**, e não Alpine, porque o `pnpm-workspace.yaml` remove dos
     overrides os binários musl do rollup, do lightningcss e do oxide — em Alpine
     o `vite build` não teria o que carregar.
+- **O caderno de papel entra na instalação por um pacote JSON** (E272), e o
+  plano inteiro está em
+  [`docs/deploy/importar-o-legado.md`](docs/deploy/importar-o-legado.md). O
+  pacote de hoje — `docs/legado/2026-08-17-caderno.json`, 157 KB — tem **132
+  peças** (L001–L132, 131 classificadas por Tipo de peça) e **163 noivas**, e
+  viaja dentro da imagem. Sai de `scripts/exportar-legado.ts` (lê o banco da
+  loja, não escreve nada) e entra por `dist/importar-legado.mjs`, que é **ensaio
+  por default**, só INSERE, roda numa transação só e casa o catálogo por NOME.
+  Medido em 17/08: 132 peças · 163 noivas · 131 classificações, e a segunda
+  passada insere zero.
 
 ## Stack
 

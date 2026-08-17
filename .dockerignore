@@ -60,6 +60,9 @@ attached_assets
 # e o Dockerfile copia essa pasta para `/app/manuais`.
 docs
 !docs/manuais/pdf
+# E272 — e o pacote do caderno de papel (157 KB), que a imagem leva para a
+# importação ser um comando no console, sem upload.
+!docs/legado
 
 # --- o próprio Docker ---
 Dockerfile

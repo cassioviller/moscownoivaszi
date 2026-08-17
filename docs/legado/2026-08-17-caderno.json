@@ -1,0 +1,3687 @@
+{
+  "_sobre": "O legado do caderno de papel do ateliê (29 fotos, transcritas em 2026-08-10 e curadas na loja), empacotado para a instalação de produção. Gerado por scripts/exportar-legado.ts. Só peças e noivas: nada de contrato, parcela ou dinheiro.",
+  "versao": 1,
+  "origem": {
+    "loja": "Moscow Noivas",
+    "lojaId": "b1f2a3c4-5d6e-4f70-8a91-2b3c4d5e6f70"
+  },
+  "pecas": [
+    {
+      "codigo": "L001",
+      "nome": "Avra G",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": "G",
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L002",
+      "nome": "Tamara",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L003",
+      "nome": "Hassenuá",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L004",
+      "nome": "Perolyne",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L005",
+      "nome": "Sollyane",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L006",
+      "nome": "Taiane",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L007",
+      "nome": "Nixi",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L008",
+      "nome": "Shirley",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L009",
+      "nome": "Thelma",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L010",
+      "nome": "Aura",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L011",
+      "nome": "Ally",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L012",
+      "nome": "Thayone",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L013",
+      "nome": "Dayfini",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L014",
+      "nome": "Monalisa",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L015",
+      "nome": "Vesnas",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L016",
+      "nome": "Manga renda c/ saia lisa",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L017",
+      "nome": "Rica Sposa",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L018",
+      "nome": "Bolero Rica Sposa",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Acessório"
+        }
+      ]
+    },
+    {
+      "codigo": "L019",
+      "nome": "Malina",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L020",
+      "nome": "Gwendolin G",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": "G",
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L021",
+      "nome": "Fencyella",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L022",
+      "nome": "Selima",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L023",
+      "nome": "Aurone",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L024",
+      "nome": "Korte",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L025",
+      "nome": "Blary",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L026",
+      "nome": "Arnica G",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": "G",
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L027",
+      "nome": "Gabriela",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L028",
+      "nome": "Agiella",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L029",
+      "nome": "Kamila P",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": "P",
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L030",
+      "nome": "Shelly G",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": "G",
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L031",
+      "nome": "Telmah",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L032",
+      "nome": "Urra Pérola",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L033",
+      "nome": "Ariane",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L034",
+      "nome": "Luma",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L035",
+      "nome": "Bernarda",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L036",
+      "nome": "Siam",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L037",
+      "nome": "Mantilha Chem",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Acessório"
+        }
+      ]
+    },
+    {
+      "codigo": "L038",
+      "nome": "Shelly P",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": "P",
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L039",
+      "nome": "Kamila G",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": "G",
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L040",
+      "nome": "Arnalda",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L041",
+      "nome": "Cristal",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L042",
+      "nome": "Beruta",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L043",
+      "nome": "Ferula",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L044",
+      "nome": "Nova Sposa",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L045",
+      "nome": "Selmah G",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": "G",
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L046",
+      "nome": "Shally",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L047",
+      "nome": "Angela",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L048",
+      "nome": "Arina",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L049",
+      "nome": "Kamelia",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L050",
+      "nome": "Crosby",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L051",
+      "nome": "Arnalda G",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": "G",
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L052",
+      "nome": "Lucretia",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L053",
+      "nome": "Marta",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L054",
+      "nome": "Aggiela",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L055",
+      "nome": "Arnica",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L056",
+      "nome": "Laricela",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L057",
+      "nome": "Milla Nova",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L058",
+      "nome": "Thelmah",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L059",
+      "nome": "Janna",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L060",
+      "nome": "Finnella",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L061",
+      "nome": "Constância",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L062",
+      "nome": "Shellyane P",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": "P",
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L063",
+      "nome": "Avronny",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L064",
+      "nome": "Yoko",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L065",
+      "nome": "Lukinha",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L066",
+      "nome": "Boemia",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L067",
+      "nome": "Ayshel",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L068",
+      "nome": "Chloe",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L069",
+      "nome": "Anastazia",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L070",
+      "nome": "Shelly 2",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L071",
+      "nome": "Avramy",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L072",
+      "nome": "Kira",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L073",
+      "nome": "Sereia corrente c/ pérolas",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L074",
+      "nome": "Kalina",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L075",
+      "nome": "Saiote 2 aros + crinol",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Acessório"
+        }
+      ]
+    },
+    {
+      "codigo": "L076",
+      "nome": "Lilya",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L077",
+      "nome": "NSA",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L078",
+      "nome": "Estrelia",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L079",
+      "nome": "Kauany",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L080",
+      "nome": "Flowers",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L081",
+      "nome": "Melestina",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L082",
+      "nome": "Virgínia",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L083",
+      "nome": "Klosella",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L084",
+      "nome": "Solussaia + Manga",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": []
+    },
+    {
+      "codigo": "L085",
+      "nome": "Nixia",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L086",
+      "nome": "Bolero Ricca Sposa",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Acessório"
+        }
+      ]
+    },
+    {
+      "codigo": "L087",
+      "nome": "Shellyane",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L088",
+      "nome": "Adelita",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L089",
+      "nome": "Leslie",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L090",
+      "nome": "Gwendalin G",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": "G",
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L091",
+      "nome": "Berenice",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L092",
+      "nome": "Boscalina",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L093",
+      "nome": "Kallany P",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": "P",
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L094",
+      "nome": "Chantell",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L095",
+      "nome": "Wendy",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L096",
+      "nome": "Italina",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L097",
+      "nome": "Friliz",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L098",
+      "nome": "Nivea",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L099",
+      "nome": "Gabriella",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L100",
+      "nome": "Masha",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L101",
+      "nome": "Aglaia",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L102",
+      "nome": "Almania",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L103",
+      "nome": "Arnalda P",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": "P",
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L104",
+      "nome": "2 em 1",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L105",
+      "nome": "Ricca Sposa",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L106",
+      "nome": "Konte",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L107",
+      "nome": "Andreia",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L108",
+      "nome": "Arnica 2 G",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": "G",
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L109",
+      "nome": "Bolero 2026",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Acessório"
+        }
+      ]
+    },
+    {
+      "codigo": "L110",
+      "nome": "Bella",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L111",
+      "nome": "Malybu",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L112",
+      "nome": "Thavare",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L113",
+      "nome": "Vesna",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L114",
+      "nome": "Avrony",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L115",
+      "nome": "Selina",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L116",
+      "nome": "Milena",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L117",
+      "nome": "Sensi",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L118",
+      "nome": "Aggiella",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L119",
+      "nome": "Shelly",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L120",
+      "nome": "Sensa",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L121",
+      "nome": "Shellyane G",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": "G",
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L122",
+      "nome": "Aguiella",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L123",
+      "nome": "Selmah",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L124",
+      "nome": "Kamila",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L125",
+      "nome": "Aguello",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L126",
+      "nome": "Crisby",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L127",
+      "nome": "Telma",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L128",
+      "nome": "Avra",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L129",
+      "nome": "Finella",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L130",
+      "nome": "Constance",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L131",
+      "nome": "Feliz",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    },
+    {
+      "codigo": "L132",
+      "nome": "Kailany",
+      "precoBase": 2000,
+      "precoRealuguel": 1500,
+      "tamanho": null,
+      "cor": null,
+      "categoria": null,
+      "status": "ativo",
+      "exclusiva": false,
+      "observacoes": "Legado do papel (arqueologia 2026-08-04). PREÇO PROVISÓRIO de R$ 2.000,00 posto em 2026-08-10 por decisão da dona. NÃO SAIU DO PAPEL: as 29 fotos da arqueologia (2026-08-04) não trazem preço de peça nenhuma — o único número monetário em 29 fotos é \"7.600\" ao lado de \"Realuguel\", e nem dá para saber se é valor ou código. CONFERIR esta peça antes de fechar orçamento. REALUGUEL PROVISÓRIO de R$ 1.500,00 posto em 2026-08-10 pela mesma decisão — o papel grafa \"Realuguel\" 3 vezes em 14 semanas, mas nunca com valor. CONFERIR antes de cobrar a segunda saída.",
+      "atributos": [
+        {
+          "atributo": "Tipo de peça",
+          "opcao": "Noiva"
+        }
+      ]
+    }
+  ],
+  "leads": [
+    {
+      "noivaNome": "Larissa",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-06-27T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Mariane",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-06-27T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Joyce",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-06-27T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Ijatara",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-06-27T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Karandra",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-07-04T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Karen",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-07-04T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Bruna",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-07-11T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Mariane",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-07-11T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Monique",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-07-11T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Taina",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-07-11T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Bruna",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-07-11T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Gabriela",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-07-18T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Ana",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-07-18T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Tamires",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-07-18T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Gabriela",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-07-18T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Danielle",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-07-18T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Camile",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-07-18T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Jaine",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-07-25T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Mirela",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-07-25T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Raysa",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-07-25T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Nathália",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-07-25T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Karolina",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-07-25T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Samara",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-01T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Letícia",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-01T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Emyly",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-01T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Juciene",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-08T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Estefani",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-15T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Nicoly",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-15T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Thamiris",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-15T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Letícia",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-15T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Gabriela",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-15T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Ana Paula",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-15T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Laís",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-15T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Jaiane",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-15T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Danielle",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-15T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Bianca",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-22T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Bruna",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-22T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Pamela",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-22T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Amanda",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-22T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Gabrieli",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-22T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Giovana",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-22T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Larissa",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-22T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Beatriz",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-22T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Letícia",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-22T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Julia",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-22T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Cristiana",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-22T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Aline",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-22T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Fernanda",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-22T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Vanessa",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-22T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Amanda",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-29T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Jéssica",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-29T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Evelyn",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-29T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Nayara",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-29T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Amanda",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-29T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Maria Eduarda",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-29T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Laura",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-29T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Letícia",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-29T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Maria Eduarda",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-29T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Mabeli",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-29T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Sabrina",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-29T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Gabi",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-08-29T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Maria Luiza",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-05T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Maria Eduarda",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-05T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Mariana",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-05T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Sarah",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-05T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Laura",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-05T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Alana",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-05T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Amanda",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-05T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Natalle",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-05T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Thainá",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-05T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Maria Eduarda",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-05T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Laís",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-05T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Paula",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-05T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Larissa",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-05T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Milena",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-05T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Karina",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-05T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Isabela",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-12T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Gabriela",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-12T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Vitória",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-12T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Rayane",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-12T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Laíza",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-12T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Isabela",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-12T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Larissa",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-12T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Victoria",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-12T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Lara",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-12T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Fabiana",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-12T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Giovana",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-12T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Maria Eduarda",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-12T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Letícia",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-12T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Maria Paula",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-12T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Nathaly",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-12T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Carla",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-12T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Audrey",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-12T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Renata",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-12T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Maria Fernanda",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-19T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Gabi",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-19T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Shaina",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-19T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Thainá",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-19T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Luana",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-19T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Letícia",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-19T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Silvia",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-19T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Anduzza",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-19T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Sarah",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-19T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Lena",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-19T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Bianca",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-19T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Ana Eliza",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-19T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Larissa",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-19T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Kauany",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-26T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Gabriela",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-26T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Larissa",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-26T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Stephanie",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-26T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Mariana",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-26T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Natacha",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-26T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Vitória",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-26T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Daniele",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-26T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Deise",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-26T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Larissa",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-26T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Pricila",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": "2026-09-26T15:00:00.000Z",
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Kyellem",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Aduaira",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Nathalia",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Rayssa",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Paulo",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Priscila",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Elizabete",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Ivan",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Emmily",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Rafael",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Maria Luísa",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Luciene",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Nicolly",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Taiane",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Giovanna",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Julio",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Ana Clara",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Paterson",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Nicole",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Andrelia",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Samanta",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Elizangela",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Maria",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Gabrielly",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Giovanne",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Ana Carolina",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Jessica",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Erica",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Maria Ap. Silva",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Sandra",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Rozimalda",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Andressa",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Valerie",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Roseli",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Marcia Aparecida",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Patrícia",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Daiane",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Adriana",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Lucélia",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Yasmin",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Rafaela",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Lucinara",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Gibelio",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Shirley",
+      "etapa": "NOVO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    },
+    {
+      "noivaNome": "Camila",
+      "etapa": "ORCAMENTO_ABERTO",
+      "origem": "LOJA",
+      "casamentoData": null,
+      "casamentoLocal": null,
+      "whatsapp": null
+    }
+  ]
+}
