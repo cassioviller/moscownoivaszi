@@ -106,7 +106,11 @@ router.delete("/lojas/:lojaId/atributos/:atributoId", async (req, res): Promise<
     res.status(409).json({
       error: "ATRIBUTO_EM_USO",
       detalhe:
-        `"${alvo.nome}" classifica ${emPecas.n} peça(s) e ${emNoivas.n} noiva(s) — apagar levaria essa classificação junto. ` +
+        // S-RM16 — o nome sai SEM aspas retas, por decisão da dona (17/08): o manual
+        // (`proprietario.html:711`) cita a frase sem elas, e quem procurava na tela o
+        // que leu no manual achava `"Marfim" classifica`. A frase equivalente em
+        // `routes/agenda.ts:232` já nomeia sem aspa nenhuma.
+        `${alvo.nome} classifica ${emPecas.n} peça(s) e ${emNoivas.n} noiva(s) — apagar levaria essa classificação junto. ` +
         "Para tirá-lo do catálogo sem perder o que já foi classificado, desmarque \"Atributo ativo\".",
     });
     return;
@@ -214,7 +218,8 @@ router.delete("/lojas/:lojaId/atributos/opcoes/:opcaoId", async (req, res): Prom
     res.status(409).json({
       error: "OPCAO_EM_USO",
       detalhe:
-        `"${existing.valor}" classifica ${emPecas.n} peça(s) e ${emNoivas.n} noiva(s) — apagar levaria essa classificação junto.`,
+        // S-RM16 — sem aspas retas, pela mesma decisão da linha 109.
+        `${existing.valor} classifica ${emPecas.n} peça(s) e ${emNoivas.n} noiva(s) — apagar levaria essa classificação junto.`,
     });
     return;
   }

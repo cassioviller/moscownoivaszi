@@ -399,7 +399,7 @@
       <figure class="print" data-print="ficha-blocos"></figure>
       <p><strong>O casamento</strong> — data, horário, local, a contagem regressiva, que fica <strong>vermelha quando faltam <span class="prazo" data-regua="CASAMENTO_URGENTE_DIAS">14 dias ou menos</span></strong>, e a <strong>retirada</strong> e a <strong>devolução</strong> do vestido · <strong>Contato</strong> · <strong>Histórico de contato</strong> · <strong>Orçamentos</strong> · <strong>Contratos</strong> · <strong>Portal da noiva</strong> · <strong>Lookbook</strong> · <strong>Interesses</strong>.</p>
 
-      <h3>“Que dia eu busco o vestido?”</h3>
+      <h3 data-fala="a noiva, no atendimento">“Que dia eu busco o vestido?”</h3>
       <p>É a pergunta do telefone, e a resposta está no bloco <strong>O casamento</strong>: <strong>Retirada</strong> e <strong>Devolução</strong>, <strong>com a hora</strong> — <em>12/05/2027 10:30</em> e <em>18/05/2027 18:00</em>. As duas saem do <strong>contrato ativo</strong> dela; contrato cancelado não aparece aqui, porque a peça já voltou para a arara.</p>
       <p><strong>As duas linhas só aparecem quando há data.</strong> Contrato sem nenhuma das duas não mostra nada — e é o caso da maioria dos contratos antigos, fechados antes de a tela ter esses campos. Quando você preenche só uma, a outra aparece como <em>A informar</em>, para não passar batido: é a devolução que o contrato usa para cobrar o atraso.</p>
       <p>Para preencher ou corrigir, o caminho é a <strong>ficha do contrato</strong> — bloco <strong>Retirada e devolução</strong>. Aqui você lê; lá você escreve.</p>
@@ -525,7 +525,7 @@
       <h3>Se a proposta venceu</h3>
       <div class="fala">
         <span class="rotulo">A noiva lê</span>
-        <p>“Esta proposta venceu em 10/07/2026 — peça uma atualização à sua vendedora para aceitar.”</p>
+        <p data-tela="Esta proposta venceu em | — peça uma atualização à sua vendedora para aceitar.">“Esta proposta venceu em 10/07/2026 — peça uma atualização à sua vendedora para aceitar.”</p>
       </div>
       <p><strong>O remédio é clicar em <span class="btn">Link para a noiva</span> outra vez.</strong> Reenviar reabre a validade por mais 30 dias e congela a proposta nova — e é isso que ela vai aceitar.</p>
     </section>
@@ -552,7 +552,7 @@
       <h3>Primeiro: as peças precisam estar reservadas</h3>
       <p>O bloco <strong>“Peças do acervo — a reserva é o que segura a peça”</strong> aparece sempre. Peça sem reserva vem em vermelho:</p>
       <div class="fala aviso">
-        <p>“«Vestido Sereia» ainda não tem reserva — pode sair para outra noiva”</p>
+        <p data-tela="» ainda não tem reserva — pode sair para outra noiva">“«Vestido Sereia» ainda não tem reserva — pode sair para outra noiva”</p>
       </div>
       <p><strong>Reserve ali mesmo</strong>, no botão <span class="btn">Reservar agora</span> ao lado. Você consegue fazer isso mesmo sem o módulo de acervo — a venda é de quem vende.</p>
 
@@ -564,7 +564,7 @@
       <p><strong>Os dois campos nascem preenchidos</strong> a partir da reserva: a peça sai no primeiro dia em que ela é sua e volta no último, nos horários do contrato — a locação começa às 10:30 do dia da retirada e termina às 18:00 do dia da devolução (cláusula 5ª). <strong>Os dois são opcionais</strong>: apague o que ainda não foi combinado.</p>
       <p>A loja <strong>retira e devolve de terça a sexta, das 10:30 às 19:00, e no sábado das 10:30 às 18:00</strong> (cláusula 4ª). Quando a janela da reserva cai em domingo ou segunda, a sugestão anda para o primeiro dia de expediente, e o diálogo diz que andou:</p>
       <div class="fala aviso">
-        <p>“A reserva segura a peça de 06/09/2028 a 11/09/2028, e a loja não abre em todos esses dias — sugerimos retirada em 06/09/2028 e devolução em 12/09/2028.”</p>
+        <p data-tela="A reserva segura a peça de | , e a loja | não abre em todos esses dias — sugerimos retirada em | e devolução em">“A reserva segura a peça de 06/09/2028 a 11/09/2028, e a loja não abre em todos esses dias — sugerimos retirada em 06/09/2028 e devolução em 12/09/2028.”</p>
       </div>
       <p class="nota">Casamento de sábado quase sempre cai nesse caso: a peça voltaria numa segunda, e a loja está fechada.</p>
       <p><strong>Preencher a retirada liga o prazo do carnê</strong> (parágrafo único da cláusula 8ª): o restante tem de estar pago <strong>até 20 dias antes</strong> dela. Se alguma parcela vencer depois disso, o diálogo avisa <em>antes</em> de você clicar, dizendo até que dia o carnê pode vencer.</p>
@@ -800,7 +800,7 @@
       <p>O acréscimo aparece também <strong>depois que o pagamento entra</strong>: o link do recibo, embaixo da parcela, diz <em data-tela="de multa, juros e correção">“· inclui R$ 15,00 de multa, juros e correção”</em> quando aquele pagamento quitou as duas coisas. Sem isso, um recibo de R$ 515,00 embaixo de uma parcela de R$ 500,00 pareceria erro.</p>
       <div class="fala">
         <span class="rotulo">Abrir mão da multa tem botão — e deixa rastro</span>
-        <p>Na linha da parcela vencida, <span class="btn">Perdoar multa</span> abre o diálogo <strong>“Perdoar multa e juros”</strong>: ele mostra a conta do que está sendo perdoado e <strong>exige o motivo</strong> — a decisão fica gravada na parcela e na trilha de auditoria, com quem, quando e por quê. A noiva volta a dever só o principal.</p>
+        <p>Na linha da parcela vencida, <span class="btn">Perdoar multa</span> abre o diálogo <strong>“Perdoar multa, juros e correção”</strong>: ele mostra a conta do que está sendo perdoado e <strong>exige o motivo</strong> — a decisão fica gravada na parcela e na trilha de auditoria, com quem, quando e por quê. A noiva volta a dever só o principal.</p>
         <p>Perdoou por engano, ou a conversa mudou? <span class="btn">Restabelecer cobrança</span> desfaz: a multa e os juros voltam a correr como se nunca tivessem sido perdoados. As duas pontas ficam na trilha.</p>
       </div>
       <p class="nota">O bloco <b>“Lembrar de um valor em aberto”</b>, em Mensagens de hoje, é do financeiro e <b>não aparece para você</b>. Quando ele aparece para quem tem o módulo, a mensagem já nomeia o acréscimo em vez de embuti-lo calado: <em data-tela="de multa, juros e correção pelo atraso (cláusula 9ª do contrato).">“Esse total já inclui R$ 15,00 de multa, juros e correção pelo atraso (cláusula 9ª do contrato).”</em></p>
@@ -947,7 +947,7 @@
       <h3>Quando a prova deixa de combinar com a reserva</h3>
       <p>A prova é marcada uma vez e a reserva continua se mexendo depois. Quando as duas se desencontram, <strong>o sistema avisa e não desmarca nada</strong> — quem fala com a noiva é quem decide. Os selos aparecem nos quatro lugares em que a prova aparece: <strong>a grade do dia, a semana, a fila de Provas e a ficha da noiva</strong>.</p>
       <ul>
-        <li><span class="btn">Reserva cancelada</span> — alguém cancelou a reserva e <strong>o vestido saiu desta noiva</strong>. A prova continua marcada de propósito: o sistema não sabe se ela desistiu ou se está trocando de peça, e cancelar sozinho perderia o horário dela. <em data-tela="com ela antes do horário, ou desmarque.">“Confirme com ela antes do horário, ou desmarque.”</em></li>
+        <li><span class="btn">Reserva cancelada</span> — alguém cancelou a reserva e <strong>o vestido saiu desta noiva</strong>. A prova continua marcada de propósito: o sistema não sabe se ela desistiu ou se está trocando de peça, e cancelar sozinho perderia o horário dela. <em>“confirme com ela antes do horário, ou desmarque.”</em></li>
         <li><span class="btn">Prova depois do casamento</span> — a data do casamento <strong>mudou para trás</strong> e a prova ficou depois dele. É o pior dos dois: a noiva viria experimentar um vestido que já usou</li>
         <li><span class="btn">Prova fora da janela</span> — a data mudou para a frente e a prova ficou longe demais. <strong>Naquele dia a peça pode já estar com outra noiva</strong>, porque o período de reserva andou junto com o casamento</li>
       </ul>

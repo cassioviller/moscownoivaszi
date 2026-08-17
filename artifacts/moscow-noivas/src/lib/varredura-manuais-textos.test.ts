@@ -202,15 +202,18 @@ function aTelaTem(pedaco: string): boolean {
 interface Citacao {
   manual: string;
   linha: number;
-  tipo: "botão" | "recado" | "prosa";
+  /** Onde a aspa de abertura mora no HTML — é por ele que uma colheita não repete a outra. */
+  indice: number;
+  tipo: "botão" | "recado" | "prosa" | "rótulo";
   exibido: string;
   /**
    * Os pedaços que a tela tem de conter — TODOS eles. Um só, igual ao exibido,
-   * quando a citação é literal. Vazio quando é fala (não é tela).
+   * quando a citação é literal. Vazio quando é fala ou grifo (não é tela).
    */
   pedacos: string[];
   molde: boolean;
   fala: boolean;
+  grifo: boolean;
 }
 
 /**
@@ -222,12 +225,30 @@ interface Citacao {
  * das duas metades reprova.
  */
 const PEDACOS = " | ";
-function declaracao(atributos: string): { pedacos?: string[]; fala?: string } {
+function declaracao(atributos: string): { pedacos?: string[]; fala?: string; grifo?: string } {
   const tela = /data-tela="([^"]+)"/.exec(atributos)?.[1];
   const fala = /data-fala="([^"]*)"/.exec(atributos)?.[1];
+  const grifo = /data-grifo="([^"]*)"/.exec(atributos)?.[1];
   if (fala !== undefined) return { fala };
+  if (grifo !== undefined) return { grifo };
   if (tela !== undefined) return { pedacos: tela.split(PEDACOS) };
   return {};
+}
+
+/** O que a declaração faz com uma citação, em um lugar só. */
+function comADeclaracao(
+  base: Omit<Citacao, "pedacos" | "molde" | "fala" | "grifo">,
+  atributos: string,
+): Citacao {
+  const d = declaracao(atributos);
+  const foraDaTela = d.fala !== undefined || d.grifo !== undefined;
+  return {
+    ...base,
+    pedacos: foraDaTela ? [] : (d.pedacos ?? [base.exibido]),
+    molde: d.pedacos !== undefined && !foraDaTela,
+    fala: d.fala !== undefined,
+    grifo: d.grifo !== undefined,
+  };
 }
 
 function limpar(cru: string): string {
@@ -252,16 +273,11 @@ const linhaDe = (html: string, indice: number) => html.slice(0, indice).split("\
 function botoes(manual: string): Citacao[] {
   const html = ler(manual);
   return chipsDe(html).map(({ atributos, rotulo: exibido }) => {
-    const d = declaracao(atributos);
-    return {
-      manual,
-      linha: linhaDe(html, html.indexOf(`<span class="btn"${atributos}>${exibido}`)),
-      tipo: "botão" as const,
-      exibido,
-      pedacos: d.fala !== undefined ? [] : (d.pedacos ?? [exibido]),
-      molde: d.pedacos !== undefined,
-      fala: d.fala !== undefined,
-    };
+    const indice = html.indexOf(`<span class="btn"${atributos}>${exibido}`);
+    return comADeclaracao(
+      { manual, linha: linhaDe(html, indice), indice, tipo: "botão", exibido },
+      atributos,
+    );
   });
 }
 
@@ -271,17 +287,19 @@ function recados(manual: string): Citacao[] {
   const achados: Citacao[] = [];
   for (const tabela of html.matchAll(/<th>O recado<\/th>[\s\S]*?<\/tbody>/g)) {
     for (const linha of tabela[0].matchAll(/<tr><td([^>]*)>“([^”]+)”<\/td>/g)) {
-      const exibido = limpar(linha[2]!);
-      const d = declaracao(linha[1] ?? "");
-      achados.push({
-        manual,
-        linha: linhaDe(html, tabela.index! + linha.index!),
-        tipo: "recado",
-        exibido,
-        pedacos: d.fala !== undefined ? [] : (d.pedacos ?? [exibido]),
-        molde: d.pedacos !== undefined,
-        fala: d.fala !== undefined,
-      });
+      const indice = tabela.index! + linha.index! + linha[0].indexOf("“");
+      achados.push(
+        comADeclaracao(
+          {
+            manual,
+            linha: linhaDe(html, tabela.index! + linha.index!),
+            indice,
+            tipo: "recado",
+            exibido: limpar(linha[2]!),
+          },
+          linha[1] ?? "",
+        ),
+      );
     }
   }
   return achados;
@@ -339,16 +357,9 @@ function prosa(manual: string, jaColhido: Set<string>): Citacao[] {
     visto.add(indice);
     const exibido = limpar(cru);
     if (jaColhido.has(exibido) || jaColhido.has(cru.trim())) return;
-    const d = declaracao(atributos);
-    achados.push({
-      manual,
-      linha: linhaDe(html, indice),
-      tipo: "prosa",
-      exibido,
-      pedacos: d.fala !== undefined ? [] : (d.pedacos ?? [exibido]),
-      molde: d.pedacos !== undefined,
-      fala: d.fala !== undefined,
-    });
+    achados.push(
+      comADeclaracao({ manual, linha: linhaDe(html, indice), indice, tipo: "prosa", exibido }, atributos),
+    );
   };
 
   // (a) toda aspa curva dentro de um <em>
@@ -372,12 +383,78 @@ function prosa(manual: string, jaColhido: Set<string>): Citacao[] {
   return achados;
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * S-RM15 — a citação que tem CASA entra na régua; a que flutua na prosa não tem
+ * onde declarar, e o critério é esse
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * **As 466 aspas curvas dos cinco manuais, separadas por um critério de
+ * MARCAÇÃO — e o critério é onde a declaração mora.**
+ *
+ * O E255 fechou a S-RM2 abrindo o `<em>` inteiro e mediu, na saída, o que
+ * sobrava: **466 citações entre aspas curvas nos cinco manuais, 213 na régua,
+ * 253 fora**. A S-RM15 nasceu daí com uma pergunta que ninguém tinha
+ * respondido: *quantas dessas 253 são citação de tela e quantas são o manual
+ * grifando o próprio vocabulário?*
+ *
+ * **Medido em 17/08, com a mesma máquina de comparação da régua** (a união do
+ * fonte cru com o renderizado): das 250 que ficam de fora com texto próprio,
+ * **203 já existem na tela literalmente** e 47 não. A premissa da sobra — *"boa
+ * parte é ênfase de escrita, não citação de tela"* — está errada para MENOS:
+ * a maioria é citação de verdade, e o custo de trazê-la é declarar as 47.
+ *
+ * **O que separa as que entram das que ficam é onde a DECLARAÇÃO pode morar.**
+ * Uma citação declarada é um atributo numa tag; a tag é a unidade. Então:
+ *
+ * - **a citação com CASA** — a aspa curva é o conteúdo INTEIRO de um `<strong>`,
+ *   `<b>`, `<td>`, `<h2>`–`<h4>`, `<p>` ou `<li>`: a tag é dela, o atributo é
+ *   dela, e a régua cobra. São **136**, e 115 já batiam sem declaração nenhuma;
+ * - **a citação SOLTA na prosa** — três, quatro, oito aspas dentro do mesmo
+ *   `<p>`: um `data-tela` ali declararia por TODAS, e silenciar sete para
+ *   declarar uma é pior régua do que não cobrar nenhuma. São **114**, e ficam
+ *   de fora **por não haver onde declarar**, não por serem menos citação.
+ *
+ * A separação das 114 está contada no relatório do E259 (88 já batem; das 26
+ * que não batem, 10 são molde com valor no meio, 8 são fala e 8 são o manual
+ * parafraseando um rótulo). Trazê-las exigiria envolver cada uma num `<span>`
+ * próprio dentro do parágrafo — mudança de marcação, não de régua, e é o
+ * trabalho que esta colheita deixa nomeado em vez de escondido.
+ *
+ * **A colheita nova achou três frases envelhecidas na primeira execução**, e
+ * as três moravam onde régua nenhuma olhava:
+ * `vendedora.html:803` citava o diálogo como *"Perdoar multa e juros"* quando
+ * `contratos/[id].tsx:1341` diz *"Perdoar multa, juros e correção"* — é a mesma
+ * renomeação do E248 que produziu o caso do `vendedora.html:800`, escondida num
+ * `<strong>`; `proprietario.html:347` e `recepcao.html:382` fechavam com ponto
+ * final o que `alerta-caixa.tsx:96` e `agenda/index.tsx:84` escrevem sem ele.
+ */
+const CITACAO_COM_CASA = /<(strong|b|td|h1|h2|h3|h4|p|li)((?:[^>"]|"[^"]*")*)>\s*“([^”]+)”\s*<\/\1>/g;
+
+function rotulos(manual: string, tomados: Set<number>): Citacao[] {
+  const html = ler(manual);
+  const achados: Citacao[] = [];
+  for (const m of html.matchAll(CITACAO_COM_CASA)) {
+    const indice = m.index! + m[0].indexOf("“");
+    if (tomados.has(indice)) continue;
+    achados.push(
+      comADeclaracao(
+        { manual, linha: linhaDe(html, indice), indice, tipo: "rótulo", exibido: limpar(m[3]!) },
+        m[2] ?? "",
+      ),
+    );
+  }
+  return achados;
+}
+
 function todas(): Citacao[] {
   return manuais().flatMap((m) => {
     const b = botoes(m);
     const r = recados(m);
     const jaColhido = new Set(r.map((c) => c.exibido));
-    return [...b, ...r, ...prosa(m, jaColhido)];
+    const p = prosa(m, jaColhido);
+    const tomados = new Set([...r, ...p].map((c) => c.indice));
+    return [...b, ...r, ...p, ...rotulos(m, tomados)];
   });
 }
 
@@ -391,11 +468,28 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
     expect(citacoes.filter((c) => c.tipo === "recado").length).toBeGreaterThanOrEqual(35);
     // S-RM2: a prosa citada em `<em>` mais a família das cláusulas — **160
     // citações medidas em 17/08, contra as 13 que o E254 alcançava**. Delas,
-    // 94 são conferidas LITERALMENTE, sem declaração nenhuma; 60 são molde e
-    // 6 são fala.
+    // 95 são conferidas LITERALMENTE, sem declaração nenhuma; 59 são molde e
+    // 6 são fala. (O E259 devolveu uma ao literal: o `vendedora.html:949`
+    // maiusculava o `c` de *"confirme com ela antes do horário"*, que é palavra
+    // do MEIO da oração em `prova-orfa.ts:77` — corrigida a letra, a declaração
+    // saiu.)
     expect(citacoes.filter((c) => c.tipo === "prosa").length).toBeGreaterThanOrEqual(160);
     const literais = citacoes.filter((c) => c.tipo === "prosa" && !c.molde && !c.fala);
-    expect(literais.length).toBeGreaterThanOrEqual(94);
+    expect(literais.length).toBeGreaterThanOrEqual(95);
+
+    // S-RM15: a citação com CASA — a aspa curva que é o conteúdo inteiro de um
+    // `<strong>`, `<b>`, `<td>`, `<h*>`, `<p>` ou `<li>`. **136 medidas em
+    // 17/08**, das quais **115 batiam com a tela sem declaração nenhuma antes
+    // deste épico e 118 batem depois** — as três a mais são as três frases que
+    // a colheita achou ENVELHECIDAS e cuja letra foi corrigida no manual. Das
+    // 18 que restam, 8 são molde, 4 são fala e 6 são grifo. As 114 que sobram
+    // flutuam dentro de parágrafos com outras aspas e não têm onde declarar —
+    // estão contadas e separadas no relatório do E259, não esquecidas.
+    expect(citacoes.filter((c) => c.tipo === "rótulo").length).toBeGreaterThanOrEqual(136);
+    const rotulosLiterais = citacoes.filter(
+      (c) => c.tipo === "rótulo" && !c.molde && !c.fala && !c.grifo,
+    );
+    expect(rotulosLiterais.length).toBeGreaterThanOrEqual(118);
   });
 
   it("todo botão, todo recado e toda citação de prosa existem na tela", () => {
@@ -448,10 +542,32 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
      * dados, e o único texto fixo é a seta) e `costureira.html:355`
      * (*"2/5 peças"*, `ajustes/index.tsx:284`). Declarar o pouco que existe é
      * pior régua do que declarar o muito, e é melhor régua do que calar.
+     *
+     * **S-RM15 leva a conta de 72 para 79, e o saldo tem dois sinais.** A
+     * colheita das citações COM CASA trouxe 136 citações novas e **8** delas
+     * são molde: a data do aceite no portal (`noiva.html:330`), a faixa da
+     * avaria (`proprietario.html:497`), o quadro do fechamento (`:596`), o
+     * passo 3 da folha (`:615`), o expurgo (`:720`), a proposta vencida
+     * (`vendedora.html:528`), a peça sem reserva (`:555`) e a janela da 4ª
+     * (`:567`). **E uma saiu**: o `vendedora.html:949` deixou de ser molde
+     * porque a letra do manual foi corrigida (S-RM16), não porque a régua
+     * afrouxou. 72 − 1 + 8 = 79.
+     *
+     * **Este número foi publicado errado uma vez, e a trava o pegou**: escrevi
+     * 81 somando de cabeça (contei duas vezes o `:596` e somei o
+     * `proprietario.html:711`, que é `<em>` e já estava nos 72). `expected 79
+     * to be 81` — é a regra 36 numa varredura, e é para isso que a contagem
+     * fica travada em vez de derivada.
+     *
+     * **Duas declaram MUITO pouco, e estão nomeadas como as duas do E255**:
+     * `proprietario.html:596` cita *"Fechar agosto de 2026"* e o único texto
+     * fixo de `financeiro/folha.tsx:491` é `Fechar `; e o passo 3 do mesmo
+     * manual (`:615`) tem de partir a frase em três porque o plural do
+     * `folha.tsx:524` é montado duas vezes dentro dela.
      */
     const citacoes = todas();
     const moldes = citacoes.filter((c) => c.molde);
-    expect(moldes.length).toBe(72);
+    expect(moldes.length).toBe(79);
 
     // O molde tem de ser mais curto que o exibido — senão não é molde, é uma
     // citação literal com um atributo pendurado.
@@ -463,16 +579,90 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
     }
 
     /**
+     * **S-RM14 — a fresta do molde de UM pedaço, medida três vezes e fechada
+     * com a contagem, porque a máquina não separa.**
+     *
+     * Um `data-tela` de um pedaço só deixa o autor escolher a metade da frase
+     * que ainda bate e calar a que envelheceu. Os três cenários do E255 foram
+     * remedidos em 17/08 sobre esta régua, com o `vendedora.html:800`
+     * recolocado na forma anterior ao E254 (*"· inclui R$ 15,00 de multa e
+     * juros"*, quando `contratos/[id].tsx` já dizia *"multa, juros e
+     * correção"*): **sem declaração reprova** (`prosa: «· inclui R$ 15,00 de
+     * multa e juros»`), **com os dois pedaços reprova pela metade envelhecida**
+     * (`prosa (molde): «de multa e juros»`) e **com um pedaço só passa**
+     * (`Tests 4 passed`). A fresta é real e continua aberta.
+     *
+     * **E o critério automático foi TENTADO e medido, não descartado por
+     * opinião.** A regra candidata — *"os pedaços declarados cobrem todo o
+     * texto do exibido que não pareça valor"* (número, dinheiro, data, hora,
+     * percentual, reticência) — reprovaria **41 dos 79 moldes de hoje**, mais
+     * da metade. O que sobra nesses 41 não é descuido: é nome de exemplo
+     * (*Ana Paula*, *Maria*, *Marfim*), dia da semana e mês por extenso
+     * (*terça a sexta*, *agosto*), e texto fixo que mora do outro lado de uma
+     * interpolação que o renderizador barra por construção. **Régua que grita
+     * sobre 41 acertos para pegar 1 erro se desliga** — é a regra 34 pelo
+     * avesso, e é a mesma conclusão a que o E255 chegou, agora com o número.
+     *
+     * **O guarda que existe é a contagem, e ela fica travada em dois níveis**:
+     * o total de moldes (acima) e o subconjunto perigoso aqui. Molde novo de um
+     * pedaço só não entra por distração — entra por decisão escrita, e quem
+     * escrever a decisão tem de olhar a frase inteira para justificá-la. É o
+     * precedente da S-CF3, fechada por decisão em 16/08.
+     */
+    const umPedaco = moldes.filter((m) => m.pedacos.length === 1);
+    expect(umPedaco.length).toBe(49);
+
+    /**
      * **A fala é a outra exceção, e é a que o E254 não tinha como declarar.**
      * O `<em>` do manual marca a tela e marca a boca de quem trabalha com a
      * mesma tinta; cobrar da tela o que a recepcionista diz ao telefone seria
      * régua que grita sobre o que está certo. `data-fala="<quem falou>"` sai
      * do recorte, e o motivo fica escrito na linha.
+     *
+     * **S-RM15 leva de 6 para 10.** As quatro novas são títulos de seção que
+     * são a PERGUNTA da noiva, não um texto de tela: *"Por que o valor
+     * subiu?"*, *"Que dia eu devolvo o vestido?"* e o *"Traga hoje."* que a
+     * recepcionista responde (`recepcao.html:622, 627, 637`), mais *"Que dia eu
+     * busco o vestido?"* (`vendedora.html:402`).
      */
     const falas = citacoes.filter((c) => c.fala);
-    expect(falas.length).toBe(6);
+    expect(falas.length).toBe(10);
     for (const f of falas) {
       expect(f.pedacos, `${f.manual}:${f.linha}: fala não confere pedaço nenhum`).toEqual([]);
     }
+
+    /**
+     * **O grifo é a terceira exceção, e é a que a S-RM15 obrigou a nomear.**
+     * Fora do `<em>`, a aspa curva do manual serve a mais de um dono: ela cita
+     * a tela, ela cita a boca de quem trabalha — e ela grifa o vocabulário do
+     * PRÓPRIO manual. As seis são de três famílias, e nenhuma é frase que a
+     * tela escreva: o gesto da noiva nomeado pelo manual (*"aceitar duas
+     * vezes"*, *"avisar duas vezes"* — `noiva.html:587`), o dado semeado na
+     * instalação de exemplo (*"Rua das Noivas, 123"* — `proprietario.html:706`)
+     * e as três coisas que **este manual dizia antes** e deixaram de ser
+     * verdade (`recepcao.html:689-691`).
+     *
+     * **A razão é obrigatória e é cobrada**: `data-grifo=""` não silencia nada.
+     * É a diferença entre declarar e calar — quem reabrir a contagem lê por que
+     * cada uma saiu, na própria linha do manual.
+     */
+    const grifos = citacoes.filter((c) => c.grifo);
+    expect(grifos.length).toBe(6);
+    for (const g of grifos) {
+      expect(g.pedacos, `${g.manual}:${g.linha}: grifo não confere pedaço nenhum`).toEqual([]);
+    }
+  });
+
+  it("toda declaração de grifo diz POR QUE aquilo não é tela", () => {
+    // Regra 34 pelo avesso: um `data-grifo` vazio seria a S-C46 aplicada à
+    // declaração — parece cobertura e não é. A razão fica no atributo, e a
+    // régua a cobra.
+    const html = manuais().map((m) => [m, ler(m)] as const);
+    const vazias = html.flatMap(([manual, texto]) =>
+      [...texto.matchAll(/data-grifo="([^"]*)"/g)]
+        .filter((m) => m[1]!.trim().length < 20)
+        .map((m) => `${manual}:${linhaDe(texto, m.index!)} · data-grifo="${m[1]}"`),
+    );
+    expect(vazias, `grifo sem razão escrita:\n${vazias.join("\n")}`).toEqual([]);
   });
 });
