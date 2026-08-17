@@ -610,6 +610,27 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
     cegueira, porque passa a haver mais réguas cuja resposta depende do índice
     do git — a derivação precisa vir acompanhada desta ordem de gestos.)*
 
+36. **Total de suíte não se deduz de execução de arquivo único — e o corredor
+    de teste conta coisas que não são testes seus.** Rodar um spec sozinho
+    imprime um total que inclui o que o corredor precisou rodar para chegar
+    lá; somar esse total ao número da suíte inteira é aritmética sobre duas
+    populações diferentes. **O número da suíte só vale medido onde ele é
+    afirmado**: se o relatório diz "E2E 187 → 188", a frase que o sustenta é
+    uma execução da suíte inteira, não uma do arquivo. *(2026-08-17, E257: o
+    relatório e o corpo do commit `517cf46d` publicaram `e2e/64` **3 → 4
+    testes** e **E2E 187 → 188**. O arquivo tem TRÊS `test(` antes e três
+    depois — a cobertura dos dois "Editar" entrou como seis asserções DENTRO
+    do teste do `:108`, e nenhum teste nasceu. O "4 passed" era **1 do projeto
+    `setup`** (`playwright.config.ts:80`, o `auth.setup.ts`, que o Playwright
+    conta como teste) **+ 3 do arquivo** — e rodar o spec sozinho dava "4
+    passed" também ANTES do épico. A suíte inteira, medida no `main` no fecho
+    do lote, deu **187**. **A prova estava dentro do próprio relatório e não
+    foi lida**: o vermelho da regra 34, três parágrafos abaixo, numera o teste
+    que falhou como `✘  2` — o que só é possível se houver um `1` que não é
+    dele. A cobertura era real; o número é que não tinha sido contado. É a
+    família da 35 com outro mecanismo: lá a régua enxergava menos do que
+    existia, aqui a leitura enxergou mais.)*
+
 ---
 
 ## Histórico

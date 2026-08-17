@@ -120,11 +120,39 @@ para o documento que manda.
    chamadores que o E252 criou dentro da transação passam a ler pelo `tx` que
    o E251 tornou possível — nenhum dos dois via o código do outro.
 
-   **Contado em 17/08, com as quatro réguas fechadas: o repositório tem 8
-   sobras abertas — 0 🔴 · 0 🟠 · 3 🟡 · 5 🔵.** São as sete que os agentes
-   acharam de passagem (**S-RM2, S-RM3, S-RM4, S-RM7, S-RM8, S-RM9, S-RM10**,
-   na tabela do rastreador do review max) e a **S-M17**, que espera uma
-   instalação real que ainda não existe. **Não há fila de código em curso.**
+   **E as 8 que sobraram daquele lote também estão fechadas** (17/08, madrugada
+   e manhã) — o plano é
+   [`2026-08-17-as-8-que-sobraram-plano.md`](docs/propostas/2026-08-17-as-8-que-sobraram-plano.md)
+   e a seção *"O fecho das 8"* do mesmo rastreador é onde ele é contado. Duas
+   saíram **sem código, com a razão escrita antes de começar**: a S-RM10 já
+   estava paga como emenda à regra 29, e a S-M17 não é nossa para fechar
+   enquanto a instalação real não existir. As outras seis saíram em três
+   épicos: o **E255** (`f422195b`, agente) levou a régua da prosa dos manuais
+   de **13 para 160 citações**, 94 delas conferidas LITERALMENTE, lendo o
+   fonte RENDERIZADO além do cru; o **E256** (`0c136b19`, agente) pôs o
+   `useDiaLocal()` no sino em três sítios, varreu o `useFieldArray` (população
+   1, zero ofensores) e renomeou `parcelas` → `recebimentos` em SEIS frentes,
+   não quatro; o **E257** (`517cf46d`, orquestrador, porque a régua é o E2E)
+   deu cena aos dois "Editar" do `/admin`, com o BANCO na terceira asserção.
+
+   **E o E257 publicou um número que não tinha sido contado onde ele é
+   afirmado** — corrigido em `36801c41`, e virou a **regra 36**. Ele disse
+   `e2e/64` 3 → 4 testes e E2E 187 → 188; o arquivo tem **três `test(` antes e
+   três depois** (a cobertura entrou como seis asserções DENTRO do teste do
+   `:108`), e o "4 passed" era *1 do projeto `setup` + 3 do arquivo*. A suíte
+   inteira deu **187**. **Total de suíte não se deduz de execução de arquivo
+   único** — é a família da regra 35 com o mecanismo invertido.
+
+   **Contado nas tabelas em 17/08, com as quatro réguas fechadas: o
+   repositório tem 7 sobras abertas — 0 🔴 · 0 🟠 · 2 🟡 · 5 🔵.** São a
+   **S-M17** (que espera uma instalação real que ainda não existe), a
+   **S-RM11** 🟡 e as cinco 🔵 **S-RM12, S-RM13, S-RM14, S-RM15, S-RM16** — na
+   tabela do rastreador do review max, e **seis das sete nasceram do fecho das
+   8**. A maior é a **S-RM11**, e ela é maior que a S-RM7 que a revelou:
+   `hojeLocal()` aparece **38 vezes em 17 telas**, 11 delas dentro de um
+   `useMemo` sem o dia nas dependências, e duas já foram conferidas — o painel
+   e a agenda ficam em ontem numa aba deixada aberta pela virada. **Não há
+   fila de código em curso.**
 
    **E o lote desmentiu nove dos catorze diagnósticos**, nas duas direções —
    está contado no rastreador. O caso que mais ensina é a **S-R11**: ela
@@ -139,9 +167,11 @@ para o documento que manda.
    `heliumdb` perdeu 725 contas e 451 pagamentos fantasmas de E2E.
 
 3. **A régua e a publicação.** Hoje a régua é **API 1905 (272 arquivos) ·
-   frontend 1037 (113 arquivos) · E2E 187 (0 skipped) · banco virgem 16 ·
-   typecheck verde em 5 projetos** — as QUATRO medidas em série no fecho do
-   lote dos agentes (17/08). A API inteira leva ~11,6 min no
+   frontend 1044 (115 arquivos) · E2E 187 (0 skipped) · banco virgem 16 ·
+   typecheck verde em 5 projetos** — as QUATRO medidas em série no fecho das 8
+   (17/08). O frontend subiu de 1037/113 no fecho anterior; **o E2E ficou em
+   187, e não nos 188 que o E257 publicou** (regra 36). A API inteira leva
+   ~10,6 a 11,6 min no
    `heliumdb`; o E2E, ~6,5 min, e é a régua que **agente nenhum pode rodar**
    (worktree isola arquivo e banco e NÃO isola porta — e dois E2E ao mesmo
    tempo precisam de banco, portas **e checkout** próprios, medido na S-O93:
@@ -155,9 +185,9 @@ para o documento que manda.
    (instalação nova, ~1 min): rode-a antes de mexer em seed, schema ou
    `global-setup`.
 
-   **O `main` está 43+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
-   de manhã; a conferência, a fila do review max e os docs não estão
-   publicados). Confira com
+   **O `main` está 52+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
+   de manhã; a conferência, a fila do review max, o fecho das 8 e os docs não
+   estão publicados). Confira com
    `git rev-list --count origin/main..main` antes de assumir — esta linha
    envelhece a cada commit. Todo worktree de agente nasce em `origin/main`
    (regra 29), e o primeiro gesto de todo agente é conferir a própria base.
