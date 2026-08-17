@@ -67,6 +67,13 @@ quatro edita `EXECUCAO.md` de rastreador nenhum, nem o `CLAUDE.md`. Sobra vista
 de passagem vai no relatório final do agente, **com âncora `arquivo:linha`**, e
 eu a escrevo na tabela.
 
+> **Errata de 17/08, achada pelo agente do E253 e conferida:** o prompt dele
+> repetia, do `CLAUDE.md`, que *"o frontend reprova entre 00:00 e 03:00 UTC
+> pela S-O119"*. **A S-O119 fechou no E198** e está riscada em
+> `2026-08-11-otica-dos-papeis/EXECUCAO.md:246`. Medido: 1037 verdes às 01:57,
+> 01:59 e 02:04 UTC. Um plano que carrega defeito morto ensina a atribuir ao
+> fuso um vermelho verdadeiro — S-A5 com o custo invertido.
+
 **3. As portas do E2E.** Nenhum agente roda E2E — worktree não isola porta, e
 `e2e/.auth/admin.json` é uma sessão que só vale no servidor que a criou
 (S-O93). O E2E é meu, no fecho do lote.

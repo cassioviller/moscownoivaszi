@@ -125,8 +125,12 @@ para o documento que manda.
    (worktree isola arquivo e banco e NÃO isola porta — e dois E2E ao mesmo
    tempo precisam de banco, portas **e checkout** próprios, medido na S-O93:
    o `e2e/.auth/admin.json` é uma sessão que só vale no servidor que a criou).
-   O frontend reprova entre 00:00 e 03:00 UTC pela S-O119 — confira a hora
-   antes de procurar defeito. `scripts/banco-virgem.ts` é a quarta régua
+   ~~O frontend reprova entre 00:00 e 03:00 UTC pela S-O119~~ — **isto era
+   falso e ficou aqui escrito depois de a S-O119 fechar no E198.** Medido em
+   17/08 pelo agente do E253: **1037 verdes às 01:57, 01:59 e 02:04 UTC**, três
+   vezes dentro da janela que este ponteiro dava como maldita. É a classe da
+   S-A5 com o custo INVERTIDO — em vez de esconder trabalho, ela ensina a
+   atribuir ao fuso um vermelho verdadeiro. `scripts/banco-virgem.ts` é a quarta régua
    (instalação nova, ~1 min): rode-a antes de mexer em seed, schema ou
    `global-setup`.
 
