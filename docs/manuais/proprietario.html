@@ -192,7 +192,7 @@
     background: var(--folha); border: 1px solid var(--linha);
     border-radius: 10px; padding: 18px; margin: 0 0 18px; box-shadow: var(--sombra);
   }
-  .trilha span {
+  .trilha > span {
     font-size: 14.5px; font-weight: 550; padding: 5px 11px;
     border-radius: 6px; background: var(--chip-fundo); border: 1px solid var(--chip-borda);
   }
@@ -303,12 +303,12 @@
         </div>
       </div>
 
-      <p><strong>Oito áreas</strong> do sistema decidem quem vê o quê — <strong>a ficha da noiva, orçamentos, contratos, agenda, acervo, financeiro, comissão e administração</strong> —, e o seu perfil abre as oito. Os outros perfis abrem só algumas. (Eram seis até 12/08/2026: orçamento e contrato moravam dentro de “noivas”, e é essa a mudança que a seção <a href="#decisoes">O que espera uma decisão sua</a> conta.)</p>
+      <p><strong>Oito áreas</strong> do sistema decidem quem vê o quê — <strong>a ficha da noiva, orçamentos, contratos, agenda, acervo, financeiro, comissão e administração</strong> —, e o seu perfil abre as oito. Os outros perfis abrem só algumas. (Eram seis até 12/08/2026: orçamento e contrato moravam dentro de <span>“noivas”</span>, e é essa a mudança que a seção <a href="#decisoes">O que espera uma decisão sua</a> conta.)</p>
 
       <div class="fala aviso">
         <span class="rotulo">Um nome errado, e ele é seu</span>
         <p>O perfil se chama <strong>“Proprietária”</strong> na tela, no feminino, e o proprietário do ateliê é você. O nome está gravado no cadastro inicial e ecoa em mais quatro lugares.</p>
-        <p>Corrigir mexe na semente do sistema — pede um script para as instalações que já gravaram o nome antigo —, então está declarado e esperando. <strong>Este manual escreve “Proprietária” porque é o que a tela mostra</strong>; no dia em que a tela mudar, muda aqui também.</p>
+        <p>Corrigir mexe na semente do sistema — pede um script para as instalações que já gravaram o nome antigo —, então está declarado e esperando. <strong>Este manual escreve <span>“Proprietária”</span> porque é o que a tela mostra</strong>; no dia em que a tela mudar, muda aqui também.</p>
       </div>
     </section>
 
@@ -339,7 +339,7 @@
       <h3>O aviso que vale abrir sempre</h3>
       <div class="fala aviso">
         <span class="rotulo">No topo do Financeiro</span>
-        <p>“Caixa fica negativo em 14/09/2026” — <em>ou</em> — “O caixa já está negativo”.</p>
+        <p><span data-tela="Caixa fica negativo em">“Caixa fica negativo em 14/09/2026”</span> — <em>ou</em> — <span>“O caixa já está negativo”</span>.</p>
         <p>A frase traz a conta junto: de quanto parte hoje, até onde desce e em que dia. É previsão pelo que está lançado, não adivinhação.</p>
       </div>
       <div class="fala">
@@ -388,7 +388,7 @@
       <p>Três quadros: <strong>Recebimentos</strong>, <strong>Recebimentos por meio</strong> — para conciliar cartão, Pix e caixa físico — e <strong>Despesas por categoria</strong>. As setas do topo andam de mês em mês.</p>
 
       <h3>Projeção de caixa</h3>
-      <p><strong>Saldo de partida</strong> é o número que você informa: é dele que a curva parte. Sem ele, o alarme fica desligado — é o “sem nível” do aviso acima. Abaixo, a <strong>curva projetada</strong> no horizonte escolhido.</p>
+      <p><strong>Saldo de partida</strong> é o número que você informa: é dele que a curva parte. Sem ele, o alarme fica desligado — é o <span>“sem nível”</span> do aviso acima. Abaixo, a <strong>curva projetada</strong> no horizonte escolhido.</p>
 
       <h3>Auditoria</h3>
       <p><em>“Toda ação que mexe em dinheiro deixa linha aqui: quem fez, o quê e quando.”</em> Filtre e clique em <span class="btn">Exportar CSV</span> — o arquivo leva o <strong>período inteiro do filtro</strong>, sem o corte de 200 linhas da tela.</p>
@@ -479,7 +479,7 @@
       <div class="fala">
         <span class="rotulo">Os dois gestos que faltavam ganharam tela</span>
         <p><strong>Perdoar a multa da 9ª tem botão.</strong> A decisão de 13/08/2026 — <em>cobrar por padrão, perdoar por gesto</em> — está inteira na ficha do contrato: na parcela vencida, <span class="btn">Perdoar multa</span> abre o diálogo, mostra a conta do que está sendo dispensado e <strong>exige o motivo</strong>; quem perdoou, quando, quanto e por quê ficam na parcela e na Auditoria. <span class="btn">Restabelecer cobrança</span> desfaz, também com rastro. O gesto pede o acesso de <strong>editar em Contratos</strong> — perdoar dinheiro é decisão de quem decide sobre contrato.</p>
-        <p><strong>A antecedência da 18ª se pactua na tela.</strong> O campo <em>“Prazo de devolução antecipada da reserva (cláusula 18ª)”</em> está no diálogo das datas da locação, contrato a contrato — preenchido, a 18ª dispara na rescisão de quem pagou tudo e avisou a tempo; vazio segue sendo “não pactuado”, e vale a 11ª.</p>
+        <p><strong>A antecedência da 18ª se pactua na tela.</strong> O campo <em>“Prazo de devolução antecipada da reserva (cláusula 18ª)”</em> está no diálogo das datas da locação, contrato a contrato — preenchido, a 18ª dispara na rescisão de quem pagou tudo e avisou a tempo; vazio segue sendo <span data-grifo="o vocabulario do campo vazio: o codigo chama assim o prazo nulo da 18a, e a tela nao o escreve">“não pactuado”</span>, e vale a 11ª.</p>
       </div>
 
       <p>Os outros dois exemplos, para calibrar a ordem de grandeza:</p>
@@ -527,7 +527,7 @@
             </tr>
             <tr>
               <td><strong>Quando a loja cancela, devolve tudo</strong> — a reserva incluída (13ª)</td>
-              <td>O sistema não sabe medir “serviço já prestado”: nada nele é granular o bastante para dizer quanto de um atendimento foi consumido antes da retirada. Reter o sinal de uma noiva que não causou a rescisão seria o oposto do espírito da cláusula. <strong>É leitura declarada, e se corrige numa linha</strong> se a sua intenção for outra</td>
+              <td>O sistema não sabe medir <span data-grifo="e a leitura declarada da clausula, escrita pelo manual; nenhuma tela mede isto">“serviço já prestado”</span>: nada nele é granular o bastante para dizer quanto de um atendimento foi consumido antes da retirada. Reter o sinal de uma noiva que não causou a rescisão seria o oposto do espírito da cláusula. <strong>É leitura declarada, e se corrige numa linha</strong> se a sua intenção for outra</td>
             </tr>
             <tr>
               <td><strong>A 18ª não dispara sem prazo preenchido</strong> naquele contrato — a rescisão cai na 11ª, com a dedução dela</td>
@@ -584,7 +584,7 @@
         <p>“Suba o extrato que o seu banco exporta (OFX ou CSV) e confira o banco contra o sistema. <strong>O arquivo é lido aqui mesmo — nada sai do seu computador.</strong>”</p>
       </div>
       <p>O extrato não é enviado a lugar nenhum: a leitura acontece no navegador. O que a tela mostra é a diferença — o que o banco tem e o sistema não, e o contrário. <strong>É a conferência que fecha o mês com segurança</strong>, e a que descobre o Pix que ninguém lançou.</p>
-      <p><strong>Desde 15/08/2026 a conciliação enxerga cada pagamento</strong> — a resposta da contadora, na recomendação. Quando a noiva paga uma parcela de R$ 1.000,00 em dois Pix (R$ 300,00 em 01/03 e R$ 700,00 em 15/03), o sistema mostra <strong>duas linhas</strong>, cada uma no seu dia, e as duas casam com as duas do extrato — antes ele mostrava uma só, na data do último Pix, e acusava três divergências de um pagamento certo. O carimbo de “conferido” também é por pagamento: marcar o primeiro Pix não marca o segundo, e a parcela só aparece como conferida quando os dois estão.</p>
+      <p><strong>Desde 15/08/2026 a conciliação enxerga cada pagamento</strong> — a resposta da contadora, na recomendação. Quando a noiva paga uma parcela de R$ 1.000,00 em dois Pix (R$ 300,00 em 01/03 e R$ 700,00 em 15/03), o sistema mostra <strong>duas linhas</strong>, cada uma no seu dia, e as duas casam com as duas do extrato — antes ele mostrava uma só, na data do último Pix, e acusava três divergências de um pagamento certo. O carimbo de <span>“conferido”</span> também é por pagamento: marcar o primeiro Pix não marca o segundo, e a parcela só aparece como conferida quando os dois estão.</p>
     </section>
 
     <section id="mes">
@@ -602,12 +602,12 @@
             <tr>
               <td class="rotulo">1</td>
               <td><strong>Comissões da competência fechadas</strong></td>
-              <td>“Há vendedoras com venda no mês sem fechamento.” → <span class="btn">Fechar em Comissões →</span></td>
+              <td><span>“Há vendedoras com venda no mês sem fechamento.”</span> → <span class="btn">Fechar em Comissões →</span></td>
             </tr>
             <tr>
               <td class="rotulo">2</td>
               <td><strong>Contas da competência pagas</strong></td>
-              <td>“3 contas em aberto no mês.” → <span class="btn">Pagar →</span></td>
+              <td><span data-tela="em aberto no mês.">“3 contas em aberto no mês.”</span> → <span class="btn">Pagar →</span></td>
             </tr>
             <tr>
               <td class="rotulo">3</td>
@@ -638,7 +638,7 @@
       <p>Essa frase é a regra inteira, e é o que faz a escada funcionar como incentivo: não é faixa por venda, é <strong>a faixa do mês aplicada ao mês todo</strong>.</p>
 
       <h3>Como está o mês</h3>
-      <p>O quadro mostra o mês corrente <strong>ao vivo</strong>, vendedora por vendedora, antes de qualquer fechamento. É a resposta para “quanto vou pagar de comissão este mês?” em qualquer dia.</p>
+      <p>O quadro mostra o mês corrente <strong>ao vivo</strong>, vendedora por vendedora, antes de qualquer fechamento. É a resposta para <span data-fala="a dona, no fim do mês">“quanto vou pagar de comissão este mês?”</span> em qualquer dia.</p>
 
       <h3>Fechar a competência</h3>
       <p>O botão <span class="btn">Fechar competência</span> pede confirmação e <strong>diz o que vai lançar antes de você confirmar</strong> — e enquanto a conta ainda está sendo feita, ele diz isso também (<em>“Calculando o que será lançado…”</em>) em vez de afirmar zero. O fechamento gera a <strong>conta a pagar</strong> da vendedora e é idempotente: fechar duas vezes não paga duas vezes.</p>
@@ -646,7 +646,7 @@
 
       <div class="fala aviso">
         <span class="rotulo">O aviso que evita o esquecimento caro</span>
-        <p>“2 competências passadas ainda não foram fechadas” — com o valor em vendas e quantas vendedoras estão sem fechamento em cada uma, e o mês clicável.</p>
+        <p><span data-tela="competências passadas ainda não foram fechadas">“2 competências passadas ainda não foram fechadas”</span> — com o valor em vendas e quantas vendedoras estão sem fechamento em cada uma, e o mês clicável.</p>
         <p>É o aviso que existe porque <strong>ninguém reclama de uma comissão que ninguém sabe que existe</strong>: a vendedora não recebe, o mês passa, e a pendência acumula invisível.</p>
       </div>
 
@@ -681,14 +681,14 @@
 
       <div class="fala">
         <span class="rotulo">O que mudou em 12/08/2026, e por quê</span>
-        <p>Esta tabela tinha <strong>cinco colunas e quatro linhas</strong>. As colunas “Orçamentos” e “Contratos” não existiam: as três coisas — a ficha da noiva, a proposta e o contrato — moravam dentro de <strong>“Noivas”</strong>, e marcar aquela caixa única entregava as três de uma vez.</p>
+        <p>Esta tabela tinha <strong>cinco colunas e quatro linhas</strong>. As colunas <span>“Orçamentos”</span> e <span>“Contratos”</span> não existiam: as três coisas — a ficha da noiva, a proposta e o contrato — moravam dentro de <strong>“Noivas”</strong>, e marcar aquela caixa única entregava as três de uma vez.</p>
         <p>Era isso que fazia a recepção fechar contrato de R$ 5.000,00. <strong>Separar não foi arrumação:</strong> era a única forma de dar à recepção o poder de corrigir um telefone sem lhe dar, no mesmo gesto, o de assinar contrato e aprovar proposta.</p>
         <p>A linha da <strong>Costureira</strong> também é nova — ela não tinha perfil, e entrava como Recepção.</p>
       </div>
 
       <p><strong>O perfil Admin é do sistema e não se edita</strong> — o servidor recusa alterá-lo ou apagá-lo. É a garantia de que uma configuração errada não tranca todo mundo para fora.</p>
 
-      <p class="nota">Gerir equipe mexe numa tabela compartilhada entre lojas, e o sistema <b>prova o vínculo antes de escrever</b>: quem não é desta loja responde “não existe”, mesmo existindo em outra. Sem essa prova, um administrador desativaria a dona da loja vizinha.</p>
+      <p class="nota">Gerir equipe mexe numa tabela compartilhada entre lojas, e o sistema <b>prova o vínculo antes de escrever</b>: quem não é desta loja responde <span>“não existe”</span>, mesmo existindo em outra. Sem essa prova, um administrador desativaria a dona da loja vizinha.</p>
     </section>
 
     <section id="loja">
@@ -699,7 +699,7 @@
       <p class="nota">Existe uma segunda aba, <b>Administração</b>, e ela é do <b>superadministrador da rede</b> — quem cuida de várias lojas. Ela não aparece para você, e é de propósito: o que ela abre é o console de todas as lojas, não o da sua. Lá, ao lado de <span class="btn">Editar</span>, cada loja e cada pessoa tem <span class="btn">Apagar</span> — mas só sai o que está <strong>vazio</strong>: loja com noivas, contratos ou acervo, e pessoa com atendimento, orçamento, contrato ou comissão, o sistema recusa e ensina a desativar. E a seção <strong>Auditoria global</strong> guarda quem apagou que loja e que pessoa.</p>
 
       <h3>Dados da loja</h3>
-      <p>Três blocos. <strong>A loja</strong>: Nome, CNPJ, Endereço, Telefone, e — desde 15/08/2026 — <strong>Cidade e UF</strong>. <strong>Quem assina pela loja</strong>: nome, RG e CPF do representante legal. <strong>Como a noiva paga</strong>: a chave PIX e o titular. <strong>Não é cadastro burocrático:</strong> o endereço e o telefone aparecem no rodapé do portal da noiva e no botão “Falar no WhatsApp”; a cidade nomeia o foro do contrato (cláusula 21ª) e a linha de local e data; o representante sai na identificação das partes; o PIX sai ao pé da assinatura do contrato e em cada recibo. <b>Em branco, o contrato imprime a lacuna</b> — é o que a Cláusula 21ª faz hoje na sua instalação, por remissão à sede, até você preencher.</p>
+      <p>Três blocos. <strong>A loja</strong>: Nome, CNPJ, Endereço, Telefone, e — desde 15/08/2026 — <strong>Cidade e UF</strong>. <strong>Quem assina pela loja</strong>: nome, RG e CPF do representante legal. <strong>Como a noiva paga</strong>: a chave PIX e o titular. <strong>Não é cadastro burocrático:</strong> o endereço e o telefone aparecem no rodapé do portal da noiva e no botão <span>“Falar no WhatsApp”</span>; a cidade nomeia o foro do contrato (cláusula 21ª) e a linha de local e data; o representante sai na identificação das partes; o PIX sai ao pé da assinatura do contrato e em cada recibo. <b>Em branco, o contrato imprime a lacuna</b> — é o que a Cláusula 21ª faz hoje na sua instalação, por remissão à sede, até você preencher.</p>
 
       <div class="fala aviso">
         <span class="rotulo">E hoje eles ainda são o exemplo</span>
@@ -725,7 +725,7 @@
 
     <section id="nao">
       <h2>Quando o sistema diz não</h2>
-      <p class="resumo">Você tem acesso a tudo, então quase todo “não” que você vê é <strong>sobre dinheiro</strong>, não sobre permissão.</p>
+      <p class="resumo">Você tem acesso a tudo, então quase todo <span data-grifo="o manual nomeia a recusa em geral, nao um rotulo; a tela escreve uma frase inteira em cada caso">“não”</span> que você vê é <strong>sobre dinheiro</strong>, não sobre permissão.</p>
       <div class="rolagem">
         <table>
           <thead><tr><th>O recado</th><th>O que significa</th></tr></thead>
@@ -733,12 +733,12 @@
             <tr><td>“A projeção está sem nível”</td><td>Falta o saldo de partida — o alarme de caixa está desligado</td></tr>
             <tr><td>“Uma competência passada ainda não foi fechada”</td><td>Comissão de mês anterior pendente. O mês é clicável</td></tr>
             <tr><td>“Esta vendedora tem fechamento mais recente — reabra do último para o primeiro.”</td><td>Você tentou reabrir um mês que não é o último fechado da vendedora. Reabra o mais recente primeiro (o recado diz qual)</td></tr>
-            <tr><td>“Este pagamento já foi estornado por outro clique — recarregue a lista.”</td><td>Dois cliques em “estornar” no mesmo segundo: o segundo perdeu, e <strong>nada foi estornado em dobro</strong></td></tr>
+            <tr><td>“Este pagamento já foi estornado por outro clique — recarregue a lista.”</td><td>Dois cliques em <span>“estornar”</span> no mesmo segundo: o segundo perdeu, e <strong>nada foi estornado em dobro</strong></td></tr>
             <tr><td>“Esta conta veio de um fechamento de comissão — reabra o fechamento em Comissões para desfazê-la.”</td><td>A conta da comissão não se apaga pelo caixa a pagar; ela se desfaz reabrindo o fechamento que a criou, senão a vendedora não recebe</td></tr>
             <tr><td>“A soma das parcelas não fecha com o total.”</td><td>Entrada e número de parcelas não batem com o contrato</td></tr>
             <tr><td>“Este lead já possui um contrato ativo”</td><td>A noiva já tem contrato vivo. Cancele o anterior ou revise</td></tr>
             <tr><td>“Nenhuma cabine ativa — a grade do dia precisa de ao menos uma.”</td><td>Ative uma cabine em Cabines &amp; horário</td></tr>
-            <tr><td data-tela=" dia(s) depois do limite.">“O contrato pede o restante pago até 20 dias antes da retirada (parágrafo único) — até 17/08/2028. Esta parcela vence em 22/08/2028, 5 dia(s) depois do limite.”</td><td>O carnê termina perto demais da retirada — as datas do exemplo são suas. Ou o carnê encurta, ou a retirada anda. <strong>Este é o único “não” do contrato que trava a porta sem saída negociada</strong></td></tr>
+            <tr><td data-tela=" dia(s) depois do limite.">“O contrato pede o restante pago até 20 dias antes da retirada (parágrafo único) — até 17/08/2028. Esta parcela vence em 22/08/2028, 5 dia(s) depois do limite.”</td><td>O carnê termina perto demais da retirada — as datas do exemplo são suas. Ou o carnê encurta, ou a retirada anda. <strong>Este é o único <span data-grifo="o manual nomeia a recusa em geral, nao um rotulo; a frase inteira esta na celula ao lado">“não”</span> do contrato que trava a porta sem saída negociada</strong></td></tr>
             <tr><td>“A régua não impede — escreva por que este valor sai dela.”</td><td>A taxa de limpeza ou o reparo saiu da faixa da 14ª/15ª. <strong>Não é parede:</strong> escreva a razão no campo que aparece, e o valor entra com a razão gravada na auditoria</td></tr>
             <tr><td data-tela="atrasou e não está no rol de itens do">“Véu de renda — atrasou e não está no rol de itens do contrato. A cláusula 16ª cobra sobre o aluguel de cada peça, e não há de onde tirá-lo: confira o contrato antes de cobrar.”</td><td>A 16ª cobra sobre o aluguel de cada peça, e essa peça (a do exemplo é o véu) não tem aluguel de onde tirá-lo. O sistema a nomeia e diz que não conferiu, em vez de calar</td></tr>
             <tr><td>“Esta parcela mudou enquanto você digitava — confira o valor e tente de novo.”</td><td>Duas pessoas mexeram na mesma parcela ao mesmo tempo. <strong>Nada foi gravado em dobro</strong> — o valor na sua tela é o antigo</td></tr>
@@ -746,7 +746,7 @@
           </tbody>
         </table>
       </div>
-      <p class="nota">Todo movimento de dinheiro — receber, estornar, pagar, fechar comissão, reabrir fechamento — deixa linha na <b>Auditoria</b>, com quem fez e quando. Quando a dúvida for “quem mexeu nisso?”, a resposta está lá, e sai em CSV.</p>
+      <p class="nota">Todo movimento de dinheiro — receber, estornar, pagar, fechar comissão, reabrir fechamento — deixa linha na <b>Auditoria</b>, com quem fez e quando. Quando a dúvida for <span data-fala="a dona, diante de um número">“quem mexeu nisso?”</span>, a resposta está lá, e sai em CSV.</p>
     </section>
 
     <section id="decisoes">
@@ -773,7 +773,7 @@
             <tr>
               <td class="rotulo">P3</td>
               <td><strong>Os dados reais da loja ainda não foram preenchidos.</strong> O banco tem o exemplo da instalação</td>
-              <td><strong>Esta é a única das oito que você resolve sozinho em cinco minutos</strong>, e o lugar é a tela: <a href="#loja">Configurações → Dados da loja</a>. Enquanto não for, o portal da noiva mostra “Rua das Noivas, 123”. <strong>Não peça para mexerem no código:</strong> ele é parametrizado de propósito, e o valor certo é o que você digitar</td>
+              <td><strong>Esta é a única das oito que você resolve sozinho em cinco minutos</strong>, e o lugar é a tela: <a href="#loja">Configurações → Dados da loja</a>. Enquanto não for, o portal da noiva mostra <span data-grifo="e o dado semeado na instalacao de exemplo, valor de banco e nao texto de codigo">“Rua das Noivas, 123”</span>. <strong>Não peça para mexerem no código:</strong> ele é parametrizado de propósito, e o valor certo é o que você digitar</td>
             </tr>
             <tr>
               <td class="rotulo">P4</td>
@@ -782,8 +782,8 @@
             </tr>
             <tr>
               <td class="rotulo">P5</td>
-              <td><strong>Os “7 dias da data da locação” da 17ª contam de quê?</strong> (a troca de traje) — <em>confirmada em 15/08/2026: do FECHO do contrato</em></td>
-              <td>A cláusula não define “data da locação”, e as duas leituras — o fecho do contrato ou a retirada da peça — dão janelas diferentes. <strong>O sistema conta do fecho</strong>, que é a leitura coerente (depois da retirada a troca de modelo nem existe), e a frase da recusa diz isso na letra para ninguém adivinhar. Se a sua leitura for outra, muda-se a âncora da conta, não a régua — mas confirme antes que alguém discuta um prazo com noiva na frente</td>
+              <td><strong>Os <span data-tela="dias da data | da locação.">“7 dias da data da locação”</span> da 17ª contam de quê?</strong> (a troca de traje) — <em>confirmada em 15/08/2026: do FECHO do contrato</em></td>
+              <td>A cláusula não define <span data-grifo="e o termo da clausula 17a, que sai no instrumento impresso; a tela nao escreve este rotulo">“data da locação”</span>, e as duas leituras — o fecho do contrato ou a retirada da peça — dão janelas diferentes. <strong>O sistema conta do fecho</strong>, que é a leitura coerente (depois da retirada a troca de modelo nem existe), e a frase da recusa diz isso na letra para ninguém adivinhar. Se a sua leitura for outra, muda-se a âncora da conta, não a régua — mas confirme antes que alguém discuta um prazo com noiva na frente</td>
             </tr>
           </tbody>
         </table>
@@ -813,12 +813,12 @@
       </div>
 
       <h3>Uma escolha de produto — decidida</h3>
-      <p>Esta não era do contrato: era de como a loja concilia o banco. <strong>Foi respondida em 15/08/2026: por pagamento</strong>, e está no sistema desde o mesmo dia (ver <a href="#conferir">Conferir o banco</a>). A parcela paga em pedaços aparece um pedaço por linha na Conciliação, cada um casa com a linha do banco, e o “conferido” é por pedaço. Nada muda para quem paga a parcela inteira de uma vez — que hoje é o caso de todas as parcelas da sua instalação.</p>
+      <p>Esta não era do contrato: era de como a loja concilia o banco. <strong>Foi respondida em 15/08/2026: por pagamento</strong>, e está no sistema desde o mesmo dia (ver <a href="#conferir">Conferir o banco</a>). A parcela paga em pedaços aparece um pedaço por linha na Conciliação, cada um casa com a linha do banco, e o <span>“conferido”</span> é por pedaço. Nada muda para quem paga a parcela inteira de uma vez — que hoje é o caso de todas as parcelas da sua instalação.</p>
 
       <h3>A menor, ainda de pé — e a que saiu</h3>
       <ul>
         <li><strong>A confecção já tem prazo próprio</strong> (desde 15/08/2026): a costureira diz <em data-fala="a costureira, na ficha do trabalho">“esta eu preciso pronta no dia 10”</em> na própria ficha do trabalho, a fila ordena por esse prazo, e o manual dela ensina como. Saiu desta lista.</li>
-        <li><strong>O perfil “Proprietária” está no gênero errado.</strong> O nome está gravado no cadastro inicial e ecoa em mais quatro lugares; corrigir pede um script para quem já instalou.</li>
+        <li><strong>O perfil <span>“Proprietária”</span> está no gênero errado.</strong> O nome está gravado no cadastro inicial e ecoa em mais quatro lugares; corrigir pede um script para quem já instalou.</li>
       </ul>
 
       <h3>A rodada de 14/08 — decidida em bloco, e já no sistema</h3>
@@ -832,7 +832,7 @@
               <td><strong>Sim, com validade.</strong> A reserva sem noiva vale <span class="prazo" data-regua="VALIDADE_DO_BLOQUEIO_ORFAO_DIAS">7 dias</span> — o mesmo prazo do link público. A lista de Reservas mostra o selo com a data (<em data-tela="segura até">“segura até …”</em> / <em data-tela="venceu em | — não segura mais">“venceu em … — não segura mais”</em>), e vencida, a peça volta ao mercado sozinha</td>
             </tr>
             <tr>
-              <td><strong>A Recepção responde “quando retiro?” sem ver dinheiro?</strong></td>
+              <td><strong>A Recepção responde <span data-fala="a noiva, ao telefone">“quando retiro?”</span> sem ver dinheiro?</strong></td>
               <td><strong>Sim — leitura estreita.</strong> A ficha da noiva mostra à Recepção só as duas datas da locação, sem valor, sem parcelas, sem status de pagamento. O fecho do E172 (contrato fora do alcance dela) continua inteiro</td>
             </tr>
             <tr>
@@ -854,7 +854,7 @@
           </tbody>
         </table>
       </div>
-      <p class="nota">As demais da rodada fecharam <b>por decisão escrita</b>, sem código — os contratos antigos ficam como nasceram, o “véu” pendurado na reserva-mãe continua existindo, e o resto está registrado na trilha de revisão com a sua resposta ao lado.</p>
+      <p class="nota">As demais da rodada fecharam <b>por decisão escrita</b>, sem código — os contratos antigos ficam como nasceram, o <span data-grifo="e a peca do caso pendurado na reserva-mae, exemplo de dado e nao rotulo de tela">“véu”</span> pendurado na reserva-mãe continua existindo, e o resto está registrado na trilha de revisão com a sua resposta ao lado.</p>
 
       <h3>15/08 — a fila do que restava, e o que dela chega até você</h3>
       <p>No dia seguinte à rodada, a fila de sobras da trilha do contrato foi executada inteira. <strong>Sobraram três, e as três fecharam no mesmo dia</strong>: a conciliação por pagamento (a contadora respondeu, e está no sistema), a D7 você respondeu <em>sim</em> na tarde de 15/08 e os sete campos já estão no cadastro da loja, e a terceira — a validação de CNPJ e CPF — <b>já está no sistema</b> desde a tarde do mesmo dia. O que mudou na tela:</p>
@@ -901,7 +901,7 @@
             </tr>
             <tr>
               <td><strong>A Recepção fechava contrato</strong></td>
-              <td><strong>Decidido e feito.</strong> Contrato virou um acesso separado de “Noivas”, e a recepção não o tem. O botão <span class="btn">Gerar contrato</span> não aparece mais para ela</td>
+              <td><strong>Decidido e feito.</strong> Contrato virou um acesso separado de <span>“Noivas”</span>, e a recepção não o tem. O botão <span class="btn">Gerar contrato</span> não aparece mais para ela</td>
             </tr>
             <tr>
               <td><strong>A Recepção não corrigia a noiva que cadastrou</strong></td>

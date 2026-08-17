@@ -188,7 +188,7 @@
     background: var(--folha); border: 1px solid var(--linha);
     border-radius: 10px; padding: 18px; margin: 0 0 18px; box-shadow: var(--sombra);
   }
-  .trilha span {
+  .trilha > span {
     font-size: 14.5px; font-weight: 550; padding: 5px 11px;
     border-radius: 6px; background: var(--chip-fundo); border: 1px solid var(--chip-borda);
   }
@@ -329,7 +329,7 @@
             <tr>
               <td><strong>Contratos</strong></td>
               <td>—</td>
-              <td>Nada: o menu não abre para você, e na ficha da noiva o cartão diz <strong>“você não pode ver”</strong> — nunca “não há”. <a href="#contrato">A seção sobre isso</a></td>
+              <td>Nada: o menu não abre para você, e na ficha da noiva o cartão diz <strong data-grifo="parafrase: a tela escreve Voce nao tem permissao para ver X desta noiva, em sem-lista.tsx:45">“você não pode ver”</strong> — nunca <span data-grifo="e o que o cartao NUNCA diz; o manual grifa a frase proibida para separa-la da honesta">“não há”</span>. <a href="#contrato">A seção sobre isso</a></td>
             </tr>
             <tr>
               <td><strong>Acervo</strong></td>
@@ -410,11 +410,11 @@
       <p>Escolhida a cabine, a vendedora e a data, <strong>o sistema acende só os horários que existem</strong>. O apagado tem o motivo escrito nele — passe o mouse para ler:</p>
       <div class="fala">
         <span class="rotulo">Os cinco motivos, literais</span>
-        <p>“a loja não abre nesse dia da semana”<br>
-           “o horário está fora do expediente da loja”<br>
-           “a vendedora está ausente nesse dia”<br>
-           “já há atendimento nessa cabine nesse horário”<br>
-           “a vendedora já tem atendimento nesse horário”</p>
+        <p><span>“a loja não abre nesse dia da semana”</span><br>
+           <span>“o horário está fora do expediente da loja”</span><br>
+           <span>“a vendedora está ausente nesse dia”</span><br>
+           <span>“já há atendimento nessa cabine nesse horário”</span><br>
+           <span>“a vendedora já tem atendimento nesse horário”</span></p>
       </div>
       <p>Quando é ausência, o recado traz o nome e o período: <em data-tela="está ausente de | — escolha outro dia ou outra pessoa.">“Maria está ausente de 12/08 a 20/08 — escolha outro dia ou outra pessoa.”</em></p>
       <p class="nota">Agendado, o sistema pergunta se você quer <b>já mandar a confirmação</b> para a noiva, com um botão de WhatsApp — e só quando ela tem número cadastrado.</p>
@@ -430,7 +430,7 @@
         <li><strong>Pelo diálogo de reagendar</strong>, escolhendo hora e cabine numa lista. É o caminho de quem usa teclado, e o mais confortável no celular — arrastar meia tela em 390 px é pontaria</li>
       </ul>
       <p>Deu certo, o sistema confirma com o destino: <em data-tela="→">“Ana Paula → Cabine 2, 14:30”</em>. Não deu, ele diz por quê: <em>“Esse horário não está livre”</em>, com um dos cinco motivos.</p>
-      <p class="nota">Quem avisou pelo portal que <b>não pode vir</b> aparece em Mensagens de hoje, no bloco “Pediram para remarcar”. O horário <b>continua preso</b> até você remarcar ou cancelar — o aviso dela não mexe na agenda sozinho.</p>
+      <p class="nota">Quem avisou pelo portal que <b>não pode vir</b> aparece em Mensagens de hoje, no bloco <span>“Pediram para remarcar”</span>. O horário <b>continua preso</b> até você remarcar ou cancelar — o aviso dela não mexe na agenda sozinho.</p>
 
       <h3>As provas que pedem remarcação, e ninguém pediu</h3>
       <p>Há um segundo motivo para remarcar, e ele não chega por mensagem nenhuma: <strong>a reserva do vestido mudou depois de a prova estar marcada</strong>. Quando isso acontece, a prova ganha um selo — na grade, na semana, na fila de Provas e na ficha da noiva:</p>
@@ -444,7 +444,7 @@
 
     <section id="fila">
       <h2><span class="passo">4</span>A fila do atendimento</h2>
-      <p class="resumo">Menu → <span class="btn">Atendimentos</span>. É onde o atendimento anda do “marcado” ao “terminou”, e cada passo é um botão.</p>
+      <p class="resumo">Menu → <span class="btn">Atendimentos</span>. É onde o atendimento anda do <span>“marcado”</span> ao <span>“terminou”</span>, e cada passo é um botão.</p>
       <figure class="print" data-print="fila"></figure>
       <figure class="print" data-print="fila-filtros"></figure>
       <figure class="print" data-print="provas"></figure>
@@ -475,7 +475,7 @@
         </table>
       </div>
 
-      <p><strong>“Como terminou?” tem três respostas</strong> — <em>Reservou</em>, <em>Vai pensar</em>, <em>Não serviu</em> — e o <span class="btn">Concluir</span> só liga depois de você escolher uma. É esse campo que faz o relatório responder quantas visitas viram venda; um palpite estraga o número.</p>
+      <p><strong><span>“Como terminou?”</span> tem três respostas</strong> — <em>Reservou</em>, <em>Vai pensar</em>, <em>Não serviu</em> — e o <span class="btn">Concluir</span> só liga depois de você escolher uma. É esse campo que faz o relatório responder quantas visitas viram venda; um palpite estraga o número.</p>
 
       <div class="fala aviso">
         <span class="rotulo">O que pede confirmação, e por quê</span>
@@ -483,13 +483,13 @@
         <p>A razão é o que se perde: voltar atrás <strong>apaga o horário real em que o atendimento começou</strong> e o desfecho, e não há como recuperá-los. Concluir é reversível; desfazer é que custa.</p>
       </div>
 
-      <p class="nota">O sistema mede sozinho a que horas o atendimento <b>de fato</b> começou, quando você clica em “Iniciar atendimento” — é isso que aparece ao lado do estado, e é isso que o “Voltar para agendado” apaga.</p>
+      <p class="nota">O sistema mede sozinho a que horas o atendimento <b>de fato</b> começou, quando você clica em <span>“Iniciar atendimento”</span> — é isso que aparece ao lado do estado, e é isso que o <span>“Voltar para agendado”</span> apaga.</p>
     </section>
 
     <section id="semana">
       <h2><span class="passo">5</span>A semana</h2>
       <p class="resumo">Na Agenda, o link <span class="btn">Semana →</span>. Uma linha por cabine, os sete dias lado a lado.</p>
-      <p>É a vista para <strong>encaixar</strong>: quando a noiva pergunta “tem alguma coisa na quinta ou na sexta?”, é aqui que o vão aparece sem folhear dia a dia. Os botões de seta andam de semana em semana, e <span class="btn">Esta semana</span> traz de volta.</p>
+      <p>É a vista para <strong>encaixar</strong>: quando a noiva pergunta <span data-fala="a noiva, ao telefone">“tem alguma coisa na quinta ou na sexta?”</span>, é aqui que o vão aparece sem folhear dia a dia. Os botões de seta andam de semana em semana, e <span class="btn">Esta semana</span> traz de volta.</p>
       <p class="nota">A semana começa na <b>segunda</b> e é contada no fuso da loja — o atendimento de segunda de manhã não escorrega para a semana anterior por causa do relógio do computador.</p>
     </section>
 
@@ -515,7 +515,7 @@
       <figure class="print" data-print="nova-noiva"></figure>
 
       <p><strong>“Nome da noiva”</strong> e <strong>“Origem”</strong> — de onde ela veio: Loja, WhatsApp, Site ou Instagram. Todo o resto pode esperar: nome do noivo, WhatsApp, cerimonialista, data, horário e local do casamento.</p>
-      <p><strong>E a ficha tem a seção “Para o contrato”</strong> — os doze dados de quem assina (CPF, RG, estado civil, profissão, nascimento, e-mail e endereço). Você edita a ficha, então pode preenchê-la quando a noiva trouxer os documentos: sem esses dados a vendedora não consegue fechar o contrato, e o diálogo dela diz o que falta. O <strong>CPF é conferido pelos dígitos</strong> ao salvar — número inválido não entra.</p>
+      <p><strong>E a ficha tem a seção <span>“Para o contrato”</span></strong> — os doze dados de quem assina (CPF, RG, estado civil, profissão, nascimento, e-mail e endereço). Você edita a ficha, então pode preenchê-la quando a noiva trouxer os documentos: sem esses dados a vendedora não consegue fechar o contrato, e o diálogo dela diz o que falta. O <strong>CPF é conferido pelos dígitos</strong> ao salvar — número inválido não entra.</p>
 
       <p><strong>A Origem nasce vazia de propósito</strong>, e é o campo que mais vale acertar: é ele que responde <em>de onde vêm as noivas que fecham</em>. Quem atendeu o telefone é quem sabe — depois ninguém mais sabe. Um palpite estraga esse número para sempre.</p>
 
@@ -537,7 +537,7 @@
 
     <section id="config">
       <h2><span class="passo">8</span>Cabines &amp; horário</h2>
-      <p class="resumo">Configurações → “as cabines” / “as regras de disponibilidade”. <strong>Esta tela é sua</strong>, e é ela que decide quais horários a grade acende para todo mundo.</p>
+      <p class="resumo">Configurações → <span>“as cabines”</span> / <span>“as regras de disponibilidade”</span>. <strong>Esta tela é sua</strong>, e é ela que decide quais horários a grade acende para todo mundo.</p>
       <figure class="print" data-print="cabines-horario"></figure>
 
       <div class="rolagem">
@@ -578,14 +578,14 @@
       <h2>O contrato que você não vê</h2>
       <p class="resumo">Toda noiva que fecha assina um <strong>contrato de locação de 21 cláusulas</strong>. Ele decide o dinheiro, o dia em que a peça sai, o dia em que ela volta, e o que se cobra quando alguma dessas coisas atrasa. <strong>O dinheiro dele não abre para o seu perfil</strong> — as duas DATAS abrem, desde 14/08/2026, e só elas — e é por isso que esta seção existe: o que você responde, e o que você encaminha.</p>
 
-      <h3>A ficha diz “você não pode ver”, e isso não quer dizer “não existe”</h3>
-      <p>Na ficha da noiva, o cartão <strong>Contratos</strong> escrevia até 13/08/2026 a frase <em>“Nenhum contrato ainda.”</em> para você — <strong>inclusive quando havia contrato</strong>. A lista era recusada pelo seu acesso, e a tela lia a recusa como “veio vazio”.</p>
+      <h3>A ficha diz <span data-grifo="parafrase: a tela escreve Voce nao tem permissao para ver X desta noiva, em sem-lista.tsx:45">“você não pode ver”</span>, e isso não quer dizer <span>“não existe”</span></h3>
+      <p>Na ficha da noiva, o cartão <strong>Contratos</strong> escrevia até 13/08/2026 a frase <em>“Nenhum contrato ainda.”</em> para você — <strong>inclusive quando havia contrato</strong>. A lista era recusada pelo seu acesso, e a tela lia a recusa como <span data-grifo="o manual nomeia a leitura errada que a tela fazia ate 13/08/2026; nao e frase de tela">“veio vazio”</span>.</p>
       <p><strong>Não era caso raro: 739 das 1.426 fichas da loja diziam isso</strong> — 51,8% —, e em <strong>311</strong> delas o contrato estava <strong>vivo</strong>. É exatamente a ficha que você abre quando a noiva liga.</p>
 
       <div class="fala">
         <span class="rotulo">O que o cartão diz desde 13/08/2026</span>
         <p><em data-tela="Você não tem permissão para ver | desta noiva.">“Você não tem permissão para ver os contratos desta noiva.”</em></p>
-        <p><strong>Leia essa frase como “existe ou não existe, e não sou eu quem sabe”.</strong> Nunca como “ela não tem contrato”. Ao telefone, a resposta é <em data-fala="a recepcionista, ao telefone">“vou confirmar com a vendedora e já te retorno”</em> — e quem retorna é a vendedora.</p>
+        <p><strong>Leia essa frase como <span data-fala="a recepcionista, lendo o cartão para si">“existe ou não existe, e não sou eu quem sabe”</span>.</strong> Nunca como <span data-fala="a recepcionista, e é o que ela NAO deve dizer">“ela não tem contrato”</span>. Ao telefone, a resposta é <em data-fala="a recepcionista, ao telefone">“vou confirmar com a vendedora e já te retorno”</em> — e quem retorna é a vendedora.</p>
         <p>O cartão <strong>Orçamentos</strong>, logo acima, continua abrindo para você: ali <em>“Nenhum orçamento ainda.”</em> quer dizer mesmo que não há.</p>
       </div>
 
@@ -629,7 +629,7 @@
       <p>O que vale você saber junto é <strong>por que a devolução é um horário e não um dia</strong>: pela <strong>cláusula 5ª</strong> a locação termina às <strong>18:00</strong> do dia da devolução, e pela <strong>4ª</strong> a loja só entrega e recebe peça <strong>de terça a sábado</strong>. Domingo, nunca — o expediente está em <a href="#config">Cabines &amp; horário</a>, e para você ele é leitura.</p>
       <p class="nota">Se a noiva <b>trocou de vestido</b> depois de fechar o contrato, as linhas continuam falando da peça que ficou — a que ela vai vestir. A peça antiga sai da conta no instante da troca, e nada do que aconteceu com ela aparece aqui.</p>
 
-      <h3>“Esqueci de devolver” — e esta é a ligação que vale ouro</h3>
+      <h3><span data-fala="a noiva, ao telefone">“Esqueci de devolver”</span> — e esta é a ligação que vale ouro</h3>
       <p>Passada a data, a <strong>16ª §1º</strong> cobra <strong>um dia de aluguel a mais de cada peça, por dia de atraso</strong>, mais a multa fixa da tabela — <strong>uma só</strong>, ainda que sejam vestido, véu e tiara. Passado o prazo do caput, deixa de ser atraso e vira <strong>extravio</strong>, que multiplica o aluguel de cada peça.</p>
       <p>A escada, com um vestido de R$ 3.000,00 alugado numa janela de 6 dias: <strong>R$ 750,00</strong> no primeiro dia de atraso, <strong>R$ 4.750,00</strong> no nono — e <strong>R$ 12.000,00</strong> no primeiro dia de extravio.</p>
       <div class="fala aviso">
@@ -638,7 +638,7 @@
         <p>Você não cobra e não calcula nada — a conta é do sistema, a cobrança é da vendedora. O que só você pode fazer é <strong>encurtar o atraso</strong>, e cada dia encurtado é um dia de aluguel a menos.</p>
       </div>
 
-      <h3>“Manchei o vestido” · “rasgou a barra”</h3>
+      <h3><span data-fala="a noiva, ao telefone">“Manchei o vestido”</span> · <span data-fala="a noiva, ao telefone">“rasgou a barra”</span></h3>
       <p>O contrato separa dois casos: a <strong>14ª</strong> é a sujeira que sai na lavagem — tinta, esmalte, a barra com terra — e cobra uma taxa de limpeza; a <strong>15ª</strong> é o dano, e a mancha que <em>não</em> sai, com um teto contado em aluguéis daquela peça. <strong>Os valores estão no manual de quem recebe a peça</strong>, e não neste.</p>
       <p>A razão é a própria 14ª: o valor é apurado <em>pelo grau de dificuldade, durante o recebimento na devolução</em>. Quem avalia é quem está com a peça na mão.</p>
       <p><strong>Não estime valor ao telefone.</strong> Diga que a peça é conferida na devolução, anote o que ela contou e passe o recado — quanto antes a loja souber, melhor a peça é fotografada e avaliada.</p>
@@ -675,7 +675,7 @@
             <tr><td>Duração da prova</td><td class="prazo">configurável — a loja escolhe</td></tr>
             <tr><td>Confirmação de presença</td><td class="prazo" data-regua="JANELA_CONFIRMACAO_MS">próximas 48 horas</td></tr>
             <tr><td>Aviso de orçamento vencendo</td><td class="prazo" data-regua="JANELA_ORCAMENTO_DIAS">vence hoje ou nos próximos 3 dias</td></tr>
-            <tr><td>Prova “iminente” (vermelho)</td><td class="prazo" data-regua="JANELA_IMINENTE_DIAS">7 dias ou menos</td></tr>
+            <tr><td>Prova <span>“iminente”</span> (vermelho)</td><td class="prazo" data-regua="JANELA_IMINENTE_DIAS">7 dias ou menos</td></tr>
             <tr><td>Sua sessão (login)</td><td class="prazo" data-regua="SESSAO_TTL_MS">8 horas</td></tr>
           </tbody>
         </table>

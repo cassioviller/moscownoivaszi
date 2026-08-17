@@ -188,7 +188,7 @@
     background: var(--folha); border: 1px solid var(--linha);
     border-radius: 10px; padding: 18px; margin: 0 0 18px; box-shadow: var(--sombra);
   }
-  .trilha span {
+  .trilha > span {
     font-size: 14.5px; font-weight: 550; padding: 5px 11px;
     border-radius: 6px; background: var(--chip-fundo); border: 1px solid var(--chip-borda);
   }
@@ -315,7 +315,7 @@
       <div class="fala">
         <span class="rotulo">A fronteira, em uma frase: você vê a PEÇA, não o dinheiro dela</span>
         <p>Toda noiva que fecha assina um <strong>contrato de locação</strong>, e é ele que decide o preço, as parcelas, o dia em que a peça sai e o dia em que ela volta. <strong>Contrato e financeiro não abrem para você</strong>, e junto com eles ficam de fora a multa da parcela vencida, a cobrança do atraso na devolução e o valor da avaria.</p>
-        <p>Duas coisas do contrato chegam até você mesmo assim, e as duas têm seção própria aqui: <a href="#avaria">o dano na devolução</a>, que você vê antes de todo mundo, e <a href="#noiva">o seu visto de “pronto”</a>, que a noiva lê no portal dela. <strong>Em tudo o mais, a resposta é da vendedora</strong> — e dizer isso é a resposta certa, não uma desculpa.</p>
+        <p>Duas coisas do contrato chegam até você mesmo assim, e as duas têm seção própria aqui: <a href="#avaria">o dano na devolução</a>, que você vê antes de todo mundo, e <a href="#noiva">o seu visto de <span data-grifo="o manual nomeia o visto em minuscula; o portal escreve Pronto, e essa citacao literal esta no :548">“pronto”</span></a>, que a noiva lê no portal dela. <strong>Em tudo o mais, a resposta é da vendedora</strong> — e dizer isso é a resposta certa, não uma desculpa.</p>
       </div>
     </section>
 
@@ -340,7 +340,7 @@
       <div class="fala">
         <span class="rotulo">Mudou em 12/08/2026</span>
         <p>Esta aba se chamava <strong>“Esta semana”</strong> e cortava em <strong>7 dias</strong>, sempre. O problema era o que ficava de fora: uma peça podia aparecer <strong>em vermelho</strong> e não estar nesta aba — porque o vermelho já contava 14 dias quando o prazo vinha do casamento. Você só a encontrava trocando para <span class="btn">Todos</span>, e ninguém troca de aba para procurar o que não sabe que existe.</p>
-        <p><strong>Agora a aba mostra tudo o que está vermelho.</strong> Se está apertado, está aqui — não é mais preciso conferir “Todos” por precaução.</p>
+        <p><strong>Agora a aba mostra tudo o que está vermelho.</strong> Se está apertado, está aqui — não é mais preciso conferir <span>“Todos”</span> por precaução.</p>
       </div>
 
       <p><strong>A ordem é o prazo, do mais apertado ao mais folgado.</strong> O que não tem prazo nenhum não some: cai no fim da lista, como rabeira.</p>
@@ -385,11 +385,11 @@
         <table>
           <thead><tr><th>A linha diz</th><th>Quer dizer</th></tr></thead>
           <tbody>
-            <tr><td>“prova hoje” · “prova amanhã” · “prova em 5 dias”</td><td>Há prova marcada — este é o prazo</td></tr>
+            <tr><td><span>“prova hoje”</span> · <span>“prova amanhã”</span> · <span data-tela="prova em | dias">“prova em 5 dias”</span></td><td>Há prova marcada — este é o prazo</td></tr>
             <tr><td><strong>“prova atrasada”</strong></td><td>A prova já passou e o trabalho segue pendente</td></tr>
-            <tr><td>“prazo hoje” · “prazo amanhã” · “prazo em 9 dias”</td><td>Não há prova marcada; o prazo é o que você fixou na confecção</td></tr>
+            <tr><td><span>“prazo hoje”</span> · <span>“prazo amanhã”</span> · <span data-tela="prazo em | dias">“prazo em 9 dias”</span></td><td>Não há prova marcada; o prazo é o que você fixou na confecção</td></tr>
             <tr><td><strong>“prazo passou”</strong></td><td>O prazo próprio já passou e o trabalho segue pendente</td></tr>
-            <tr><td>“casamento hoje” · “casamento amanhã” · “casamento em 12 dias”</td><td>Não há prova marcada nem prazo próprio; o prazo é o casamento</td></tr>
+            <tr><td><span>“casamento hoje”</span> · <span>“casamento amanhã”</span> · <span data-tela="casamento em | dias">“casamento em 12 dias”</span></td><td>Não há prova marcada nem prazo próprio; o prazo é o casamento</td></tr>
             <tr><td><strong>“casamento passou”</strong></td><td>A data do casamento já passou e o trabalho segue pendente</td></tr>
             <tr><td>“sem prazo definido”</td><td>Não há prova, nem prazo próprio, nem casamento marcado. Esta linha fica no fim da fila</td></tr>
           </tbody>
@@ -427,7 +427,7 @@
         <p><strong>Marcou por engano? Tem volta.</strong> Vá ao recorte <span class="btn">Concluídos</span>, ache o trabalho e clique <span class="btn">Reabrir</span> — <em>“Ajuste reaberto”</em>, e ele volta para a fila.</p>
       </div>
 
-      <p class="nota">Se algo não gravar, o sistema fala: <b>“Não deu para concluir o ajuste”</b>, <b>“Não deu para reabrir o ajuste”</b> ou <b>“Não deu para marcar a peça”</b>, sempre com “Tente novamente”. É rede ou sistema — <b>não é você</b>, e o que já estava salvo continua salvo.</p>
+      <p class="nota">Se algo não gravar, o sistema fala: <b>“Não deu para concluir o ajuste”</b>, <b>“Não deu para reabrir o ajuste”</b> ou <b>“Não deu para marcar a peça”</b>, sempre com <span>“Tente novamente”</span>. É rede ou sistema — <b>não é você</b>, e o que já estava salvo continua salvo.</p>
     </section>
 
     <section id="ficha">
@@ -469,7 +469,7 @@
       <div class="fala">
         <span class="rotulo">São duas portas, e a diferença é a peça do acervo</span>
         <p>Este formulário vive <strong>dentro da prova de uma reserva</strong>, e reserva só existe quando há peça do acervo. É por onde nasce o <strong>ajuste</strong>.</p>
-        <p>A <strong>confecção pura</strong> — o vestido feito do zero, sem peça da loja — não tem reserva nenhuma, e por isso não cabe aqui. Ela nasce pelo botão <span class="btn">Nova confecção</span>, no alto da sua fila, que existe desde 12/08/2026. <strong>Se alguém te ensinou que “confecção sem vestido do acervo não tem como ser cadastrada, alguém cria por fora”, esse conselho envelheceu</strong> — e você mesma pode cadastrá-la.</p>
+        <p>A <strong>confecção pura</strong> — o vestido feito do zero, sem peça da loja — não tem reserva nenhuma, e por isso não cabe aqui. Ela nasce pelo botão <span class="btn">Nova confecção</span>, no alto da sua fila, que existe desde 12/08/2026. <strong>Se alguém te ensinou que <span data-grifo="conselho antigo que o manual desaconselha; nunca foi frase de tela">“confecção sem vestido do acervo não tem como ser cadastrada, alguém cria por fora”</span>, esse conselho envelheceu</strong> — e você mesma pode cadastrá-la.</p>
       </div>
 
       <h3>A confecção que vira peça da loja</h3>
@@ -545,7 +545,7 @@
            Ajuste no busto — <strong>Em andamento</strong></p>
       </div>
 
-      <p><strong>“Pronto” é exatamente o seu <span class="btn">Marcar feito</span>.</strong> Não há passo intermediário, ninguém confere antes: você marca, ela vê. É bom — poupa telefonema —, e é motivo para marcar quando estiver realmente pronto, não quando estiver quase.</p>
+      <p><strong><span>“Pronto”</span> é exatamente o seu <span class="btn">Marcar feito</span>.</strong> Não há passo intermediário, ninguém confere antes: você marca, ela vê. É bom — poupa telefonema —, e é motivo para marcar quando estiver realmente pronto, não quando estiver quase.</p>
 
       <p class="nota">O portal dela mostra também as <b>datas de retirada e devolução</b> do vestido, as parcelas e o que cada cláusula do contrato cobra. Isso não é seu — se ela perguntar, é com a vendedora.</p>
     </section>
@@ -574,7 +574,7 @@
         <table>
           <thead><tr><th>O que</th><th>Quanto vale</th></tr></thead>
           <tbody>
-            <tr><td>Recorte “Prazo apertado” — e o vermelho, que é a mesma régua</td><td class="prazo"><span class="prazo" data-regua="PROVA_APERTADA_DIAS">prova em 7 dias ou menos</span>; sem prova, <span class="prazo" data-regua="CASAMENTO_APERTADO_DIAS">prazo próprio ou casamento em 14 dias ou menos</span> — atrasados incluídos</td></tr>
+            <tr><td>Recorte <span>“Prazo apertado”</span> — e o vermelho, que é a mesma régua</td><td class="prazo"><span class="prazo" data-regua="PROVA_APERTADA_DIAS">prova em 7 dias ou menos</span>; sem prova, <span class="prazo" data-regua="CASAMENTO_APERTADO_DIAS">prazo próprio ou casamento em 14 dias ou menos</span> — atrasados incluídos</td></tr>
             <tr><td>Sua sessão (login)</td><td class="prazo" data-regua="SESSAO_TTL_MS">8 horas</td></tr>
           </tbody>
         </table>
@@ -587,7 +587,7 @@
       <p><strong>O que saiu daqui:</strong></p>
       <ul>
         <li><strong>A confecção não tinha prazo próprio</strong> — vinha sempre do casamento da noiva. Desde 15/08/2026 tem: o campo <em>“Prazo próprio (opcional)”</em> no <span class="btn">Nova confecção</span>, e a regra está na seção <a href="#prazo">Quem manda no prazo</a></li>
-        <li><strong>Não havia perfil “Costureira”</strong> e você entrava como Recepção, enxergando a carteira de noivas e os contratos da loja. O perfil foi criado, e o que ele abre é o que está no começo desta página</li>
+        <li><strong>Não havia perfil <span>“Costureira”</span></strong> e você entrava como Recepção, enxergando a carteira de noivas e os contratos da loja. O perfil foi criado, e o que ele abre é o que está no começo desta página</li>
         <li><strong>A confecção sem peça do acervo não tinha formulário.</strong> Agora tem: <span class="btn">Nova confecção</span>, no alto da fila</li>
         <li><strong>O vermelho e o recorte divergiam</strong> quando o prazo vinha do casamento — 14 dias contra 7. Hoje são a mesma régua, e a aba mudou de nome junto</li>
       </ul>

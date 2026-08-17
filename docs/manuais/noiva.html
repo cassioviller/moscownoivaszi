@@ -188,7 +188,7 @@
     background: var(--folha); border: 1px solid var(--linha);
     border-radius: 10px; padding: 18px; margin: 0 0 18px; box-shadow: var(--sombra);
   }
-  .trilha span {
+  .trilha > span {
     font-size: 14.5px; font-weight: 550; padding: 5px 11px;
     border-radius: 6px; background: var(--chip-fundo); border: 1px solid var(--chip-borda);
   }
@@ -352,13 +352,13 @@
         <li><em data-tela="Devolvido em">“Devolvido em …”</em> — feita a devolução, a promessa vira registro</li>
       </ul>
       <p>Abaixo, os <strong>ajustes</strong>, cada um marcado <strong>Pronto</strong> ou <strong>Em andamento</strong>. Isso vem direto do <span class="btn">Marcar feito</span> da costureira — sem passo intermediário.</p>
-      <p class="nota"><b>Sem data de devolução combinada, o portal silencia</b> em vez de prometer “a combinar” duas vezes — a linha da retirada já ocupa esse papel. A data segue também no <b>PDF do contrato</b>, que ela baixa dali mesmo. E dizer a data em voz alta na retirada continua valendo: tela não substitui conversa, soma.</p>
+      <p class="nota"><b>Sem data de devolução combinada, o portal silencia</b> em vez de prometer <span data-grifo="e o que o portal deixou de prometer: hoje ele silencia em vez de escrever isto">“a combinar”</span> duas vezes — a linha da retirada já ocupa esse papel. A data segue também no <b>PDF do contrato</b>, que ela baixa dali mesmo. E dizer a data em voz alta na retirada continua valendo: tela não substitui conversa, soma.</p>
 
       <h3>“Suas parcelas”</h3>
       <p>Antes do extrato, as duas respostas que ela abre o link para procurar: <strong>“Falta pagar”</strong> e <strong>“Próxima parcela”</strong>, com valor e data. Depois, parcela a parcela: <em>Em aberto</em>, <em>Parcialmente paga</em>, <em>Paga</em>. A paga sai riscada; a cancelada não aparece.</p>
       <p><strong>A parcela vencida vem com a multa e os juros já somados, e com a conta escrita ao lado</strong> — é a cláusula 9ª, e é o assunto da <a href="#vence">seção 2</a>. O número da direita passa a ser o total <em>com</em> o acréscimo; a linha vermelha embaixo diz de onde ele veio. Parcela em dia e parcela quitada não ganham linha nenhuma.</p>
       <div class="fala aviso">
-        <span class="rotulo">O “Falta pagar” do topo NÃO inclui a multa</span>
+        <span class="rotulo">O <span>“Falta pagar”</span> do topo NÃO inclui a multa</span>
         <p>Os dois números saem de contas diferentes: o <strong>“Falta pagar”</strong> e a <strong>“Próxima parcela”</strong> somam só o principal em aberto, e a linha da parcela mostra o total <em>com</em> multa e juros. Numa parcela de R$ 500,00 vencida há 30 dias ela lê <strong>“Falta pagar R$ 500,00”</strong> em cima e <strong>R$ 515,00</strong> na linha logo abaixo.</p>
         <p><strong>Não é erro de conta, e é a pergunta que ela vai fazer.</strong> A resposta cabe numa frase: <em data-fala="a vendedora, respondendo à noiva">“R$ 500,00 é a parcela; R$ 515,00 é o que ela custa hoje, com a multa e os juros do atraso. Pagando, para de crescer.”</em></p>
       </div>
@@ -395,7 +395,7 @@
 
       <div class="fala">
         <span class="rotulo">A regra desta seção inteira</span>
-        <p><strong>Toda cláusula que custa dinheiro tem uma saída, e a saída é dita na mesma frase que o valor.</strong> “Se atrasar, são R$ 250,00” assusta e não ajuda; “devolvendo até sábado não há custo nenhum, e a partir de domingo entram R$ 250,00 mais a diária” informa e resolve. As frases entre aspas aqui embaixo são para serem lidas <em>com ela</em>, não sobre ela.</p>
+        <p><strong>Toda cláusula que custa dinheiro tem uma saída, e a saída é dita na mesma frase que o valor.</strong> <span data-grifo="frase de exemplo que o manual escreve para a vendedora dizer; a tela nao a escreve">“Se atrasar, são R$ 250,00”</span> assusta e não ajuda; <span data-grifo="frase de exemplo que o manual escreve para a vendedora dizer; a tela nao a escreve">“devolvendo até sábado não há custo nenhum, e a partir de domingo entram R$ 250,00 mais a diária”</span> informa e resolve. As frases entre aspas aqui embaixo são para serem lidas <em>com ela</em>, não sobre ela.</p>
       </div>
 
       <h3 id="vence">A parcela que vence — cláusula 9ª</h3>
@@ -488,7 +488,7 @@
         </table>
       </div>
 
-      <p><strong>O registro aceita foto</strong>, e é o que sustenta a cobrança: a avaria vira uma linha com descrição, tipo, valor e, quando alguém fotografou, a imagem anexada. <strong>Fotografe.</strong> É a diferença entre “o vestido voltou rasgado” e uma evidência que ninguém precisa discutir três semanas depois.</p>
+      <p><strong>O registro aceita foto</strong>, e é o que sustenta a cobrança: a avaria vira uma linha com descrição, tipo, valor e, quando alguém fotografou, a imagem anexada. <strong>Fotografe.</strong> É a diferença entre <span data-grifo="o manual nomeia a queixa que a foto substitui; nao e texto de tela">“o vestido voltou rasgado”</span> e uma evidência que ninguém precisa discutir três semanas depois.</p>
       <p>E a régua tem um limite declarado: um valor <strong>fora</strong> da faixa da cláusula só entra <strong>com justificativa escrita</strong>, que fica guardada junto do valor. A porta não vira parede — vira registro.</p>
       <p class="nota"><b>A saída:</b> devolver a peça como ela saiu. Mancha fresca sai; mancha de duas semanas vira dano. <b>Se algo aconteceu na festa, avise na devolução</b> — a loja tem lavanderia e conhece as manchas; esconder é o que transforma uma taxa de limpeza num reparo.</p>
 
@@ -588,12 +588,12 @@
     </section>
 
     <section id="remarcar">
-      <h2><span class="passo">4</span>Quando ela clica em “Não vou poder ir”</h2>
+      <h2><span class="passo">4</span>Quando ela clica em <span>“Não vou poder ir”</span></h2>
       <p class="resumo">É o gesto mais valioso do portal, e vale explicar para ela que existe: avisar com antecedência devolve à loja a cabine, a sua hora e o vestido separado.</p>
 
       <div class="trilha">
         <span>Ela clica</span><i>→</i>
-        <span>Selo “Avisamos o ateliê”</span><i>→</i>
+        <span>Selo <span>“Avisamos o ateliê”</span></span><i>→</i>
         <span>Mensagens de hoje</span><i>→</i>
         <span class="fim">Você remarca</span>
       </div>
@@ -607,7 +607,7 @@
         <p>É de propósito: depois do sim dela a loja já separou a peça, reservou a cabine e escalou a costureira. Desfazer isso num clique, sem ninguém saber, é pior que a conversa de trinta segundos.</p>
       </div>
 
-      <p class="nota">Quem pediu para remarcar <b>sai</b> da fila “Procurar para confirmar” — ela já respondeu, e respondeu “não posso”. Mandar “você vem?” para quem acabou de avisar que não vem é o erro que essa separação existe para evitar.</p>
+      <p class="nota">Quem pediu para remarcar <b>sai</b> da fila <span>“Procurar para confirmar”</span> — ela já respondeu, e respondeu <span data-grifo="parafrase da resposta dela; o portal escreve Nao vou poder ir, citado tres linhas acima">“não posso”</span>. Mandar <span data-grifo="a pergunta que o manual manda NAO fazer; o sistema nao a escreve em lugar nenhum">“você vem?”</span> para quem acabou de avisar que não vem é o erro que essa separação existe para evitar.</p>
     </section>
 
     <section id="frases">
@@ -640,7 +640,7 @@
             </tr>
             <tr>
               <td>“Esta proposta não está mais aberta para aceite — fale com a sua vendedora.”</td>
-              <td>A proposta saiu do estado “enviado” (foi aprovada, recusada ou voltou a rascunho)</td>
+              <td>A proposta saiu do estado <span>“enviado”</span> (foi aprovada, recusada ou voltou a rascunho)</td>
             </tr>
             <tr>
               <td>“Esta proposta foi encerrada. Se você ainda procura o vestido, é só falar com a sua vendedora — ela monta uma proposta nova.”</td>
@@ -663,7 +663,7 @@
       <h2><span class="passo">6</span>Revogar e regenerar — o que muda para ela</h2>
       <p class="resumo">Dois botões parecidos com consequências diferentes, e as duas caem no celular dela.</p>
       <ul>
-        <li><span class="btn">Revogar</span> — <strong>o link que ela guardou para de funcionar na hora</strong>, e ela passa a ler “Link inválido”. O diálogo avisa com o nome dela: <em data-tela="O link que | tem guardado para de funcionar na hora, e as mensagens de cobrança passam a sair sem ele.">“O link que Ana Paula tem guardado para de funcionar na hora, e as mensagens de cobrança passam a sair sem ele.”</em></li>
+        <li><span class="btn">Revogar</span> — <strong>o link que ela guardou para de funcionar na hora</strong>, e ela passa a ler <span>“Link inválido”</span>. O diálogo avisa com o nome dela: <em data-tela="O link que | tem guardado para de funcionar na hora, e as mensagens de cobrança passam a sair sem ele.">“O link que Ana Paula tem guardado para de funcionar na hora, e as mensagens de cobrança passam a sair sem ele.”</em></li>
         <li><span class="btn">Regenerar (mata o antigo)</span> — vale o mesmo: <strong>o endereço antigo morre</strong>. Você pode gerar um novo, mas <strong>terá de mandá-lo de novo</strong> — o favorito dela não se atualiza sozinho</li>
       </ul>
       <p>Enquanto o portal está vivo, o card mostra <span class="btn">Ativo</span>; vencido, <span class="btn">Expirado</span>, e o botão passa a dizer <span class="btn">Gerar link novo</span>.</p>
@@ -674,7 +674,7 @@
       <h2>Como você sabe que ela abriu</h2>
       <p class="resumo">Não chega notificação nenhuma. O que existe é o registro, e ele está em dois lugares.</p>
       <ul>
-        <li><strong>No card “Portal da noiva”</strong>, na ficha dela: <em data-tela="Ela abriu">“Ela abriu há 2 dias.”</em> ou <em>“Ela ainda não abriu.”</em>, com <em data-tela="Válido até">“Válido até 10/09.”</em></li>
+        <li><strong>No card <span>“Portal da noiva”</span></strong>, na ficha dela: <em data-tela="Ela abriu">“Ela abriu há 2 dias.”</em> ou <em>“Ela ainda não abriu.”</em>, com <em data-tela="Válido até">“Válido até 10/09.”</em></li>
         <li><strong>Na tela do orçamento</strong>, para o link da proposta: <em data-tela="aberto pela noiva em">“aberto pela noiva em …”</em> ou <em>“link enviado, ainda não aberto”</em></li>
       </ul>
       <p>O aceite dela aparece em três lugares — o selo <span class="btn">Aceitou — falta o contrato</span> no card do funil, a faixa da ficha e a fila <strong>“Aceites esperando contrato”</strong>. <strong>O card não muda de coluna com o aceite</strong>: ela segue negociando até o contrato existir.</p>

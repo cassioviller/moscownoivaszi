@@ -428,8 +428,28 @@ function prosa(manual: string, jaColhido: Set<string>): Citacao[] {
  * renomeação do E248 que produziu o caso do `vendedora.html:800`, escondida num
  * `<strong>`; `proprietario.html:347` e `recepcao.html:382` fechavam com ponto
  * final o que `alerta-caixa.tsx:96` e `agenda/index.tsx:84` escrevem sem ele.
+ *
+ * ## S-RM23 (E263) — `<span>` é casa, e as 114 soltas passaram a ter uma
+ *
+ * O E259 deixou as 114 fora **por não haver onde declarar**, e nomeou o
+ * trabalho: envolver cada citação solta num `<span>` próprio dentro do
+ * parágrafo. Foi o que o E263 fez — **as 114, todas**, porque o `<span>` sem
+ * classe não muda um caractere do texto renderizado (medido: os cinco manuais
+ * saem com o texto visível IDÊNTICO, e nenhum PDF foi reimpresso). O `span`
+ * entrou nesta lista de tags, e a colheita com casa foi de **139 para 253**.
+ *
+ * **Das 114, 70 entraram sem declaração nenhuma e 44 com ela** — 7 moldes,
+ * 9 falas e 28 grifos. O E259 previu 88 literais e 26 declaradas, e a
+ * diferença de 18 é uma medição que ele não tinha: **o corpus da régua inclui
+ * os COMENTÁRIOS do fonte**, e 12 das 88 batiam só dentro de um docblock.
+ * *"não posso"* e *"você vem?"* (`noiva.html:610`) só existem em
+ * `mensagens-do-dia.ts:38,56`, dentro de comentário; *"você não pode ver"*
+ * (`recepcao.html:332`, `:581`) só em `estado-consulta.ts:52` — a tela escreve
+ * *"Você não tem permissão para ver … desta noiva."* (`sem-lista.tsx:45`).
+ * Essas 12 entraram DECLARADAS, com a frase verdadeira escrita na razão.
  */
-const CITACAO_COM_CASA = /<(strong|b|td|h1|h2|h3|h4|p|li)((?:[^>"]|"[^"]*")*)>\s*“([^”]+)”\s*<\/\1>/g;
+const CITACAO_COM_CASA =
+  /<(strong|b|td|h1|h2|h3|h4|p|li|span)((?:[^>"]|"[^"]*")*)>\s*“([^”]+)”\s*<\/\1>/g;
 
 function rotulos(manual: string, tomados: Set<number>): Citacao[] {
   const html = ler(manual);
@@ -478,18 +498,82 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
     expect(literais.length).toBeGreaterThanOrEqual(95);
 
     // S-RM15: a citação com CASA — a aspa curva que é o conteúdo inteiro de um
-    // `<strong>`, `<b>`, `<td>`, `<h*>`, `<p>` ou `<li>`. **136 medidas em
-    // 17/08**, das quais **115 batiam com a tela sem declaração nenhuma antes
-    // deste épico e 118 batem depois** — as três a mais são as três frases que
-    // a colheita achou ENVELHECIDAS e cuja letra foi corrigida no manual. Das
-    // 18 que restam, 8 são molde, 4 são fala e 6 são grifo. As 114 que sobram
-    // flutuam dentro de parágrafos com outras aspas e não têm onde declarar —
-    // estão contadas e separadas no relatório do E259, não esquecidas.
-    expect(citacoes.filter((c) => c.tipo === "rótulo").length).toBeGreaterThanOrEqual(136);
+    // `<strong>`, `<b>`, `<td>`, `<h*>`, `<p>`, `<li>` ou, desde o E263, de um
+    // `<span>` posto ali só para dar casa à declaração.
+    //
+    // **O E259 mediu 136 e são 139**, e o piso era `>=`, então ninguém pegou:
+    // é a regra 36 numa varredura, e é por isso que estes dois números passam a
+    // ser `toBe`. As 114 soltas entraram no E263 — **139 → 253**, e os literais
+    // **121 → 190** (70 das 114 entraram sem declaração; 44 com ela, e uma das
+    // 139 antigas virou grifo: o `recepcao.html:332` citava *"você não pode
+    // ver"*, que a tela não escreve — ela escreve *"Você não tem permissão para
+    // ver … desta noiva."*, e a citação passava porque um COMENTÁRIO a tem).
+    expect(citacoes.filter((c) => c.tipo === "rótulo").length).toBe(253);
     const rotulosLiterais = citacoes.filter(
       (c) => c.tipo === "rótulo" && !c.molde && !c.fala && !c.grifo,
     );
-    expect(rotulosLiterais.length).toBeGreaterThanOrEqual(118);
+    expect(rotulosLiterais.length).toBe(190);
+  });
+
+  /**
+   * **S-RM24 — a conta das 466 fecha aqui, e não na cabeça de quem escreve o
+   * relatório.**
+   *
+   * A sobra nasceu de uma diferença de três entre o 253 que o E255 publicou e o
+   * 250 que o E259 mediu: três aspas curvas repetem, palavra por palavra, uma
+   * célula das tabelas *"O recado"*, e a colheita de prosa as deixa cair de
+   * propósito (`jaColhido`) — conferi-las duas vezes seria só uma segunda
+   * chance de errar. **O E255 as viu e as abateu; o E259 leu que havia outras
+   * três, e não há**: as três moram DENTRO de um `<em>`
+   * (`costureira.html:282`, `recepcao.html:432`, `vendedora.html:512`) e são
+   * exatamente as que o E255 nomeou.
+   *
+   * O que a sobra pedia — *"são conferidas pela via do recado e não custam
+   * nada"* — vira esta asserção: **toda aspa curva dos manuais ou está numa
+   * colheita, ou é o texto de um recado que já é conferido em outra linha do
+   * mesmo manual.** Nenhuma terceira categoria. Enquanto isso valer, o número
+   * de citações fora da régua não precisa ser deduzido por subtração: ele é
+   * ZERO por construção, e quem escrever uma aspa nova sem casa reprova aqui.
+   */
+  it("toda aspa curva dos manuais está colhida ou é um recado repetido", () => {
+    const porManual = new Map<string, Citacao[]>();
+    for (const c of todas()) {
+      if (c.tipo === "botão") continue; // o chip não usa aspa curva
+      porManual.set(c.manual, [...(porManual.get(c.manual) ?? []), c]);
+    }
+
+    let aspas = 0;
+    let colhidas = 0;
+    const repetidas: string[] = [];
+    const soltas: string[] = [];
+
+    for (const manual of manuais()) {
+      const html = ler(manual);
+      const doManual = porManual.get(manual) ?? [];
+      const indices = new Set(doManual.map((c) => c.indice));
+      const recadosDoManual = new Set(
+        doManual.filter((c) => c.tipo === "recado").map((c) => c.exibido),
+      );
+      for (const q of html.matchAll(/“([^”]+)”/g)) {
+        aspas++;
+        if (indices.has(q.index!)) {
+          colhidas++;
+          continue;
+        }
+        const exibido = limpar(q[1]!);
+        const onde = `${manual}:${linhaDe(html, q.index!)} · «${exibido}»`;
+        if (recadosDoManual.has(exibido)) repetidas.push(onde);
+        else soltas.push(onde);
+      }
+    }
+
+    expect(
+      soltas,
+      `aspa curva sem casa — embrulhe cada uma num <span> próprio:\n${soltas.join("\n")}`,
+    ).toEqual([]);
+    expect(repetidas.length, `duplicatas de recado:\n${repetidas.join("\n")}`).toBe(3);
+    expect(colhidas).toBe(463);
+    expect(aspas).toBe(466);
   });
 
   it("todo botão, todo recado e toda citação de prosa existem na tela", () => {
@@ -564,10 +648,21 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
      * fixo de `financeiro/folha.tsx:491` é `Fechar `; e o passo 3 do mesmo
      * manual (`:615`) tem de partir a frase em três porque o plural do
      * `folha.tsx:524` é montado duas vezes dentro dela.
+     *
+     * **S-RM23 leva de 79 para 86, e os sete são as três réguas de prazo da
+     * costureira mais quatro alarmes do painel.** `costureira.html:388-392`
+     * cita *"prova em 5 dias"*, *"prazo em 9 dias"* e *"casamento em 12 dias"*,
+     * e o texto fixo é `prova em `/`prazo em `/`casamento em ` mais ` dias`
+     * (`ajustes-prazo.ts:176-192`) — dois pedaços cada, com o número entre
+     * eles; `proprietario.html:342` (*"Caixa fica negativo em 14/09/2026"*,
+     * `alerta-caixa.tsx:96`), `:610` (*"3 contas em aberto no mês."*), `:649`
+     * (*"2 competências passadas ainda não foram fechadas"*) e `:785`
+     * (*"7 dias da data da locação"*, a letra da 17ª, que
+     * `contrato-clausulas.ts:377` monta em duas partes com o numeral no meio).
      */
     const citacoes = todas();
     const moldes = citacoes.filter((c) => c.molde);
-    expect(moldes.length).toBe(79);
+    expect(moldes.length).toBe(86);
 
     // O molde tem de ser mais curto que o exibido — senão não é molde, é uma
     // citação literal com um atributo pendurado.
@@ -608,9 +703,15 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
      * pedaço só não entra por distração — entra por decisão escrita, e quem
      * escrever a decisão tem de olhar a frase inteira para justificá-la. É o
      * precedente da S-CF3, fechada por decisão em 16/08.
+     *
+     * **S-RM23 leva de 49 para 52, e os três novos são todos do painel do
+     * proprietário** (`proprietario.html:342`, `:610`, `:649`): nos três o
+     * valor abre a frase (*"3 contas em aberto no mês."*) ou a fecha
+     * (*"Caixa fica negativo em 14/09/2026"*), e não sobra segundo pedaço para
+     * declarar. Os outros quatro moldes do E263 têm dois pedaços cada.
      */
     const umPedaco = moldes.filter((m) => m.pedacos.length === 1);
-    expect(umPedaco.length).toBe(49);
+    expect(umPedaco.length).toBe(52);
 
     /**
      * **A fala é a outra exceção, e é a que o E254 não tinha como declarar.**
@@ -624,9 +725,20 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
      * subiu?"*, *"Que dia eu devolvo o vestido?"* e o *"Traga hoje."* que a
      * recepcionista responde (`recepcao.html:622, 627, 637`), mais *"Que dia eu
      * busco o vestido?"* (`vendedora.html:402`).
+     *
+     * **S-RM23 leva de 10 para 19**, e as nove são a mesma coisa uma casa
+     * adiante: a pergunta que alguém faz em voz alta, agora embrulhada num
+     * `<span>` dentro do parágrafo. Cinco são da noiva ao telefone
+     * (*"quando retiro?"* — `proprietario.html:835`; *"tem alguma coisa na
+     * quinta ou na sexta?"* — `recepcao.html:492`; *"Esqueci de devolver"* —
+     * `:632`; *"Manchei o vestido"* e *"rasgou a barra"* — `:641`), duas são da
+     * dona (*"quanto vou pagar de comissão este mês?"* — `proprietario.html:641`,
+     * que existe só no comentário de `comissoes/index.tsx:740`; *"quem mexeu
+     * nisso?"* — `:749`) e duas são a recepcionista lendo o cartão para si
+     * (`recepcao.html:588`).
      */
     const falas = citacoes.filter((c) => c.fala);
-    expect(falas.length).toBe(10);
+    expect(falas.length).toBe(19);
     for (const f of falas) {
       expect(f.pedacos, `${f.manual}:${f.linha}: fala não confere pedaço nenhum`).toEqual([]);
     }
@@ -645,9 +757,27 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
      * **A razão é obrigatória e é cobrada**: `data-grifo=""` não silencia nada.
      * É a diferença entre declarar e calar — quem reabrir a contagem lê por que
      * cada uma saiu, na própria linha do manual.
+     *
+     * **S-RM23 leva de 6 para 35, e o salto é o preço de trazer a prosa
+     * solta.** Vinte e oito grifos novos vieram das 114, e uma citação que já
+     * estava na régua virou grifo: `recepcao.html:332` cobrava *"você não pode
+     * ver"* da tela, e a tela escreve *"Você não tem permissão para ver … desta
+     * noiva."* (`sem-lista.tsx:45`) — ela passava porque a frase do manual
+     * existe, entre aspas, no COMENTÁRIO de `estado-consulta.ts:52`. **Cobrança
+     * verde sobre frase que a tela não tem é pior do que cobrança nenhuma**, e é
+     * a razão de o grifo ser a saída honesta em vez do silêncio.
+     *
+     * As 28 novas são de quatro famílias, e a razão de cada uma está escrita na
+     * linha do manual: a **paráfrase** (o manual resume o rótulo — *"link
+     * expirado"* onde o portal escreve *"Este link expirou. Peça um novo para a
+     * sua vendedora."*, `vendedora.html:510`), o **vocabulário do sistema**
+     * (*"não pactuado"*, o nome que o código dá ao prazo nulo da 18ª), a
+     * **frase de exemplo que o manual escreve para a vendedora dizer**
+     * (`noiva.html:398`) e a **frase que a tela NÃO diz**, citada de propósito
+     * (*"não há"*, `recepcao.html:332`; *"a combinar"*, `noiva.html:355`).
      */
     const grifos = citacoes.filter((c) => c.grifo);
-    expect(grifos.length).toBe(6);
+    expect(grifos.length).toBe(35);
     for (const g of grifos) {
       expect(g.pedacos, `${g.manual}:${g.linha}: grifo não confere pedaço nenhum`).toEqual([]);
     }
