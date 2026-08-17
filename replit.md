@@ -59,6 +59,13 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   virgem ela saía `Perfis de acesso 4 (+5)`, total menor que o que a própria
   execução criou. Hoje ela vem de `contarConfiguracao`, como as outras, e a
   régua do banco virgem a confere contra `select count(*) from perfis` (S-O71).
+- **`pnpm --filter <pkg> test -- <padrão>` NÃO filtra — ele roda a suíte
+  inteira** (E262, 17/08/2026). Os padrões viram argumento do *script*
+  (`vitest run -- s31-… …`), não filtro do corredor, e o comando parece um
+  filtro: **874,94 s onde se esperavam ~15**. A forma que filtra de verdade é
+  `pnpm --filter <pkg> exec vitest run <caminho>` — medida em **7,60 s** para
+  um arquivo, e em **10,3 s** para dois. Quem roda um arquivo de API para
+  conferir um conserto perde uma sessão inteira com a forma errada.
 - **A régua do banco VIRGEM** (S-D43): `cd artifacts/api-server &&
   ./node_modules/.bin/tsx ../../scripts/banco-virgem.ts`. Cria um banco
   descartável, aplica o schema com `push`, roda o seed, **confere que o resumo
