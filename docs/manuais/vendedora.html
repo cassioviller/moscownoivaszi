@@ -432,7 +432,7 @@
       <p class="resumo">Ficha → bloco Interesses → <span class="btn">Preencher interesses</span></p>
       <p>Além dos atributos do catálogo, três campos livres: <strong>“Algo a mais”</strong>, <strong>“Não quer usar”</strong> e <strong>“Teto de orçamento (R$)”</strong>.</p>
       <figure class="print" data-print="interesses"></figure>
-      <p>O teto vale a pena preencher: quando o orçamento passar dele, a tela avisa — <em>“R$ X acima do teto de R$ Y que a noiva definiu”</em>. É um aviso, não uma trava.</p>
+      <p>O teto vale a pena preencher: quando o orçamento passar dele, a tela avisa — <em data-tela="acima do teto de | que a noiva definiu">“R$ X acima do teto de R$ Y que a noiva definiu”</em>. É um aviso, não uma trava.</p>
       <p class="nota"><b>Para apagar o teto, limpe o campo e salve.</b> Isso passou a funcionar de verdade agora; antes o campo voltava calado com o valor antigo.</p>
     </section>
 
@@ -444,7 +444,7 @@
       <p>Os vestidos saem do acervo, e é no <strong>Catálogo</strong> que você os acha pela característica — modelo, decote, tecido:</p>
       <figure class="print" data-print="catalogo"></figure>
 
-      <p>O link <strong>vale 30 dias</strong>. Se precisar cortar antes, use a lixeira: <em>“A seleção de N vestido(s) para de abrir para a noiva na hora.”</em></p>
+      <p>O link <strong>vale 30 dias</strong>. Se precisar cortar antes, use a lixeira: <em data-tela="A seleção de | vestido(s) para de abrir para a noiva na hora.">“A seleção de N vestido(s) para de abrir para a noiva na hora.”</em></p>
     </section>
 
     <section id="prova">
@@ -466,7 +466,7 @@
            “já há atendimento nessa cabine nesse horário”<br>
            “a vendedora já tem atendimento nesse horário”</p>
       </div>
-      <p>Quando alguém está de férias, o recado traz o nome e o período: <em>“Maria está ausente de 12/08 a 20/08 — escolha outro dia ou outra pessoa.”</em></p>
+      <p>Quando alguém está de férias, o recado traz o nome e o período: <em data-tela="está ausente de | — escolha outro dia ou outra pessoa.">“Maria está ausente de 12/08 a 20/08 — escolha outro dia ou outra pessoa.”</em></p>
       <p class="nota">Agendou, o sistema pergunta <b>“Quer já mandar a confirmação para a noiva?”</b> com um botão de WhatsApp — só quando ela tem número cadastrado.</p>
     </section>
 
@@ -492,7 +492,7 @@
         <p>Digitar 20 com o seletor em “Valor (R$)” tira <strong>R$ 20,00</strong>; com o seletor em “Percentual (%)” tira <strong>20%</strong> — em R$ 5.000,00, mil reais.</p>
         <p>Errou, tem volta: o botão <span class="btn">Remover desconto</span>, em vermelho, aparece sempre que existe desconto aplicado.</p>
       </div>
-      <p>Desconto em reais maior que os itens é recusado com a conta na frase — <em>“Desconto de R$ 6.000,00 é maior que os itens do orçamento (R$ 5.000,00) — o total sairia zerado”</em>.</p>
+      <p>Desconto em reais maior que os itens é recusado com a conta na frase — <em data-tela="Desconto de | é maior que os itens do orçamento | ) — o total sairia zerado">“Desconto de R$ 6.000,00 é maior que os itens do orçamento (R$ 5.000,00) — o total sairia zerado”</em>.</p>
 
       <h3>A validade</h3>
       <p>Campo <strong>“Proposta vale até”</strong> → <span class="btn">Salvar validade</span>. Uma proposta nova nasce valendo <strong>30 dias</strong>.</p>
@@ -519,8 +519,8 @@
 
       <p>E se ela tiver o <strong>portal</strong>, é este o lugar único dela — proposta, provas, contrato, vestido e parcelas no mesmo link:</p>
       <figure class="print" data-print="portal-da-noiva"></figure>
-      <p>O nome dela e o da loja, os itens, o desconto, o total, a validade — e o botão de aceitar. Ao aceitar, a página vira comprovante: <em>“Você aceitou esta proposta em …”</em>.</p>
-      <p>Você acompanha pela própria tela do orçamento: o subtítulo diz <em>“aberto pela noiva em …”</em> ou <em>“link enviado, ainda não aberto”</em>, e o chip diz <strong>“Aceito pela noiva”</strong> ou <strong>“Sem aceite da noiva”</strong>.</p>
+      <p>O nome dela e o da loja, os itens, o desconto, o total, a validade — e o botão de aceitar. Ao aceitar, a página vira comprovante: <em data-tela="Você aceitou esta proposta em">“Você aceitou esta proposta em …”</em>.</p>
+      <p>Você acompanha pela própria tela do orçamento: o subtítulo diz <em data-tela="aberto pela noiva em">“aberto pela noiva em …”</em> ou <em>“link enviado, ainda não aberto”</em>, e o chip diz <strong>“Aceito pela noiva”</strong> ou <strong>“Sem aceite da noiva”</strong>.</p>
 
       <h3>Se a proposta venceu</h3>
       <div class="fala">
@@ -599,12 +599,12 @@
       <p><strong>As datas se corrigem sem cancelar nada</strong>: o botão <span class="btn">Alterar</span> (ou <span class="btn">Informar</span>, quando ainda não há data) abre o diálogo com <strong>três campos</strong> — a retirada, a devolução e o <strong>“Prazo de devolução antecipada da reserva (cláusula 18ª)”</strong>. Contrato cancelado não muda mais.</p>
       <p><strong>Apagar uma data gravada funciona</strong>: esvazie o campo e salve, e o contrato volta a ficar sem a data — o que ainda não foi combinado não precisa ficar preso a um chute antigo. O prazo da 18ª se apaga do mesmo jeito.</p>
       <p class="nota"><b>O prazo da 18ª é negociado a cada contrato</b>, não é constante: é o número de dias antes da retirada até o qual a noiva, tendo pago tudo à vista, ainda recebe de volta o que passou da reserva se cancelar. Vazio quer dizer “não pactuado” — e aí a rescisão cai na régua geral da 11ª. Quem preenche está prometendo em nome da loja: combine com a dona antes.</p>
-      <p><strong>O diálogo avisa o horário errado enquanto você digita</strong>, sem esperar o clique: se a data cair fora do expediente da cláusula 4ª, uma linha amarela aparece embaixo do campo dizendo exatamente o quê — <em>“14:30 está fora do expediente de sábado (10:30 às 18:00).”</em> ou <em>“A loja não retira nem devolve no domingo.”</em> É a mesma frase que a recusa do servidor daria; a diferença é que você a lê enquanto a noiva ainda está na sua frente.</p>
+      <p><strong>O diálogo avisa o horário errado enquanto você digita</strong>, sem esperar o clique: se a data cair fora do expediente da cláusula 4ª, uma linha amarela aparece embaixo do campo dizendo exatamente o quê — <em data-tela="está fora do expediente de">“14:30 está fora do expediente de sábado (10:30 às 18:00).”</em> ou <em data-tela="A loja não retira nem devolve">“A loja não retira nem devolve no domingo.”</em> É a mesma frase que a recusa do servidor daria; a diferença é que você a lê enquanto a noiva ainda está na sua frente.</p>
       <p class="nota">Repare que <b>o sábado fecha uma hora antes</b> — e é por isso que o campo não trava o horário: a faixa muda com o dia da semana, e um limite fixo mentiria em metade da semana.</p>
       <figure class="print" data-print="contrato"></figure>
 
       <h3>As peças deste contrato, e o caminho até elas</h3>
-      <p>Abaixo dos dados vem o card <strong>“Peças deste contrato”</strong>, com <strong>uma linha por vestido preso</strong>: o nome, o código e em que pé ele está — <em>“na loja”</em>, <em>“retirada em 06/09/2028”</em> ou <em>“devolvida em 12/09/2028”</em>.</p>
+      <p>Abaixo dos dados vem o card <strong>“Peças deste contrato”</strong>, com <strong>uma linha por vestido preso</strong>: o nome, o código e em que pé ele está — <em>“na loja”</em>, <em data-tela="retirada em">“retirada em 06/09/2028”</em> ou <em data-tela="devolvida em">“devolvida em 12/09/2028”</em>.</p>
       <p>Cada linha traz o botão <span class="btn">Abrir a reserva</span>, e é por ele que se chega aos gestos da peça: registrar a retirada e a devolução, marcar a prova, lançar uma avaria e <strong>trocar o modelo</strong> (cláusula 17ª). <strong>O contrato não repete esses gestos</strong> — ele leva até onde eles moram, para não existirem dois lugares dizendo a mesma coisa.</p>
       <p class="nota">Só as reservas <b>vivas</b> aparecem. Depois de uma troca, a peça antiga sai da lista no mesmo instante: ela deixou de ser deste contrato, e mostrá-la prometeria um vestido que a loja já liberou para outra noiva.</p>
       <p>Contrato só de serviço — ajuste, confecção sem peça do acervo — mostra a frase <em>“Nenhuma peça do acervo presa por este contrato”</em>, e está certo: não há o que abrir.</p>
@@ -635,7 +635,7 @@
       <h3>Os dois gestos, e a diferença entre eles e o contrato</h3>
       <p>Não confunda com os campos <strong>“Retirada”</strong> e <strong>“Devolução”</strong> da ficha do contrato. Aqueles são o <strong>combinado</strong> — o que a noiva assinou. Estes são o <strong>acontecido</strong>:</p>
       <ul>
-        <li><span class="btn">Registrar retirada</span> — escolha a data e clique. A ficha passa a dizer <em>“Retirado em … — com a noiva”</em></li>
+        <li><span class="btn">Registrar retirada</span> — escolha a data e clique. A ficha passa a dizer <em data-tela="Retirado em | — com a noiva">“Retirado em … — com a noiva”</em></li>
         <li><span class="btn">Registrar devolução</span> — o mesmo, do outro lado</li>
       </ul>
       <p><strong>Enquanto a devolução não for registrada, o vestido fica indisponível para outras noivas.</strong> A tela diz isso, e é literal: a peça continua ocupando a arara no motor de disponibilidade, aparece em vermelho no acervo e barra quem tentar reservá-la. Não é um detalhe de relatório — é o vestido que a próxima noiva não consegue provar.</p>
@@ -652,7 +652,7 @@
       <p class="nota">Depois que a peça <b>saiu da loja</b>, trocar de modelo não existe — o sistema recusa com a frase <em>“A peça já foi retirada — a troca de modelo acontece antes de a peça sair da loja.”</em>. O caminho aí é registrar a devolução e conversar sobre um contrato novo.</p>
       <p><strong>Se alguém trocou a mesma peça enquanto você preenchia</strong>, a segunda troca é recusada — e não “vence a última”:</p>
       <div class="fala aviso">
-        <p data-tela="Esta reserva não está mais presa por este contrato — outra troca aconteceu enquanto esta era enviada."><em>“Esta reserva não está mais presa por este contrato — outra troca aconteceu enquanto esta era enviada. Recarregue e escolha a peça atual.”</em></p>
+        <p><em>“Esta reserva não está mais presa por este contrato — outra troca aconteceu enquanto esta era enviada. Recarregue e escolha a peça atual.”</em></p>
       </div>
       <p>Recarregue a ficha: ela mostra a peça que ficou. <strong>Sem essa recusa o contrato terminaria com duas peças presas</strong> de um gesto que era para trocar uma pela outra — e as duas sairiam da arara das outras noivas.</p>
 
@@ -690,7 +690,7 @@
       <ul>
         <li><strong>Na ficha da reserva</strong> — o cartão com o título, a conta decomposta e o botão <span class="btn">Cobrar o atraso</span>. É aqui, e só aqui, que a cobrança vira parcela do contrato</li>
         <li><strong>No topo de Contratos</strong> — a fila, com a noiva, as peças, há quantos dias e quanto já custa, e o total de todas elas. Cada linha leva a <span class="btn">Abrir a reserva</span></li>
-        <li><strong>No sino</strong>, em qualquer tela: <em>“N peças fora do prazo de devolução”</em>, com a mais antiga e o valor. Ele acende sozinho e volta amanhã com o número maior, porque o aviso carrega o estado do dia</li>
+        <li><strong>No sino</strong>, em qualquer tela: <em data-tela="peça | fora do prazo de devolução">“N peças fora do prazo de devolução”</em>, com a mais antiga e o valor. Ele acende sozinho e volta amanhã com o número maior, porque o aviso carrega o estado do dia</li>
       </ul>
       <p><strong>Cobrar não tira a linha da fila.</strong> A peça continua fora da arara, e sumir dali diria que ela voltou. O que aparece é o selo <span class="btn">Cobrado</span> ao lado. Quem tira a linha é <strong>registrar a devolução</strong>.</p>
       <p><strong>E a fila age, não só avisa</strong>: cada linha tem o botão <span class="btn">Contato</span>, que abre ali mesmo o registro de telefonema da ficha da noiva — o mesmo formulário, sem ida-e-volta. O contato registrado zera o relógio de “noiva parada” do funil.</p>
@@ -698,7 +698,7 @@
       <h3>A peça fora do prazo que ninguém consegue cobrar</h3>
       <p>Há um caso em que a fila mostra a peça e <strong>não soma um centavo</strong>: quando ela está fora e <strong>não há contrato ativo</strong> por trás dela — a reserva que nunca virou venda, ou a venda que foi cancelada com o vestido já na casa da noiva.</p>
       <div class="fala aviso">
-        <p>A fila diz, em bloco separado: <em data-tela="cláusula 16ª cobra sobre o aluguel de cada peça, e não há de onde tirá-lo.">“Fora do prazo e sem contrato ativo: a cláusula 16ª cobra sobre o aluguel de cada peça, e não há de onde tirá-lo.”</em></p>
+        <p>A fila diz, em bloco separado: <em>“Fora do prazo e sem contrato ativo: a cláusula 16ª cobra sobre o aluguel de cada peça, e não há de onde tirá-lo.”</em></p>
       </div>
       <p><strong>Isso é de propósito, e é um pedido de providência.</strong> A 16ª cobra sobre <em>o aluguel de cada peça</em>, e aluguel só existe dentro de um contrato — sem ele não há número de onde tirar a conta. Calar a peça deixaria um vestido na rua atrás de uma fila vazia. O caminho é o mesmo: abrir a reserva e registrar a devolução, que é o gesto que faz o contador parar.</p>
       <p><strong>Cada linha do bloco diz qual das duas histórias é</strong>, porque elas pedem conversas diferentes: <em>“nunca virou contrato”</em> é o gesto de balcão que não virou venda — a peça saiu sem papel; <em>“a venda foi desfeita — ver o contrato”</em> é link para o contrato <strong>cancelado</strong> com a peça ainda na rua, e ali o atraso pode até já ter sido cobrado num carnê que morreu junto. E a órfã com noiva conhecida também tem o botão <span class="btn">Contato</span> — a sem noiva não, porque não há a quem ligar.</p>
@@ -792,7 +792,7 @@
       </div>
       <p><strong>Vencer hoje não é estar vencida</strong> — o dia do vencimento é o último dia de pagar em dia, e a conta só começa no seguinte.</p>
       <p><strong>A multa é sobre a parcela, não sobre o contrato inteiro.</strong> Num contrato de R$ 5.000,00 em 10×, isso é <strong>R$ 10,00 e não R$ 100,00</strong> — dez vezes de diferença. E a lei do consumidor limita a multa de mora a 2% <em>da prestação</em>, não do contrato.</p>
-      <p><strong>E a correção monetária é pelo IPCA</strong> — a dona decidiu em 15/08/2026, e o sistema corrige pelos <strong>meses cheios</strong> entre o vencimento e hoje, com o número que ela informa mês a mês em Configurações → Índices. A frase da conta diz o que aconteceu, sempre: <em>“Correção pelo IPCA de 04/2026 a 07/2026 (1,58%)”</em> quando corrigiu; <em>“Sem correção monetária — ainda não há mês cheio de atraso”</em> quando a parcela venceu há menos de um mês; e <em>“Sem correção monetária — o IPCA de 05/2026 não foi informado (Configurações → Índices)”</em> quando falta o número de um mês — aí é a dona quem digita, e a conta se corrige sozinha. Você não digita índice nenhum: lê a frase junto da conta, para não ler o total como se fosse a dívida inteira.</p>
+      <p><strong>E a correção monetária é pelo IPCA</strong> — a dona decidiu em 15/08/2026, e o sistema corrige pelos <strong>meses cheios</strong> entre o vencimento e hoje, com o número que ela informa mês a mês em Configurações → Índices. A frase da conta diz o que aconteceu, sempre: <em data-tela="Correção pelo IPCA de | %)">“Correção pelo IPCA de 04/2026 a 07/2026 (1,58%)”</em> quando corrigiu; <em>“Sem correção monetária — ainda não há mês cheio de atraso”</em> quando a parcela venceu há menos de um mês; e <em data-tela="Sem correção monetária — o IPCA de | não foi informado (Configurações → Índices)">“Sem correção monetária — o IPCA de 05/2026 não foi informado (Configurações → Índices)”</em> quando falta o número de um mês — aí é a dona quem digita, e a conta se corrige sozinha. Você não digita índice nenhum: lê a frase junto da conta, para não ler o total como se fosse a dívida inteira.</p>
 
       <h3>Onde a noiva lê isso, e onde você lê</h3>
       <p><strong>Vocês duas leem o MESMO número.</strong> A noiva, no portal dela; você, no carnê da ficha do contrato: a parcela vencida aparece em vermelho, com o selo <strong>Atrasada</strong>, o valor <strong>já com a multa e os juros</strong> — R$ 515,00, não R$ 500,00 — e, embaixo, a conta escrita por extenso: quantos dias, quanto de multa, quanto de juros, e a frase da correção. É a mesma frase do portal, de propósito: um número maior sem explicação ao lado é o que gera a ligação para a loja — ou você cobrando um valor que não sabe justificar.</p>
@@ -811,7 +811,7 @@
       <ul>
         <li><strong>Na ficha da peça</strong>, ao lado do status</li>
         <li><strong>No acervo</strong>, no canto do card</li>
-        <li><strong>No seletor de vestido do orçamento</strong>, na própria linha da lista — <em>“EX-01 · Exclusivo da Marina · exclusiva”</em>. A lista é longa, e ninguém abre a ficha de cada peça antes de escolher</li>
+        <li><strong>No seletor de vestido do orçamento</strong>, na própria linha da lista — <em data-tela=" · exclusiva">“EX-01 · Exclusivo da Marina · exclusiva”</em>. A lista é longa, e ninguém abre a ficha de cada peça antes de escolher</li>
         <li><strong>Dentro do diálogo “Gerar contrato”</strong>, com a peça nomeada e o que a rescisão custaria</li>
       </ul>
       <p>Quem marca a peça é a loja, na ficha dela, em <span class="btn">Editar vestido</span>. <strong>A marca não se apaga sozinha</strong> quando a peça sai pela primeira vez — apagá-la por efeito de um contrato deixaria a ficha errada no dia em que aquele contrato fosse cancelado.</p>
@@ -844,7 +844,7 @@
       <p><strong>A peça exclusiva muda a conta inteira</strong>, e é o motivo de o aviso aparecer lá atrás, no fecho. Num contrato com um vestido exclusivo de R$ 3.000,00 e um véu comum de R$ 500,00, com R$ 1.000,00 pagos além da reserva, o pago se rateia pelo valor dos itens: os <strong>R$ 857,14</strong> que cabem ao exclusivo ficam <strong>inteiros</strong> com a loja, e só os R$ 142,86 do véu passam pela régua dos 60% — devolvem R$ 57,14.</p>
 
       <h3>“Manter no caixa” ou “estornar”, e o aviso entre os dois</h3>
-      <p>Abaixo da conta continua a escolha de sempre sobre o dinheiro que já entrou: <em>“A noiva perdeu o sinal — mantém no caixa”</em> ou <em>“Devolvi o valor — estorna … do caixa”</em>. <strong>Ela não some, porque é o caso em que a dona decide contra a régua</strong> — e é uma decisão dela, não do sistema.</p>
+      <p>Abaixo da conta continua a escolha de sempre sobre o dinheiro que já entrou: <em>“A noiva perdeu o sinal — mantém no caixa”</em> ou <em data-tela="Devolvi o valor — estorna | do caixa">“Devolvi o valor — estorna … do caixa”</em>. <strong>Ela não some, porque é o caso em que a dona decide contra a régua</strong> — e é uma decisão dela, não do sistema.</p>
       <p>O que mudou é que a divergência passou a ser <strong>dita</strong>. Escolhendo estornar quando a cláusula manda reter, aparece um alerta vermelho com o número, e o campo de motivo troca de pergunta: ele passa a pedir <em>“Motivo do cancelamento — e por que a loja devolveu o que a cláusula retém”</em>. A razão fica na trilha de auditoria ao lado do valor.</p>
       <p class="nota">O contrato <b>já cancelado</b> não mostra mais essa conta: registro morto não se recalcula. O que ele reteve está na trilha e na conta a pagar que nasceu no dia.</p>
 
@@ -942,12 +942,12 @@
       <h3>Provas e Reservas</h3>
       <figure class="print" data-print="provas"></figure>
       <p><strong>Provas</strong> lista quem vem provar, da mais próxima à mais distante. <strong>Reservas</strong> responde quem casa com qual vestido. <strong>Nenhuma das duas cria nada:</strong> a prova nasce na Agenda, e a reserva nasce no diálogo do contrato, no formulário da prova ou na ficha do vestido.</p>
-      <p class="nota"><b>A reserva sem noiva tem validade</b> (decisão da dona, 14/08/2026): segurar uma peça antes de saber de quem ela será pode — por <span class="prazo" data-regua="VALIDADE_DO_BLOQUEIO_ORFAO_DIAS">7 dias</span>. Na lista de Reservas ela carrega o selo com a data — <em>“segura até 22/08/2026”</em> e, vencida, <em>“venceu em … — não segura mais”</em>: a peça volta ao mercado sozinha, e a primeira noiva que precisar dela passa por cima. Para segurar de verdade, ponha a noiva na reserva.</p>
+      <p class="nota"><b>A reserva sem noiva tem validade</b> (decisão da dona, 14/08/2026): segurar uma peça antes de saber de quem ela será pode — por <span class="prazo" data-regua="VALIDADE_DO_BLOQUEIO_ORFAO_DIAS">7 dias</span>. Na lista de Reservas ela carrega o selo com a data — <em data-tela="segura até">“segura até 22/08/2026”</em> e, vencida, <em data-tela="venceu em | — não segura mais">“venceu em … — não segura mais”</em>: a peça volta ao mercado sozinha, e a primeira noiva que precisar dela passa por cima. Para segurar de verdade, ponha a noiva na reserva.</p>
 
       <h3>Quando a prova deixa de combinar com a reserva</h3>
       <p>A prova é marcada uma vez e a reserva continua se mexendo depois. Quando as duas se desencontram, <strong>o sistema avisa e não desmarca nada</strong> — quem fala com a noiva é quem decide. Os selos aparecem nos quatro lugares em que a prova aparece: <strong>a grade do dia, a semana, a fila de Provas e a ficha da noiva</strong>.</p>
       <ul>
-        <li><span class="btn">Reserva cancelada</span> — alguém cancelou a reserva e <strong>o vestido saiu desta noiva</strong>. A prova continua marcada de propósito: o sistema não sabe se ela desistiu ou se está trocando de peça, e cancelar sozinho perderia o horário dela. <em>“Confirme com ela antes do horário, ou desmarque.”</em></li>
+        <li><span class="btn">Reserva cancelada</span> — alguém cancelou a reserva e <strong>o vestido saiu desta noiva</strong>. A prova continua marcada de propósito: o sistema não sabe se ela desistiu ou se está trocando de peça, e cancelar sozinho perderia o horário dela. <em data-tela="com ela antes do horário, ou desmarque.">“Confirme com ela antes do horário, ou desmarque.”</em></li>
         <li><span class="btn">Prova depois do casamento</span> — a data do casamento <strong>mudou para trás</strong> e a prova ficou depois dele. É o pior dos dois: a noiva viria experimentar um vestido que já usou</li>
         <li><span class="btn">Prova fora da janela</span> — a data mudou para a frente e a prova ficou longe demais. <strong>Naquele dia a peça pode já estar com outra noiva</strong>, porque o período de reserva andou junto com o casamento</li>
       </ul>

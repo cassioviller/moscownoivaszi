@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 import path from "node:path";
 import { chipsDe, lerDoRepo, manuaisVersionados } from "./manuais-do-repositorio";
 
@@ -51,7 +50,10 @@ import { chipsDe, lerDoRepo, manuaisVersionados } from "./manuais-do-repositorio
 const RAIZ = path.resolve(__dirname, "../../../..");
 
 function porGit(padroes: string[]): string[] {
-  return execFileSync("git", ["ls-files", ...padroes], { cwd: RAIZ, encoding: "utf8" })
+  return execFileSync("git", ["ls-files", ...padroes], {
+    cwd: RAIZ,
+    encoding: "utf8",
+  })
     .split("\n")
     .filter(Boolean);
 }
@@ -63,32 +65,181 @@ const ler = lerDoRepo;
 
 const manuais = manuaisVersionados;
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * S-RM4 — a tela lida como a noiva a lê, e não como o prettier a escreveu
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * **A régua comparava a citação com o CÓDIGO-FONTE CRU, e o JSX parte frases no
+ * meio.** Três das 11 declarações do E254 tiveram de escolher um fragmento mais
+ * curto do que a frase que a vendedora lê, porque a frase inteira não existe
+ * contígua em lugar nenhum. Medido em 17/08, nos três sítios que a sobra nomeia:
+ *
+ * ```tsx
+ * As provas e a movimentação do vestido estão na{" "}   // ajustes/[ajusteId].tsx:273
+ * <Link to={…} className="underline">ficha da reserva</Link>.
+ *
+ * Fora do prazo e <span className="font-medium">sem contrato ativo</span>: a    // contratos/index.tsx:252
+ * cláusula 16ª cobra sobre o aluguel de cada peça, e não há de onde tirá-lo.
+ *
+ * {soContatados} procurada{soContatados === 1 ? "" : "s"}, ainda sem resposta.  // fila-contato.tsx:122
+ * ```
+ *
+ * Nenhuma dessas três frases existe no fonte como o leitor a vê. A primeira é
+ * partida por uma tag e por uma quebra de linha; a segunda, por um `<span>` de
+ * negrito no meio da oração; a terceira, por um ternário **dentro da palavra**.
+ * O `includes` sobre o fonte responde "a tela não tem" sobre frase que a tela
+ * tem — e empurra para o molde citação que devia ser literal.
+ *
+ * **A saída é renderizar o texto do JSX antes de comparar**, aplicando as
+ * regras de espaço que o próprio JSX aplica:
+ *
+ * - `{" "}` é um espaço de verdade e sobrevive;
+ * - toda outra chave (`{expr}`, `${expr}`, comentário) é um VALOR: nada
+ *   atravessa. Uma expressão no meio da frase continua a partir a citação, e é
+ *   isso que faz dela um molde de verdade;
+ * - a corrida de brancos que contém quebra de linha some quando encosta numa
+ *   tag (é o que o JSX faz) e vira um espaço quando separa dois textos;
+ * - **tag colada em tag é barreira, não emenda**: `</p><p>` são dois
+ *   parágrafos, e emendá-los inventaria frase que ninguém lê. Só a tag entre
+ *   dois textos (`estão na <Link>ficha da reserva</Link>.`) é transparente.
+ *
+ * **A leitura nova é UNIÃO com a crua, nunca substituição** — o corpus só pode
+ * crescer. Uma citação que batia antes continua batendo, e a régua não perde
+ * alcance por um erro do renderizador.
+ *
+ * Medido em 17/08 sobre as **161 citações entre aspas em `<em>`** que o E254
+ * contou: **82 batiam no fonte cru, 95 batem na união** — 13 frases que a tela
+ * escreve e a régua não enxergava, entre elas *"As provas e a movimentação do
+ * vestido estão na ficha da reserva"* e *"Fora do prazo e sem contrato ativo: a
+ * cláusula 16ª cobra…"*, esta última um dos três moldes que a S-RM4 nomeia e
+ * que voltou a ser citação literal.
+ *
+ * **O que o renderizador NÃO conserta, e é o terceiro sítio da sobra**: a frase
+ * montada por CONCATENAÇÃO de literais diferentes. Em
+ * `peca-exclusiva.ts:72-73` o sujeito da oração é escolhido por um ternário
+ * (`"é peça exclusiva…"` / `"são peças exclusivas…"`) e só depois emendado ao
+ * resto; não há renderização que junte o que o autor escreveu separado, porque
+ * o que junta os dois é o valor de `pecas.length`. Continua molde, e é molde
+ * de verdade.
+ */
+const VALOR = "\u0001"; // aqui a tela imprime um valor: nada atravessa
+const TAG = "\u0002"; // aqui houve uma tag
+const QUEBRA = "\u0003"; // corrida de brancos que continha quebra de linha
+const ESPACO = "\u0004"; // o `{" "}` — espaço que o autor escreveu de propósito
+
+function renderizarJsx(fonte: string): string {
+  let s = fonte.replace(/\{["'] ["']\}/g, ESPACO);
+  // Expressão de UMA linha, sem chave dentro — a forma do JSX e da interpolação.
+  // Iterado, resolve de dentro para fora; a exigência de caber numa linha é o
+  // que impede de engolir corpo de função e levar junto as frases que ele tem.
+  for (let i = 0; i < 12; i++) {
+    const antes = s;
+    s = s.replace(/\$?\{[^{}\n]*\}/g, VALOR);
+    if (s === antes) break;
+  }
+  // A tag pode ocupar várias linhas (atributos), mas o nome vem colado no `<`:
+  // `if (a < b)` não é tag, e `;` nunca aparece dentro de uma.
+  s = s.replace(/<\/?[A-Za-z][A-Za-z0-9.]*(?:\s[^<>;]*)?>/g, TAG);
+  s = s.replace(/[ \t]*\r?\n[ \t\r\n]*/g, QUEBRA);
+  let antes = "";
+  while (antes !== s) {
+    antes = s;
+    s = s.replaceAll(QUEBRA + TAG, TAG).replaceAll(TAG + QUEBRA, TAG);
+    s = s.replaceAll(QUEBRA + ESPACO, ESPACO).replaceAll(ESPACO + QUEBRA, ESPACO);
+  }
+  s = s.replace(new RegExp(`${TAG}{2,}`, "g"), VALOR);
+  return s.replaceAll(TAG, "").replaceAll(QUEBRA, " ").replaceAll(ESPACO, " ");
+}
+
+/** Fora do JSX só a interpolação parte a frase, e a quebra de linha do prettier. */
+function renderizarTs(fonte: string): string {
+  return fonte.replace(/\$\{[^{}\n]*\}/g, VALOR).replace(/[ \t]*\r?\n[ \t\r\n]*/g, " ");
+}
+
 /**
  * A TELA, em uma corda só: o frontend (onde moram os rótulos de botão) e o
  * servidor (onde moram os recados que a tela repete). Os dois porque o manual
  * não distingue quem escreveu a frase — para quem lê, é tudo "a tela".
+ *
+ * Duas leituras do mesmo corpus, unidas (S-RM4): o fonte **cru**, que é o que
+ * a régua sempre leu, e o fonte **renderizado**, que é o que o leitor vê.
  */
-function textoDaTela(): string {
+function arquivosDaTela(): string[] {
   return porGit([
     "artifacts/moscow-noivas/src/**/*.tsx",
     "artifacts/moscow-noivas/src/**/*.ts",
     "artifacts/api-server/src/routes/*.ts",
     "artifacts/api-server/src/lib/*.ts",
     "lib/**/*.ts",
-  ])
-    .filter((f) => !f.endsWith(".test.ts") && !f.endsWith(".test.tsx"))
-    .map(ler)
-    .join("\n");
+  ]).filter((f) => !f.endsWith(".test.ts") && !f.endsWith(".test.tsx"));
 }
+
+let cache: { cru: string; renderizado: string } | undefined;
+function textoDaTela(): { cru: string; renderizado: string } {
+  if (cache) return cache;
+  const arquivos = arquivosDaTela();
+  cache = {
+    cru: arquivos.map(ler).join("\n"),
+    renderizado: arquivos
+      .map((f) => (f.endsWith(".tsx") ? renderizarJsx(ler(f)) : renderizarTs(ler(f))))
+      .join(VALOR),
+  };
+  return cache;
+}
+
+const semBranco = (s: string) => s.replace(/\s+/g, " ").trim();
+
+function aTelaTem(pedaco: string): boolean {
+  const { cru, renderizado } = textoDaTela();
+  return cru.includes(pedaco) || renderizado.includes(semBranco(pedaco));
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * A colheita
+ * ──────────────────────────────────────────────────────────────────────────── */
 
 interface Citacao {
   manual: string;
-  tipo: "botão" | "recado" | "cláusula";
+  linha: number;
+  tipo: "botão" | "recado" | "prosa";
   exibido: string;
-  /** O pedaço que a tela tem de conter. Igual ao exibido, salvo molde. */
-  esperado: string;
+  /**
+   * Os pedaços que a tela tem de conter — TODOS eles. Um só, igual ao exibido,
+   * quando a citação é literal. Vazio quando é fala (não é tela).
+   */
+  pedacos: string[];
   molde: boolean;
+  fala: boolean;
 }
+
+/**
+ * **`data-tela` aceita VÁRIOS pedaços, separados por ` | `, e a régua cobra
+ * todos.** Foi a fresta que derrubou a peneira automática do E254: em
+ * *"· inclui R$ 15,00 de multa e juros"* o valor mora no MEIO, e uma declaração
+ * de um pedaço só deixa o autor escolher a metade que ainda bate. Declarado o
+ * par — `"· inclui | de multa, juros e correção"` —, envelhecer qualquer uma
+ * das duas metades reprova.
+ */
+const PEDACOS = " | ";
+function declaracao(atributos: string): { pedacos?: string[]; fala?: string } {
+  const tela = /data-tela="([^"]+)"/.exec(atributos)?.[1];
+  const fala = /data-fala="([^"]*)"/.exec(atributos)?.[1];
+  if (fala !== undefined) return { fala };
+  if (tela !== undefined) return { pedacos: tela.split(PEDACOS) };
+  return {};
+}
+
+function limpar(cru: string): string {
+  return cru
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const linhaDe = (html: string, indice: number) => html.slice(0, indice).split("\n").length;
 
 /**
  * Os chips `class="btn"`, com o `data-tela` quando o rótulo é montado.
@@ -100,18 +251,18 @@ interface Citacao {
  */
 function botoes(manual: string): Citacao[] {
   const html = ler(manual);
-  const achados: Citacao[] = [];
-  for (const { atributos, rotulo: exibido } of chipsDe(html)) {
-    const declarado = /data-tela="([^"]+)"/.exec(atributos)?.[1];
-    achados.push({
+  return chipsDe(html).map(({ atributos, rotulo: exibido }) => {
+    const d = declaracao(atributos);
+    return {
       manual,
-      tipo: "botão",
+      linha: linhaDe(html, html.indexOf(`<span class="btn"${atributos}>${exibido}`)),
+      tipo: "botão" as const,
       exibido,
-      esperado: declarado ?? exibido,
-      molde: declarado !== undefined,
-    });
-  }
-  return achados;
+      pedacos: d.fala !== undefined ? [] : (d.pedacos ?? [exibido]),
+      molde: d.pedacos !== undefined,
+      fala: d.fala !== undefined,
+    };
+  });
 }
 
 /** As linhas das tabelas "O recado" — o texto entre aspas curvas da 1ª célula. */
@@ -120,15 +271,16 @@ function recados(manual: string): Citacao[] {
   const achados: Citacao[] = [];
   for (const tabela of html.matchAll(/<th>O recado<\/th>[\s\S]*?<\/tbody>/g)) {
     for (const linha of tabela[0].matchAll(/<tr><td([^>]*)>“([^”]+)”<\/td>/g)) {
-      const atributos = linha[1] ?? "";
-      const exibido = linha[2]!.trim();
-      const declarado = /data-tela="([^"]+)"/.exec(atributos)?.[1];
+      const exibido = limpar(linha[2]!);
+      const d = declaracao(linha[1] ?? "");
       achados.push({
         manual,
+        linha: linhaDe(html, tabela.index! + linha.index!),
         tipo: "recado",
         exibido,
-        esperado: declarado ?? exibido,
-        molde: declarado !== undefined,
+        pedacos: d.fala !== undefined ? [] : (d.pedacos ?? [exibido]),
+        molde: d.pedacos !== undefined,
+        fala: d.fala !== undefined,
       });
     }
   }
@@ -136,73 +288,98 @@ function recados(manual: string): Citacao[] {
 }
 
 /**
- * **S-R14/S-R15 — a terceira família: a citação que NOMEIA uma cláusula.**
+ * **S-RM2 — a prosa citada entra inteira, e o que não é tela DECLARA que não é.**
  *
  * As duas colheitas acima leem lugares fixos da marcação: o chip
- * `<span class="btn">` e a 1ª célula das tabelas *"O recado"*. Uma frase que o
- * sistema escreve e o manual cita **em prosa** — num `<li>`, num `<p>`, num
- * `<p class="nota">` — não passava por régua nenhuma. Foi assim que o E248
- * trocou *"multa e juros"* por *"multa, juros e correção"* em três telas e no
- * `whatsapp.ts:115`, atualizou o que estava em `<td>`, e deixou **cinco
- * citações** vivas na forma velha: `noiva.html:370, 420, 421` e
- * `vendedora.html:800, 806` — frases entre aspas que o código não escreve mais,
- * e que a noiva procura no portal sem achar.
+ * `<span class="btn">` e a 1ª célula das tabelas *"O recado"*. O E254 abriu uma
+ * terceira, definida pelo CONTEÚDO — a citação que nomeia uma cláusula —, e
+ * mediu na mesma hora o tamanho do que ficava de fora: **161 fragmentos entre
+ * aspas curvas em `<em>` nos cinco manuais, dos quais 82 batiam com a tela e 79
+ * não; a família das cláusulas cobria 13.** O `docs/manuais/vendedora.html:800`
+ * era a prova viva: frase de sistema, envelhecida pelo E248, corrigida à mão no
+ * E254, e nenhuma régua olhando para ela.
  *
- * **A família é definida pelo conteúdo da própria citação, não por um atributo
- * que o autor lembre de pôr**: uma citação que diz *"cláusula 9ª"*, *"(18ª)"*,
- * *"cláusula 5ª §3º" é, por construção, uma frase que o SISTEMA imprime — a
- * prosa do manual cita as cláusulas sem aspas curvas, e as 15 medidas em 17/08
- * são 15 frases de sistema, sem um único falso positivo. Citação nova que nomeie
- * cláusula entra sozinha: não há como escrevê-la e ficar de fora da régua.
+ * A colheita agora é **toda citação entre aspas curvas dentro de um `<em>`**,
+ * mais a família das cláusulas em qualquer tag. É recorte de MARCAÇÃO, não de
+ * conteúdo: não há como citar uma frase de tela em `<em>` e ficar de fora.
  *
- * **O que esta colheita NÃO alcança, e está declarado**: as outras citações de
- * prosa. Medido em 17/08 sobre os cinco manuais: **161 fragmentos entre aspas
- * curvas em `<em>`, dos quais 82 batem literalmente com a tela e 79 não** — e
- * os 79 são uma mistura de molde, de fala da vendedora (*"quanto ficou mesmo?"*)
- * e de frase de sistema. Separá-los é classificação manual de 79 itens com um
- * mecanismo de declaração novo, e é épico próprio. O `vendedora.html:800`
- * (*"· inclui R$ 15,00 de multa e juros"*, que não nomeia cláusula) é a prova
- * de que a fresta continua: ele foi corrigido à mão aqui, e nenhuma régua o
- * guarda.
+ * **A conta de 161 para 160, para ninguém a refazer**: as 161 citações em
+ * `<em>` menos **3** que repetem, palavra por palavra, uma célula das tabelas
+ * *"O recado"* (*"Sua sessão expirou. Entre de novo."*, *"Esse horário não está
+ * livre"*, *"A proposta não tem nenhum item…"*) — conferi-las duas vezes seria
+ * só uma segunda chance de errar —, mais **2** citações que nomeiam cláusula e
+ * moram fora de qualquer `<em>` (`proprietario.html:505`, num `<p>`, e
+ * `vendedora.html`, o rótulo do campo da 18ª).
+ *
+ * **E o `<em>` é ambíguo de propósito — o manual usa a mesma marca para a tela
+ * e para a boca de quem trabalha.** Medido: a recepcionista dizendo
+ * *"vou confirmar com a vendedora e já te retorno"* (`recepcao.html:588`), a
+ * costureira dizendo *"esta eu preciso pronta no dia 10"*
+ * (`proprietario.html:820`), o conselho velho que o manual desaconselha
+ * (*"conferir Todos uma vez por semana para não perder nada"*,
+ * `costureira.html:405`). Cobrar essas da tela seria régua que grita sobre o
+ * que está certo, e régua que grita se desliga.
+ *
+ * Por isso a exceção é DECLARADA e o padrão FECHA: sem declaração, exige-se a
+ * frase inteira na tela. `data-fala="<quem falou>"` diz *"isto não é tela"*, e
+ * a contagem de falas está travada — não se silencia uma citação por
+ * distração. Foi o que faltou ao E254 para poder alargar: ele mediu os 79 e
+ * escreveu que separá-los pedia *"um mecanismo de declaração novo para a
+ * categoria 'isto não é tela'"*. É este.
  */
 const CITA_CLAUSULA = /cláusula\s+\d+ª|\(\d+ª\)/i;
 
-function clausulas(manual: string): Citacao[] {
+function prosa(manual: string, jaColhido: Set<string>): Citacao[] {
   const html = ler(manual);
-  // O que a colheita de RECADO já lê não é recolhido de novo — lá o `data-tela`
-  // já mora no `<td>`, e uma segunda exigência sobre a mesma frase seria só uma
-  // segunda chance de errar.
-  const jaColhido = new Set(recados(manual).map((c) => c.exibido));
-
   const achados: Citacao[] = [];
-  for (const linha of html.split("\n")) {
-    for (const q of linha.matchAll(/“([^”]+)”/g)) {
-      const cru = q[1]!.trim();
-      const exibido = cru
-        .replace(/<[^>]+>/g, "")
-        .replace(/&nbsp;/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-      if (jaColhido.has(exibido) || jaColhido.has(cru)) continue;
-      if (!CITA_CLAUSULA.test(exibido)) continue;
-      // O `data-tela` mora na tag que ABRE a citação — o `<em>` da prosa, ou o
-      // `<p>` quando a citação é o parágrafo inteiro.
-      const antes = linha.slice(0, q.index!);
-      const abre = [...antes.matchAll(/<([a-z]+)((?:[^>"]|"[^"]*")*)>/gi)].at(-1);
-      const declarado = abre ? /data-tela="([^"]+)"/.exec(abre[2] ?? "")?.[1] : undefined;
-      achados.push({
-        manual,
-        tipo: "cláusula",
-        exibido,
-        esperado: declarado ?? exibido,
-        molde: declarado !== undefined,
-      });
+  const visto = new Set<number>();
+
+  const registrar = (indice: number, atributos: string, cru: string) => {
+    if (visto.has(indice)) return;
+    visto.add(indice);
+    const exibido = limpar(cru);
+    if (jaColhido.has(exibido) || jaColhido.has(cru.trim())) return;
+    const d = declaracao(atributos);
+    achados.push({
+      manual,
+      linha: linhaDe(html, indice),
+      tipo: "prosa",
+      exibido,
+      pedacos: d.fala !== undefined ? [] : (d.pedacos ?? [exibido]),
+      molde: d.pedacos !== undefined,
+      fala: d.fala !== undefined,
+    });
+  };
+
+  // (a) toda aspa curva dentro de um <em>
+  for (const em of html.matchAll(/<em([^>]*)>([\s\S]*?)<\/em>/g)) {
+    const corpo = em[2]!;
+    for (const q of corpo.matchAll(/“([^”]+)”/g)) {
+      registrar(em.index! + em[0].indexOf(corpo) + q.index!, em[1] ?? "", q[1]!);
     }
   }
+
+  // (b) a família do E254: a citação que NOMEIA uma cláusula, em qualquer tag.
+  // A prosa do manual cita as cláusulas SEM aspas curvas; o que aparece entre
+  // aspas *e* nomeia uma cláusula é, por construção, frase que o sistema imprime.
+  for (const q of html.matchAll(/“([^”]+)”/g)) {
+    if (!CITA_CLAUSULA.test(limpar(q[1]!))) continue;
+    const antes = html.slice(0, q.index!);
+    const abre = [...antes.matchAll(/<([a-z]+)((?:[^>"]|"[^"]*")*)>/gi)].at(-1);
+    registrar(q.index!, abre?.[2] ?? "", q[1]!);
+  }
+
   return achados;
 }
 
-const todas = () => manuais().flatMap((m) => [...botoes(m), ...recados(m), ...clausulas(m)]);
+function todas(): Citacao[] {
+  return manuais().flatMap((m) => {
+    const b = botoes(m);
+    const r = recados(m);
+    const jaColhido = new Set(r.map((c) => c.exibido));
+    return [...b, ...r, ...prosa(m, jaColhido)];
+  });
+}
 
 describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
   it("a varredura tem o que varrer — piso de população", () => {
@@ -212,16 +389,25 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
     expect(manuais().length).toBe(5);
     expect(citacoes.filter((c) => c.tipo === "botão").length).toBeGreaterThanOrEqual(140);
     expect(citacoes.filter((c) => c.tipo === "recado").length).toBeGreaterThanOrEqual(35);
-    // S-R15: 13 citações que nomeiam cláusula fora das tabelas de recado,
-    // medidas em 17/08 (5 estavam na forma que o E248 aposentou).
-    expect(citacoes.filter((c) => c.tipo === "cláusula").length).toBeGreaterThanOrEqual(13);
+    // S-RM2: a prosa citada em `<em>` mais a família das cláusulas — **160
+    // citações medidas em 17/08, contra as 13 que o E254 alcançava**. Delas,
+    // 94 são conferidas LITERALMENTE, sem declaração nenhuma; 60 são molde e
+    // 6 são fala.
+    expect(citacoes.filter((c) => c.tipo === "prosa").length).toBeGreaterThanOrEqual(160);
+    const literais = citacoes.filter((c) => c.tipo === "prosa" && !c.molde && !c.fala);
+    expect(literais.length).toBeGreaterThanOrEqual(94);
   });
 
-  it("todo nome de botão e todo recado citados existem na tela", () => {
-    const tela = textoDaTela();
-    const divergem = todas()
-      .filter((c) => !tela.includes(c.esperado))
-      .map((c) => `${c.manual} · ${c.tipo}${c.molde ? " (molde)" : ""}: «${c.esperado}»`);
+  it("todo botão, todo recado e toda citação de prosa existem na tela", () => {
+    const divergem = todas().flatMap((c) =>
+      c.pedacos
+        .filter((p) => !aTelaTem(p))
+        .map(
+          (p) =>
+            `${c.manual}:${c.linha} · ${c.tipo}${c.molde ? " (molde)" : ""}: «${p}»` +
+            (c.molde ? `\n      dentro de «${c.exibido}»` : ""),
+        ),
+    );
 
     expect(
       [...new Set(divergem)],
@@ -233,51 +419,60 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
     /**
      * Se os moldes crescerem, a promessa "citamos literalmente" vira letra
      * morta sem ninguém decidir isso. Seis era o que a medição do E210 achou:
-     * 5 chips de botão (3 rótulos distintos) e 1 recado.
+     * 5 chips de botão (3 rótulos distintos) e 1 recado. **E224 subiu para 9**
+     * (os recados das cláusulas 4ª e 8ª §único são montados com a CONFIGURAÇÃO
+     * da loja dentro), **S-C213 para 11** (o carnê depois do prazo e a peça
+     * fora do rol), **E248 para 12** (a qualificação termina na LISTA dos
+     * campos que faltam), **S-R15 para 23** (a família das cláusulas estreou
+     * com 11 declarações de uma vez).
      *
-     * **E224 subiu para 9, e os três novos têm a MESMA causa**: os recados das
-     * cláusulas 4ª e 8ª §único são montados com a CONFIGURAÇÃO da loja dentro
-     * (o expediente de retirada vem de `regra_disponibilidade`, o prazo vem de
-     * `PRAZO_ANTES_DA_RETIRADA_DIAS`), então não existe no código a frase
-     * inteira que a vendedora lê — existe o pedaço fixo e o resto é dado. É o
-     * mesmo caso do `Mover para ${diaMesAno(...)}` que criou este mecanismo.
+     * **S-RM2/S-RM4 sobe para 72, e o salto é o preço de abrir a prosa
+     * inteira.** A colheita de prosa passou de 13 citações para 160; delas,
+     * **94 batem com a tela LITERALMENTE** — sem declaração nenhuma, medido em
+     * 17/08 já com a leitura renderizada da S-RM4 —, 60 são molde e 6 são
+     * fala. Molde aqui não é frouxidão nova: é a mesma frase que já estava no
+     * manual e que régua nenhuma conferia; o que muda é que agora ela tem um
+     * pedaço declarado, e esse pedaço é cobrado. Daqui para a frente a
+     * contagem só se mexe com decisão escrita.
      *
-     * **S-C213 subiu para 11, e os dois são a dívida que o lote de S-C96
-     * deixou declarada**: o manual do proprietário descrevia em prosa os dois
-     * recados que não existem como frase contígua no código — o do carnê
-     * depois do prazo tem a constante interpolada (`reserva.ts:152`) e o da
-     * peça fora do rol está partido em três linhas de JSX
-     * (`reservas/[bloqueioId].tsx:1117-1119`). Quatro agentes em paralelo não
-     * podiam subir esta contagem; em série, os dois viraram citação com o
-     * pedaço literal declarado.
+     * **Um molde velho VIROU literal** com a leitura renderizada, e é um dos
+     * três sítios que a S-RM4 nomeia: `vendedora.html:701` citava
+     * *"Fora do prazo e sem contrato ativo: a cláusula 16ª cobra…"* e só podia
+     * declarar do `cláusula 16ª` em diante, porque um `<span>` de negrito
+     * partia a oração no meio (`contratos/index.tsx:252`). A frase inteira
+     * passou a ser conferida, e a declaração saiu.
+     *
+     * **Duas citações não têm o que conferir, e estão nomeadas em vez de
+     * escondidas**: `recepcao.html:432` (*"Ana Paula → Cabine 2, 14:30"*, o
+     * aviso do reagendar — `agenda/grade.tsx:202` monta a linha inteira com
+     * dados, e o único texto fixo é a seta) e `costureira.html:355`
+     * (*"2/5 peças"*, `ajustes/index.tsx:284`). Declarar o pouco que existe é
+     * pior régua do que declarar o muito, e é melhor régua do que calar.
      */
-    /**
-     * **E248 subiu para 12, pela mesma causa de sempre**: o recado da
-     * qualificação (`orcamentos/[id].tsx`, "O contrato qualifica quem assina, e
-     * a ficha ainda não tem:") termina na LISTA dos campos que faltam — não
-     * existe a frase inteira no código. Os três outros recados que o E248 pôs
-     * no manual do proprietário (o reabrir do último, o estorno em dobro, a
-     * conta de comissão) são frases contíguas em `MENSAGENS_ERRO` e entraram
-     * como citação literal, sem molde.
-     */
-    /**
-     * **S-R15 sobe para 23, e os 11 novos são a família das cláusulas.** A
-     * colheita nova recolhe 13 citações; 2 batem literalmente com a tela
-     * (*"Prazo de devolução antecipada da reserva (cláusula 18ª)"*, o rótulo do
-     * campo, citado igual nos manuais do proprietário e da vendedora) e 11 são
-     * molde pela razão de sempre — o valor está DENTRO da frase (o acréscimo em
-     * reais, os dias de atraso, o expediente da loja, o percentual do reajuste,
-     * o código da peça). Onze declarações de uma vez é o preço de estrear uma
-     * família inteira, e não deve se repetir: daqui para a frente, citação nova
-     * que nomeie cláusula ou bate literal, ou declara o pedaço.
-     */
-    const moldes = todas().filter((c) => c.molde);
-    expect(moldes.length).toBe(23);
-    // E o molde tem de ser mais curto que o exibido — senão não é molde, é uma
+    const citacoes = todas();
+    const moldes = citacoes.filter((c) => c.molde);
+    expect(moldes.length).toBe(72);
+
+    // O molde tem de ser mais curto que o exibido — senão não é molde, é uma
     // citação literal com um atributo pendurado.
     for (const m of moldes) {
-      expect(m.esperado.length, `${m.manual}: «${m.esperado}» não encurta «${m.exibido}»`)
-        .toBeLessThan(m.exibido.length);
+      expect(
+        m.pedacos.join("").length,
+        `${m.manual}:${m.linha}: «${m.pedacos.join(PEDACOS)}» não encurta «${m.exibido}»`,
+      ).toBeLessThan(m.exibido.length);
+    }
+
+    /**
+     * **A fala é a outra exceção, e é a que o E254 não tinha como declarar.**
+     * O `<em>` do manual marca a tela e marca a boca de quem trabalha com a
+     * mesma tinta; cobrar da tela o que a recepcionista diz ao telefone seria
+     * régua que grita sobre o que está certo. `data-fala="<quem falou>"` sai
+     * do recorte, e o motivo fica escrito na linha.
+     */
+    const falas = citacoes.filter((c) => c.fala);
+    expect(falas.length).toBe(6);
+    for (const f of falas) {
+      expect(f.pedacos, `${f.manual}:${f.linha}: fala não confere pedaço nenhum`).toEqual([]);
     }
   });
 });
