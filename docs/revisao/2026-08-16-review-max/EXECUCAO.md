@@ -117,6 +117,16 @@ que a revelou: a **S-RM11** conta 38 chamadas de `hojeLocal()` em 17 telas, 11
 delas dentro de um `useMemo` sem o dia nas dependências. **Não há fila de
 código em curso.**
 
+**E o plano errou a única previsão que fez.** Ele fecha dizendo: *"se os três
+épicos fecharem, o repositório fica com **uma** sobra aberta — a S-M17"*. Ficou
+com **sete**. O erro não é de contagem, é de modelo: o plano contou o que ia
+ser riscado e não contou o que ia NASCER, e este lote abriu seis. Não é
+acidente do lote — é o que sempre acontece quando a régua nova é boa: o E255
+prometia cobrir a prosa dos manuais e, ao cobrir 160 citações, passou a
+enxergar as 253 que ficam de fora (S-RM15) e a fresta que a própria régua
+deixa (S-RM14). **Previsão de estoque de sobras só vale se disser quantas o
+trabalho vai abrir, e nenhum plano deste repositório soube dizer isso ainda.**
+
 ## Decisões
 
 | Pergunta | Recomendação | Estado |
