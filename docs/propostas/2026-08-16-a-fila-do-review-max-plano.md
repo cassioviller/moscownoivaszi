@@ -4,7 +4,7 @@
 fila). Fonte: a tabela **S-R2…S-R19** da seção *"O que o `/code-review max`
 achou depois"* em
 [`2026-08-16-conferencia-do-contrato/EXECUCAO.md`](../revisao/2026-08-16-conferencia-do-contrato/EXECUCAO.md)
-— dez ângulos sobre `fb3dcb50`, 19 achados, **1 🔴 · 8 🟠 · 8 🟡 · 2 🔵**
+— dez ângulos sobre `fb3dcb50`, 19 achados, **1 🔴 · 7 🟠 · 8 🟡 · 2 🔵**
 abertos (a S-R1 fechou em `3c71d474`). Sete deles nasceram da fila do MESMO
 dia: E242, E244, E245, higiene e E248.
 

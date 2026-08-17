@@ -14,15 +14,26 @@ Plano: [`2026-08-16-a-fila-do-review-max-plano.md`](../../propostas/2026-08-16-a
 
 Dez ângulos sobre `fb3dcb50`, **19 achados**, conferidos um a um antes de
 entrar na tabela — nenhum descartado. A S-R1 (a suíte de API vermelha no
-`main`) fechou em `3c71d474` e virou a **regra 35**. Restam **18 abertos:
+`main`) fechou em `3c71d474` e virou a **regra 35**. Eram **18 abertos:
 1 🔴 · 7 🟠 · 8 🟡 · 2 🔵**, em **6 épicos**. Sete deles nasceram da fila do
 mesmo dia (E242, E244, E245, higiene, E248).
+
+**Contado em 17/08/2026, depois do E249** (`458adf11`): das 18, **três
+fecharam** — S-R2 🔴, S-R3 🟠, S-R12 🟡 —, e o E249 abriu **uma** (S-RM1 🟡, na
+tabela abaixo). O repositório inteiro tem hoje **17 sobras abertas: 0 🔴 · 6 🟠
+· 9 🟡 · 2 🔵** — as 15 S-R que restam, mais a S-M17 (que espera a instalação
+real) e a S-RM1. **Conte as tabelas, não este parágrafo.**
+
+*Uma correção de contagem, feita aqui em 17/08:* o cabeçalho da conferência
+publicava *"1 🔴 · 8 🟠 · 8 🟡 · 2 🔵"*, que soma **19** para **18** linhas.
+Contadas uma a uma, as 18 são **1 🔴 · 7 🟠 · 8 🟡 · 2 🔵**. O número errado
+tinha sido copiado para o ponteiro, para o plano e para este arquivo.
 
 ## A fila
 
 | Épico | Tese | Fecha | Estado |
 |---|---|---|---|
-| **E249** | a data do papel segue o casamento, e todo mundo lê a mesma data | **S-R2 🔴**, S-R3 🟠, S-R12 🟡 | pendente |
+| ~~**E249**~~ | ~~a data do papel segue o casamento, e todo mundo lê a mesma data~~ | S-R2 🔴, S-R3 🟠, S-R12 🟡 | ✅ `458adf11` · [relatório](execucao/E249.md) — o papel recalcula pela janela nova quando o casamento é adiado (hora preservada, e só cede à 4ª); `disponibilidade.ts` lê `fimPrevistoDaDevolucao` pelo SELECT que já existia; o `PATCH /contratos` derruba a fila. Vermelho antes: `expected 48000 to be +0` — e a sobra dizia R.000,00, porque o caput da 16ª multiplica POR PEÇA. API 1878 · E2E 187 |
 | **E250** | o que se escreve num banco que já existe | S-R5 🟠, S-R9 🟠 | pendente |
 | **E251** | as portas ao lado, segunda passada | S-R4 🟠, S-R8 🟠, S-R10 🟡, S-R11 🟡, S-R13 🟡 | pendente |
 | **E252** | o envio à contabilidade é por ATO, não por parcela | S-R6 🟠 | pendente |

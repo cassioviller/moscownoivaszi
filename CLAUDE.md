@@ -75,22 +75,42 @@ para o documento que manda.
    suíte de API estava VERMELHA no `main`** — o `e2e/65` só entrou nas
    varreduras que enumeram por `git ls-files` depois do `git add`, e este
    ponteiro publicava "API 1865 verde" (consertado em `3c71d474`; virou a
-   **regra 35** do METODO). Os outros **18 estão ABERTOS** na tabela de Sobras
-   da conferência como **S-R2…S-R19 — 1 🔴 · 8 🟠 · 8 🟡 · 2 🔵**, e **sete
-   nasceram da fila de hoje** (E242, E244, E245, higiene, E248). O 🔴 é o
-   **S-R2**: casamento ADIADO não move `contratos.data_devolucao`, e desde o
-   E244 é ela que manda na 16ª — **R$ 12.000,00 de EXTRAVIO** sobre uma noiva
-   que devolveu em dia. **A fila de amanhã é essa tabela; conte-a.** A outra
-   sobra viva do repositório continua sendo a S-M17. A régua
-   do E241 achou a suíte de API vermelha no `main` desde `ec53e2d6`
+   **regra 35** do METODO). Os outros **18 entraram ABERTOS** na tabela de
+   Sobras da conferência como **S-R2…S-R19 — 1 🔴 · 7 🟠 · 8 🟡 · 2 🔵**, e
+   **sete nasceram da fila daquele dia** (E242, E244, E245, higiene, E248).
+
+   **Essa é a fila em curso, e ela já começou a andar.** O plano é
+   [`2026-08-16-a-fila-do-review-max-plano.md`](docs/propostas/2026-08-16-a-fila-do-review-max-plano.md)
+   — as 18 em **seis épicos, E249 a E254**, dinheiro primeiro — e o rastreador
+   é [`2026-08-16-review-max/EXECUCAO.md`](docs/revisao/2026-08-16-review-max/EXECUCAO.md).
+   **A fonte da verdade do que continua aberto é a tabela S-R da conferência**,
+   que é onde cada linha é riscada com o hash. **Conte, não deduza.**
+
+   **O E249 está FEITO** (`458adf11`): o 🔴 saiu da fila. Casamento adiado
+   passa a mover as duas datas que o papel imprime, recalculando pela janela
+   nova (E224) e preservando a hora; `disponibilidade.ts` — o QUARTO sítio da
+   16ª, que o E244 não converteu — passa a ler `fimPrevistoDaDevolucao` pelo
+   SELECT que já existia; e o `PATCH /contratos`, única porta que EDITA a data
+   do papel, derruba a fila de atrasos. **O número da sobra estava errado para
+   MENOS**: o caput da 16ª multiplica POR PEÇA, e o vermelho medido foi
+   `expected 48000 to be +0` — R$ 12.000,00 é o dano de UMA peça. O E249 abriu
+   a **S-RM1** 🟡 (a data do papel agora estica a janela física e ninguém
+   revalida os dias que ela estica).
+
+   **Contado em 17/08: o repositório tem 17 sobras abertas — 0 🔴 · 6 🟠 ·
+   9 🟡 · 2 🔵.** São as 15 S-R que restam, mais a **S-M17** (que espera a
+   instalação real) e a **S-RM1**. A fila de hoje é o **E250** (o índice de
+   exemplo e o backfill que cruza lojas), depois E251, E252, E253, E254.
+
+   A régua do E241 achou a suíte de API vermelha no `main` desde `ec53e2d6`
    (consertada em `c8dda201`). Também: as duas
    últimas sobras da ótica fecharam (S-O131 "ganha tela" e a S-O146 🟠 que ela
    achou — a edição de atributo caía ao abrir), a S-A27 foi classificada e o
    `heliumdb` perdeu 725 contas e 451 pagamentos fantasmas de E2E.
 
-3. **A régua e a publicação.** Hoje a régua é **API 1865 (267 arquivos) ·
+3. **A régua e a publicação.** Hoje a régua é **API 1878 (268 arquivos) ·
    frontend 1017 (108 arquivos) · E2E 187 · typecheck verde em 5 projetos** —
-   medidas em série no fecho do lote de higiene (16/08, noite). A API inteira leva ~11,6 min no
+   as quatro medidas em série no fecho do E249 (17/08). A API inteira leva ~11,6 min no
    `heliumdb`; o E2E, ~6,5 min, e é a régua que **agente nenhum pode rodar**
    (worktree isola arquivo e banco e NÃO isola porta — e dois E2E ao mesmo
    tempo precisam de banco, portas **e checkout** próprios, medido na S-O93:
@@ -100,8 +120,9 @@ para o documento que manda.
    (instalação nova, ~1 min): rode-a antes de mexer em seed, schema ou
    `global-setup`.
 
-   **O `main` está 31+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
-   de manhã; a conferência, o E241 e os docs não estão publicados). Confira com
+   **O `main` está 33+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
+   de manhã; a conferência, a fila do review max e os docs não estão
+   publicados). Confira com
    `git rev-list --count origin/main..main` antes de assumir — esta linha
    envelhece a cada commit. Todo worktree de agente nasce em `origin/main`
    (regra 29), e o primeiro gesto de todo agente é conferir a própria base.
