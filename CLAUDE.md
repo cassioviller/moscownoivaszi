@@ -161,19 +161,46 @@ para o documento que manda.
    estava errado**; o **E260** (`c5820408`, orquestrador, porque a régua é o
    E2E) deu cena à porta "Enviar à contabilidade".
 
-   **Contado nas tabelas em 17/08, com as quatro réguas fechadas: o
-   repositório tem 9 sobras abertas — 0 🔴 · 2 🟠 · 2 🟡 · 5 🔵.** São a
-   **S-M17** (que espera uma instalação real que ainda não existe) e as **oito
-   S-RM17…S-RM24**, todas nascidas do fecho das 7, na tabela do rastreador do
-   review max. **As duas 🟠 são as que mordem.** A **S-RM17** foi achada pelo
-   E2E do E260 — e ele a achou CAUSANDO-A: a janela do envio à contabilidade
-   alarga sozinha quando as duas pontas são editadas no mesmo frame
-   (`atualizarParams` fecha sobre o `searchParams` velho, e o `resolverIntervalo`
-   troca as pontas), e o clique carimbou **302 recebimentos** de verdade no
-   `heliumdb`, restaurados por SQL. A **S-RM19** é consequência de uma decisão
-   tomada sobre medição estreita: o catálogo passa a **recusar sem aspas e
-   confirmar com elas**, a dois cliques de distância. **Não há fila de código
-   em curso.**
+   **E as 9 que sobraram daquele lote também estão fechadas** (17/08, tarde) —
+   o plano é
+   [`2026-08-17-as-9-sobras-plano.md`](docs/propostas/2026-08-17-as-9-sobras-plano.md)
+   e a seção *"O fecho das 9"* do mesmo rastreador é onde ele é contado. A
+   **S-M17** ficou aberta pela terceira vez, pela razão escrita antes de
+   começar. As outras oito saíram em **quatro épicos, os quatro por agente em
+   paralelo**, mais uma linha de integração que foi minha:
+
+   - o **E261** (`d9dbf558`) fechou a janela que alargava sozinha — **e provou
+     que o conserto que o plano prescreveu não consertava**: o updater
+     funcional do `react-router@7.18.1` recebe o `searchParams` da
+     renderização, capturado num `useCallback` (`chunk-3WDNQUW5.mjs:10854`).
+     Entrou o `useEscritaNaUrl()`, que acumula as escritas do FRAME. A fresta
+     era de **21 escritores, não de 8**;
+   - o **E262** (`bb4a8606`) escreveu o critério da família inteira — **valor
+     DIGITADO perde a aspa; rótulo FIXO citado dentro de uma frase mantém a
+     aspa, e ela é CURVA** — e mediu que a tela do catálogo **pergunta com
+     aspas, recusa sem e confirma com**: três frases sobre a mesma palavra;
+   - o **E263** (`938e1d0a`) trouxe **as 114 citações sem casa, zero de fora**
+     (régua **349 → 463 das 466**), e achou uma régua VERDE cobrando frase que
+     a tela não escreve — o verde vinha de um comentário no corpus;
+   - o **E264** (`04004623`) fechou o dia fora do `useMemo`, confirmando as
+     sete como classe e **desmentindo três no dano**;
+   - a linha de integração (`dcd6b608`) devolveu o `e2e/15` ao gesto humano, e
+     a guarda dele foi medida: reprova em **3 de 4 execuções**, sempre antes do
+     clique.
+
+   **Contado nas tabelas em 17/08, com as cinco réguas fechadas: o repositório
+   tem 16 sobras abertas — 0 🔴 · 0 🟠 · 4 🟡 · 12 🔵.** São a **S-M17** e as
+   **quinze S-RM25…S-RM39**, todas nascidas do fecho das 9. **As duas 🟠 que
+   mordiam saíram e nenhuma das quinze novas é 🟠**: o lote trocou dois
+   defeitos de dinheiro e incoerência por quinze frestas de régua e de letra, e
+   **quatro delas foram achadas pelas réguas que os próprios épicos
+   escreveram**. As três 🟡 são a **S-RM25** (a S-RM18 no quinto arquivo, que
+   nasceu de uma exclusão escrita lendo a linha e não o arquivo), a **S-RM28**
+   (a troca de pontas do `resolverIntervalo` sobrevive ao conserto: uma única
+   edição ainda alarga a janela) e a **S-RM30** (o corpus da régua dos manuais
+   inclui comentários — 8 de 549 citações estão verdes sem tela por trás).
+   **Uma espera decisão da dona**: a S-RM34 — o valor digitado deve perder
+   também a aspa CURVA? **Não há fila de código em curso.**
 
    **E o lote desmentiu nove dos catorze diagnósticos**, nas duas direções —
    está contado no rastreador. O caso que mais ensina é a **S-R11**: ela
@@ -188,12 +215,12 @@ para o documento que manda.
    `heliumdb` perdeu 725 contas e 451 pagamentos fantasmas de E2E.
 
 3. **A régua e a publicação.** Hoje a régua é **API 1905 (272 arquivos) ·
-   frontend 1053 (117 arquivos) · E2E 188 (0 skipped) · banco virgem 16 ·
-   typecheck verde em 5 projetos** — as QUATRO medidas em série no fecho das 7
-   (17/08). O frontend subiu de 1044/115 e **não é a soma dos dois relatórios**:
-   o E258 mediu 1052/117 no worktree dele e o E259 mediu 1045/115 no dele, cada
-   um sem enxergar o outro — integrados, são 1053/117, e é a recontagem que
-   vale. O E2E foi de 187 para 188 com o teste do E260. A API inteira leva
+   frontend 1078 (120 arquivos) · E2E 188 (0 skipped) · banco virgem 16 ·
+   typecheck verde em 5 projetos** — as CINCO medidas em série no fecho das 9
+   (17/08). O frontend subiu de 1053/117 e **não é a soma dos relatórios dos
+   agentes**: os quatro mediram nos worktrees deles, sem enxergar os outros
+   (1070, 1056, 1054, 1057) — integrados, são 1078/120, e **é a recontagem
+   depois da integração que vale** (regra 36). A API inteira leva
    ~10,6 a 11,6 min no
    `heliumdb`; o E2E, ~6,5 min, e é a régua que **agente nenhum pode rodar**
    (worktree isola arquivo e banco e NÃO isola porta — e dois E2E ao mesmo
@@ -208,9 +235,9 @@ para o documento que manda.
    (instalação nova, ~1 min): rode-a antes de mexer em seed, schema ou
    `global-setup`.
 
-   **O `main` está 62+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
-   de manhã; a conferência, a fila do review max, o fecho das 8, o fecho das 7 e
-   os docs não estão publicados). Confira com
+   **O `main` está 73+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
+   de manhã; a conferência, a fila do review max e os fechos das 8, das 7 e das
+   9 não estão publicados). Confira com
    `git rev-list --count origin/main..main` antes de assumir — esta linha
    envelhece a cada commit. Todo worktree de agente nasce em `origin/main`
    (regra 29), e o primeiro gesto de todo agente é conferir a própria base.
