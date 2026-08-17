@@ -136,8 +136,9 @@ describe("varredura — a régua do banco virgem cobre o que as migrações back
   const specs = specsDaRegua();
 
   it("enumera pelo versionamento e tem piso — 60 migrações e 3 specs em 2026-08-15", () => {
+    // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
     expect(todas.length, "migrações versionadas em docs/migracoes").toBeGreaterThanOrEqual(50);
-    expect(specs.length, "a constante SPECS do banco-virgem.ts foi lida").toBeGreaterThanOrEqual(3);
+    expect(specs.length, "a constante SPECS do banco-virgem.ts foi lida").toBe(3);
     // Os specs da régua existem no versionamento — renomear um spec sem tocar
     // no script deixaria a régua rodando nada.
     const versionados = new Set(arquivosVersionados(RAIZ, ["e2e"]));

@@ -14,6 +14,35 @@ import { MANUAIS_DE_USO, pastaDosManuais } from "../lib/manuais";
  * existia no disco de quem rodou `scripts/prints-dos-manuais.ts`, e a página
  * publicada ficava fora do sistema — ninguém na loja tinha onde baixar.
  */
+/**
+ * **S-RM38 (E268) — o `.expect(200)` não diz QUAL 410 aconteceu, e a porta diz.**
+ *
+ * No worktree do E262 este arquivo e o do backup reprovaram com
+ * `expected 200 "OK", got 410 "Gone"`, e o agente teve de reverter `artifacts/`
+ * ao commit-base para provar que o vermelho era anterior ao épico dele. **A
+ * resposta estava no corpo que o teste jogava fora**: os dois 410 desta porta
+ * carregam `detalhe` diferentes —
+ *
+ * - `routes/manuais.ts:29` — *"O PDF deste manual não está no servidor."*: o
+ *   `existsSync` falhou, e aí o arquivo versionado sumiu de verdade;
+ * - `routes/manuais.ts:46` — *"…não está acessível no servidor."*: o
+ *   `res.download` recusou depois da guarda passar, que é carga, permissão ou
+ *   descritor, e **não** arquivo faltando.
+ *
+ * Medido no `main` fora de worktree, os dois arquivos passam (2 arquivos, 11
+ * testes) e a suíte inteira dá 1905 — a causa provável, não provada, é a carga
+ * de quatro agentes e duas suítes na mesma máquina. Enquanto ela não for
+ * provada, o que este épico pode dar é a pergunta respondida da próxima vez.
+ */
+function exigir200(res: { status: number; body: unknown }, oQue: string): void {
+  expect(
+    res.status,
+    `${oQue}: esperava 200 e veio ${res.status}. O corpo diz ${JSON.stringify(res.body)?.slice(0, 200)} — ` +
+      `"não está no servidor" é o \`existsSync\` (routes/manuais.ts:29) e o arquivo sumiu; ` +
+      `"não está acessível" é o \`res.download\` recusando (routes/manuais.ts:46), que é ambiente, não repositório (S-RM38)`,
+  ).toBe(200);
+}
+
 describe("E236 — os manuais para baixar dentro do sistema", () => {
   let f: Fixture;
   let vendedora: Awaited<ReturnType<typeof loginComLoja>>;
@@ -52,7 +81,8 @@ describe("E236 — os manuais para baixar dentro do sistema", () => {
   });
 
   it("GET /manuais/:qual.pdf entrega o PDF como download; desconhecido é 404; sem sessão é 401", async () => {
-    const r = await vendedora.get("/api/manuais/vendedora.pdf").expect(200);
+    const r = await vendedora.get("/api/manuais/vendedora.pdf");
+    exigir200(r, "GET /manuais/vendedora.pdf");
     expect(r.headers["content-type"]).toContain("application/pdf");
     expect(r.headers["content-disposition"]).toContain('attachment; filename="vendedora.pdf"');
     expect(Number(r.headers["content-length"])).toBeGreaterThan(100_000);

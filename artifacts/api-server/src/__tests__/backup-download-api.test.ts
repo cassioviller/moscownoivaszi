@@ -74,7 +74,24 @@ describe("Download e poda de backup (E59)", () => {
     const rel = criarDumpFake(`teste-download-${randomUUID().slice(0, 8)}.sql.gz`, "conteudo-do-dump");
     const registro = await inserirRegistro({ arquivo: rel, tamanhoBytes: 16 });
 
-    const res = await admin.get(`/api/admin/backup/${registro.id}/download`).expect(200);
+    const res = await admin.get(`/api/admin/backup/${registro.id}/download`);
+    /**
+     * **S-RM38 (E268) — o `.expect(200)` não dizia QUAL 410 aconteceu.**
+     *
+     * No worktree do E262 este teste reprovou com `expected 200 "OK", got 410
+     * "Gone"` e o agente precisou reverter `artifacts/` à base para provar que
+     * o vermelho era anterior ao épico dele. Os dois 410 desta porta são
+     * distintos e o corpo os separa: *"já foi removido pela retenção"*
+     * (`routes/admin.ts:788`, o `existsSync`) contra *"não está acessível no
+     * servidor"* (`routes/admin.ts:832`, o `res.download` recusando depois da
+     * guarda passar) — o primeiro é dado que sumiu, o segundo é ambiente.
+     */
+    expect(
+      res.status,
+      `esperava 200 e veio ${res.status}. O corpo diz ${JSON.stringify(res.body)?.slice(0, 200)} — ` +
+        `"removido pela retenção" é o \`existsSync\` (admin.ts:788); "não está acessível" é o ` +
+        `\`res.download\` recusando (admin.ts:832), que é ambiente, não repositório (S-RM38)`,
+    ).toBe(200);
     expect(res.headers["content-disposition"]).toContain("attachment");
     expect(res.body.toString()).toBe("conteudo-do-dump");
   });

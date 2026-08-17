@@ -137,9 +137,11 @@ describe("varredura — o texto livre que entra pela API tem teto, e é um só p
   const livres = props.filter((p) => classe(p.nome) !== null);
 
   it("lê os schemas de entrada inteiros — 205 strings livres em 2026-08-15, 35 delas de texto", () => {
+    // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
     expect(props.length, "propriedades string (não enum/data/uuid) dos schemas de entrada").toBeGreaterThanOrEqual(150);
     // Piso da classe: se ele desabar, ou os nomes mudaram de grafia ou o leitor
     // deixou de entrar em `properties:`.
+    // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
     expect(livres.length, "campos de texto livre").toBeGreaterThanOrEqual(30);
     // E247 (G1): o leitor inline tem o que ler — o `createParcelaAvulsa` é o
     // que a lente achou; se ele virar schema nomeado, esta linha muda com ele.

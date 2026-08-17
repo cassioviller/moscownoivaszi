@@ -213,7 +213,7 @@ describe("varredura — o prazo que o manual promete é o que o código decide (
     // que saem de constante da TELA e de dois cores (e a coluna "#" do
     // proprietário, que usava a classe só pelo estilo, virou `rotulo`). O piso
     // sobe junto, pela mesma razão de sempre.
-    expect(citadas.length, "as anotações `data-regua` sumiram dos manuais").toBeGreaterThanOrEqual(97);
+    expect(citadas.length, "as anotações `data-regua` sumiram dos manuais").toBe(99);
   });
 
   /**

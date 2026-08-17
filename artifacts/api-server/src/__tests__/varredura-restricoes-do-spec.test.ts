@@ -90,6 +90,7 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
   it("olha para os dois arquivos, e eles são grandes", () => {
     expect(spec.length).toBeGreaterThan(100_000);
     expect(zod.length).toBeGreaterThan(100_000);
+    // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
     expect(inteirosDoSpec().length).toBeGreaterThanOrEqual(100);
   });
 

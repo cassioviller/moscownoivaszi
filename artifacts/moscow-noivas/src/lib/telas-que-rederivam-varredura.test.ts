@@ -115,7 +115,7 @@ describe("S-O16 — a tela que a noiva abre não afirma o dado da consulta", () 
   });
 
   it("a varredura olha o roteador de verdade — as quatro rotas de token", () => {
-    expect(paginasPublicas().length).toBeGreaterThanOrEqual(4);
+    expect(paginasPublicas().length).toBe(4);
     expect(arquivosDeTela().length).toBeGreaterThan(100);
   });
 

@@ -189,6 +189,7 @@ describe("varredura — o manual não contradiz a si mesmo (S-C222)", () => {
     const docs = manuais();
     expect(docs.length).toBe(5);
     const chips = docs.flatMap((m) => chipsDe(ler(m)));
+    // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
     expect(chips.length).toBeGreaterThanOrEqual(150);
     for (const doc of docs) expect(chipsDe(ler(doc)).length, `${doc} ficou sem chips`).toBeGreaterThan(0);
   });

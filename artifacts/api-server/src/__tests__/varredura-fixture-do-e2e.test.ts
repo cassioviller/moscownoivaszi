@@ -270,6 +270,7 @@ describe("varredura — o que o spec escreve no banco, o hook apaga (S-O101)", (
 
   it("o grafo de cascade sai do schema, e não de uma lista à mão", () => {
     // Piso de população: conjunto vazio aprovaria todo spec em silêncio.
+    // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
     expect(grafo.size, "nenhum `onDelete: cascade` lido — o parser do schema quebrou").toBeGreaterThanOrEqual(30);
     // As duas arestas que o defeito da S-O101 percorreu, medidas:
     expect(grafo.get("orcamentosTable"), "apagar a noiva leva o orçamento dela").toContain("leadsTable");
@@ -366,6 +367,7 @@ describe("varredura — o que o spec escreve no banco, o hook apaga (S-O101)", (
     const comEscrita = todos.filter(
       (r) => [...readFileSync(join(RAIZ, r), "utf8").matchAll(INSERE)].length > 0,
     );
+    // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
     expect(todos.length, "specs versionados").toBeGreaterThanOrEqual(60);
     expect(comEscrita.sort(), "specs que escrevem direto no banco — a dívida, nomeada").toEqual([
       "e2e/23-prova-data-real.spec.ts",
@@ -396,7 +398,9 @@ describe("varredura — o que o spec escreve no banco, o hook apaga (S-O101)", (
     it("o roteador é lido inteiro, e as rotas de criação dizem em que tabelas escrevem", () => {
       // Piso: 66 `router.post` em 2026-08-15. Sem piso, um regex quebrado
       // devolveria mapa vazio e aprovaria todo spec.
+      // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
       expect(rotas.cria.size, "`router.post` lidos do api-server").toBeGreaterThanOrEqual(50);
+      // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
       expect(rotas.apaga.size, "`router.delete` lidos do api-server").toBeGreaterThanOrEqual(15);
       expect(rotas.apaga.get("/lojas/:p/contas-pagar/:p"), "apagar a conta pela API apaga `contas_pagar`").toContain("contasPagarTable");
       expect(rotas.cria.get("/lojas/:p/leads"), "criar a noiva escreve em `leads`").toEqual(["leadsTable"]);

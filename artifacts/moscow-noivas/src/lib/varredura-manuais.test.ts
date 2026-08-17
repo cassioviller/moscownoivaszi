@@ -133,13 +133,15 @@ describe("varredura — o menu que o manual promete é o menu que o perfil abre"
    * o E172 fez nascer (S-O36).
    */
   it("olha para manuais, itens e perfis — não para conjuntos vazios", () => {
-    expect(arquivos.length).toBeGreaterThanOrEqual(5);
+    expect(arquivos.length).toBe(5);
+    // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
     expect(itens.length).toBeGreaterThanOrEqual(15);
-    expect(perfis.size).toBeGreaterThanOrEqual(5);
+    expect(perfis.size).toBe(5);
   });
 
   it("todo perfil citado por um manual é um perfil que o sistema semeia", () => {
     const citados = arquivos.flatMap((a) => reivindicacoes(ler(a)).map((r) => r.perfil));
+    // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
     expect(citados.length).toBeGreaterThanOrEqual(2);
     expect(citados.filter((p) => !perfis.has(p))).toEqual([]);
   });

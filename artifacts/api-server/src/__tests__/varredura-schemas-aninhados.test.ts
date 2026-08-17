@@ -54,8 +54,11 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     const spec = versionado(SPEC);
     expect(spec.length).toBeGreaterThan(100_000);
     const { schemas, operacoes } = lerSpec(spec);
+    // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
     expect(schemas.size, "o spec tem mais de cem schemas").toBeGreaterThanOrEqual(100);
+    // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
     expect(operacoes.length, "e mais de cento e cinquenta operações").toBeGreaterThanOrEqual(150);
+    // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
     expect(c.pares.length, "e a fronteira não é vazia").toBeGreaterThanOrEqual(150);
   });
 

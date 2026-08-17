@@ -148,6 +148,7 @@ describe("S-C53 — quem soma dinheiro por `recebido_em` está contado", () => {
     // que este assert existe para pegar.
     const achados = somamPorRecebidoEm();
     expect(achados).toEqual(expect.arrayContaining([...USAM_A_DIVISAO, ...Object.keys(DIVIDA_DECLARADA)]));
+    // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
     expect(achados.length).toBeGreaterThanOrEqual(USAM_A_DIVISAO.length + Object.keys(DIVIDA_DECLARADA).length);
   });
 

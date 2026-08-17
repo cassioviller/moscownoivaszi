@@ -132,13 +132,22 @@ describe("S-C260 — toda varredura diz o tamanho do que olhou", () => {
     // mesma forma léxica de um argumento de função. Os 13 sítios em que a aspa
     // é da NORMA — `ETag`, `Content-Disposition`, campo de CSV, console de
     // script, JSON de exemplo — são passivo julgado no formato da regra 31.
-    expect(todas.length, `varreduras encontradas:\n${todas.join("\n")}`).toBe(38);
+    // E268: 38 → 39. A `varredura-dos-pisos` (API, S-RM33 — todo
+    // `toBeGreaterThanOrEqual` de varredura diz que é piso). Ela é a régua que
+    // varre as OUTRAS à procura do número que parece medida e é chão: das 26
+    // que existiam, cinco eram conjunto FECHADO e viraram `toBe` (os cinco
+    // manuais, os cinco perfis, as quatro páginas públicas, os três SPECS do
+    // banco virgem, as 99 anotações `data-regua` — esta publicava 97), e as 21
+    // restantes passaram a dizer na letra que são piso. **E esta régua se
+    // acusou na primeira execução**, porque o `includes(".toBeGreaterThanOrEqual(")
+    // que procura o padrão é o padrão: ela se exclui, com a razão escrita.
+    expect(todas.length, `varreduras encontradas:\n${todas.join("\n")}`).toBe(39);
 
     // E as duas dimensões, nomeadas: a sobra descrevia só a grafia, e o
     // julgamento de 14/08 também tinha perdido as 5 da primeira grafia que
     // moram no frontend.
     const porGrafia = (re: RegExp) => todas.filter((r) => re.test(path.basename(r))).length;
-    expect(porGrafia(/^varredura-/)).toBe(26); // E236: +1, a `varredura-manuais-prints`; E239: +3, na API; E250: +1, a `varredura-migracoes-por-loja`; E262: +1, a `varredura-aspa-reta`
+    expect(porGrafia(/^varredura-/)).toBe(27); // E268: +1, a `varredura-dos-pisos`; E236: +1, a `varredura-manuais-prints`; E239: +3, na API; E250: +1, a `varredura-migracoes-por-loja`; E262: +1, a `varredura-aspa-reta`
     expect(porGrafia(/-varredura\./)).toBe(12); // E256: +1, a `campo-id-em-field-array-varredura`
     expect(todas.filter((r) => r.startsWith("artifacts/moscow-noivas/")).length).toBe(18); // E236: +1, no frontend; E256: +1; E262: +1
   });

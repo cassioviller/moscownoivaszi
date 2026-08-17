@@ -83,6 +83,7 @@ const COLUNAS_NAO_PESSOAIS = new Set([
 describe("varredura — dado pessoal novo entra nas duas pontas da LGPD", () => {
   it("olha para o fonte versionado, e não para um conjunto vazio", () => {
     const versionados = arquivosVersionados(join(__dirname, "..", "routes"), ["*.ts"]);
+    // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
     expect(versionados.length).toBeGreaterThanOrEqual(15);
     expect(versionados.some((f) => f.endsWith("leads.ts"))).toBe(true);
   });

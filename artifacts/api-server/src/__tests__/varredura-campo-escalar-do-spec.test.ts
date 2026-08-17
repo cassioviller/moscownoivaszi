@@ -101,13 +101,18 @@ function derivadas(): { total: number; lista: Derivada[] } {
 describe("varredura — campo escalar do spec que ninguém preenche (S-O115)", () => {
   it("olha para o banco inteiro, o spec inteiro e o servidor inteiro", () => {
     const { tabelas, colunas } = colunasDoBanco();
+    // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
     expect(tabelas, "tabelas do drizzle").toBeGreaterThanOrEqual(40);
+    // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
     expect(colunas.size, "nomes de coluna distintos").toBeGreaterThanOrEqual(200);
     const { total, lista } = derivadas();
+    // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
     expect(total, "propriedades escalares alcançadas por resposta").toBeGreaterThanOrEqual(600);
     // O piso das derivadas: se ele desabar, ou o drizzle passou a expor as
     // colunas com outro nome, ou o `lerSpec` deixou de resolver o `$ref`.
+    // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
     expect(lista.length, "campos derivados (não são coluna)").toBeGreaterThanOrEqual(150);
+    // piso anti-vacuidade (S-RM33): a população cresce por fora, e este número é o PISO — não a medida.
     expect(codigoDoServidor().arquivos).toBeGreaterThanOrEqual(100);
   });
 
