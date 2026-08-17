@@ -36,7 +36,8 @@ import {
   msgOrcamentoVencendo,
 } from "@/lib/whatsapp";
 import { agingDeParcelas } from "@/lib/financeiro/cobranca";
-import { hojeLocal, addDias, diaLocal } from "@/lib/financeiro/datas";
+import { addDias, diaLocal } from "@/lib/financeiro/datas";
+import { useDiaLocal } from "@/hooks/use-dia-local";
 import { urlsDePortalPorLead, leadsComPortalVencido } from "@/lib/portal";
 import {
   aContatarNaJanela,
@@ -78,10 +79,21 @@ export default function MensagensDoDia() {
   // o clique abre o WhatsApp como sempre — sem marcar o que não vai gravar.
   const registraCobranca = podeNoModulo(acessosModulos, "leads", "criar");
 
+  /**
+   * **S-RM11 — a fila do dia é a MESMA composição do painel, e envelhecia
+   * igual.**
+   *
+   * A recepcionista abre `/mensagens` de manhã e trabalha nela o dia inteiro:
+   * a janela de 48h (`:88`), a fila de cobrança (`:258`) e os orçamentos
+   * vencendo (`:264`) eram todos do dia em que a aba foi aberta. O dia vem do
+   * `useDiaLocal()` (E256) e vira uma vez, à meia-noite.
+   */
+  const hoje = useDiaLocal();
+
   // E83: a fila pede os recortes, não a história — a janela de 48h dos
   // atendimentos (o corte fino por hora continua no cliente), as parcelas
   // ABERTAS (o aging nunca olhou as pagas) e os orçamentos ENVIADOS.
-  const janela48h = { de: hojeLocal(), ate: addDias(hojeLocal(), 2) };
+  const janela48h = { de: hoje, ate: addDias(hoje, 2) };
   const atendimentos = useListAtendimentos(activeLojaId!, janela48h, {
     query: {
       queryKey: getListAtendimentosQueryKey(activeLojaId!, janela48h),
@@ -251,14 +263,17 @@ export default function MensagensDoDia() {
    * parcelas e a metade persistente se corrige sozinha.
    */
   const filaCobranca = useMemo(() => {
-    const persistentes = marcasPersistentesDeCobranca(inadimplentes, hojeLocal(), diaLocal);
+    // S-RM11: o dia entra pelas dependências. A metade persistente é "já foi
+    // procurada HOJE" — congelada em ontem, ela calava hoje quem foi cobrada
+    // ontem, que é o "para sempre" da S-R17 com outro relógio.
+    const persistentes = marcasPersistentesDeCobranca(inadimplentes, hoje, diaLocal);
     return particionaPorCobranca(inadimplentes, new Map([...persistentes, ...marcas]));
-  }, [inadimplentes, marcas]);
+  }, [inadimplentes, marcas, hoje]);
 
   // Orçamentos ENVIADOS com validade de hoje a `JANELA_ORCAMENTO_DIAS` dias (ainda não vencidos).
   const orcamentosVencendo = useMemo(
-    () => orcamentosVencendoNaJanela(orcamentos.data?.itens ?? [], hojeLocal()),
-    [orcamentos.data],
+    () => orcamentosVencendoNaJanela(orcamentos.data?.itens ?? [], hoje),
+    [orcamentos.data, hoje],
   );
 
   /**

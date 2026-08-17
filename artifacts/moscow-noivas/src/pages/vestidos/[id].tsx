@@ -24,7 +24,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Erro, NaoEncontrado } from "@/components/estado";
 import { CabecalhoDetalhe } from "@/components/cabecalho-detalhe";
-import { hojeLocal, diaLocal } from "@/lib/financeiro/datas";
+import { diaLocal } from "@/lib/financeiro/datas";
+import { useDiaLocal } from "@/hooks/use-dia-local";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -179,7 +180,20 @@ export default function VestidoDetail() {
   // D15: era `format(new Date(), "yyyy-MM-dd")`, o HOJE do navegador. Depois
   // das 21h de São Paulo um navegador em UTC já está no dia seguinte, e a
   // ocupação do vestido passaria a ser calculada contra a data errada.
-  const hoje = useMemo(() => hojeLocal(), []);
+  /**
+   * **S-RM11 — e este `useMemo(() => hojeLocal(), [])` era de outra espécie
+   * que os outros nove: o valor dele é CHAVE DE QUERY.**
+   *
+   * A lista de dependências vazia congelava o dia por toda a vida da aba, e o
+   * dia entra em `{ data: hoje }` e na `queryKey` logo abaixo. O react-query
+   * não tem por que reconsultar uma chave que não muda: a ficha do vestido
+   * respondia "está livre" no dia seguinte com a resposta do dia anterior — e
+   * o "Estado atual" é a frase que a vendedora lê antes de prometer a peça.
+   *
+   * Com o `useDiaLocal()` (E256) a chave vira na meia-noite e a consulta é
+   * refeita **uma vez**, não a cada render: o dia é uma string.
+   */
+  const hoje = useDiaLocal();
   const disponibilidadeHoje = useCheckDisponibilidadeVestidos(
     activeLojaId!,
     { data: hoje },
@@ -206,15 +220,18 @@ export default function VestidoDetail() {
     // pode depender do fuso do aparelho que abre a ficha do vestido. E115: a
     // comparação passou a ser entre DIAS da loja ("YYYY-MM-DD"), porque a
     // versão por instante rebatia o fim na meia-noite do navegador.
-    const hojeYMD = hojeLocal();
+    // S-RM11: este é FILTRO DE LISTA, e não chave de cache como o `hoje` de
+    // cima — o defeito dele é brando e de outra natureza: o bloqueio que
+    // terminou ontem seguia listado como "próximo" numa aba aberta. O dia
+    // agora entra nas dependências.
     return (bloqueiosQuery.data ?? [])
-      .filter((b) => b.vestidoId === id && b.canceladoEm == null && bloqueioFuturoOuAberto(b, hojeYMD))
+      .filter((b) => b.vestidoId === id && b.canceladoEm == null && bloqueioFuturoOuAberto(b, hoje))
       .sort((a, b) => {
         const inicioA = periodoDoBloqueio(a).inicio?.getTime() ?? Number.MAX_SAFE_INTEGER;
         const inicioB = periodoDoBloqueio(b).inicio?.getTime() ?? Number.MAX_SAFE_INTEGER;
         return inicioA - inicioB;
       });
-  }, [bloqueiosQuery.data, id]);
+  }, [bloqueiosQuery.data, id, hoje]);
 
   if (isLoading) return <div className="animate-pulse h-64 bg-muted rounded-lg"></div>;
 

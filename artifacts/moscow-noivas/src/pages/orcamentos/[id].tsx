@@ -100,7 +100,8 @@ import { DialogoRemoverItem } from "./remover-item";
 import { opcoesDeVendedora } from "@/lib/equipe-select";
 import { planoDaDigitacao } from "@/lib/financeiro/plano";
 import { PreviaDoCarne } from "@/components/previa-do-carne";
-import { diaDeNegocio, hojeLocal } from "@/lib/financeiro/datas";
+import { diaDeNegocio } from "@/lib/financeiro/datas";
+import { useDiaLocal } from "@/hooks/use-dia-local";
 // E224 — o gesto da retirada e da devolução (cláusulas 4ª e 5ª).
 import {
   expedienteEmFrase,
@@ -525,6 +526,19 @@ export default function OrcamentoDetail() {
   const entradaDigitada = contratoForm.watch("entrada");
   const numParcelasDigitado = contratoForm.watch("numParcelas");
   const primeiroVencimento = contratoForm.watch("primeiroVencimento");
+  /**
+   * **S-RM11 — e aqui o dia congelado não fica só na tela: ele é GRAVADO.**
+   *
+   * `plano.linhas` vira o array `parcelas` do `POST /contratos` (`:988`) — "o
+   * carnê é o MESMO objeto que a prévia mostrou". Numa aba aberta pela virada,
+   * a tela e o servidor concordam e os dois erram junto: o contrato nasce com a
+   * entrada vencida em ONTEM. Na virada do dia 31 o erro muda de MÊS, e com ele
+   * a competência.
+   *
+   * O `useDiaLocal()` (E256) devolve o dia como string e re-renderiza uma vez
+   * por virada — entre uma e outra a prévia não recalcula nada.
+   */
+  const hoje = useDiaLocal();
   // S10: a validação da digitação (e as frases dela) mora em `planoDaDigitacao`
   // — a tela de contrato chama a MESMA para a prévia do gerar-plano.
   const plano = useMemo(
@@ -537,9 +551,12 @@ export default function OrcamentoDetail() {
         // C6: o dia de HOJE no fuso da loja, não o instante. `new Date()`
         // das 21h à meia-noite carimbava a entrada no dia seguinte — e no
         // dia 31, no mês e na competência seguintes.
-        vencimentoEntrada: hojeLocal(),
+        // S-RM11: e o dia vem do `useDiaLocal()`, com o dia nas dependências —
+        // o C6 pelo avesso é a aba que atravessa a virada e datava a entrada
+        // em ontem, no mês e na competência ANTERIORES.
+        vencimentoEntrada: hoje,
       }),
-    [totais.liquidoC, entradaDigitada, numParcelasDigitado, primeiroVencimento],
+    [totais.liquidoC, entradaDigitada, numParcelasDigitado, primeiroVencimento, hoje],
   );
 
   /**

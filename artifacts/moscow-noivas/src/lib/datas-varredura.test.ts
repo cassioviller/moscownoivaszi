@@ -135,3 +135,145 @@ describe("D15 — nenhuma data sai no relógio de quem abre", () => {
     expect(arquivosFonte().length).toBeGreaterThan(140);
   });
 });
+
+/**
+ * **S-RM11 — a QUINTA grafia, e ela não é sobre o fuso: é sobre o RELÓGIO
+ * PARAR.**
+ *
+ * As quatro acima pegam a data lida no fuso errado. Esta pega a data lida no
+ * fuso certo **uma vez só**: `hojeLocal()` responde certo sempre que é chamado,
+ * e um `useMemo` cujas dependências não incluem o dia só o chama quando alguma
+ * outra coisa muda. O ateliê abre a tela de manhã e a deixa aberta; a aba
+ * atravessa a meia-noite sem render nenhum, e o valor congelado segue sendo o de
+ * ontem — a fila de cobrança do painel, os três baldes da agenda e, nas duas
+ * telas de carnê, **a data de vencimento da entrada**.
+ *
+ * O conserto tem ferramenta desde o E256: `useDiaLocal()`
+ * (`hooks/use-dia-local.ts`) devolve o dia como STRING e re-renderiza uma vez
+ * por virada. String igual é `Object.is` igual, então pôr o dia nas
+ * dependências não recalcula nada entre uma virada e outra — é o preço que o
+ * E253 temeu e que `sino-virada-do-dia.test.tsx` mediu em 1 execução por 4
+ * renders.
+ *
+ * **A fronteira, escrita para não nascer calada:** esta régua cobra o dia
+ * dentro de `useMemo`/`useCallback`, que é a classe da S-RM11. As leituras no
+ * CORPO do componente (32 delas hoje — `useState(hojeLocal())`, `const hoje =
+ * hojeLocal()` de render, o `hojeLocal()` de um `onClick`) não passam por aqui:
+ * a de estado inicial é o dia em que a pessoa abriu o campo e está certa
+ * assim, e a de render se corrige em qualquer render. O que ela não alcança
+ * está dito na S-RM11 do rastreador.
+ */
+function telasEComponentes(): string[] {
+  return arquivosVersionados(RAIZ, ["pages", "components"]).filter(
+    (relativo) => /\.tsx?$/.test(relativo) && !relativo.includes(".test."),
+  );
+}
+
+/**
+ * Comentários viram ESPAÇO em vez de sumir: a acusação nomeia a linha, e um
+ * bloco `/** … *\/` de doze linhas apagado deslocaria todo número abaixo dele.
+ * Sem isto a régua acusaria a nota de rodapé que explica o conserto — o
+ * `sino-notificacoes.tsx:83` cita `hojeLocal()` dentro do próprio docblock que
+ * conta por que ele saiu de lá.
+ */
+function semComentarios(fonte: string): string {
+  return fonte
+    .replace(/\/\*[\s\S]*?\*\//g, (bloco) => bloco.replace(/[^\n]/g, " "))
+    .replace(/(^|[^:])\/\/.*$/gm, (linha, antes: string) => antes + " ".repeat(linha.length - antes.length));
+}
+
+/**
+ * Os `hojeLocal()` que moram dentro de um `useMemo`/`useCallback`. O casamento
+ * de parênteses é de verdade: uma regex que parasse no primeiro `)` fecharia o
+ * memo no `hojeLocal()` mais próximo e a régua leria o bloco errado — em
+ * silêncio, que é o pior jeito de uma sonda errar (regra do
+ * `campo-id-em-field-array-varredura`).
+ */
+function diaCongeladoEmMemo(codigoComComentarios: string): number[] {
+  const fonte = semComentarios(codigoComComentarios);
+  const linhas: number[] = [];
+  const abertura = /\buse(?:Memo|Callback)\s*\(/g;
+  let m: RegExpExecArray | null;
+  while ((m = abertura.exec(fonte)) !== null) {
+    let i = m.index + m[0].length;
+    let profundidade = 1;
+    while (i < fonte.length && profundidade > 0) {
+      if (fonte[i] === "(") profundidade++;
+      else if (fonte[i] === ")") profundidade--;
+      i++;
+    }
+    const corpo = fonte.slice(m.index, i);
+    const dentro = /hojeLocal\(/g;
+    let d: RegExpExecArray | null;
+    while ((d = dentro.exec(corpo)) !== null) {
+      linhas.push(fonte.slice(0, m.index + d.index).split("\n").length);
+    }
+  }
+  return linhas;
+}
+
+describe("S-RM11 — nenhuma tela congela o dia dentro de um `useMemo`", () => {
+  it("a régua pega a grafia, e não confunde o memo que termina antes", () => {
+    // O caso da S-RM11: o dia lido lá dentro, e ele fora das dependências.
+    expect(diaCongeladoEmMemo(`const x = useMemo(() => f(hojeLocal()), [a]);`)).toEqual([1]);
+    // O casamento de parênteses de verdade: o memo fecha na linha 1 e a
+    // chamada solta da linha 2 é do corpo do componente, não dele.
+    expect(
+      diaCongeladoEmMemo(`const x = useMemo(() => f(a), [a]);\nconst hoje = hojeLocal();`),
+    ).toEqual([]);
+    // O dia que chega de FORA (do `useDiaLocal()`) é dependência como as
+    // outras — é o conserto, e ele não pode ser acusado.
+    expect(diaCongeladoEmMemo(`const x = useMemo(() => f(hoje), [a, hoje]);`)).toEqual([]);
+    // E a citação no comentário não é código: o docblock que explica o
+    // conserto fala o nome da função que saiu dali.
+    expect(
+      diaCongeladoEmMemo(`const x = useMemo(() => {\n  // era hojeLocal() aqui\n  return f(hoje);\n}, [hoje]);`),
+    ).toEqual([]);
+  });
+
+  it("nenhuma tela lê `hojeLocal()` dentro de um `useMemo`", () => {
+    const ofensores: string[] = [];
+    for (const relativo of telasEComponentes()) {
+      for (const linha of diaCongeladoEmMemo(readFileSync(join(RAIZ, relativo), "utf8"))) {
+        ofensores.push(`${relativo}:${linha}`);
+      }
+    }
+    /**
+     * VERMELHO ANTES (medido no `b8394db2`, com os dez sítios como estavam):
+     *
+     * ```
+     * AssertionError: `hojeLocal()` dentro de um `useMemo` congela o dia … : expected [ …(10) ] to deeply equal []
+     * - Expected
+     * + Received
+     *   Array [
+     * +   "pages/atendimentos/index.tsx:224",
+     * +   "pages/contratos/[id].tsx:360",
+     * +   "pages/dashboard.tsx:244",
+     * +   "pages/dashboard.tsx:247",
+     * +   "pages/dashboard.tsx:321",
+     * +   "pages/mensagens/index.tsx:254",
+     * +   "pages/mensagens/index.tsx:260",
+     * +   "pages/orcamentos/[id].tsx:540",
+     * +   "pages/vestidos/[id].tsx:182",
+     * +   "pages/vestidos/[id].tsx:209",
+     *   ]
+     * ```
+     */
+    expect(
+      ofensores,
+      "`hojeLocal()` dentro de um `useMemo` congela o dia no último render: numa aba que " +
+        "atravessa a meia-noite a lista fica em ontem, e nas telas de carnê a entrada aparece " +
+        "vencendo ONTEM. O dia vem do `useDiaLocal()` e entra nas dependências (S-RM11)",
+    ).toEqual([]);
+  });
+
+  it("a régua olhou telas de verdade — a população é dita antes da afirmação", () => {
+    // S-C46: conjunto vazio aprova tudo. **Medido em 2026-08-17: 128** telas e
+    // componentes versionados, fora os testes — e o piso está aqui com folga
+    // para baixo. Eu tinha escrito 140 de cabeça e a régua me desmentiu na
+    // primeira execução: `expected 128 to be greater than 140`. É o piso do
+    // recorte `pages`+`components`, não o dos 166 arquivos de `src/` inteiro
+    // que a varredura de fuso acima enumera.
+    expect(telasEComponentes().length).toBeGreaterThan(100);
+  });
+});

@@ -82,7 +82,7 @@ import {
   podeRemoverParcela,
   motivoNaoRemove,
 } from "@/lib/financeiro/forma";
-import { hojeLocal } from "@/lib/financeiro/datas";
+import { useDiaLocal } from "@/hooks/use-dia-local";
 import { mensagemApi } from "@/lib/erro-api";
 // E95: o `parseValor` desta tela era uma QUARTA cópia da mesma função, letra
 // por letra igual à do core. Não estava no backlog do C3 — apareceu ao adotar
@@ -249,7 +249,20 @@ export default function ContratoDetail() {
   // S-M19: a pergunta do servidor (`origem === PLANO`), não `length > 0` — a
   // parcela de avaria cobrada antes do carnê não pode esconder o "Gerar plano".
   const contratoTemCarne = temCarne(parcelas);
-  const hoje = hojeLocal();
+  /**
+   * **S-RM11 — o dia é um dado da tela, e ele vira à meia-noite.**
+   *
+   * Duas coisas desta tela dependem de HOJE: o selo "Atrasada" de cada parcela,
+   * logo abaixo, e o `vencimentoEntrada` da prévia do carnê (`:360`) — que é
+   * dinheiro. A segunda estava dentro de um `useMemo` sem o dia nas
+   * dependências: numa aba deixada aberta pela virada a prévia dizia que a
+   * entrada vence ONTEM, e o `gerar-plano` grava com o dia do SERVIDOR, porque
+   * o corpo do `:542` não manda `vencimentoEntrada`.
+   *
+   * Vindo do `useDiaLocal()` (E256), o dia é uma string que muda uma vez por
+   * virada — dependência estável entre uma e outra.
+   */
+  const hoje = useDiaLocal();
   const atrasada = (p: Parcela) => estaAtrasada(p, hoje);
 
   /**
@@ -357,9 +370,11 @@ export default function ContratoDetail() {
         entradaDigitada: completandoCarne ? "" : entrada,
         numParcelasDigitado: numParcelas,
         primeiroVencimento,
-        vencimentoEntrada: hojeLocal(),
+        // S-RM11: o dia do `useDiaLocal()`, e ele está nas dependências abaixo
+        // — a prévia acompanha a virada em vez de datar a entrada em ontem.
+        vencimentoEntrada: hoje,
       }),
-    [contrato, entrada, numParcelas, primeiroVencimento, completandoCarne, faltanteCarneCentavos],
+    [contrato, entrada, numParcelas, primeiroVencimento, completandoCarne, faltanteCarneCentavos, hoje],
   );
   const planoDivergente =
     contratoTemCarne && contrato != null && totalCarneCentavos !== centavos(contrato.valorTotal);

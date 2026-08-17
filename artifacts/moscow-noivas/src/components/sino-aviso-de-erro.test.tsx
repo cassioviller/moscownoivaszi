@@ -28,18 +28,47 @@ vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => ({ activeLojaId: "l1", acessosModulos: null, user: { id: "u1" } }),
 }));
 
+/**
+ * **S-RM12 — as referências ficam PARADAS, e é isso que faz este arquivo medir
+ * o componente em vez de si mesmo.**
+ *
+ * As cinco mocks devolviam um objeto NOVO a cada chamada (`vazia` era uma
+ * função que constrói o literal; as outras quatro, arrows que fazem o mesmo).
+ * O `useMemo` da lista de avisos depende do `.data` das cinco, e o react-query
+ * devolve a MESMA referência enquanto o dado não muda (structural sharing) —
+ * um harness que constrói por render inventa dependência instável que a
+ * produção não tem, e todo contador de memoização passa a medir o instrumento.
+ *
+ * **Medido antes do conserto:** o corpo do `useMemo` rodava **2** vezes na
+ * montagem e **5** em quatro renders, com o código consertado. É o número que
+ * quase fez o agente do E256 confirmar a razão factualmente errada que o E253
+ * escreveu para não consertar a S-RM7 (*"o conserto recalcularia a lista a cada
+ * render"*). Com as constantes de módulo abaixo: **1 e 1**.
+ */
+const SEM_DADO = { data: undefined, isError: false, isPending: false, isLoading: false };
+const PENDENCIAS = { data: [] as never[], isError: false };
+const PARADOS = { data: { criticos: 0 }, isError: false };
+const ATENDIMENTOS = { data: [] as never[], isError: false };
+/** A fila não respondeu — é o caso que o C12 passou a mostrar. */
+const ATRASOS = { data: undefined, isError: true };
+
 vi.mock("@workspace/api-client-react", async (importOriginal) => {
   const real = await importOriginal<Record<string, unknown>>();
-  const vazia = () => ({ data: undefined, isError: false, isPending: false, isLoading: false });
   return {
     ...real,
-    useGetAlertaCaixa: vazia,
-    useListPendenciasComissao: () => ({ data: [], isError: false }),
-    useGetLeadsParados: () => ({ data: { criticos: 0 }, isError: false }),
-    useListAtendimentos: () => ({ data: [], isError: false }),
-    // A fila não respondeu — é o caso que o C12 passou a mostrar.
-    useListContratosComAtraso: () => ({ data: undefined, isError: true }),
+    useGetAlertaCaixa: () => SEM_DADO,
+    useListPendenciasComissao: () => PENDENCIAS,
+    useGetLeadsParados: () => PARADOS,
+    useListAtendimentos: () => ATENDIMENTOS,
+    useListContratosComAtraso: () => ATRASOS,
   };
+});
+
+/** Espião do corpo do `useMemo`: `avisoDoAtraso` é chamado uma vez por avaliação. */
+const avisoDoAtraso = vi.fn(() => null);
+vi.mock("@/lib/financeiro/fila-de-atrasos", async (importOriginal) => {
+  const real = await importOriginal<Record<string, unknown>>();
+  return { ...real, avisoDoAtraso: () => avisoDoAtraso() };
 });
 
 const { SinoNotificacoes } = await import("./sino-notificacoes");
@@ -64,6 +93,7 @@ beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   vi.setSystemTime(HOJE);
   localStorage.clear();
+  avisoDoAtraso.mockClear();
 });
 
 afterEach(() => {
@@ -109,6 +139,37 @@ describe("S-R17 — o aviso de erro da fila carrega a sua assinatura", () => {
   it("a fila que responde não gera aviso de erro nenhum", () => {
     // Sanidade da montagem: o aviso acima existe porque `isError` é `true`.
     expect(localStorage.getItem("sino:dispensadas:u1:l1")).toBeNull();
+  });
+});
+
+describe("S-RM12 — o harness não pode fingir instabilidade que o react-query não tem", () => {
+  it("o corpo do `useMemo` roda UMA vez em quatro renders", async () => {
+    const user = await abrirOSino();
+    expect(avisoDoAtraso).toHaveBeenCalledTimes(1);
+
+    // Quatro renders que não mexem em fato nenhum: fechar, abrir, fechar.
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByTestId("sino-notificacoes"));
+    await user.keyboard("{Escape}");
+
+    /**
+     * **VERMELHO ANTES (medido devolvendo as mocks à forma solta, regra 34):**
+     *
+     * ```
+     * AssertionError: expected "vi.fn()" to be called 1 times, but got 5 times
+     * ```
+     *
+     * E a linha de cima já reprovava antes desta, com **2**: o harness solto
+     * fazia a lista nascer duas vezes só para montar e abrir o sino.
+     *
+     * **O que isso custou:** foi este arquivo que quase fez o agente do E256
+     * confirmar a razão que o E253 escreveu para NÃO consertar a S-RM7 (*"o
+     * conserto recalcularia a lista a cada render"*). Um instrumento que
+     * responde o número de renders **nas duas versões do código** não mede
+     * nada — é a regra 34 vista pelo avesso: em vez de teste verde sobre
+     * caminho torto, teste que confirma diagnóstico falso.
+     */
+    expect(avisoDoAtraso).toHaveBeenCalledTimes(1);
   });
 });
 

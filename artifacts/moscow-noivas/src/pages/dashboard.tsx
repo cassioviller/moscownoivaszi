@@ -49,7 +49,8 @@ import { estadoDasConsultas } from "@/lib/estado-consulta";
 import { podeNoModulo } from "@/lib/permissoes";
 import { mensagemApi } from "@/lib/erro-api";
 
-import { competenciaAtual, hojeLocal, addDias, inicioDoDia, diaLocal } from "@/lib/financeiro/datas";
+import { competenciaAtual, addDias, inicioDoDia, diaLocal } from "@/lib/financeiro/datas";
+import { useDiaLocal } from "@/hooks/use-dia-local";
 import { agingDeParcelas } from "@/lib/financeiro/cobranca";
 import {
   aContatarNaJanela,
@@ -119,6 +120,23 @@ export default function Dashboard() {
   const veFinanceiro = podeNoModulo(acessosModulos, "financeiro", "ver");
 
   /**
+   * **S-RM11 — o painel é a tela que o ateliê deixa aberta o dia inteiro, e é
+   * ele que mais tinha a perder com a virada.**
+   *
+   * Três coisas dependem de HOJE aqui: a janela de 48h que a agenda consulta
+   * (`:154`), a fila de cobrança e os orçamentos vencendo (`:245`/`:248`) e o
+   * `deHoje` da agenda (`:322`). As duas últimas moravam dentro de `useMemo`
+   * sem o dia nas dependências — a recepcionista chegava de manhã e o painel
+   * seguia contando a fila de ontem, com quem já foi cobrada calada pela S-D13
+   * do dia anterior.
+   *
+   * O `useDiaLocal()` (E256) é quem faz o render acontecer à meia-noite, e é
+   * ele que faz a janela de 48h virar chave nova — a agenda das próximas 24h é
+   * buscada de novo em vez de continuar a de ontem.
+   */
+  const hoje = useDiaLocal();
+
+  /**
    * E121/C3 — a query inteira, não só `data`: falhou o GET do painel, os 4
    * contadores e os 2 cards de dinheiro viravam medição ("Noivas ativas 0",
    * "A receber R$ 0,00") — a dona lia o zero de falha com os mesmos pixels do
@@ -150,7 +168,7 @@ export default function Dashboard() {
    * De quebra o recorte de hoje ficou mais correto, não menos: com a janela de
    * um dia só, um navegador em fuso adiantado podia perder o fim do dia da loja.
    */
-  const janela48h = { de: hojeLocal(), ate: addDias(hojeLocal(), 2) };
+  const janela48h = { de: hoje, ate: addDias(hoje, 2) };
   const atendimentosQuery = useListAtendimentos(activeLojaId!, janela48h, {
     query: {
       queryKey: getListAtendimentosQueryKey(activeLojaId!, janela48h),
@@ -241,12 +259,15 @@ export default function Dashboard() {
      * noiva); a composição é a MESMA de mensagens/index.tsx.
      */
     const inadimplentes = agingDeParcelas(parcelasAbertas.data ?? []).noivas;
-    const persistentes = marcasPersistentesDeCobranca(inadimplentes, hojeLocal(), diaLocal);
+    const persistentes = marcasPersistentesDeCobranca(inadimplentes, hoje, diaLocal);
     const emAtraso = particionaPorCobranca(inadimplentes, persistentes).aCobrar.length;
     // S-M25: a validade é dia de negócio — a janela conta DIAS locais.
-    const vencendo = orcamentosVencendoNaJanela(orcamentosEnviados.data?.itens ?? [], hojeLocal()).length;
+    // S-RM11: e o dia está nas dependências. A S-D13 tira da fila quem já foi
+    // cobrada NO DIA DE HOJE — com o dia congelado em ontem, a noiva cobrada
+    // ontem seguia fora da fila de hoje.
+    const vencendo = orcamentosVencendoNaJanela(orcamentosEnviados.data?.itens ?? [], hoje).length;
     return resumoDaFila(aContatar + emAtraso + vencendo);
-  }, [atendimentosQuery.data, parcelasAbertas.data, orcamentosEnviados.data]);
+  }, [atendimentosQuery.data, parcelasAbertas.data, orcamentosEnviados.data, hoje]);
 
   /**
    * S-D10 — o estado das TRÊS consultas que somam o número do cartão, na
@@ -318,7 +339,8 @@ export default function Dashboard() {
   const deHoje = useMemo(() => {
     // O dia da LOJA (E111): a meia-noite do fuso do navegador desloca a agenda
     // inteira para quem abre o painel com o relógio fora de São Paulo.
-    const hoje = hojeLocal();
+    // S-RM11: e ele vem do `useDiaLocal()`, nas dependências — a meia-noite
+    // que passa numa aba aberta deslocava a agenda pelo mesmo tanto.
     const inicioHoje = inicioDoDia(hoje).getTime();
     const fimHoje = inicioDoDia(addDias(hoje, 1)).getTime();
     return [...(atendimentosQuery.data ?? [])]
@@ -327,7 +349,7 @@ export default function Dashboard() {
         return t >= inicioHoje && t < fimHoje;
       })
       .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
-  }, [atendimentosQuery.data]);
+  }, [atendimentosQuery.data, hoje]);
 
   // As noivas esfriando — a mesma régua, calculada no banco (E79).
   const precisamContato = (paradosQuery.data?.itens ?? []).slice(0, 5);

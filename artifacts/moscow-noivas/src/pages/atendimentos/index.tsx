@@ -43,7 +43,8 @@ import { AlertCircle, CalendarDays, MessageCircle, Plus, Search } from "lucide-r
 import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
 import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
-import { hojeLocal, addDias, inicioDoDia } from "@/lib/financeiro/datas";
+import { addDias, inicioDoDia } from "@/lib/financeiro/datas";
+import { useDiaLocal } from "@/hooks/use-dia-local";
 import { instanteHora, instanteDiaMes } from "@/lib/formatos";
 import { CACHE_ESTAVEL } from "@/lib/cache";
 import { mensagemApi } from "@/lib/erro-api";
@@ -151,9 +152,20 @@ export default function Atendimentos() {
    * atendimento futuro. "Carregar mais antigo" dobra a janela; keepPreviousData
    * segura a lista atual enquanto a maior chega.
    */
+  /**
+   * **S-RM11 — os três baldes da fila só valem enquanto "hoje" for hoje.**
+   *
+   * A janela da consulta (`de`) e o corte `atrasados · hoje · próximos`
+   * (`:236`) saem do mesmo dia. O corte morava num `useMemo` com
+   * `[lista, historico]`: numa aba deixada aberta, a meia-noite passava e a
+   * prova das 9h30 continuava em "Próximos", numa seção que a recepcionista já
+   * tinha lido. O `useDiaLocal()` (E256) re-renderiza uma vez por virada, e é
+   * o mesmo render que faz a janela virar chave nova.
+   */
+  const hoje = useDiaLocal();
   const paramsJanela = {
     tipo: aba,
-    de: addDias(hojeLocal(), -janelaDias),
+    de: addDias(hoje, -janelaDias),
   };
   const atendimentos = useListAtendimentos(activeLojaId!, paramsJanela, {
     query: {
@@ -220,8 +232,9 @@ export default function Atendimentos() {
     // `setHours(0,0,0,0)` dá a meia-noite do fuso do NAVEGADOR, e é a mesma
     // classe que o E111 achou quatro vezes no servidor. A vendedora com o
     // relógio fora de São Paulo lê a fila em três baldes trocados — atrasado
-    // que não está, e o de hoje caindo em "próximos".
-    const hoje = hojeLocal();
+    // que não está, e o de hoje caindo em "próximos". S-RM11: a virada da
+    // meia-noite numa aba aberta troca os mesmos três baldes, e por isso o dia
+    // está nas dependências.
     const t0 = inicioDoDia(hoje).getTime();
     const t1 = inicioDoDia(addDias(hoje, 1)).getTime();
     if (historico) return { atrasados: [], deHoje: [], proximos: [] };
@@ -233,7 +246,7 @@ export default function Atendimentos() {
       }),
       proximos: lista.filter((a) => new Date(a.inicio).getTime() >= t1),
     };
-  }, [lista, historico]);
+  }, [lista, historico, hoje]);
 
   // E61: "Reservou" é o momento mais quente da loja — o orçamento nasce daqui,
   // já amarrado à noiva e ao atendimento, sem a vendedora caçar outra tela.
