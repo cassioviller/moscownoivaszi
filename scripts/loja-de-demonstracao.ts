@@ -624,6 +624,19 @@ async function main(): Promise<void> {
 
   // ── P4/E237: o IPCA dos últimos 12 meses, valores de exemplo, para o print
   //    de Configurações → Índices e para a mora da demonstração corrigir. ────
+  //
+  //    E250/S-R5 — **isto NÃO é o defeito que o E242 gateou, e a diferença é
+  //    o `loja_id`.** O que o E242 tirou do caminho da instalação real foi o
+  //    seed escrever índice inventado na loja DE VERDADE; aqui as 12 linhas
+  //    nascem em `LOJA_DEMO_ID`, cujos contratos também são inventados — uma
+  //    correção de exemplo sobre uma parcela de exemplo é exatamente o que o
+  //    print de Configurações → Índices existe para mostrar.
+  //
+  //    A marca é PRÓPRIA ('demonstração (valor de exemplo)') e não a
+  //    `MARCA_DO_IPCA_DE_EXEMPLO` do seed, de propósito: a faxina do E250
+  //    (`docs/migracoes/2026-08-17-e250-ipca-de-exemplo-sai.sql`) procura a
+  //    marca do seed e não pode levar estas junto. Quem quiser estas linhas
+  //    fora do banco apaga a loja de demonstração, e elas saem em cascata.
   {
     const [ano, mes] = diaLocal(agora).split("-").map(Number) as [number, number];
     const exemplos = [0.42, 0.38, 0.31, 0.46, 0.5, 0.29, 0.35, 0.44, 0.52, 0.16, 0.24, 0.39];

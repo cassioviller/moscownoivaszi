@@ -494,6 +494,23 @@ export type OpcoesConfiguracao = {
   comIpcaDeExemplo?: boolean;
 };
 
+/**
+ * **E250/S-R5 — a marca do índice inventado, numa grafia só.**
+ *
+ * O E242 gateou o ESCRITOR (`SEED_IPCA_EXEMPLO`), e a instalação que rodou o
+ * seed ANTES dele ficou com os 12 meses de exemplo no banco — sem nada que os
+ * distinguisse de um IPCA publicado, exceto esta frase. Medido no `heliumdb`
+ * em 17/08: **11 linhas de exemplo e 2 confirmadas pela dona** na loja de 822
+ * contratos e 110 parcelas vencidas, com a correção sendo impressa como fato.
+ *
+ * A frase é o que a migração de faxina
+ * (`docs/migracoes/2026-08-17-e250-ipca-de-exemplo-sai.sql`) usa para achar as
+ * linhas, e a varredura `varredura-marca-do-ipca-de-exemplo` cobra que as duas
+ * digam exatamente a mesma coisa. Duas grafias de um seletor de DELETE é uma
+ * faxina que não acha nada e não avisa.
+ */
+export const MARCA_DO_IPCA_DE_EXEMPLO = "seed (valor de exemplo — troque pelo IPCA publicado)";
+
 export type ResumoConfiguracao = {
   lojaId: string;
   lojaNome: string;
@@ -751,7 +768,7 @@ export async function aplicarConfiguracaoInicial(opts: OpcoesConfiguracao): Prom
           indice: "IPCA",
           competencia,
           variacaoPct: exemplos[(i - 1) % exemplos.length]!,
-          atualizadoPor: "seed (valor de exemplo — troque pelo IPCA publicado)",
+          atualizadoPor: MARCA_DO_IPCA_DE_EXEMPLO,
         })
         .onConflictDoNothing()
         .returning({ id: indicesMonetariosTable.id });

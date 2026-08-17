@@ -90,7 +90,7 @@ function dizOTamanho(texto: string): boolean {
 }
 
 describe("S-C260 — toda varredura diz o tamanho do que olhou", () => {
-  it("a enumeração cobre as duas grafias e os dois pacotes — o retrato é 35", () => {
+  it("a enumeração cobre as duas grafias e os dois pacotes — o retrato é 36", () => {
     /**
      * Igualdade, e não piso: varredura nova tem de ser JULGADA, e o vermelho
      * aqui é onde alguém escreve que julgou. É o critério que a S-C75 aplicou
@@ -114,13 +114,18 @@ describe("S-C260 — toda varredura diz o tamanho do que olhou", () => {
     // backfillam × os specs do banco virgem), a `varredura-campo-escalar-do-spec`
     // (S-O115 — o escalar do spec que ninguém preenche) e a
     // `varredura-teto-do-texto-livre` (S-O109 — o `maxLength` do texto livre).
-    expect(todas.length, `varreduras encontradas:\n${todas.join("\n")}`).toBe(35);
+    // E250: 35 → 36. A `varredura-migracoes-por-loja` (S-R9 — junção por VÍRGULA
+    // numa migração que escreve dado, que é a única grafia em que o produto
+    // cartesiano não aparece escrito; e S-R5 — a marca do IPCA de exemplo é a
+    // mesma no seed e no DELETE da faxina). A primeira régua sobre `docs/migracoes`
+    // que julga o SQL, e não a cobertura dele.
+    expect(todas.length, `varreduras encontradas:\n${todas.join("\n")}`).toBe(36);
 
     // E as duas dimensões, nomeadas: a sobra descrevia só a grafia, e o
     // julgamento de 14/08 também tinha perdido as 5 da primeira grafia que
     // moram no frontend.
     const porGrafia = (re: RegExp) => todas.filter((r) => re.test(path.basename(r))).length;
-    expect(porGrafia(/^varredura-/)).toBe(24); // E236: +1, a `varredura-manuais-prints`; E239: +3, na API
+    expect(porGrafia(/^varredura-/)).toBe(25); // E236: +1, a `varredura-manuais-prints`; E239: +3, na API; E250: +1, a `varredura-migracoes-por-loja`
     expect(porGrafia(/-varredura\./)).toBe(11);
     expect(todas.filter((r) => r.startsWith("artifacts/moscow-noivas/")).length).toBe(16); // E236: +1, no frontend
   });

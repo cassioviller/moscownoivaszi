@@ -152,7 +152,7 @@ describe("varredura — a régua do banco virgem cobre o que as migrações back
     expect(lerMigracao("limpa.sql", "ALTER TABLE a ADD COLUMN b text;").backfill).toEqual([]);
   });
 
-  it("16 migrações escrevem dado — 10 backfillam, 6 são faxina — e a conta está travada", () => {
+  it("17 migrações escrevem dado — 10 backfillam, 7 são faxina — e a conta está travada", () => {
     // Retrato travado (regra da casa): migração nova de backfill sobe o 9 e
     // obriga a linha de cobertura abaixo; faxina nova sobe o 6 e não obriga
     // nada — o rastro de teste não existe numa instalação nova.
@@ -173,7 +173,11 @@ describe("varredura — a régua do banco virgem cobre o que as migrações back
       // E241 passar por aqui (regra 18).
       "docs/migracoes/2026-08-16-s-a27-tipo-de-peca-do-legado.sql",
     ]);
-    expect(soFaxina.length).toBe(6);
+    // E250/S-R5 (17/08): a sétima é `2026-08-17-e250-ipca-de-exemplo-sai.sql`, que
+    // apaga os 12 meses de IPCA de exemplo que o seed gravava antes de o E242
+    // gatear o escritor. Faxina não obriga linha de cobertura — uma instalação
+    // nova nunca teve o rastro que ela limpa.
+    expect(soFaxina.length).toBe(7);
   });
 
   it("toda tabela backfillada por migração tem spec na régua ou julgamento escrito", () => {
