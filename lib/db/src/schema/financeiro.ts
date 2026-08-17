@@ -48,6 +48,13 @@ export const parcelasTable = pgTable("parcelas", {
   // já recebeu é fato histórico e mora na trilha (RECEBIMENTO_ESTORNADO), não
   // aqui. A versão anterior deste comentário dizia o contrário e não via esse
   // custo.
+  //
+  // E252 (S-R6): passa a ser DERIVADA para a parcela recebida em pedaços — ela
+  // recebe o instante quando todos os atos válidos estão declarados em
+  // `envio_contabilidade_de_recebimentos`. A coluna FICA (o índice parcial das
+  // não enviadas e a parcela SEM ato dependem dela), e o pedaço novo numa
+  // parcela já declarada entra no pacote seguinte SEM redeclarar o antigo —
+  // que é por que o carimbo não se limpa aqui, ao contrário do `conciliadoEm`.
   enviadoContabilidadeEm: timestamp("enviado_contabilidade_em", { withTimezone: true }),
   /**
    * E213 — o PERDÃO da multa e dos juros da cláusula 9ª.
@@ -307,6 +314,50 @@ export const conciliacaoDeRecebimentosTable = pgTable("conciliacao_de_recebiment
 }, (t) => ({
   lojaIdx: index("conciliacao_de_recebimentos_loja_idx").on(t.lojaId),
   parcelaIdx: index("conciliacao_de_recebimentos_parcela_idx").on(t.parcelaId),
+}));
+
+/**
+ * **E252 (S-R6) — o carimbo "declarei à contabilidade" por ATO de recebimento.**
+ *
+ * Irmã de `conciliacao_de_recebimentos`, e pelo mesmo motivo: a parcela recebe
+ * em pedaços e `parcelas.enviado_contabilidade_em` é coluna POR LINHA. Uma
+ * parcela declarada com R$ 400,00 e completada depois com R$ 600,00 já tem o
+ * carimbo, e o `isNull` do próximo envio (`contabilidade/enviar`) a exclui —
+ * **os R$ 600,00 não entram em pacote nenhum.** Dinheiro recebido que nunca é
+ * declarado.
+ *
+ * **E o conserto óbvio — limpar o carimbo quando chega pedaço novo, que é o
+ * que o A6 fez com `conciliado_em` — está ERRADO aqui.** Os dois carimbos não
+ * são o mesmo fato: conferir é repetível (a conferência de um pedaço novo é
+ * trabalho novo), e DECLARAR é de mão única. Limpar o carimbo faz a parcela
+ * INTEIRA voltar ao pacote seguinte e declara os R$ 400,00 duas vezes:
+ * R$ 1.400,00 declarados sobre R$ 1.000,00 recebidos.
+ *
+ * Por isso a unidade é o ATO: `ato_id` é o id da linha `PARCELA_RECEBIDA` da
+ * trilha — o mesmo número que o recibo da cláusula 7ª cita e que a
+ * `conciliacao_de_recebimentos` carimba. Cada recebimento é declarado UMA vez,
+ * e `parcelas.enviado_contabilidade_em` FICA, **derivado**: recebe o instante
+ * quando todos os atos válidos da parcela estão declarados. A coluna continua
+ * servindo ao índice parcial das não enviadas e à parcela SEM ato (o legado, o
+ * seed), que segue sendo carimbada direto — e o carimbo dela declara junto os
+ * atos que ela tiver, senão o pedaço já declarado voltaria no pacote seguinte.
+ *
+ * O ESTORNO corta a trilha da parcela (`recibosDaParcela` só conta atos depois
+ * do corte), e o carimbo de um ato cortado deixa de ter movimento a que se
+ * referir: o recebimento re-lançado depois do estorno nasce como ato NOVO, sem
+ * linha aqui, e entra no pacote seguinte. É o mesmo efeito que o E115 obteve
+ * limpando a coluna da parcela no estorno — que continua acontecendo.
+ */
+export const envioContabilidadeDeRecebimentosTable = pgTable("envio_contabilidade_de_recebimentos", {
+  /** O id da linha `PARCELA_RECEBIDA` da trilha (`audit_log.id`). */
+  atoId: text("ato_id").primaryKey(),
+  lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
+  parcelaId: text("parcela_id").notNull().references(() => parcelasTable.id, { onDelete: "cascade" }),
+  enviadoEm: timestamp("enviado_em", { withTimezone: true }).notNull().defaultNow(),
+  enviadoPor: text("enviado_por"),
+}, (t) => ({
+  lojaIdx: index("envio_contabilidade_de_recebimentos_loja_idx").on(t.lojaId),
+  parcelaIdx: index("envio_contabilidade_de_recebimentos_parcela_idx").on(t.parcelaId),
 }));
 
 /**

@@ -10,6 +10,7 @@ import {
   auditLogTable,
   indicesMonetariosTable,
   conciliacaoDeRecebimentosTable,
+  envioContabilidadeDeRecebimentosTable,
 } from "@workspace/db";
 import { eq, and, or, inArray, gte, lt, lte, desc, isNull, isNotNull, count, sql } from "drizzle-orm";
 import {
@@ -1652,6 +1653,38 @@ router.get("/lojas/:lojaId/financeiro/parcelas/exportar", async (req, res): Prom
  * Só carimba quem ainda não tem carimbo: remarcar não sobrescreve a data do
  * envio original — a data em que a contabilidade recebeu aquele pagamento é
  * um fato, não um estado que se atualiza.
+ *
+ * **E252 (S-R6) — do lado das ENTRADAS a unidade é o ATO, não a linha.**
+ *
+ * `parcelas.enviado_contabilidade_em` é coluna por linha, e a parcela recebe em
+ * pedaços (E49). Declarada com R$ 400,00 e completada depois com R$ 600,00, ela
+ * já tem o carimbo — e o `isNull` desta rota a excluía: **os R$ 600,00 não
+ * entravam em pacote nenhum.**
+ *
+ * O conserto que o A6 da higiene aplicou ao irmão `conciliado_em` (limpar o
+ * carimbo quando chega pedaço novo) está ERRADO aqui, e é o que faz disto um
+ * épico: limpar faz a parcela INTEIRA voltar ao pacote seguinte e declara os
+ * R$ 400,00 **duas vezes** — R$ 1.400,00 declarados sobre R$ 1.000,00
+ * recebidos. Conferir é repetível; declarar é de mão única.
+ *
+ * Por isso o desenho é o da `conciliacao_de_recebimentos` (E235): cada ato
+ * `PARCELA_RECEBIDA` ganha uma linha em `envio_contabilidade_de_recebimentos`,
+ * e o carimbo da parcela é **derivado** quando todos os atos válidos dela estão
+ * declarados. Três consequências, e as três estão nos testes do E252:
+ *
+ * 1. **A janela é a do ATO** (`detalhe.recebidoEm ?? criadoEm`, a mesma que o
+ *    recibo e o caixa leem), não a do `recebido_em` da parcela — que é só o
+ *    último pedaço. É a S-C52 fechada: o carimbo deixa de ficar meio passo
+ *    atrás do CSV do fluxo, que já divide por ato desde a S-C31.
+ * 2. **A parcela SEM ato continua sendo carimbada direto** pelo `recebido_em`
+ *    (o legado e o seed gravam parcela paga sem passar pela porta), e o mesmo
+ *    vale para aquela cuja trilha não FECHA com o `valorRecebido` — declarar só
+ *    os atos dela deixaria de fora dinheiro que existe. O carimbo direto
+ *    declara junto os atos que ela tiver: senão o pedaço já declarado voltaria
+ *    no pacote seguinte.
+ * 3. **`parcelas` na resposta conta RECEBIMENTOS declarados**, que é o que a
+ *    tela já dizia ("N recebimentos do período") e o que o campo do spec já
+ *    prometia. Para a parcela de um pedaço só o número não muda.
  */
 router.post("/lojas/:lojaId/financeiro/contabilidade/enviar", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
@@ -1677,7 +1710,12 @@ router.post("/lojas/:lojaId/financeiro/contabilidade/enviar", async (req, res): 
    * única sem autor. É a tese do E107 aplicada onde ela ainda não valia.
    */
   const agora = new Date();
-  const { pcs, pgs } = await db.transaction(async (tx) => {
+  const dentroDaJanela = (quando: Date) => {
+    const dia = diaLocal(quando);
+    return dia >= de && dia <= ate;
+  };
+
+  const { recebimentos, pgs } = await db.transaction(async (tx) => {
     const pgs = await tx.update(pagamentosTable)
       .set({ enviadoContabilidadeEm: agora })
       .where(and(
@@ -1688,19 +1726,115 @@ router.post("/lojas/:lojaId/financeiro/contabilidade/enviar", async (req, res): 
       ))
       .returning({ id: pagamentosTable.id });
 
-    const pcs = await tx.update(parcelasTable)
-      .set({ enviadoContabilidadeEm: agora })
-      .where(and(
-        eq(parcelasTable.lojaId, lojaId),
-        isNotNull(parcelasTable.recebidoEm),
-        gte(parcelasTable.recebidoEm, inicioDoDia(de)),
-        lt(parcelasTable.recebidoEm, inicioDoDia(addDias(ate, 1))),
-        isNull(parcelasTable.enviadoContabilidadeEm),
-      ))
-      .returning({ id: parcelasTable.id });
+    /**
+     * O superconjunto da janela, com a MESMA pergunta do caixa (S-C31): o
+     * `recebido_em` dentro dela **ou** um ato dentro dela com o `recebido_em`
+     * fora. Sem a segunda metade, a parcela paga R$ 400,00 em fevereiro e
+     * R$ 600,00 em março não entraria no pacote de fevereiro nunca — que é o
+     * mesmo buraco da S-R6 pelo lado da data.
+     */
+    const candidatas = await tx.query.parcelasTable.findMany({
+      where: await recebidasNaJanela(lojaId, de, ate),
+    });
+    const trilha = candidatas.length
+      ? await trilhaDosRecebimentos(lojaId, candidatas.flatMap((p) => [p.id, p.contratoId]))
+      : [];
+    const jaEnviados = candidatas.length
+      ? new Set(
+          (await tx
+            .select({ atoId: envioContabilidadeDeRecebimentosTable.atoId })
+            .from(envioContabilidadeDeRecebimentosTable)
+            .where(and(
+              eq(envioContabilidadeDeRecebimentosTable.lojaId, lojaId),
+              inArray(envioContabilidadeDeRecebimentosTable.parcelaId, candidatas.map((p) => p.id)),
+            ))).map((l) => l.atoId),
+        )
+      : new Set<string>();
+
+    /** Os atos a declarar, e as parcelas cujo carimbo de LINHA é escrito agora. */
+    const atosNovos: { atoId: string; parcelaId: string }[] = [];
+    const linhasDiretas: string[] = [];
+    const derivadas: string[] = [];
+    for (const p of candidatas) {
+      const { recibos, confere } = recibosDaParcela(p, trilha);
+      // A trilha que FECHA com o `valorRecebido` é a que autoriza declarar por
+      // ato — a mesma decisão 1 do caixa. Não fechando (o legado, o seed, o
+      // dinheiro que entrou sem passar pela porta), a linha é a unidade, senão
+      // sobraria dinheiro sem ato fora de todo pacote.
+      const porAto = confere && recibos.length > 0;
+      /**
+       * **O dia de cada ato é o que o CAIXA usa, inclusive a decisão 3 do
+       * `porRecebimento`:** o ÚLTIMO ato é quem escreveu o `recebido_em` da
+       * parcela, e herda o dia informado pela vendedora; os anteriores valem
+       * pelo `pagoEm` (`detalhe.recebidoEm`, ou o dia do LANÇAMENTO nos atos
+       * anteriores ao E221, que é o único que o sistema guardou).
+       *
+       * Sem esta linha o carimbo cairia num mês e o CSV do fluxo noutro
+       * exatamente onde o sistema tem população: no `heliumdb`, **301 dos 301
+       * atos de parcela viva são anteriores ao E221** e não têm `recebidoEm` na
+       * trilha. Hoje o dia bate nos 301 (o seed lança no dia informado), e é a
+       * vendedora que recebe no sábado e lança na segunda que separa os dois.
+       */
+      const diaDoAto = (r: { id: string; pagoEm: Date }) =>
+        recibos.length > 0 && r.id === recibos[recibos.length - 1]!.id ? (p.recebidoEm ?? r.pagoEm) : r.pagoEm;
+      const semCarimbo = recibos.filter((r) => !jaEnviados.has(r.id));
+      if (porAto) {
+        for (const r of semCarimbo) {
+          if (dentroDaJanela(diaDoAto(r))) atosNovos.push({ atoId: r.id, parcelaId: p.id });
+        }
+        // Derivado: todos os atos válidos declarados → a linha ganha o carimbo.
+        const pendentes = semCarimbo.filter((r) => !dentroDaJanela(diaDoAto(r)));
+        if (pendentes.length === 0 && p.enviadoContabilidadeEm === null && p.recebidoEm !== null) {
+          derivadas.push(p.id);
+        }
+        continue;
+      }
+      if (p.recebidoEm !== null && p.enviadoContabilidadeEm === null && dentroDaJanela(p.recebidoEm)) {
+        linhasDiretas.push(p.id);
+        // O carimbo da linha declara TUDO o que a parcela recebeu, e os atos que
+        // ela tiver estão dentro disso: sem esta cobertura o pedaço já
+        // declarado voltaria no pacote seguinte, no dia em que a trilha dela
+        // passasse a fechar.
+        for (const r of semCarimbo) atosNovos.push({ atoId: r.id, parcelaId: p.id });
+      }
+    }
+
+    const atos = atosNovos.length
+      ? await tx
+          .insert(envioContabilidadeDeRecebimentosTable)
+          .values(atosNovos.map((a) => ({ ...a, lojaId, enviadoEm: agora, enviadoPor: req.usuario!.nome ?? null })))
+          // Mão única, como o carimbo da linha: remarcar não reescreve a data em
+          // que a contadora recebeu aquele recebimento.
+          .onConflictDoNothing()
+          .returning({ atoId: envioContabilidadeDeRecebimentosTable.atoId, parcelaId: envioContabilidadeDeRecebimentosTable.parcelaId })
+      : [];
+
+    const aCarimbar = [...new Set([...linhasDiretas, ...derivadas])];
+    const pcs = aCarimbar.length
+      ? await tx.update(parcelasTable)
+          .set({ enviadoContabilidadeEm: agora })
+          .where(and(
+            eq(parcelasTable.lojaId, lojaId),
+            inArray(parcelasTable.id, aCarimbar),
+            // E115: declarar é sobre dinheiro que se moveu — e a leitura das
+            // candidatas foi feita fora desta transação (a mesma cerca do E245
+            // na derivação da conciliação: um estorno pode ter passado no meio).
+            isNotNull(parcelasTable.recebidoEm),
+            isNull(parcelasTable.enviadoContabilidadeEm),
+          ))
+          .returning({ id: parcelasTable.id })
+      : [];
+
+    // O que a contadora recebeu: um recebimento por ato declarado, mais a
+    // parcela sem ato, que é declarada pela LINHA. Os atos escritos por baixo
+    // de um carimbo direto são COBERTURA daquela linha, e não se contam duas
+    // vezes.
+    const direta = new Set(linhasDiretas);
+    const recebimentos =
+      atos.filter((a) => !direta.has(a.parcelaId)).length + pcs.filter((p) => direta.has(p.id)).length;
 
     // Só audita se algo mudou: um clique que não carimbou nada não é um fato.
-    if (pcs.length + pgs.length > 0) {
+    if (recebimentos + pgs.length > 0) {
       await registrarAuditoria(tx, {
         lojaId,
         usuario: req.usuario!,
@@ -1709,15 +1843,24 @@ router.post("/lojas/:lojaId/financeiro/contabilidade/enviar", async (req, res): 
         // Não há UMA entidade: o fato é o PERÍODO. O id carrega a janela, que é
         // o que alguém vai procurar ao perguntar "quem declarou junho?".
         entidadeId: `${de}..${ate}`,
-        detalhe: { de, ate, parcelas: pcs.length, pagamentos: pgs.length },
+        detalhe: {
+          de,
+          ate,
+          parcelas: recebimentos,
+          pagamentos: pgs.length,
+          // E252: a granularidade nova, para a trilha dizer o que a linha do
+          // resultado resume — atos declarados e linhas que ganharam carimbo.
+          recibos: atos.length,
+          linhasCarimbadas: pcs.length,
+        },
       });
     }
-    return { pcs, pgs };
+    return { recebimentos, pgs };
   });
 
   res.json(EnviarContabilidadeResponse.parse({
-    marcados: pcs.length + pgs.length,
-    parcelas: pcs.length,
+    marcados: recebimentos + pgs.length,
+    parcelas: recebimentos,
     pagamentos: pgs.length,
   }));
 });

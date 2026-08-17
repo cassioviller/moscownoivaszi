@@ -53,23 +53,36 @@ import path from "node:path";
  * mais de um pedaço, nunca. O defeito está armado e não disparado, exatamente
  * como a S-C150 e a S-C220 estavam.
  *
+ * **Remedido em 17/08 (E252): 1416 atos para 1396 entidades distintas** — 20
+ * pares apareceram —, e **nenhum deles é parcela VIVA**: as 20 são rastro de
+ * E2E que a `parcelas` já não tem, e a trilha não é apagada em lugar nenhum. As
+ * 301 parcelas vivas com ato continuam tendo um ato cada. A população segue
+ * zero; o que mudou é que agora ela precisa da junção com `parcelas` para ser
+ * contada — contar `audit_log` sozinho passou a dizer que existe o que não
+ * existe.
+ *
  * Esta régua é o que impede a dívida de crescer calada: ela enumera quem soma
  * dinheiro por `recebido_em` e exige que cada um esteja **na lista de quem usa
  * a divisão** ou **na lista da dívida, com o motivo**. Leitura nova que some
  * dinheiro por essa coluna reprova aqui, e o vermelho é onde se decide de que
  * lado ela fica.
  *
- * ## E a S-C52, que é o mesmo carimbo pelo outro lado
+ * ## E a S-C52, que era o mesmo carimbo pelo outro lado — FECHADA no E252
  *
- * `contabilidade/enviar` seleciona parcelas por `recebido_em`, então o carimbo
- * fica meio passo atrás do CSV do fluxo, que já divide. Medido: **a coluna
- * `parcelas.enviado_contabilidade_em` não tem NENHUM leitor** além do `isNull`
- * do próprio carimbo (que o torna idempotente). O `pendentesEnvio` da tela da
- * folha lê `pagamentos`, não parcelas — a sobra generalizou do irmão.
+ * `contabilidade/enviar` selecionava parcelas por `recebido_em`, e o carimbo
+ * ficava meio passo atrás do CSV do fluxo, que já divide. Esta régua dizia, na
+ * letra, *"conserte o carimbo (carimbar por ATO, que pede a casa da S-C51)
+ * antes de construir leitura em cima dele"* — e foi o que o **E252 (S-R6)**
+ * fez: cada ato ganha uma linha em `envio_contabilidade_de_recebimentos`, e
+ * `parcelas.enviado_contabilidade_em` passa a ser DERIVADO (todos os atos
+ * válidos declarados). A janela do envio é a do ATO, a mesma do caixa.
  *
- * Ou seja: o descompasso existe e **não tem consequência**, porque ninguém
- * pergunta à parcela se ela já foi declarada. A dívida é o dia em que alguém
- * perguntar — e é isso que a segunda garantia abaixo prega.
+ * **A garantia abaixo fica**, e o motivo mudou de lado: a coluna agora responde
+ * *"todos os atos desta parcela foram declarados?"*, e não *"quantos"* — quem
+ * precisar do detalhe lê a tabela por ato, que é onde ele mora. Ler a coluna
+ * como se fosse a lista de recebimentos declarados continua sendo a pergunta
+ * errada, e é nela que a régua faz tropeçar. Medido: fora do próprio carimbo,
+ * **nenhum leitor** — o `pendentesEnvio` da tela da folha lê `pagamentos`.
  */
 
 const RAIZ = path.resolve(__dirname, "..", "..", "..", "..");
@@ -164,16 +177,18 @@ describe("S-C53 — quem soma dinheiro por `recebido_em` está contado", () => {
 describe("S-C52 — o carimbo da contadora na parcela não tem leitor, e é isso que o segura", () => {
   it("`parcelas.enviadoContabilidadeEm` só é lido pelo `isNull` do próprio carimbo", () => {
     /**
-     * O carimbo seleciona por `recebido_em`, então ele fica meio passo atrás do
-     * CSV do fluxo, que já divide por ato. Isso **não tem consequência hoje**
-     * porque ninguém pergunta à parcela se ela já foi declarada — o
-     * `pendentesEnvio` da folha lê `pagamentos`.
+     * **E252 — o carimbo foi consertado, e é por isso que esta régua continua.**
      *
-     * O dia em que alguém ler, a resposta virá torta: uma parcela com pedaço em
-     * fevereiro e o último em março é carimbada em março, e um "pendentes de
-     * envio" construído sobre isso diria que fevereiro está fechado quando não
-     * está. Por isso a régua não pede que o carimbo mude — pede que **quem for
-     * lê-lo tropece aqui primeiro**, e conserte o carimbo antes.
+     * Ela pedia, na letra, *"conserte o carimbo (carimbar por ATO) antes de
+     * construir leitura em cima dele"*, e o E252 (S-R6) o fez: o envio enumera
+     * ATOS, cada um com linha em `envio_contabilidade_de_recebimentos`, e a
+     * coluna da parcela é DERIVADA de todos eles.
+     *
+     * O que ela pega agora é a pergunta errada, não o carimbo torto: a coluna
+     * responde *"tudo desta parcela foi declarado?"* e nada mais. Quem quiser
+     * saber QUAIS recebimentos entraram em qual pacote lê a tabela por ato — e
+     * uma tela de "pendentes de envio" montada sobre a coluna voltaria a somar
+     * a parcela inteira num mês só.
      */
     const leitores = fontesDoServidor().filter((rel) => {
       const texto = ler(rel);
@@ -187,10 +202,10 @@ describe("S-C52 — o carimbo da contadora na parcela não tem leitor, e é isso
 
     expect(
       leitores,
-      "alguém passou a LER `parcelas.enviado_contabilidade_em`. O carimbo seleciona por " +
-        "`recebido_em` (o último pedaço), então a resposta vem meio mês atrasada para toda parcela " +
-        "recebida em partes — S-C52. Conserte o carimbo (carimbar por ATO, que pede a casa da " +
-        "S-C51) antes de construir leitura em cima dele.",
+      "alguém passou a LER `parcelas.enviado_contabilidade_em`. Desde o E252 ela responde uma " +
+        "pergunta só — 'todos os atos desta parcela foram declarados?' —, e uma parcela recebida " +
+        "em partes tem o dinheiro dela em pacotes DIFERENTES. Quem precisa saber qual recebimento " +
+        "entrou em qual pacote lê `envio_contabilidade_de_recebimentos`, que é por ATO.",
     ).toEqual([]);
   });
 });

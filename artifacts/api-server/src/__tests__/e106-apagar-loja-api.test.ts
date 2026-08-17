@@ -59,13 +59,18 @@ describe("E106 — apagar uma loja com histórico é recusado", () => {
    * `conciliacao_de_recebimentos.loja_id`: o carimbo por ato é da loja como o
    * da parcela é — terceira vez que a sonda pergunta, mesma resposta. E 34 até o
    * E237, que trouxe `indices_monetarios.loja_id`: o IPCA informado é da loja.
+   * E 35 até o **E252**, que trouxe
+   * `envio_contabilidade_de_recebimentos.loja_id` — o carimbo "declarei à
+   * contabilidade" por ato, irmão do de conciliação e da loja pela mesma razão.
+   * Quinta vez que a sonda pergunta, quinta vez que a resposta é tabela nova,
+   * não FK trocada.
    */
-  it("lojas continua sendo referenciada por 35 FKs em CASCADE — a razão da guarda", async () => {
+  it("lojas continua sendo referenciada por 36 FKs em CASCADE — a razão da guarda", async () => {
     const r = await db.execute(sql`
       SELECT count(*)::int AS n
       FROM pg_constraint
       WHERE contype = 'f' AND confrelid = 'lojas'::regclass AND confdeltype = 'c'`);
-    expect((r.rows[0] as { n: number }).n).toBe(35);
+    expect((r.rows[0] as { n: number }).n).toBe(36);
   });
 
   it("loja inexistente responde 404 — antes respondia 204 sem ter removido nada", async () => {

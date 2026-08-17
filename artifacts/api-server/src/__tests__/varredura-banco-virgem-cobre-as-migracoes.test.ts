@@ -116,6 +116,13 @@ const COBERTURA: Record<string, { spec: string; exercicio: RegExp } | { motivo: 
   // S26: a origem da parcela (`PLANO`/`AVULSA`), backfillada nas de antes. O
   // `52` fecha o contrato e o carnê nasce com origem.
   parcelas: { spec: "e2e/52-orcamento-vira-contrato.spec.ts", exercicio: /parcela/i },
+  // E252 (S-R6): o envio à contabilidade passa a ser por ATO, e o backfill dá
+  // aos atos das parcelas JÁ carimbadas a linha que o carimbo delas prometia —
+  // sem ele, a primeira execução depois da migração redeclara tudo.
+  envio_contabilidade_de_recebimentos: {
+    motivo:
+      "instalação nova nasce sem parcela declarada (a tabela e a coluna `enviado_contabilidade_em` nascem vazias), e o backfill só existe para quem já fechou um mês antes do E252. Medido no `heliumdb` em 17/08: NULL nas 322 parcelas — população zero até no dev. O caminho novo é exercitado pelo `e252-envio-contabilidade-por-ato-api`, que é API, não instalação nova.",
+  },
   // E97: `contato_em`/`confirmado_em` do atendimento, backfillados do legado.
   atendimentos: {
     motivo:
@@ -152,9 +159,9 @@ describe("varredura — a régua do banco virgem cobre o que as migrações back
     expect(lerMigracao("limpa.sql", "ALTER TABLE a ADD COLUMN b text;").backfill).toEqual([]);
   });
 
-  it("17 migrações escrevem dado — 10 backfillam, 7 são faxina — e a conta está travada", () => {
-    // Retrato travado (regra da casa): migração nova de backfill sobe o 9 e
-    // obriga a linha de cobertura abaixo; faxina nova sobe o 6 e não obriga
+  it("18 migrações escrevem dado — 11 backfillam, 7 são faxina — e a conta está travada", () => {
+    // Retrato travado (regra da casa): migração nova de backfill sobe o 11 e
+    // obriga a linha de cobertura abaixo; faxina nova sobe o 7 e não obriga
     // nada — o rastro de teste não existe numa instalação nova.
     const soFaxina = todas.filter((m) => m.backfill.length === 0 && m.faxina.length > 0);
     expect(comBackfill.map((m) => m.arquivo).sort()).toEqual([
@@ -172,6 +179,10 @@ describe("varredura — a régua do banco virgem cobre o que as migrações back
       // Entrou depois desta lista e a suíte ficou vermelha no `main` até o
       // E241 passar por aqui (regra 18).
       "docs/migracoes/2026-08-16-s-a27-tipo-de-peca-do-legado.sql",
+      // E252 (S-R6, 17/08): o envio à contabilidade por ATO — a tabela nova
+      // mais o backfill que dá aos atos das parcelas já carimbadas a linha que
+      // o carimbo delas prometia. Sem ele a primeira execução redeclara tudo.
+      "docs/migracoes/2026-08-17-e252-envio-contabilidade-por-ato.sql",
     ]);
     // E250/S-R5 (17/08): a sétima é `2026-08-17-e250-ipca-de-exemplo-sai.sql`, que
     // apaga os 12 meses de IPCA de exemplo que o seed gravava antes de o E242
