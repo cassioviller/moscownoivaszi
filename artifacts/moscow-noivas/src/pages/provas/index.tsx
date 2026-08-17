@@ -6,7 +6,8 @@ import {
   useListAtendimentos,
   getListAtendimentosQueryKey,
 } from "@workspace/api-client-react";
-import { hojeLocal, addDias, diaLocal } from "@/lib/financeiro/datas";
+import { addDias, diaLocal } from "@/lib/financeiro/datas";
+import { useDiaLocal } from "@/hooks/use-dia-local";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SeloProvaOrfa } from "@/components/selo-prova-orfa";
@@ -39,9 +40,16 @@ export default function Provas() {
   // E87: o corte futuro/passado também — a janela de/ate do E83 recorta no
   // servidor (futuras = de hoje, passadas = até ontem), em queries separadas
   // com cache por chave; keepPreviousData segura a lista anterior no toggle.
+  //
+  // S-RM18: o dia é a CHAVE das duas consultas, e o corte inteiro depende dele.
+  // Com `hojeLocal()` no corpo, a aba que atravessa a meia-noite sem ninguém
+  // tocar no botão seguia pedindo `de=ontem` e listava a prova de ONTEM como
+  // próxima; do outro lado, `ate=anteontem` tirava a mesma prova das
+  // "anteriores". `useDiaLocal()` faz o render acontecer na virada.
+  const hoje = useDiaLocal();
   const paramsProvas = passadas
-    ? { tipo: "PROVA" as const, ate: addDias(hojeLocal(), -1) }
-    : { tipo: "PROVA" as const, de: hojeLocal() };
+    ? { tipo: "PROVA" as const, ate: addDias(hoje, -1) }
+    : { tipo: "PROVA" as const, de: hoje };
   const { data: atendimentos, isLoading, isError, error, refetch } = useListAtendimentos(
     activeLojaId!,
     paramsProvas,

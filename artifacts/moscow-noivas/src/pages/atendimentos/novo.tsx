@@ -62,7 +62,7 @@ import { ToastAction } from "@/components/ui/toast";
 import { Erro } from "@/components/estado";
 import { MessageCircle } from "lucide-react";
 import { diaMesAbrevAno } from "@/lib/formatos";
-import { hojeLocal } from "@/lib/financeiro/datas";
+import { useDiaLocal } from "@/hooks/use-dia-local";
 import { instanteCurto, diaMesAno } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
@@ -214,16 +214,28 @@ export default function NovoAtendimento() {
       enabled: !!activeLojaId && !!dataEscolhida,
     },
   });
+  /**
+   * S-RM18 — o dia das duas consultas de baixo vem do `useDiaLocal()`.
+   *
+   * As duas chaves congelam em ontem numa aba que atravessa a meia-noite, e nas
+   * DUAS a janela velha é mais LARGA que a certa (`desde`/`de` são piso): nada
+   * some da tela, e é por isso que o dano da chave é zero aqui. O que estava
+   * congelado de verdade é o `proximos` logo abaixo — ele lê `Date.now()`
+   * DENTRO do `useMemo`, com `[atendimentosFuturos.data]` por dependência, e
+   * sem dado novo o atendimento que já começou seguia listado como "próximo"
+   * pela vida inteira da aba. Quem devolve o dado novo é a chave que anda.
+   */
+  const hoje = useDiaLocal();
   // E151: quem falta a partir do dia escolhido — o mesmo recorte que a grade
   // usa, e a mesma lista que o servidor consulta ao recusar.
-  const paramsAusencias = { desde: dataEscolhida || hojeLocal() };
+  const paramsAusencias = { desde: dataEscolhida || hoje };
   const ausencias = useListAusencias(activeLojaId!, paramsAusencias, {
     query: {
       queryKey: getListAusenciasQueryKey(activeLojaId!, paramsAusencias),
       enabled: !!activeLojaId,
     },
   });
-  const janelaFuturos = { de: hojeLocal() };
+  const janelaFuturos = { de: hoje };
   const atendimentosFuturos = useListAtendimentos(activeLojaId!, janelaFuturos, {
     query: {
       queryKey: getListAtendimentosQueryKey(activeLojaId!, janelaFuturos),

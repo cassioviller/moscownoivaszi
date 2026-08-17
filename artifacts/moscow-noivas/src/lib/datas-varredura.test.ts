@@ -157,11 +157,12 @@ describe("D15 — nenhuma data sai no relógio de quem abre", () => {
  *
  * **A fronteira, escrita para não nascer calada:** esta régua cobra o dia
  * dentro de `useMemo`/`useCallback`, que é a classe da S-RM11. As leituras no
- * CORPO do componente (32 delas hoje — `useState(hojeLocal())`, `const hoje =
- * hojeLocal()` de render, o `hojeLocal()` de um `onClick`) não passam por aqui:
- * a de estado inicial é o dia em que a pessoa abriu o campo e está certa
- * assim, e a de render se corrige em qualquer render. O que ela não alcança
- * está dito na S-RM11 do rastreador.
+ * CORPO do componente (`useState(hojeLocal())`, `const hoje = hojeLocal()` de
+ * render, o `hojeLocal()` de um `onClick`) não passam por aqui: a de estado
+ * inicial é o dia em que a pessoa abriu o campo e está certa assim, e a de
+ * render se corrige em qualquer render. **A metade dessa fronteira que NÃO se
+ * corrige em render nenhum — o dia que vira CHAVE de consulta — virou a régua
+ * da S-RM18, o `describe` logo abaixo.**
  */
 function telasEComponentes(): string[] {
   return arquivosVersionados(RAIZ, ["pages", "components"]).filter(
@@ -275,5 +276,181 @@ describe("S-RM11 — nenhuma tela congela o dia dentro de um `useMemo`", () => {
     // recorte `pages`+`components`, não o dos 166 arquivos de `src/` inteiro
     // que a varredura de fuso acima enumera.
     expect(telasEComponentes().length).toBeGreaterThan(100);
+  });
+});
+
+/**
+ * **S-RM18 — a SEXTA grafia: o dia que vira CHAVE de consulta no corpo da tela.**
+ *
+ * A quinta pega o dia congelado dentro de um `useMemo`. Esta pega a metade que
+ * sobra dela, e a diferença é o que a torna necessária: uma leitura no corpo do
+ * componente **se corrige em qualquer render** — só que quando o valor é a
+ * `queryKey`, render nenhum acontece. O react-query re-renderiza quando o
+ * `.data` muda, e o `.data` não muda porque a chave é a de ontem: a tela fica
+ * presa num laço em que a única coisa capaz de soltá-la é o dia, que ela
+ * parou de perguntar.
+ *
+ * **O caso vivo era a `barra-atendimento.tsx:43`** — `{ de: hojeLocal(), ate:
+ * hojeLocal() }`, o irmão do sino: ela está em TODA tela, vive na aba que o
+ * ateliê deixa aberta o dia inteiro e depois da virada consultava a agenda de
+ * ONTEM. O atendimento em curso de hoje não aparecia na barra que existe para
+ * mostrá-lo (`barra-atendimento-virada-do-dia.test.tsx` encena a virada).
+ *
+ * **A fronteira, medida e escrita (a lição do E258, que a declarou e por isso
+ * esta régua nasceu):** ela segue **um salto** — o `const` que carrega o
+ * `hojeLocal()` e chega, com esse nome, dentro de um `…QueryKey(…)`. A
+ * variável que chega à chave por um segundo `const` não passa por aqui, e o
+ * caso vivo disso está em `pages/financeiro/projecao.tsx:82`: `const hoje =
+ * hojeLocal()` alimenta `janela = { de: ancoraDia, ate: hoje }` (`:91`), que é
+ * a chave do `getListPagamentosQueryKey` (`:94`) — a curva do caixa numa aba
+ * aberta segue terminando ontem. Está na tabela de Sobras, não aqui: o épico
+ * que escreveu esta régua não podia tocar `financeiro/**`, e régua que perdoa
+ * defeito vivo é vermelho que vira paisagem (regra 18).
+ *
+ * A população é a mesma `telasEComponentes()` da S-RM11 acima, e o piso dela
+ * vale para as duas.
+ */
+function diaVirandoChaveDeConsulta(codigoComComentarios: string): number[] {
+  const fonte = semComentarios(codigoComComentarios);
+  const linhas: number[] = [];
+  const linhaDe = (indice: number) => fonte.slice(0, indice).split("\n").length;
+
+  /** Argumentos de cada `…QueryKey(…)`, com casamento de parênteses de verdade. */
+  const argumentosDeChave: { texto: string; inicio: number }[] = [];
+  const chave = /\b\w*QueryKey\s*\(/g;
+  let m: RegExpExecArray | null;
+  while ((m = chave.exec(fonte)) !== null) {
+    let i = m.index + m[0].length;
+    let profundidade = 1;
+    while (i < fonte.length && profundidade > 0) {
+      if (fonte[i] === "(") profundidade++;
+      else if (fonte[i] === ")") profundidade--;
+      i++;
+    }
+    argumentosDeChave.push({ texto: fonte.slice(m.index + m[0].length, i), inicio: m.index + m[0].length });
+  }
+
+  // O caso sem nome: o dia escrito DENTRO da chave. População zero hoje, e é
+  // para que a sexta grafia não nasça pela porta que a régua deixou aberta.
+  for (const { texto, inicio } of argumentosDeChave) {
+    const direto = /hojeLocal\(/g;
+    let d: RegExpExecArray | null;
+    while ((d = direto.exec(texto)) !== null) linhas.push(linhaDe(inicio + d.index));
+  }
+
+  const nomesNaChave = new Set<string>();
+  for (const { texto } of argumentosDeChave) {
+    for (const nome of texto.match(/\b[A-Za-z_$][\w$]*\b/g) ?? []) nomesNaChave.add(nome);
+  }
+  if (nomesNaChave.size === 0) return linhas;
+
+  // `const NOME = …hojeLocal()…;` — a declaração vai até o `;` de profundidade
+  // zero, e não até o primeiro que aparecer: um objeto ou um ternário de três
+  // linhas no meio faria a régua ler a declaração seguinte.
+  const declaracao = /\bconst\s+([A-Za-z_$][\w$]*)\s*=/g;
+  while ((m = declaracao.exec(fonte)) !== null) {
+    const nome = m[1]!;
+    if (!nomesNaChave.has(nome)) continue;
+    let i = m.index + m[0].length;
+    let profundidade = 0;
+    while (i < fonte.length) {
+      const c = fonte[i]!;
+      if (c === "(" || c === "[" || c === "{") profundidade++;
+      else if (c === ")" || c === "]" || c === "}") profundidade--;
+      else if (c === ";" && profundidade <= 0) break;
+      i++;
+    }
+    const corpo = fonte.slice(m.index, i);
+    const dentro = /hojeLocal\(/g;
+    let d: RegExpExecArray | null;
+    while ((d = dentro.exec(corpo)) !== null) linhas.push(linhaDe(m.index + d.index));
+  }
+
+  return [...new Set(linhas)].sort((a, b) => a - b);
+}
+
+describe("S-RM18 — nenhuma tela monta a chave da consulta com o dia parado", () => {
+  it("a régua pega a grafia, e não confunde a variável que não chega à chave", () => {
+    // O caso da barra: o dia no corpo, e o nome dentro do `…QueryKey(…)`.
+    expect(
+      diaVirandoChaveDeConsulta(
+        `const janela = { de: hojeLocal(), ate: hojeLocal() };\n` +
+          `useListAtendimentos(l, janela, { query: { queryKey: getListAtendimentosQueryKey(l, janela) } });`,
+      ),
+    ).toEqual([1]);
+    // O `const hoje = hojeLocal()` que NÃO entra em chave nenhuma é leitura de
+    // render, e ela se corrige em qualquer render: não é desta classe.
+    expect(
+      diaVirandoChaveDeConsulta(`const hoje = hojeLocal();\nreturn <p>{hoje}</p>;`),
+    ).toEqual([]);
+    // O dia lido num handler, no clique — a exclusão que o E258 escreveu para
+    // o `atendimentos/config.tsx:430`, e que a régua tem de respeitar.
+    expect(
+      diaVirandoChaveDeConsulta(
+        `async function desativar() { await listAtendimentos(l, { de: hojeLocal() }); }\n` +
+          `useListCabines(l, { query: { queryKey: getListCabinesQueryKey(l) } });`,
+      ),
+    ).toEqual([]);
+    // O conserto não pode ser acusado: o dia chega do `useDiaLocal()`.
+    expect(
+      diaVirandoChaveDeConsulta(
+        `const hoje = useDiaLocal();\nconst janela = { de: hoje };\n` +
+          `useListX(l, janela, { query: { queryKey: getListXQueryKey(l, janela) } });`,
+      ),
+    ).toEqual([]);
+    // O dia escrito DENTRO da chave, sem nome nenhum no meio.
+    expect(
+      diaVirandoChaveDeConsulta(`queryKey: getListXQueryKey(l, { de: hojeLocal() })`),
+    ).toEqual([1]);
+    // O `;` de profundidade zero: o ternário de três linhas não pode fazer a
+    // régua ler a declaração seguinte como se fosse a mesma.
+    expect(
+      diaVirandoChaveDeConsulta(
+        `const params = passadas\n  ? { ate: addDias(hojeLocal(), -1) }\n  : { de: hojeLocal() };\n` +
+          `const outro = 1;\nqueryKey: getListXQueryKey(l, params)`,
+      ),
+    ).toEqual([2, 3]);
+    // E o comentário que cita a função não é código.
+    expect(
+      diaVirandoChaveDeConsulta(
+        `// era hojeLocal() aqui\nconst janela = { de: hoje };\nqueryKey: getListXQueryKey(l, janela)`,
+      ),
+    ).toEqual([]);
+  });
+
+  it("nenhuma tela monta a chave da consulta com `hojeLocal()`", () => {
+    const ofensores: string[] = [];
+    for (const relativo of telasEComponentes()) {
+      for (const linha of diaVirandoChaveDeConsulta(readFileSync(join(RAIZ, relativo), "utf8"))) {
+        ofensores.push(`${relativo}:${linha}`);
+      }
+    }
+    /**
+     * VERMELHO ANTES (medido no `7ff25889`, com os quatro arquivos como
+     * estavam). São **7 chamadas de `hojeLocal()` em 6 linhas**: a barra monta
+     * `{ de: hojeLocal(), ate: hojeLocal() }` na mesma linha, e a acusação é
+     * por linha.
+     *
+     * ```
+     * AssertionError: o dia que vira CHAVE de consulta no corpo da tela não se
+     * corrige em render nenhum … : expected [ …(6) ] to deeply equal []
+     * - Expected
+     * + Received
+     *   Array [
+     * +   "components/barra-atendimento.tsx:43",
+     * +   "pages/atendimentos/novo.tsx:219",
+     * +   "pages/atendimentos/novo.tsx:226",
+     * +   "pages/noivas/[leadId]/index.tsx:199",
+     * +   "pages/provas/index.tsx:43",
+     * +   "pages/provas/index.tsx:44",
+     *   ]
+     * ```
+     */
+    expect(
+      ofensores,
+      "o dia que vira CHAVE de consulta no corpo da tela não se corrige em render nenhum: " +
+        "o react-query só re-renderiza quando o `.data` muda, e o `.data` não muda porque a " +
+        "chave é a de ontem. O dia vem do `useDiaLocal()` (S-RM18)",
+    ).toEqual([]);
   });
 });

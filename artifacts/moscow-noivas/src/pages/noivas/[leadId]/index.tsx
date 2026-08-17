@@ -65,7 +65,8 @@ import { proximaVisita } from "@/lib/proxima-visita";
 import { estadoDasConsultas, estadoDoCard } from "@/lib/estado-consulta";
 import { abertoEmCentavos } from "@/lib/financeiro/forma";
 import { reais } from "@/lib/financeiro/dinheiro";
-import { hojeLocal, diaLocal, diaDeNegocio } from "@/lib/financeiro/datas";
+import { diaLocal, diaDeNegocio } from "@/lib/financeiro/datas";
+import { useDiaLocal } from "@/hooks/use-dia-local";
 import {
   dataLongaFmt,
   diasAteCasamento,
@@ -196,7 +197,15 @@ export default function NoivaDetalhe() {
   // prova?" — a agenda DELA, recortada no banco e com janela de hoje em
   // diante (nunca o histórico). Gate de permissão: quem não vê o módulo
   // agenda não dispara a consulta, e a ficha fica como era.
-  const paramsAgenda = { leadId: leadId!, de: hojeLocal() };
+  //
+  // S-RM18: o dia vem do `useDiaLocal()`. A chave congelada em ontem devolve um
+  // SUPERCONJUNTO — nada some da agenda dela —, e é por isso que o ganho aqui
+  // não é a consulta: é o RENDER. `proximaVisita(agenda.data)` mais abaixo
+  // compara `inicio >= new Date()` a cada render, e numa aba que ninguém toca
+  // render nenhum acontece; a prova que já começou seguia anunciada como "a
+  // próxima". O hook re-renderiza uma vez por virada e a conta refaz-se.
+  const hoje = useDiaLocal();
+  const paramsAgenda = { leadId: leadId!, de: hoje };
   const agenda = useListAtendimentos(activeLojaId!, paramsAgenda, {
     query: {
       queryKey: getListAtendimentosQueryKey(activeLojaId!, paramsAgenda),

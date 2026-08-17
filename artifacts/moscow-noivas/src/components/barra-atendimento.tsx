@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { CircleDot } from "lucide-react";
 import { podeNoModulo } from "@/lib/permissoes";
-import { hojeLocal } from "@/lib/financeiro/datas";
+import { useDiaLocal } from "@/hooks/use-dia-local";
 import { instanteHora } from "@/lib/formatos";
 import { atendimentoEmCurso } from "@/lib/atendimento-em-curso";
 
@@ -38,9 +38,24 @@ export function BarraAtendimento() {
   const naLoja = useCaminhoDaLoja();
 
   const veAgenda = podeNoModulo(acessosModulos, "agenda", "ver");
-  // Só HOJE. O atendimento esquecido de ontem não vira uma barra que acompanha
-  // a pessoa para sempre: ele é estado sujo, e o lugar de limpá-lo é a fila.
-  const janela = { de: hojeLocal(), ate: hojeLocal() };
+  /**
+   * **S-RM18 — o dia vem do `useDiaLocal()`, e é ele que faz o render acontecer.**
+   *
+   * Só HOJE. O atendimento esquecido de ontem não vira uma barra que acompanha
+   * a pessoa para sempre: ele é estado sujo, e o lugar de limpá-lo é a fila.
+   *
+   * A janela é a CHAVE da consulta, e a barra é o pior lugar do app para
+   * congelá-la: ela está em toda tela, vive na aba que o ateliê deixa aberta o
+   * dia inteiro e — porque só lê `atendimentos.data` — o react-query não a
+   * re-renderiza enquanto o dado não muda. Com `hojeLocal()` no corpo, depois
+   * da meia-noite ela seguia pedindo `de=ate=ontem`: o atendimento iniciado
+   * hoje não aparecia na barra que existe justamente para mostrá-lo. O
+   * `useDiaLocal()` (E256) re-renderiza uma vez por virada e a chave anda com
+   * o dia — entre uma virada e outra ele custa zero, porque string igual é
+   * `Object.is` igual.
+   */
+  const hoje = useDiaLocal();
+  const janela = { de: hoje, ate: hoje };
   const atendimentos = useListAtendimentos(activeLojaId!, janela, {
     query: {
       queryKey: getListAtendimentosQueryKey(activeLojaId!, janela),
