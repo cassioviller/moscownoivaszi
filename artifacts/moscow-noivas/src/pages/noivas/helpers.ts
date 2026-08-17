@@ -36,9 +36,17 @@ export const dataLongaFmt = new Intl.DateTimeFormat("pt-BR", {
  * casamento — o ateliê preparava e contatava a noiva no dia errado, toda
  * noite. O casamento é data de NEGÓCIO (ancorada ao meio-dia SP, o dia UTC é o
  * dia certo); quem estava no fuso errado era o hoje.
+ *
+ * **S-RM27 (E266) — o `hoje` entra por parâmetro, com o default de sempre.**
+ * A indireção é a mesma da S-RM26 vista no DISPLAY: seis telas contam dias
+ * chamando este helper, e nenhuma delas sabe que está lendo o relógio. Numa
+ * aba que o ateliê deixa aberta, a contagem exibida envelhece na virada e o
+ * "Faltam 3 dias" continua dizendo três no dia em que faltam dois. Quem passa
+ * o dia do `useDiaLocal()` re-renderiza na meia-noite; o default mantém quem
+ * não é tela (a régua e o `lib/ajustes-prazo.ts`) chamando como antes.
  */
-export function diasAteCasamento(iso: string): number {
-  return diasEntre(hojeLocal(), diaDeNegocio(iso));
+export function diasAteCasamento(iso: string, hoje: string = hojeLocal()): number {
+  return diasEntre(hoje, diaDeNegocio(iso));
 }
 
 /** Rótulo humano da contagem regressiva (só para dias >= 0). */

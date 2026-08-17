@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router";
 import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
 import { comFiltros } from "@/lib/filtro-url";
 import { useAuth } from "@/hooks/use-auth";
+import { useDiaLocal } from "@/hooks/use-dia-local";
 import {
   useListAjustes,
   getListAjustesQueryKey,
@@ -44,6 +45,8 @@ import { NovaConfeccao } from "./nova-confeccao";
 
 export default function Ajustes() {
   const { lojaId } = useParams();
+  // S-RM27 — o prazo exibido na fila conta dias a partir de hoje.
+  const hoje = useDiaLocal();
   const { activeLojaId, acessosModulos } = useAuth();
   const [searchParams, setSearchParams] = useEscritaNaUrl();
 
@@ -181,7 +184,7 @@ export default function Ajustes() {
               const bloqueio = a.atendimento?.bloqueio;
               // E240/S-O50 — prova → prazo próprio → casamento, rótulo pela origem.
               const referencia = referenciaDoPrazo(a);
-              const diasPrazo = referencia ? diasAteCasamento(referencia.data) : null;
+              const diasPrazo = referencia ? diasAteCasamento(referencia.data, hoje) : null;
               /**
                * S-O27 — a cor vem de `urgenteAjuste`, um lugar só.
                *

@@ -5,6 +5,7 @@ import { comFiltros, paginaDaUrl } from "@/lib/filtro-url";
 import { useBuscaNaUrl } from "@/hooks/use-busca-na-url";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { useDiaLocal } from "@/hooks/use-dia-local";
 import {
   useListLeads,
   getListLeadsQueryKey,
@@ -45,6 +46,9 @@ const POR_PAGINA = 24;
  */
 export default function Noivas() {
   const { lojaId } = useParams();
+  // S-RM27 — a contagem regressiva do card lê o relógio; sem isto ela
+  // envelhece numa aba aberta e diz "Faltam 3 dias" no dia em que faltam 2.
+  const hoje = useDiaLocal();
   const { activeLojaId, acessosModulos } = useAuth();
   // E129/D5: busca, etapa, página e vista moram na URL — conferir a ficha na
   // página 3 e voltar volta NA página 3, e o link filtrado abre filtrado.
@@ -231,7 +235,7 @@ export default function Noivas() {
           {visiveis.map((n) => {
             const perdida = n.etapa === "PERDIDO";
             const concluida = n.etapa === "DEVOLVIDO";
-            const dias = n.casamentoData ? diasAteCasamento(n.casamentoData) : null;
+            const dias = n.casamentoData ? diasAteCasamento(n.casamentoData, hoje) : null;
             const mostrarContagem = dias !== null && dias >= 0 && !perdida && !concluida;
             const urgente = dias !== null && mostrarContagem && casamentoUrgente(dias);
             return (

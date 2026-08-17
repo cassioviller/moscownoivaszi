@@ -124,7 +124,7 @@ export default function Provas() {
                 <ul className="divide-y">
                   {mes.itens.map((p) => {
                     const inicio = new Date(p.inicio);
-                    const dias = diasAteLocal(p.inicio);
+                    const dias = diasAteLocal(p.inicio, hoje);
                     // Destaque só na iminência: prova nos próximos 7 dias.
                     const iminente = !passadas && dias >= 0 && dias <= JANELA_IMINENTE_DIAS;
                     const vestido = p.bloqueio?.vestido;

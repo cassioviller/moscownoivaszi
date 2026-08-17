@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { useDiaLocal } from "@/hooks/use-dia-local";
 import {
   useListBloqueios,
   getListBloqueiosQueryKey,
@@ -25,6 +26,8 @@ import { Erro } from "@/components/estado";
  */
 export default function Reservas() {
   const { lojaId } = useParams();
+  // S-RM27 — a urgência do casamento (≤14 dias) é contada a partir de hoje.
+  const hoje = useDiaLocal();
   const { activeLojaId } = useAuth();
   const [passadas, setPassadas] = useState(false);
 
@@ -102,7 +105,7 @@ export default function Reservas() {
                 <ul className="divide-y">
                   {mes.itens.map((r) => {
                     const casamento = new Date(r.casamentoData!);
-                    const dias = diasAteCasamento(r.casamentoData!);
+                    const dias = diasAteCasamento(r.casamentoData!, hoje);
                     // Destaque só na urgência: casamento próximo (≤14d).
                     const urgente = !passadas && casamentoUrgente(dias);
                     return (

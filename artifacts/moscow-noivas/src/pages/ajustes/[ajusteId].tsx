@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { useDiaLocal } from "@/hooks/use-dia-local";
 import { useListAjustes, getListAjustesQueryKey } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,8 @@ import { AlterarPrazoProprio } from "./prazo-proprio";
  */
 export default function AjusteDetalhe() {
   const { lojaId, ajusteId } = useParams();
+  // S-RM27 — o prazo da ficha conta dias a partir de hoje.
+  const hoje = useDiaLocal();
   const { activeLojaId, acessosModulos } = useAuth();
 
   const { data: ajustes, isLoading, isError, error, refetch } = useListAjustes(activeLojaId!, {
@@ -79,7 +82,7 @@ export default function AjusteDetalhe() {
   // E240/S-O50 — prova → prazo próprio → casamento, e o rótulo pela origem;
   // a mesma `referenciaDoPrazo` que a fila e o painel leem.
   const referencia = referenciaDoPrazo(a);
-  const diasPrazo = referencia ? diasAteCasamento(referencia.data) : null;
+  const diasPrazo = referencia ? diasAteCasamento(referencia.data, hoje) : null;
   // O casamento continua na ficha como FATO, mesmo quando não é ele o prazo.
   const casamento = casamentoDeReferencia(a);
   /**

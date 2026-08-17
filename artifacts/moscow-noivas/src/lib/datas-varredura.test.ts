@@ -184,6 +184,52 @@ function semComentarios(fonte: string): string {
 }
 
 /**
+ * **S-RM26 (E266) — o SEGUNDO salto, que cegava as duas grafias.**
+ *
+ * As duas réguas abaixo procuravam o NOME `hojeLocal`, e uma indireção de um
+ * salto bastava para escondê-lo: `vestidos/utilizacao.tsx` tinha um
+ * `function diaISO(n) { return addDias(hojeLocal(), n) }` de uma linha, chamado
+ * de dentro de um `useMemo` que também vira `queryKey` — invisível para a
+ * grafia do E258 **e** para a do E264. A fronteira do E264 dizia "segue um
+ * salto" na letra, e este é o caso que pedia o segundo.
+ *
+ * Esta função devolve o padrão que as duas passam a usar: `hojeLocal` **mais**
+ * o nome de todo helper declarado NO PRÓPRIO ARQUIVO cujo corpo lê o dia. Ela
+ * não atravessa módulos de propósito — quem exporta um leitor de dia para
+ * outra tela é a classe da S-RM27, e essa tem régua própria abaixo.
+ */
+function lentesDoDia(fonte: string): RegExp {
+  const nomes = new Set(["hojeLocal"]);
+  // `function nome(…) { … }` com casamento de CHAVES de verdade — o corpo pode
+  // ter objetos dentro, e parar na primeira `}` leria meio helper.
+  for (const m of fonte.matchAll(/\bfunction\s+([A-Za-z_$][\w$]*)\s*\([^)]*\)[^{]*\{/g)) {
+    let i = m.index + m[0].length;
+    let profundidade = 1;
+    while (i < fonte.length && profundidade > 0) {
+      if (fonte[i] === "{") profundidade++;
+      else if (fonte[i] === "}") profundidade--;
+      i++;
+    }
+    if (/\bhojeLocal\s*\(/.test(fonte.slice(m.index, i))) nomes.add(m[1]!);
+  }
+  // `const nome = (…) => …;` — a declaração vai até o `;` de profundidade zero,
+  // a mesma técnica da varredura da S-RM18.
+  for (const m of fonte.matchAll(/\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>/g)) {
+    let i = m.index + m[0].length;
+    let profundidade = 0;
+    while (i < fonte.length) {
+      const c = fonte[i]!;
+      if (c === "(" || c === "[" || c === "{") profundidade++;
+      else if (c === ")" || c === "]" || c === "}") profundidade--;
+      else if (c === ";" && profundidade <= 0) break;
+      i++;
+    }
+    if (/\bhojeLocal\s*\(/.test(fonte.slice(m.index, i))) nomes.add(m[1]!);
+  }
+  return new RegExp(`\\b(?:${[...nomes].join("|")})\\s*\\(`, "g");
+}
+
+/**
  * Os `hojeLocal()` que moram dentro de um `useMemo`/`useCallback`. O casamento
  * de parênteses é de verdade: uma regex que parasse no primeiro `)` fecharia o
  * memo no `hojeLocal()` mais próximo e a régua leria o bloco errado — em
@@ -204,7 +250,7 @@ function diaCongeladoEmMemo(codigoComComentarios: string): number[] {
       i++;
     }
     const corpo = fonte.slice(m.index, i);
-    const dentro = /hojeLocal\(/g;
+    const dentro = lentesDoDia(fonte);
     let d: RegExpExecArray | null;
     while ((d = dentro.exec(corpo)) !== null) {
       linhas.push(fonte.slice(0, m.index + d.index).split("\n").length);
@@ -229,6 +275,23 @@ describe("S-RM11 — nenhuma tela congela o dia dentro de um `useMemo`", () => {
     // conserto fala o nome da função que saiu dali.
     expect(
       diaCongeladoEmMemo(`const x = useMemo(() => {\n  // era hojeLocal() aqui\n  return f(hoje);\n}, [hoje]);`),
+    ).toEqual([]);
+    // S-RM26 — o SEGUNDO salto: o dia atrás de um helper local de uma linha.
+    // É a forma exata do `vestidos/utilizacao.tsx`, que passou por baixo das
+    // duas grafias porque nenhuma das duas procurava outro nome.
+    expect(
+      diaCongeladoEmMemo(
+        `function diaISO(n) {\n  return addDias(hojeLocal(), n);\n}\n` +
+          `const p = useMemo(() => ({ de: diaISO(-90) }), [periodo]);`,
+      ),
+    ).toEqual([4]);
+    // E o helper que NÃO lê o dia continua invisível — a régua segue o dia, e
+    // não toda função de uma linha.
+    expect(
+      diaCongeladoEmMemo(
+        `function somar(a, b) {\n  return a + b;\n}\n` +
+          `const p = useMemo(() => somar(1, 2), [a]);`,
+      ),
     ).toEqual([]);
   });
 
@@ -333,7 +396,7 @@ function diaVirandoChaveDeConsulta(codigoComComentarios: string): number[] {
   // O caso sem nome: o dia escrito DENTRO da chave. População zero hoje, e é
   // para que a sexta grafia não nasça pela porta que a régua deixou aberta.
   for (const { texto, inicio } of argumentosDeChave) {
-    const direto = /hojeLocal\(/g;
+    const direto = lentesDoDia(fonte);
     let d: RegExpExecArray | null;
     while ((d = direto.exec(texto)) !== null) linhas.push(linhaDe(inicio + d.index));
   }
@@ -361,7 +424,7 @@ function diaVirandoChaveDeConsulta(codigoComComentarios: string): number[] {
       i++;
     }
     const corpo = fonte.slice(m.index, i);
-    const dentro = /hojeLocal\(/g;
+    const dentro = lentesDoDia(fonte);
     let d: RegExpExecArray | null;
     while ((d = dentro.exec(corpo)) !== null) linhas.push(linhaDe(m.index + d.index));
   }
@@ -452,5 +515,88 @@ describe("S-RM18 — nenhuma tela monta a chave da consulta com o dia parado", (
         "o react-query só re-renderiza quando o `.data` muda, e o `.data` não muda porque a " +
         "chave é a de ontem. O dia vem do `useDiaLocal()` (S-RM18)",
     ).toEqual([]);
+  });
+});
+
+/**
+ * **S-RM27 — a mesma indireção no DISPLAY, e ela atravessa o módulo.**
+ *
+ * `noivas/helpers.ts` e `reservas/helpers.ts` exportam dois contadores de dias
+ * que leem o relógio por dentro (`diasAteCasamento`, `diasAteLocal`). Quem os
+ * chama não sabe que está lendo o dia — e por isso não assina a virada. O dano
+ * não é chave de consulta: é a **contagem exibida** envelhecendo numa aba que o
+ * ateliê deixa aberta, e o *"Faltam 3 dias"* continuando em três no dia em que
+ * faltam dois. Seis telas contam assim, e duas delas chegam ao helper por um
+ * SEGUNDO salto (`lib/ajustes-prazo.ts`), que é onde a régua do `useMemo` já
+ * não alcança.
+ *
+ * A régua é do par: quem chama um contador de dias PASSA o dia, e o dia vem do
+ * `useDiaLocal()` — que é o que faz o render acontecer à meia-noite. O default
+ * dos dois helpers continua `hojeLocal()` para quem não é tela.
+ *
+ * **Ela não vive nas duas de cima porque a fronteira é outra**: aquelas seguem
+ * o dia dentro de um arquivo, esta segue um NOME que atravessa o import.
+ */
+const CONTADORES_DE_DIAS = ["diasAteCasamento", "diasAteLocal"] as const;
+
+describe("S-RM27 — quem exibe contagem de dias assina a virada", () => {
+  it("toda tela que chama um contador de dias passa o dia do `useDiaLocal()`", () => {
+    const foraDaRegua: string[] = [];
+    for (const relativo of telasEComponentes()) {
+      const bruto = readFileSync(join(RAIZ, relativo), "utf8");
+      const fonte = semComentarios(bruto);
+      const chamadas: number[] = [];
+      for (const contador of CONTADORES_DE_DIAS) {
+        // A CASA do contador não é chamadora dele: `noivas/helpers.ts` e
+        // `reservas/helpers.ts` são justamente onde o default `hojeLocal()`
+        // deve continuar morando.
+        if (new RegExp(`export function ${contador}\\s*\\(`).test(fonte)) continue;
+        // A CHAMADA, não o import: `diasAteCasamento(` seguido de qualquer
+        // coisa que não seja `)` fecha logo — um argumento só é a fresta.
+        for (const m of fonte.matchAll(new RegExp(`\\b${contador}\\s*\\(`, "g"))) {
+          let i = m.index + m[0].length;
+          let profundidade = 1;
+          while (i < fonte.length && profundidade > 0) {
+            if (fonte[i] === "(") profundidade++;
+            else if (fonte[i] === ")") profundidade--;
+            i++;
+          }
+          const argumentos = fonte.slice(m.index + m[0].length, i - 1);
+          // Um argumento de nível zero = o dia ficou implícito.
+          let nivel = 0;
+          let temVirgula = false;
+          for (const c of argumentos) {
+            if (c === "(" || c === "[" || c === "{") nivel++;
+            else if (c === ")" || c === "]" || c === "}") nivel--;
+            else if (c === "," && nivel === 0) temVirgula = true;
+          }
+          if (!temVirgula) chamadas.push(fonte.slice(0, m.index).split("\n").length);
+        }
+      }
+      for (const linha of chamadas) foraDaRegua.push(`${relativo}:${linha}`);
+      // E passar o dia sem assinar a virada é meio conserto: a variável seria
+      // o `hojeLocal()` de um render que não acontece mais.
+      const chama = CONTADORES_DE_DIAS.some(
+        (c) => fonte.includes(`${c}(`) && !new RegExp(`export function ${c}\\s*\\(`).test(fonte),
+      );
+      if (chamadas.length === 0 && chama && !/\buseDiaLocal\s*\(/.test(fonte)) {
+        foraDaRegua.push(`${relativo} — sem useDiaLocal()`);
+      }
+    }
+    expect(
+      foraDaRegua,
+      "contador de dias chamado sem o dia: a contagem EXIBIDA envelhece numa aba aberta e " +
+        "diz 'Faltam 3 dias' no dia em que faltam 2. Passe o dia do `useDiaLocal()` (S-RM27)",
+    ).toEqual([]);
+  });
+
+  it("a régua pega a chamada de um argumento e perdoa a de dois", () => {
+    // Não dá para exercitar por arquivo: a população real é zero depois do
+    // épico. A grafia é conferida aqui, que é onde ela pode ser errada.
+    const umArgumento = `const d = diasAteCasamento(n.casamentoData);`;
+    const doisArgumentos = `const d = diasAteCasamento(n.casamentoData, hoje);`;
+    const chamada = /\bdiasAteCasamento\s*\(([^()]*)\)/;
+    expect(chamada.exec(umArgumento)![1]!.includes(",")).toBe(false);
+    expect(chamada.exec(doisArgumentos)![1]!.includes(",")).toBe(true);
   });
 });

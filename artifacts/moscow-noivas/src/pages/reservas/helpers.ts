@@ -56,9 +56,14 @@ export const ROTULO_SITUACAO: Record<string, string> = {
  * arquivo ("exibir/contar no fuso da LOJA") e a Agenda, que sempre passou
  * `America/Sao_Paulo`. Uma prova às 14h de SP vista de um fuso adiantado
  * contava um dia a mais.
+ *
+ * **S-RM27 (E266) — o `hoje` entra por parâmetro, com o default de sempre**,
+ * pela mesma razão do irmão em `noivas/helpers.ts`: a contagem exibida numa
+ * aba aberta envelhece na virada, e quem chama não sabe que está lendo o
+ * relógio. A fila de provas passa o dia do `useDiaLocal()`.
  */
-export function diasAteLocal(iso: string): number {
-  return diasEntre(hojeLocal(), diaLocal(iso));
+export function diasAteLocal(iso: string, hoje: string = hojeLocal()): number {
+  return diasEntre(hoje, diaLocal(iso));
 }
 
 // S35: `prazoCasamento` morava aqui com zero usos no repositório (provado por

@@ -31,6 +31,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { ErroListagem, invalidarCaixa } from "./helpers";
 import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
+import { useDiaLocal } from "@/hooks/use-dia-local";
 import { mensagemApi } from "@/lib/erro-api";
 import { podeNoModulo } from "@/lib/permissoes";
 import { brl, diaParaISO, diaMesAbrev, diaMesLongo } from "@/lib/formatos";
@@ -81,7 +82,22 @@ export default function Projecao() {
     query: { queryKey: getListSaldoReferenciaQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
 
-  const hoje = hojeLocal();
+  /**
+   * S-RM25 (E266) — **a única da família em que o dia congelado é um TETO.**
+   *
+   * Este `hoje` fecha a janela do realizado (`{ de: ancoraDia, ate: hoje }`
+   * abaixo), que é a `queryKey` do `useListPagamentos`. As outras oito da
+   * S-RM18 entravam como `de`/`desde`, que são PISO: a chave velha pede uma
+   * janela mais LARGA e nada some. Teto que fica para trás **esconde** — numa
+   * aba aberta na virada, o recebimento de hoje sai do realizado desde a
+   * âncora, e a curva do caixa é desenhada a partir de um saldo menor do que o
+   * que a loja tem.
+   *
+   * O `diaConferido` acima continua com `hojeLocal()` de propósito (exclusão
+   * do E258): é o dia CONFERIDO do caixa, estado inicial de um formulário —
+   * mudá-lo sozinho trocaria a data que a pessoa escolheu.
+   */
+  const hoje = useDiaLocal();
   const ancora = useMemo(() => ancoraAtiva(saldos.data, hoje), [saldos.data, hoje]);
   const ancoraDia = ancora ? diaLocal(ancora.dataReferencia) : null;
 
@@ -356,7 +372,7 @@ export default function Projecao() {
                 {curva.menorSaldo.dia ? (
                   <> em {diaMesAbrev(curva.menorSaldo.dia)}</>
                 ) : (
-                  <> (hoje, {diaMesAbrev(hojeLocal())})</>
+                  <> (hoje, {diaMesAbrev(hoje)})</>
                 )}
                 .
               </p>

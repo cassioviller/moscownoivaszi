@@ -439,7 +439,7 @@ export default function NoivaDetalhe() {
     );
   }
 
-  const dias = lead.casamentoData ? diasAteCasamento(lead.casamentoData) : null;
+  const dias = lead.casamentoData ? diasAteCasamento(lead.casamentoData, hoje) : null;
   const mostrarContagem = dias !== null && dias >= 0;
   const urgente = dias !== null && casamentoUrgente(dias);
   // S37: a ficha montava `wa.me/${digitos}` com uma régua PRÓPRIA, que aceitava

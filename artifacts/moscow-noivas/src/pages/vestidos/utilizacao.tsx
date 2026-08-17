@@ -13,7 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { brl } from "@/lib/formatos";
-import { addDias, hojeLocal } from "@/lib/financeiro/datas";
+import { addDias } from "@/lib/financeiro/datas";
+import { useDiaLocal } from "@/hooks/use-dia-local";
 import {
   Table,
   TableBody,
@@ -45,9 +46,17 @@ type Periodo = keyof typeof PERIODOS;
  * UTC, não em São Paulo. Das 21h à meia-noite a janela "últimos 90 dias" saía
  * inteira um dia à frente, e a régua exata — `addDias(hojeLocal(), n)` — já
  * está no core, com teste.
+ *
+ * **S-RM26 (E266): o `hoje` chega por PARÂMETRO, e não é detalhe de estilo.**
+ * Enquanto ele saía de um `hojeLocal()` aqui dentro, este helper de uma linha
+ * escondia o dia das DUAS grafias da varredura — a do E258 (dentro de um
+ * `useMemo`) e a do E264 (o `const` que alimenta uma `…QueryKey`) procuram o
+ * NOME `hojeLocal`, e uma indireção de um salto as cega. Recebendo o dia, a
+ * função volta a ser o que ela é — aritmética pura — e quem lê o relógio é a
+ * tela, onde a varredura enxerga.
  */
-function diaISO(offsetDias: number): string {
-  return addDias(hojeLocal(), offsetDias);
+function diaISO(hoje: string, offsetDias: number): string {
+  return addDias(hoje, offsetDias);
 }
 
 function usoTotal(v: VestidoUtilizacao): number {
@@ -62,10 +71,11 @@ export default function UtilizacaoVestidos() {
   const periodoParam = searchParams.get("periodo");
   const periodo: Periodo = periodoParam && periodoParam in PERIODOS ? (periodoParam as Periodo) : "12m";
 
+  const hoje = useDiaLocal();
   const params = useMemo(() => {
     const dias = PERIODOS[periodo].dias;
-    return dias ? { de: diaISO(-dias), ate: diaISO(0) } : {};
-  }, [periodo]);
+    return dias ? { de: diaISO(hoje, -dias), ate: diaISO(hoje, 0) } : {};
+  }, [periodo, hoje]);
 
   const utilizacao = useGetUtilizacaoVestidos(activeLojaId!, params, {
     query: {
