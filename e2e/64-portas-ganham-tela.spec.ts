@@ -38,6 +38,10 @@ test.describe.serial("S-O131 — as portas que ganharam tela", () => {
    * era verdadeiro com a guarda (`:590`) no lugar e sem ela.
    */
   let adminId: string | null = null;
+  // S-RM3/E257 — os nomes das fixtures, para a cena de edição afirmar que o
+  // diálogo abriu com o valor do ALVO.
+  let NOME_DA_LOJA_VAZIA = "";
+  let NOME_DA_PESSOA_NOVA = "";
 
   test.beforeAll(async ({ request }) => {
     await request.post(`${API_URL}/api/auth/login`, { data: { email: estado.adminEmail, senha: estado.senha } });
@@ -51,12 +55,18 @@ test.describe.serial("S-O131 — as portas que ganharam tela", () => {
     expect(admin?.id, `o admin ${estado.adminEmail} tem de existir no banco`).toBeTruthy();
     adminId = admin!.id;
 
-    const loja = await request.post(`${API_URL}/api/admin/lojas`, { data: { nome: `E2E Loja vazia ${stamp}` } });
+    // S-RM3/E257: os nomes viram variável porque a cena de EDIÇÃO precisa
+    // afirmar que o diálogo abriu com o valor do alvo — o `reset` de
+    // `abrirEdicaoLoja` —, e não só que ele abriu.
+    NOME_DA_LOJA_VAZIA = `E2E Loja vazia ${stamp}`;
+    NOME_DA_PESSOA_NOVA = `E2E Pessoa sem histórico ${stamp}`;
+
+    const loja = await request.post(`${API_URL}/api/admin/lojas`, { data: { nome: NOME_DA_LOJA_VAZIA } });
     expect(loja.status(), await loja.text()).toBe(201);
     lojaVaziaId = ((await loja.json()) as { id: string }).id;
 
     const usuario = await request.post(`${API_URL}/api/admin/usuarios`, {
-      data: { nome: `E2E Pessoa sem histórico ${stamp}`, email: `e2e-sem-historico-${stamp}@moscownoivas.com`, senha: "senha-e2e-123" },
+      data: { nome: NOME_DA_PESSOA_NOVA, email: `e2e-sem-historico-${stamp}@moscownoivas.com`, senha: "senha-e2e-123" },
     });
     expect(usuario.status(), await usuario.text()).toBe(201);
     usuarioNovoId = ((await usuario.json()) as { id: string }).id;
@@ -108,6 +118,35 @@ test.describe.serial("S-O131 — as portas que ganharam tela", () => {
     const [aindaLa] = await db.select({ id: lojasTable.id }).from(lojasTable).where(eq(lojasTable.id, estado.lojaId));
     expect(aindaLa?.id).toBe(estado.lojaId);
 
+    /**
+     * **S-RM3/E257 — o `/admin` tinha dois botões que spec nenhum clicava.**
+     *
+     * Este é o ÚNICO E2E que abre `/admin`, e ele só exercitava os dois
+     * "Apagar". Os dois "Editar" (`editar-loja-${loja.id}` e
+     * `editar-usuario-${u.id}`) nunca eram clicados — a mesma classe da S-CF2,
+     * a porta que ganhou tela e ninguém encena, e da S-R14, o seletor que
+     * ninguém checou porque a cena não existia.
+     *
+     * A cobertura entra ANTES das exclusões, sobre as mesmas fixtures: a loja
+     * vazia e a pessoa nova são editadas e só depois apagadas. Não custa
+     * fixture nova, e prega o caminho inteiro — o diálogo abre com os valores
+     * do alvo, o `Salvar` chama a porta, e o BANCO muda. Afirmar só o toast
+     * deixaria passar uma tela que avisa sem gravar, que é o defeito que a
+     * S-R4 achou no `perdoar-mora`.
+     */
+    await page.getByTestId(`editar-loja-${lojaVaziaId}`).click();
+    const dialogoLoja = page.getByRole("dialog");
+    await expect(dialogoLoja.getByText("Editar loja")).toBeVisible();
+    // O diálogo abre com o valor do ALVO, não em branco — é o `reset` de
+    // `abrirEdicaoLoja`, e é o que distingue "abriu" de "abriu na loja certa".
+    await expect(dialogoLoja.getByLabel("Nome da loja")).toHaveValue(NOME_DA_LOJA_VAZIA);
+    await dialogoLoja.getByLabel("Nome da loja").fill(`${NOME_DA_LOJA_VAZIA} (editada)`);
+    await dialogoLoja.getByRole("button", { name: "Salvar" }).click();
+    await expect(page.getByText("Loja atualizada").first()).toBeVisible();
+    await expect
+      .poll(async () => (await db.select({ nome: lojasTable.nome }).from(lojasTable).where(eq(lojasTable.id, lojaVaziaId!)))[0]?.nome)
+      .toBe(`${NOME_DA_LOJA_VAZIA} (editada)`);
+
     // A loja vazia sai.
     await page.getByTestId(`apagar-loja-${lojaVaziaId}`).click();
     await page.getByTestId("confirmar-apagar-loja").click();
@@ -126,6 +165,21 @@ test.describe.serial("S-O131 — as portas que ganharam tela", () => {
     // antes: sem ele, ausência de botão e ausência de linha seriam o mesmo verde.
     await expect(page.getByTestId(`editar-usuario-${adminId}`)).toBeVisible();
     await expect(page.getByTestId(`apagar-usuario-${adminId}`)).toHaveCount(0);
+
+    // S-RM3/E257 — e o "Editar" da PESSOA, o segundo botão que ninguém
+    // clicava. A senha fica em branco de propósito: em branco é "não mexa"
+    // (`onSalvarUsuario` separa `senha` do resto), e é o caminho comum.
+    await page.getByTestId(`editar-usuario-${usuarioNovoId}`).click();
+    const dialogoUsuario = page.getByRole("dialog");
+    await expect(dialogoUsuario.getByText("Editar usuário")).toBeVisible();
+    await expect(dialogoUsuario.getByLabel("Nome")).toHaveValue(NOME_DA_PESSOA_NOVA);
+    await dialogoUsuario.getByLabel("Nome").fill(`${NOME_DA_PESSOA_NOVA} (editada)`);
+    await dialogoUsuario.getByRole("button", { name: "Salvar" }).click();
+    await expect(page.getByText("Usuário atualizado").first()).toBeVisible();
+    await expect
+      .poll(async () => (await db.select({ nome: usuariosTable.nome }).from(usuariosTable).where(eq(usuariosTable.id, usuarioNovoId!)))[0]?.nome)
+      .toBe(`${NOME_DA_PESSOA_NOVA} (editada)`);
+
     await page.getByTestId(`apagar-usuario-${usuarioNovoId}`).click();
     await page.getByTestId("confirmar-apagar-usuario").click();
     await expect(page.getByText("Pessoa apagada").first()).toBeVisible();
