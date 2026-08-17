@@ -369,6 +369,23 @@ export interface BackupLog {
   erro?: string | null;
 }
 
+/**
+ * E273 — a MESMA conta do ensaio e da aplicação. Quem aperta "Importar" aplica o que leu na tela, e não outra coisa.
+ */
+export interface PlanoDaImportacao {
+  arquivo: string;
+  /** false = ensaio, nada foi escrito */
+  aplicado: boolean;
+  pecasNoPacote: number;
+  pecasJaNaLoja: number;
+  pecasAInserir: number;
+  leadsNoPacote: number;
+  leadsJaNaLoja: number;
+  leadsAInserir: number;
+  /** Classificações que o catálogo desta instalação não conhece — a peça entra sem elas */
+  semCasa: string[];
+}
+
 export type RestoreDrillLogStatus = typeof RestoreDrillLogStatus[keyof typeof RestoreDrillLogStatus];
 
 
@@ -3545,6 +3562,23 @@ export type GetConsolidado200Item = {
   recebidoNoMes: number;
   /** Previsto − recebido das parcelas abertas */
   aReceberAberto: number;
+};
+
+export type ListarPacotesDoLegado200PacotesItem = {
+  arquivo: string;
+  bytes: number;
+};
+
+export type ListarPacotesDoLegado200 = {
+  pacotes: ListarPacotesDoLegado200PacotesItem[];
+};
+
+export type ImportarLegadoBody = {
+  /** O NOME do pacote (não um caminho) — um dos que o GET lista */
+  arquivo: string;
+  lojaId: string;
+  /** Ausente ou false = ensaio, sem escrita nenhuma */
+  aplicar?: boolean;
 };
 
 export type CaptarLeadParams = {

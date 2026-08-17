@@ -564,6 +564,43 @@ export const DownloadBackupResponse = zod.unknown()
 
 
 /**
+ * E273 — a instalação real nasce vazia e o acervo do ateliê está num caderno de papel, transcrito de 29 fotos e empacotado em JSON (`docs/legado/`, copiado para dentro da imagem). Esta porta diz quais pacotes existem no disco desta instalação, para a tela oferecer o que realmente dá para importar em vez de pedir um caminho de arquivo. Gate: superadmin.
+ * @summary Os pacotes do caderno de papel que esta instalação tem no disco
+ */
+export const ListarPacotesDoLegadoResponse = zod.object({
+  "pacotes": zod.array(zod.object({
+  "arquivo": zod.string(),
+  "bytes": zod.number()
+}))
+})
+
+
+/**
+ * Cria as peças e as noivas do papel na loja escolhida. **Sem `aplicar` é ENSAIO**: devolve exatamente a mesma contagem e não escreve nada. Com `aplicar`, escreve numa transação só. Ele **apenas INSERE** — peça cujo código já existe na loja é pulada, e rodar duas vezes insere zero, porque os ids são derivados (`legado-L001`, `legado-lead-0001`). O catálogo casa por NOME de atributo e opção; classificação sem casa nesta instalação vem em `semCasa` e a peça entra sem ela. Gate: superadmin.
+ * @summary Importa um pacote do caderno — em ENSAIO por default
+ */
+export const importarLegadoBodyAplicarDefault = false;
+
+export const ImportarLegadoBody = zod.object({
+  "arquivo": zod.string().describe('O NOME do pacote (não um caminho) — um dos que o GET lista'),
+  "lojaId": zod.string(),
+  "aplicar": zod.boolean().default(importarLegadoBodyAplicarDefault).describe('Ausente ou false = ensaio, sem escrita nenhuma')
+})
+
+export const ImportarLegadoResponse = zod.object({
+  "arquivo": zod.string(),
+  "aplicado": zod.boolean().describe('false = ensaio, nada foi escrito'),
+  "pecasNoPacote": zod.number(),
+  "pecasJaNaLoja": zod.number(),
+  "pecasAInserir": zod.number(),
+  "leadsNoPacote": zod.number(),
+  "leadsJaNaLoja": zod.number(),
+  "leadsAInserir": zod.number(),
+  "semCasa": zod.array(zod.string()).describe('Classificações que o catálogo desta instalação não conhece — a peça entra sem elas')
+}).describe('E273 — a MESMA conta do ensaio e da aplicação. Quem aperta \"Importar\" aplica o que leu na tela, e não outra coisa.')
+
+
+/**
  * `endereco` e `telefone` só tinham formulário no console de SUPERADMIN, e trocar o telefone virava chamado. Os dois alimentam o rodapé do portal da noiva, a linha "Endereço:" da confirmação de atendimento e o botão de WhatsApp do portal. Gate: módulo `admin`, ação `editar`.
  * @summary A dona edita os dados da própria loja (S17)
  */

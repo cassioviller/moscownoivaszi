@@ -160,7 +160,7 @@ describe("varredura — a régua do banco virgem cobre o que as migrações back
     expect(lerMigracao("limpa.sql", "ALTER TABLE a ADD COLUMN b text;").backfill).toEqual([]);
   });
 
-  it("18 migrações escrevem dado — 11 backfillam, 7 são faxina — e a conta está travada", () => {
+  it("19 migrações escrevem dado — 12 backfillam, 7 são faxina — e a conta está travada", () => {
     // Retrato travado (regra da casa): migração nova de backfill sobe o 11 e
     // obriga a linha de cobertura abaixo; faxina nova sobe o 7 e não obriga
     // nada — o rastro de teste não existe numa instalação nova.
@@ -184,6 +184,15 @@ describe("varredura — a régua do banco virgem cobre o que as migrações back
       // mais o backfill que dá aos atos das parcelas já carimbadas a linha que
       // o carimbo delas prometia. Sem ele a primeira execução redeclara tudo.
       "docs/migracoes/2026-08-17-e252-envio-contabilidade-por-ato.sql",
+      // E271 (17/08): o perfil do dono deixa de estar no feminino —
+      // `UPDATE perfis SET nome = 'Proprietário'`. Backfilla `perfis`, que o
+      // `12-permissoes` já cobre; a instalação NOVA nem precisa dela, porque o
+      // seed já grava o nome certo.
+      //
+      // **Ela entrou nesta lista um commit atrasada, e a razão é a regra 35**:
+      // quando a suíte do E271 rodou, o arquivo ainda não estava no índice do
+      // git, e esta varredura enumera por `git ls-files`. Verde por invisível.
+      "docs/migracoes/2026-08-17-e271-perfil-proprietario.sql",
     ]);
     // E250/S-R5 (17/08): a sétima é `2026-08-17-e250-ipca-de-exemplo-sai.sql`, que
     // apaga os 12 meses de IPCA de exemplo que o seed gravava antes de o E242

@@ -131,6 +131,7 @@ import type {
   GetUtilizacaoVestidosParams,
   GetVestidoFotoParams,
   HealthStatus,
+  ImportarLegadoBody,
   IndiceMonetario,
   IndiceMonetarioInput,
   ItemEstoque,
@@ -159,6 +160,7 @@ import type {
   ListPortais200Item,
   ListRecibos200,
   ListReservasParams,
+  ListarPacotesDoLegado200,
   LocacaoDoLead,
   LoginInput,
   Loja,
@@ -199,6 +201,7 @@ import type {
   PerfilOverrideInput,
   PerfilOverrideLoja,
   PerfilUpdate,
+  PlanoDaImportacao,
   PortalNoiva,
   PortalStatus,
   PreviaExpurgoLeadsPerdidos200,
@@ -2070,6 +2073,155 @@ export function useDownloadBackup<TData = Awaited<ReturnType<typeof downloadBack
 
 
 
+
+export const getListarPacotesDoLegadoUrl = () => {
+
+
+
+
+  return `/api/admin/legado`
+}
+
+/**
+ * E273 — a instalação real nasce vazia e o acervo do ateliê está num caderno de papel, transcrito de 29 fotos e empacotado em JSON (`docs/legado/`, copiado para dentro da imagem). Esta porta diz quais pacotes existem no disco desta instalação, para a tela oferecer o que realmente dá para importar em vez de pedir um caminho de arquivo. Gate: superadmin.
+ * @summary Os pacotes do caderno de papel que esta instalação tem no disco
+ */
+export const listarPacotesDoLegado = async ( options?: RequestInit): Promise<ListarPacotesDoLegado200> => {
+
+  return customFetch<ListarPacotesDoLegado200>(getListarPacotesDoLegadoUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListarPacotesDoLegadoQueryKey = () => {
+    return [
+    `/api/admin/legado`
+    ] as const;
+    }
+
+
+export const getListarPacotesDoLegadoQueryOptions = <TData = Awaited<ReturnType<typeof listarPacotesDoLegado>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listarPacotesDoLegado>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListarPacotesDoLegadoQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listarPacotesDoLegado>>> = ({ signal }) => listarPacotesDoLegado({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listarPacotesDoLegado>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListarPacotesDoLegadoQueryResult = NonNullable<Awaited<ReturnType<typeof listarPacotesDoLegado>>>
+export type ListarPacotesDoLegadoQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Os pacotes do caderno de papel que esta instalação tem no disco
+ */
+
+export function useListarPacotesDoLegado<TData = Awaited<ReturnType<typeof listarPacotesDoLegado>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listarPacotesDoLegado>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListarPacotesDoLegadoQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getImportarLegadoUrl = () => {
+
+
+
+
+  return `/api/admin/legado`
+}
+
+/**
+ * Cria as peças e as noivas do papel na loja escolhida. **Sem `aplicar` é ENSAIO**: devolve exatamente a mesma contagem e não escreve nada. Com `aplicar`, escreve numa transação só. Ele **apenas INSERE** — peça cujo código já existe na loja é pulada, e rodar duas vezes insere zero, porque os ids são derivados (`legado-L001`, `legado-lead-0001`). O catálogo casa por NOME de atributo e opção; classificação sem casa nesta instalação vem em `semCasa` e a peça entra sem ela. Gate: superadmin.
+ * @summary Importa um pacote do caderno — em ENSAIO por default
+ */
+export const importarLegado = async (importarLegadoBody: ImportarLegadoBody, options?: RequestInit): Promise<PlanoDaImportacao> => {
+
+  return customFetch<PlanoDaImportacao>(getImportarLegadoUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(importarLegadoBody)
+  }
+);}
+
+
+
+
+export const getImportarLegadoMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importarLegado>>, TError,{data: BodyType<ImportarLegadoBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importarLegado>>, TError,{data: BodyType<ImportarLegadoBody>}, TContext> => {
+
+const mutationKey = ['importarLegado'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importarLegado>>, {data: BodyType<ImportarLegadoBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  importarLegado(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportarLegadoMutationResult = NonNullable<Awaited<ReturnType<typeof importarLegado>>>
+    export type ImportarLegadoMutationBody = BodyType<ImportarLegadoBody>
+    export type ImportarLegadoMutationError = ErrorType<void>
+
+    /**
+ * @summary Importa um pacote do caderno — em ENSAIO por default
+ */
+export const useImportarLegado = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importarLegado>>, TError,{data: BodyType<ImportarLegadoBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof importarLegado>>,
+        TError,
+        {data: BodyType<ImportarLegadoBody>},
+        TContext
+      > => {
+      return useMutation(getImportarLegadoMutationOptions(options));
+    }
 
 export const getUpdateDadosDaLojaUrl = (lojaId: string,) => {
 

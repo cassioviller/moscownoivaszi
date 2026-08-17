@@ -175,7 +175,12 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
       // E239/S-O112: 133 → 134. `ContratoParcela.numero` — o recorte da parcela
       // que viaja DENTRO do contrato repete o `numero` da `Parcela`; a conta é
       // de linhas do spec, não de portas. Nenhuma entrada nova de inteiro.
-    ).toBe(134);
+      //
+      // E273: 134 → 141. Os sete são as contagens da importação do caderno —
+      // seis do `PlanoDaImportacao` e o `bytes` do pacote no disco. Todos são
+      // RESPOSTA, montada por extenso; a única entrada da porta nova é
+      // `{arquivo, lojaId, aplicar}`, sem inteiro nenhum.
+    ).toBe(141);
 
     // A outra ponta: se um dia o gerador aprender `.int()`, este número deixa
     // de ser zero e a régua acima vira ruído — é o sinal de trocar a varredura

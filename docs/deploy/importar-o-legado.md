@@ -40,16 +40,38 @@ para a instalação de produção do EasyPanel.
 |---|---|---|
 | `scripts/exportar-legado.ts` | máquina de desenvolvimento | lê o banco da loja e escreve o pacote JSON. **Não escreve no banco** |
 | `docs/legado/2026-08-17-caderno.json` | versionado | o pacote de hoje. Viaja dentro da imagem, em `/app/legado/` |
-| `artifacts/api-server/src/scripts/importar-legado.ts` | dentro do contêiner (`dist/importar-legado.mjs`) | lê o pacote e escreve na instalação |
+| `artifacts/api-server/src/lib/importar-legado.ts` | dentro do contêiner | **o motor**, um só — a tela e o console chamam ele |
+| `/admin` → card *O caderno de papel* | a tela | Conferir → Importar, com o número na frente do gesto (E273) |
+| `artifacts/api-server/src/scripts/importar-legado.ts` | console do serviço | o mesmo trabalho pela linha de comando |
 
-## 3. Como rodar, no dia
+## 3. Como rodar, no dia — **pela tela** (E273)
 
-Tudo pelo **console do serviço `app`** no EasyPanel, com o sistema já no ar.
+É o caminho normal, e não precisa de terminal nenhum.
+
+1. entre com a conta do **superadministrador** e abra **`/admin`** (o console da
+   rede — o menu do seu usuário leva lá);
+2. o card **“O caderno de papel”** aparece logo abaixo do resumo da rede,
+   quando existe pacote no disco. Escolha o pacote e a **loja que recebe**;
+3. clique **Conferir**. Ele mostra quantas peças e quantas noivas entrariam,
+   quantas já estão lá, e termina com *“Nada foi escrito ainda.”*;
+4. **antes de aplicar, faça um backup** (Administração → *Fazer backup agora*).
+   Num banco recém-nascido leva segundos, e é o que torna o passo seguinte
+   reversível;
+5. clique **Importar 132 peças e 163 noivas** — o botão só acende depois da
+   conferência, e o número que ele mostra é o que você acabou de ler.
+
+Depois: *Vestidos* mostra as 132 peças com código `L…`, e *Noivas* mostra o
+funil com os cartões em “Novo”. Abrir uma peça mostra o aviso do preço
+provisório.
+
+## 3.1. Como rodar pelo console, se preferir
+
+Mesmo motor, mesmo resultado — o comando existe desde o E272 e continua valendo.
 
 **Passo 1 — o ensaio.** Ele não escreve nada; só conta.
 
 ```sh
-node dist/importar-legado.mjs /app/legado/2026-08-17-caderno.json
+node dist/importar-legado.mjs 2026-08-17-caderno.json
 ```
 
 Saída esperada numa instalação recém-nascida:
@@ -67,7 +89,7 @@ Leva segundos num banco recém-nascido e é o que torna o passo 3 reversível.
 **Passo 3 — aplicar.**
 
 ```sh
-node dist/importar-legado.mjs /app/legado/2026-08-17-caderno.json --aplicar
+node dist/importar-legado.mjs 2026-08-17-caderno.json --aplicar
 ```
 
 ```
@@ -80,8 +102,8 @@ do preço provisório.
 
 ## 4. Por que é seguro
 
-- **Ensaio por default.** Sem `--aplicar`, nada é escrito;
-- **só INSERE.** Não há `UPDATE` e não há `DELETE` no script inteiro. Peça cujo
+- **Ensaio por default.** Na tela, o botão de aplicar só acende depois da conferência; no console, sem `--aplicar` nada é escrito;
+- **só INSERE.** Não há `UPDATE` e não há `DELETE` no motor inteiro (`lib/importar-legado.ts`, o mesmo que a tela e o console chamam). Peça cujo
   código já existe é PULADA — se a loja corrigiu um nome na tela, a correção
   dela ganha do pacote;
 - **rodar duas vezes é rodar uma.** A peça vira `legado-L001` e a noiva vira

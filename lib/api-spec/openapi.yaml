@@ -483,6 +483,73 @@ paths:
         "410":
           description: O arquivo do dump já saiu pela retenção (`BACKUP_SEM_ARQUIVO`)
 
+  /admin/legado:
+    get:
+      operationId: listarPacotesDoLegado
+      tags: [admin]
+      summary: Os pacotes do caderno de papel que esta instalação tem no disco
+      description: >
+        E273 — a instalação real nasce vazia e o acervo do ateliê está num
+        caderno de papel, transcrito de 29 fotos e empacotado em JSON
+        (`docs/legado/`, copiado para dentro da imagem). Esta porta diz quais
+        pacotes existem no disco desta instalação, para a tela oferecer o que
+        realmente dá para importar em vez de pedir um caminho de arquivo.
+        Gate: superadmin.
+      responses:
+        "200":
+          description: Os pacotes disponíveis
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [pacotes]
+                properties:
+                  pacotes:
+                    type: array
+                    items:
+                      type: object
+                      required: [arquivo, bytes]
+                      properties:
+                        arquivo: { type: string }
+                        bytes: { type: integer }
+    post:
+      operationId: importarLegado
+      tags: [admin]
+      summary: Importa um pacote do caderno — em ENSAIO por default
+      description: >
+        Cria as peças e as noivas do papel na loja escolhida. **Sem `aplicar` é
+        ENSAIO**: devolve exatamente a mesma contagem e não escreve nada. Com
+        `aplicar`, escreve numa transação só. Ele **apenas INSERE** — peça cujo
+        código já existe na loja é pulada, e rodar duas vezes insere zero,
+        porque os ids são derivados (`legado-L001`, `legado-lead-0001`). O
+        catálogo casa por NOME de atributo e opção; classificação sem casa nesta
+        instalação vem em `semCasa` e a peça entra sem ela. Gate: superadmin.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [arquivo, lojaId]
+              properties:
+                arquivo:
+                  type: string
+                  description: O NOME do pacote (não um caminho) — um dos que o GET lista
+                lojaId: { type: string }
+                aplicar:
+                  type: boolean
+                  default: false
+                  description: Ausente ou false = ensaio, sem escrita nenhuma
+      responses:
+        "200":
+          description: O que entraria (ensaio) ou o que entrou (aplicado)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanoDaImportacao"
+        "404":
+          description: Pacote inexistente nesta instalação (`PACOTE_NAO_ENCONTRADO`) ou loja inexistente (`LOJA_NAO_ENCONTRADA`)
+
   # ───────────────────────── Equipe ─────────────────────────
   /lojas/{lojaId}/dados:
     parameters:
@@ -5717,6 +5784,29 @@ components:
           type: ["string", "null"]
           description: "Quem disparou o backup manual; null nos agendados"
         erro: { type: ["string", "null"] }
+    PlanoDaImportacao:
+      type: object
+      description: >-
+        E273 — a MESMA conta do ensaio e da aplicação. Quem aperta "Importar"
+        aplica o que leu na tela, e não outra coisa.
+      required:
+        [arquivo, aplicado, pecasNoPacote, pecasJaNaLoja, pecasAInserir,
+         leadsNoPacote, leadsJaNaLoja, leadsAInserir, semCasa]
+      properties:
+        arquivo: { type: string }
+        aplicado:
+          type: boolean
+          description: false = ensaio, nada foi escrito
+        pecasNoPacote: { type: integer }
+        pecasJaNaLoja: { type: integer }
+        pecasAInserir: { type: integer }
+        leadsNoPacote: { type: integer }
+        leadsJaNaLoja: { type: integer }
+        leadsAInserir: { type: integer }
+        semCasa:
+          type: array
+          description: Classificações que o catálogo desta instalação não conhece — a peça entra sem elas
+          items: { type: string }
     BackupStatus:
       type: object
       required: [ultimo, recentes, ultimoDrill]

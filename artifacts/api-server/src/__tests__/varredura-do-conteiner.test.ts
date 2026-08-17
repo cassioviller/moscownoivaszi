@@ -82,6 +82,12 @@ describe("E270 — a imagem de produção acompanha o workspace", () => {
       FRONTEND_DIR: "./public",
       MIGRACOES_DIR: "./migrations",
       MANUAIS_PDF_DIR: "./manuais",
+      // E273: e este é o caso que a régua pegou de verdade. A imagem copiava
+      // `docs/legado` para `/app/legado` e NÃO declarava `LEGADO_DIR` — o
+      // default do motor resolve a partir do `cwd`, que no contêiner dá
+      // `/legado`, fora de `/app`. O botão da importação listaria zero pacotes
+      // em produção e ninguém saberia por quê.
+      LEGADO_DIR: "./legado",
     };
 
     const orfaos = Object.entries(declarados)

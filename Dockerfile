@@ -124,7 +124,8 @@ ENV NODE_ENV=production \
     PORT=5002 \
     FRONTEND_DIR=/app/public \
     MIGRACOES_DIR=/app/migrations \
-    MANUAIS_PDF_DIR=/app/manuais
+    MANUAIS_PDF_DIR=/app/manuais \
+    LEGADO_DIR=/app/legado
 
 # A porta é INTERNA: quem publica é o proxy do EasyPanel, apontado para 5002.
 EXPOSE 5002

@@ -4,6 +4,10 @@ export * from "./generated/types";
 // params (generated/types) — o re-export explícito desambigua a favor do
 // schema zod, que é o que o servidor consome para validar.
 export {
+  // E273 — o corpo da importação do legado colide pelo mesmo motivo dos outros:
+  // o zod de `generated/api` e o tipo de `generated/types` têm o mesmo nome, e
+  // quem o servidor consome para VALIDAR é o zod.
+  ImportarLegadoBody,
   CheckDisponibilidadeVestidosParams,
   ListPagamentosParams,
   ListMovimentosConciliacaoParams,

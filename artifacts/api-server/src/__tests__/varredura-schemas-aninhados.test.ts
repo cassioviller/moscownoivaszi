@@ -135,7 +135,12 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // o dia do fato) — de propósito: a sugestão que o diálogo mostra para uma
     // data é a que a porta de receber usa como teto naquela data. Raso, sem
     // relação — nenhum par novo na fronteira.
-    expect(c.operacoes, "operação nova no spec: confira quem monta a resposta dela e atualize esta contagem").toBe(217);
+    // E273: 217 → 219. `listarPacotesDoLegado` e `importarLegado` — a
+    // importação do caderno de papel pela tela. As duas respondem objeto RASO
+    // montado por extenso no handler (a lista de pacotes vem do disco, o plano
+    // vem do motor); nenhuma relação de banco atravessa a fronteira, então
+    // nenhum par novo.
+    expect(c.operacoes, "operação nova no spec: confira quem monta a resposta dela e atualize esta contagem").toBe(219);
     // E221: 143 → 144. Só o `listRecibos` entra — as outras duas devolvem PDF.
     // E212: 144 → 146. As duas novas são a prévia e a cobrança do atraso da
     // cláusula 16ª, e as duas devolvem o MESMO `CobrancaDeAtraso` — de
@@ -159,7 +164,11 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     // E236: 153 → 154. O `listManuais` (`ManualDeUso`, raso).
     // E237: 154 → 156. Os dois de índices.
     // E243: 156 → 157 (`moraDaParcelaNoDia`, o `MoraDaParcela | null`).
-    expect(c.comSchemaDeResposta).toBe(157);
+    // E273: 157 → 158. Só o `importarLegado` entra: ele responde o
+    // `PlanoDaImportacao` por `$ref`. O `listarPacotesDoLegado` responde objeto
+    // inline (sem `$ref`), então não conta aqui — é a mesma distinção que a
+    // varredura faz desde o E192.
+    expect(c.comSchemaDeResposta).toBe(158);
     // E212: 70 → 72. `CobrancaDeAtraso` aninha `CobrancaDeAtrasoLinha` — a conta
     // é uma linha POR PEÇA, que é o §2º da cláusula 16ª ("aplicados
     // proporcionalmente a trajes e/ou acessórios avulsos") virando forma.

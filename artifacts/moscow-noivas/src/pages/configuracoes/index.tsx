@@ -295,6 +295,23 @@ export default function Configuracoes() {
 
       {user?.isSuperAdmin && aba === "admin" && (
         <div className="space-y-6">
+            {/**
+             * **E273 — o console da rede tinha rota e não tinha porta.**
+             *
+             * `/admin` existe desde o E76 e nenhuma tela do sistema levava até
+             * ele: quem quisesse abrir o console — criar loja, apagar usuário,
+             * ler a auditoria global, e agora IMPORTAR o caderno de papel —
+             * precisava digitar a URL. Esta aba já é a casa do superadmin e já
+             * mostra as duas listas em modo leitura; o caminho para o console
+             * fica aqui, ao lado delas.
+             */}
+            <Link
+              to="/admin"
+              data-testid="abrir-console-da-rede"
+              className="inline-flex h-11 items-center gap-2 rounded-md border px-4 text-sm font-medium hover:bg-accent"
+            >
+              <Building2 className="h-4 w-4" /> Abrir o console da rede
+            </Link>
             {erroAdmin && (
               <Erro
                 titulo="Não deu para carregar a administração"

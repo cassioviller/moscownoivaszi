@@ -35,6 +35,10 @@ import {
   useDeleteLoja,
   useDeleteUsuario,
   useListAuditoriaGlobal,
+  useListarPacotesDoLegado,
+  getListarPacotesDoLegadoQueryKey,
+  useImportarLegado,
+  type PlanoDaImportacao,
   type Loja,
   type Usuario,
 } from "@workspace/api-client-react";
@@ -76,7 +80,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Building2, Users, BarChart3, ScrollText } from "lucide-react";
+import { Building2, Users, BarChart3, ScrollText, BookUp } from "lucide-react";
 import { Erro } from "@/components/estado";
 import {
   Table,
@@ -203,6 +207,142 @@ const MENSAGENS_ERRO_ADMIN: Record<string, string> = {
   LOJA_NAO_ENCONTRADA: "Esta loja já não existe.",
   USUARIO_NAO_ENCONTRADO: "Esta pessoa já não existe.",
 };
+
+/**
+ * **E273 — o caderno de papel entra pela tela, e o ensaio vem antes do gesto.**
+ *
+ * O acervo do ateliê viveu num caderno; as 29 fotos dele viraram um pacote JSON
+ * que viaja dentro da imagem (E272). Até aqui só um comando de console o
+ * importava — e quem instala o sistema não tem terminal no contêiner.
+ *
+ * A tela é de propósito uma escada de dois degraus: **Conferir** mostra o que
+ * entraria (e não escreve nada), **Importar** aplica exatamente aquilo. O botão
+ * de aplicar só acende depois do ensaio, porque importação é ato sem desfazer —
+ * e o número que a pessoa leu é o número que ela aplica.
+ */
+function ImportarCaderno({ lojas }: { lojas: Loja[] }) {
+  const { toast } = useToast();
+  const pacotes = useListarPacotesDoLegado({ query: { queryKey: getListarPacotesDoLegadoQueryKey() } });
+  const importar = useImportarLegado();
+
+  const [arquivo, setArquivo] = useState("");
+  const [lojaId, setLojaId] = useState("");
+  const [ensaio, setEnsaio] = useState<PlanoDaImportacao | null>(null);
+
+  const disponiveis = pacotes.data?.pacotes ?? [];
+  // Sem pacote no disco não há o que oferecer, e um card vazio só ocupa a tela.
+  if (pacotes.isError || disponiveis.length === 0) return null;
+
+  const arquivoEscolhido = arquivo || disponiveis[0]!.arquivo;
+  const lojaEscolhida = lojaId || lojas[0]?.id || "";
+
+  const rodar = async (aplicar: boolean) => {
+    try {
+      const plano = await importar.mutateAsync({
+        data: { arquivo: arquivoEscolhido, lojaId: lojaEscolhida, aplicar },
+      });
+      setEnsaio(aplicar ? null : plano);
+      toast({
+        title: aplicar ? "Caderno importado" : "Conferência feita — nada foi escrito",
+        description: aplicar
+          ? `Entraram ${plano.pecasAInserir} peças e ${plano.leadsAInserir} noivas.`
+          : `Entrariam ${plano.pecasAInserir} peças e ${plano.leadsAInserir} noivas.`,
+      });
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Não deu para importar",
+        description: "Confira o pacote e a loja escolhida.",
+      });
+    }
+  };
+
+  return (
+    <section className="space-y-4" data-testid="importar-caderno">
+      <div>
+        <h2 className="text-2xl font-serif flex items-center gap-2">
+          <BookUp className="h-5 w-5" /> O caderno de papel
+        </h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          O acervo e as noivas que a loja anotava no caderno, para entrar de uma vez nesta
+          instalação. Ele só acrescenta: peça que já existe aqui não é tocada, e importar
+          duas vezes não duplica nada.
+        </p>
+      </div>
+
+      <Card>
+        <CardContent className="pt-6 space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Pacote</span>
+              <select
+                className="w-full h-11 rounded-md border bg-background px-3"
+                value={arquivoEscolhido}
+                onChange={(e) => {
+                  setArquivo(e.target.value);
+                  setEnsaio(null);
+                }}
+              >
+                {disponiveis.map((p) => (
+                  <option key={p.arquivo} value={p.arquivo}>
+                    {p.arquivo} ({Math.round(p.bytes / 1024)} KB)
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Loja que recebe</span>
+              <select
+                className="w-full h-11 rounded-md border bg-background px-3"
+                value={lojaEscolhida}
+                onChange={(e) => {
+                  setLojaId(e.target.value);
+                  setEnsaio(null);
+                }}
+              >
+                {lojas.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.nome}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {ensaio && (
+            <div className="rounded-md border p-4 text-sm space-y-1" data-testid="ensaio-do-caderno">
+              <p>
+                <strong>{ensaio.pecasAInserir}</strong> peças entram ({ensaio.pecasJaNaLoja} já
+                estão aqui, de {ensaio.pecasNoPacote} no pacote).
+              </p>
+              <p>
+                <strong>{ensaio.leadsAInserir}</strong> noivas entram ({ensaio.leadsJaNaLoja} já
+                estão aqui, de {ensaio.leadsNoPacote} no pacote).
+              </p>
+              {ensaio.semCasa.length > 0 && (
+                <p className="text-muted-foreground">
+                  Sem casa no catálogo desta loja: {ensaio.semCasa.join(", ")} — a peça entra sem
+                  essa classificação.
+                </p>
+              )}
+              <p className="text-muted-foreground">Nada foi escrito ainda.</p>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => rodar(false)} disabled={importar.isPending}>
+              Conferir
+            </Button>
+            <Button onClick={() => rodar(true)} disabled={!ensaio || importar.isPending}>
+              Importar {ensaio ? `${ensaio.pecasAInserir} peças e ${ensaio.leadsAInserir} noivas` : ""}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
 
 /**
  * S-O131 / S3 — a trilha do que não pertence a loja nenhuma: apagar uma loja
@@ -451,6 +591,9 @@ export default function AdminConsole() {
     <AdminShell>
       {/* ── E76: a rede numa tela ── */}
       <ConsolidadoRede />
+
+      {/* ── E273: o caderno de papel, quando há pacote no disco ── */}
+      {lojas && lojas.length > 0 && <ImportarCaderno lojas={lojas} />}
 
       {/* ── Lojas ── */}
       <section className="space-y-4">

@@ -155,7 +155,12 @@ describe("varredura — campo escalar do spec que ninguém preenche (S-O115)", (
     // E239: 162 · 57, medidos em 2026-08-15 sobre o spec com `ContratoParcela`
     // (S-O112) — o recorte novo repete os campos derivados de `Parcela` que não
     // são coluna (a mora vem por `$ref`, então nenhum escalar novo).
-    expect(lista.length, "campo derivado novo — diga quem o preenche, e suba o número aqui").toBe(162);
-    expect(porSchema.size).toBe(57);
+    // E273: 162 → 170 · 57 → 58. Os oito escalares novos são a CONTA da
+    // importação (`pecasNoPacote`, `pecasJaNaLoja`, `pecasAInserir`, os três
+    // irmãos das noivas, `aplicado` e `arquivo`) mais o par do pacote no disco
+    // (`arquivo`, `bytes`). Nenhum deles é coluna de tabela nenhuma: quem os
+    // preenche é `lib/importar-legado.ts`, contando o banco contra o pacote.
+    expect(lista.length, "campo derivado novo — diga quem o preenche, e suba o número aqui").toBe(170);
+    expect(porSchema.size).toBe(58);
   });
 });

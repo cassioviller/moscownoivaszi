@@ -31,6 +31,9 @@ import {
   SetPerfilOverrideResponse,
   DeletePerfilOverrideParams,
   GetBackupStatusResponse,
+  ListarPacotesDoLegadoResponse,
+  ImportarLegadoBody,
+  ImportarLegadoResponse,
   RunBackupResponse,
   DownloadBackupParams,
   GetConsolidadoResponse,
@@ -41,6 +44,8 @@ import { hashSenha, encerrarSessoesDoUsuario } from "../lib/auth";
 import { registrarAuditoria } from "../lib/auditoria";
 import { normalizarAcessos } from "../lib/permissoes";
 import { executarBackup, statusBackup, caminhoDoDump } from "../lib/backup";
+// E273 — o motor da importação do caderno é o MESMO do script de console.
+import { aplicarImportacao, lerPacote, pacotesDisponiveis, planejarImportacao } from "../lib/importar-legado";
 import { backupLogTable } from "@workspace/db";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -757,6 +762,58 @@ router.get("/admin/consolidado", async (_req, res): Promise<void> => {
 router.get("/admin/backup", async (_req, res): Promise<void> => {
   const status = await statusBackup();
   res.json(GetBackupStatusResponse.parse(status));
+});
+
+/**
+ * **E273 — a importação do caderno de papel, pela TELA.**
+ *
+ * O E272 pôs o caderno num pacote JSON e deu a ele um comando de console. A
+ * instalação real subiu, e o comando não serve para quem instala: ele pede
+ * terminal no contêiner. As duas portas abaixo são o mesmo motor
+ * (`lib/importar-legado.ts`) atrás de um botão.
+ *
+ * Ela vive no gate SUPERADMIN, com as lojas e o backup, e por dois motivos: a
+ * escolha da loja é de rede (o pacote pode entrar em qualquer uma), e a
+ * importação é um ato de instalação, não de operação da loja.
+ */
+router.get("/admin/legado", async (_req, res): Promise<void> => {
+  res.json(ListarPacotesDoLegadoResponse.parse({ pacotes: pacotesDisponiveis() }));
+});
+
+router.post("/admin/legado", async (req, res): Promise<void> => {
+  const corpo = ImportarLegadoBody.safeParse(req.body);
+  if (!corpo.success) {
+    res.status(400).json(erroDeValidacao(corpo.error));
+    return;
+  }
+
+  const [loja] = await db
+    .select({ id: lojasTable.id })
+    .from(lojasTable)
+    .where(eq(lojasTable.id, corpo.data.lojaId));
+  if (!loja) {
+    res.status(404).json({ error: "LOJA_NAO_ENCONTRADA", detalhe: "Esta loja não existe." });
+    return;
+  }
+
+  let pacote;
+  try {
+    // O nome é conferido contra a lista do disco lá dentro — caminho montado
+    // por quem chama seria leitura arbitrária de arquivo com sessão.
+    pacote = lerPacote(corpo.data.arquivo);
+  } catch (err) {
+    res.status(404).json({
+      error: "PACOTE_NAO_ENCONTRADO",
+      detalhe: err instanceof Error ? err.message : "Pacote inválido.",
+    });
+    return;
+  }
+
+  const plano = corpo.data.aplicar
+    ? await aplicarImportacao(loja.id, corpo.data.arquivo, pacote)
+    : await planejarImportacao(loja.id, corpo.data.arquivo, pacote);
+
+  res.json(ImportarLegadoResponse.parse({ ...plano, aplicado: corpo.data.aplicar }));
 });
 
 router.post("/admin/backup", async (req, res): Promise<void> => {

@@ -416,7 +416,12 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   loja, não escreve nada) e entra por `dist/importar-legado.mjs`, que é **ensaio
   por default**, só INSERE, roda numa transação só e casa o catálogo por NOME.
   Medido em 17/08: 132 peças · 163 noivas · 131 classificações, e a segunda
-  passada insere zero.
+  passada insere zero. **Desde o E273 ele tem BOTÃO**: o console do superadmin
+  (`/admin`) ganhou o card *O caderno de papel* — escolhe o pacote e a loja,
+  **Conferir** mostra o que entraria sem escrever, e **Importar** aplica
+  exatamente aquilo. Tela e console chamam o MESMO motor
+  (`lib/importar-legado.ts`), e o nome do pacote é conferido contra o disco
+  (caminho montado não lê arquivo nenhum).
 
 ## Stack
 
