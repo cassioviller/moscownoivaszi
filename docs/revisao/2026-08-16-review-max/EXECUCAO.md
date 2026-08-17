@@ -240,16 +240,20 @@ ambiente, não defeito, e fica registrado como S-RM38 🔵 com as duas mediçõe
 lado a lado. É o inverso da regra 35: lá o `main` estava vermelho e ninguém
 via; aqui o worktree estava vermelho e o `main` nunca esteve.
 
-**Contado nas tabelas com as cinco réguas fechadas: o repositório tem 16
-sobras abertas — 0 🔴 · 0 🟠 · 4 🟡 · 12 🔵.** São a **S-M17** e as **quinze
-S-RM25…S-RM39**, todas nascidas deste lote. **As duas 🟠 que mordiam saíram, e
+**Contado nas tabelas com as cinco réguas fechadas: o repositório tem 15
+sobras abertas — 0 🔴 · 0 🟠 · 4 🟡 · 11 🔵.** São a **S-M17** e as **catorze
+S-RM25…S-RM39 menos a S-RM34**, que a dona fechou por decisão no mesmo dia em
+que nasceu: **a aspa curva do valor digitado fica**, pela mesma razão que
+sustenta o critério do E262 — a reta é sinal de máquina, a curva é pontuação de
+português e ali ela faz trabalho. As catorze restantes nasceram todas deste
+lote. **As duas 🟠 que mordiam saíram, e
 nenhuma das quinze novas é 🟠**: o lote trocou dois defeitos de dinheiro e
 incoerência por quinze frestas de régua e de letra. As três 🟡 são a **S-RM25**
 (a S-RM18 no quinto arquivo), a **S-RM28** (a troca de pontas do
 `resolverIntervalo`, que sobrevive ao conserto do E261) e a **S-RM30** (o
 corpus da régua dos manuais inclui comentários, e por isso 8 de 549 citações
-estão verdes sem tela por trás). **Uma sobra espera decisão da dona**: a
-S-RM34 — o valor digitado deve perder também a aspa CURVA?
+estão verdes sem tela por trás). **Nenhuma espera decisão** — a única que
+esperava (S-RM34) foi respondida no mesmo dia em que nasceu.
 
 **E o plano acertou ao não prometer número.** Ele escreveu: *"trabalho que
 constrói régua nova enxerga mais do que fecha"*, e este lote é a prova mais
@@ -265,8 +269,10 @@ arquivo da S-RM18). **A pergunta que fica para o próximo plano é outra: não
 |---|---|---|
 | **E249** — casamento adiado: a data de devolução do papel recalcula pela janela nova, anda os mesmos dias, ou fica onde está? | **Recalcula pela janela nova** (E224: janela de uso andando até dia de expediente), preservando a hora; a retirada anda junto | aberta — executada na recomendação |
 | **S-RM16** (E259) — a tela escreve `"Marfim" classifica…` com aspas retas e o manual cita sem elas: quem cede? | **A TELA perde as aspas retas, e o manual não muda** — `routes/catalogo.ts:109` e `:217`. O repositório tem 9 aspas retas coladas a interpolação e **7 são protocolo** (ETag, `Content-Disposition`); as únicas duas em frase que uma pessoa lê são estas, e `routes/agenda.ts:232` já nomeia sem aspa nenhuma. Nenhum teste afirma a frase | **DECIDIDA pela dona em 17/08, na recomendação** e executada no E259 (`e969dfe6`) — a citação continua molde (nome e dois números interpolados); o que muda é que quem procurar na tela o que leu no manual passa a achar. **A recomendação estava certa e a medição que a sustentava estava ESTREITA**: são 17 ocorrências em produção — 10 de protocolo, 1 de arranque e **SEIS em frase que uma pessoa lê**, não duas. As quatro que ficaram de fora estão na tabela como S-RM19 🟠 e S-RM20 🔵, e a 🟠 é consequência da própria decisão: **o catálogo passa a recusar sem aspas e a confirmar com elas, a dois cliques de distância** |
+| **S-RM34** (E262) — a decisão da S-RM16 falou de aspas RETAS; sobram 7 frases que citam o valor DIGITADO entre aspas CURVAS, quase todas o vazio de busca. Elas também perdem a aspa? | **A aspa CURVA fica, e nada muda em código.** A reta é sinal de máquina; a curva é pontuação de português, e ali ela faz trabalho — separa o que a pessoa digitou do resto da frase, principalmente quando o termo tem espaço (*Nenhuma noiva para “maria silva”*). É a mesma razão que o E262 usou para MANTER a aspa no rótulo fixo, e é o que torna o critério coerente em vez de arbitrário | **DECIDIDA pela dona em 17/08, na recomendação** — fecha a sobra sem código, no mesmo dia em que ela nasceu. Fica a assimetria com o toast do catálogo (*Marfim saiu do catálogo*, sem aspa) e ela tem razão escrita: **num a palavra é o SUJEITO da frase, no outro é um trecho colado no meio dela** |
 
 ## Sobras
+
 
 Sobra NOVA, vista de passagem durante esta execução, entra aqui no mesmo
 commit que a viu (regra 12) e sai riscada no que a fecha (regra 21). As
@@ -297,7 +303,7 @@ S-R\* não moram aqui: elas moram na tabela da conferência.
 | S-RM31 | 🔵 | `costureira:448` · `proprietario:347` e `:496` · `vendedora:317` e `:908` | Quatro citações são conferidas DUAS vezes (criadas pelo E259) e duas cruzam manuais. Não é defeito de comportamento — é trabalho repetido dentro da régua, e vale arrumar antes que o número da cobertura passe a contar a mesma frase duas vezes | aberta (E263, 17/08) |
 | S-RM32 | 🔵 | `proprietario.html:728` | **A cobertura de citação de UMA palavra é nominal.** O *"não"* declarado ali aparece **7.964 vezes** no corpus: renomear o rótulo da tela deixa a régua verde do mesmo jeito. É a fresta da S-RM14 com outra roupa — declaração curta demais para provar coisa alguma | aberta (E263, 17/08) |
 | S-RM33 | 🔵 | as outras varreduras | **Varrer as varreduras à procura de piso `>=` publicado como NÚMERO.** O E263 achou que o E259 publicou 136/118 citações com casa quando são **139/121**, e nada mudou nos manuais desde então: o que escondeu foi a forma da assertiva — `toBeGreaterThanOrEqual` fica verde com 139, com 200 e com 2.000. Trocado por `toBe` ali; **as outras varreduras não foram conferidas** | aberta (E263, 17/08) |
-| S-RM34 | 🔵 | `contratos/index.tsx:346` · `financeiro/receber.tsx:360` · `noivas/index.tsx:205` e `:212` · `orcamentos/index.tsx:283` · `reservas/[bloqueioId].tsx:1517` · `vestidos/index.tsx:222` | **A metade da família que o E262 deliberadamente NÃO decidiu, e ela é da dona: o valor digitado deve perder também a aspa CURVA?** A decisão de 17/08 fala de aspas RETAS, e estes 7 sítios usam a curva — quase todos a mesma frase de vazio de busca (*Nenhum contrato para “ana”*), **que é um caso onde a aspa faz trabalho de verdade**: separa o que a pessoa digitou do resto da frase. A mesma tela de reservas escrevia o mesmo valor com os dois sinais a 500 linhas de distância (`:1517` curva, `:2041` reta), e o épico tirou só a reta | aberta (E262, 17/08) — **espera decisão da dona** |
+| ~~S-RM34~~ | 🔵 | `contratos/index.tsx:346` · `financeiro/receber.tsx:360` · `noivas/index.tsx:205` e `:212` · `orcamentos/index.tsx:283` · `reservas/[bloqueioId].tsx:1517` · `vestidos/index.tsx:222` | ~~**A metade da família que o E262 deliberadamente NÃO decidiu, e ela é da dona: o valor digitado deve perder também a aspa CURVA?** A decisão de 17/08 fala de aspas RETAS, e estes 7 sítios usam a curva — quase todos a mesma frase de vazio de busca (*Nenhum contrato para “ana”*), **que é um caso onde a aspa faz trabalho de verdade**: separa o que a pessoa digitou do resto da frase. A mesma tela de reservas escrevia o mesmo valor com os dois sinais a 500 linhas de distância (`:1517` curva, `:2041` reta), e o épico tirou só a reta~~ | ✅ **FECHADA POR DECISÃO da dona em 17/08: a aspa CURVA fica, e nada muda em código.** A razão é a MESMA que o E262 usou para manter a aspa no rótulo fixo, e é o que torna o critério dele coerente em vez de arbitrário: **a aspa reta é sinal de máquina; a curva é pontuação de português, e aqui ela faz trabalho** — separa o que a pessoa digitou do resto da frase, principalmente quando o termo tem espaço (*Nenhuma noiva para “maria silva”*). Fica a assimetria com o toast do catálogo (*Marfim saiu do catálogo*, sem aspa) e ela tem razão escrita: **num a palavra é o SUJEITO da frase, no outro é um trecho colado no meio dela** |
 | S-RM35 | 🔵 | `proprietario.html:615` × `vendedora.html:853` | Dois manuais citam rótulo de tela de jeitos diferentes: o primeiro escreve `<em>Fechar com a contabilidade</em>` sem aspa, o segundo `<em>“Devolvi o valor”</em>` e `<strong>“Quem está rescindindo?”</strong>` com curva. **Alinhado o `:615`, o `data-tela` dele cresce de 28 para 58 caracteres e o rabo da frase entra na régua** — que é exatamente o que a S-RM21 pedia. Medido no E262, executável em território do E263 | aberta (E262, 17/08) — **com o ganho medido** |
 | S-RM36 | 🔵 | `api-server/src/scripts/restore-drill.ts:44` | `return '"' + nome.replace(/"/g, '""') + '"';` — identificador SQL montado por concatenação de strings de aspa SIMPLES, sem template e sem escape. **A aspa é legítima** (é sintaxe SQL), e está nomeada no docblock da régua para ninguém procurá-la na allowlist; o que fica sem régua é a FORMA "aspa dupla solta dentro de string de aspa simples". **População medida: 1** | aberta (E262, 17/08) |
 | S-RM37 | 🔵 | `configuracoes/captacao.tsx:36` | O `EXEMPLO_CORPO` mostra JSON na TELA e a régua o trata como protocolo: a aspa é da sintaxe que a pessoa copia para o formulário do site, e tirá-la quebraria o exemplo. Entrou na allowlist com essa razão, e fica registrado que **é o único sítio da allowlist que não é protocolo de máquina nem console** — se aparecer um segundo exemplo de código na tela, a razão precisa de nome próprio em vez de virar hábito | aberta (E262, 17/08) |
