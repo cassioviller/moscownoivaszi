@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router";
+import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
 import { comFiltros } from "@/lib/filtro-url";
 
 /**
@@ -17,7 +17,7 @@ import { comFiltros } from "@/lib/filtro-url";
  * `lib/filtro-url.ts`, pura e testada; aqui é só o fio do React.
  */
 export function useBuscaNaUrl(nome = "q"): [string, (valor: string) => void] {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useEscritaNaUrl();
   const daUrl = searchParams.get(nome) ?? "";
   const [digitada, setDigitada] = useState(daUrl);
   const escrita = useRef(daUrl);

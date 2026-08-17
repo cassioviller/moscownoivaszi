@@ -19,7 +19,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { Link, useNavigate } from "react-router";
+import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
 import { atributosDoParam, atributosParaParam, comFiltros } from "@/lib/filtro-url";
 import { useBuscaNaUrl } from "@/hooks/use-busca-na-url";
 import { format } from "date-fns";
@@ -154,7 +155,7 @@ export default function Vestidos() {
   // E129/D5: os filtros moram na URL como a data já morava — ida-e-volta ao
   // detalhe do vestido preserva, e o link filtrado viaja. A filtragem segue
   // client-side; a busca filtra pelo que se digita (URL assenta 300ms atrás).
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useEscritaNaUrl();
   const [busca, setBusca] = useBuscaNaUrl();
   const tamanho = searchParams.get("tamanho") ?? TODOS;
   const categoria = searchParams.get("categoria") ?? TODOS;

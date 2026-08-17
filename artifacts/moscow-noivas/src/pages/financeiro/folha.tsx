@@ -31,7 +31,9 @@ import {
   type Recorrencia,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useSearchParams, Link } from "react-router";
+import { Link } from "react-router";
+import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
+import { comFiltros } from "@/lib/filtro-url";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -90,7 +92,7 @@ export default function Folha() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const caminho = useCaminhoDaLoja();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useEscritaNaUrl();
 
   const [competencia, setCompetencia] = useState(competenciaAtual());
   const intervalo = resolverIntervalo(searchParams.get("ini"), searchParams.get("fim"));
@@ -313,13 +315,17 @@ export default function Folha() {
     atualizarParams({ ini: iniYMD, fim: fimYMD });
   };
 
+  /**
+   * S-RM17/E261 — as duas pontas da janela são editáveis, e o carimbo da
+   * contabilidade é de mão única: montar o próximo params a partir do
+   * `searchParams` desta renderização perdia a primeira de duas edições no mesmo
+   * frame, e o `resolverIntervalo` trocava as pontas. Medido: `?ini=2024-04-04`
+   * seguido de `?fim=2024-04-04` virava `2024-04-04..2026-08-01` — 302
+   * recebimentos declarados de uma vez. O `useEscritaNaUrl` entrega ao updater a
+   * URL do momento da APLICAÇÃO.
+   */
   const atualizarParams = (patch: Record<string, string>) => {
-    const proximo = new URLSearchParams(searchParams);
-    for (const [chave, valor] of Object.entries(patch)) {
-      if (valor) proximo.set(chave, valor);
-      else proximo.delete(chave);
-    }
-    setSearchParams(proximo, { replace: true });
+    setSearchParams((atual) => comFiltros(atual, patch), { replace: true });
   };
 
   const nomePorUsuario = useMemo(() => {

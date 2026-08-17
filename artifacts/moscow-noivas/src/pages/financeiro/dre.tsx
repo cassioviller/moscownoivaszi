@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link } from "react-router";
+import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useGetDre, getGetDreQueryKey } from "@workspace/api-client-react";
@@ -51,7 +52,7 @@ function deslocarCompetencia(competencia: string, n: number): string {
 export default function DRE() {
   const naLoja = useCaminhoDaLoja();
   const { activeLojaId } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useEscritaNaUrl();
 
   const compParam = searchParams.get("comp");
   const competencia = competenciaValida(compParam ?? "") ? compParam! : competenciaAtual();

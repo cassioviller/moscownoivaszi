@@ -1,6 +1,7 @@
 import { varianteSituacao } from "@/lib/status-badge";
 import { useMemo, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
+import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
 import { comFiltros } from "@/lib/filtro-url";
 import { useBuscaNaUrl } from "@/hooks/use-busca-na-url";
 import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
@@ -111,7 +112,7 @@ export default function Atendimentos() {
   const { activeLojaId, acessosModulos, session } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useEscritaNaUrl();
   const historico = searchParams.get("quando") === "historico";
 
   // E129/D5: a fila era a tela mais cara do defeito — filtrar por si mesma,

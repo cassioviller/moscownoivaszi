@@ -1,5 +1,7 @@
 import { useMemo } from "react";
-import { Link, useParams, useSearchParams } from "react-router";
+import { Link, useParams } from "react-router";
+import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
+import { comFiltros } from "@/lib/filtro-url";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useListAjustes,
@@ -43,7 +45,7 @@ import { NovaConfeccao } from "./nova-confeccao";
 export default function Ajustes() {
   const { lojaId } = useParams();
   const { activeLojaId, acessosModulos } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useEscritaNaUrl();
 
   // Semana é o recorte padrão — a fila responde "o que costuro agora", não
   // "tudo que existe". `?recorte=todos` abre o horizonte inteiro.
@@ -92,10 +94,10 @@ export default function Ajustes() {
   }, [ajustes, recorte]);
 
   const trocarRecorte = (novo: "semana" | "todos" | "feitos") => {
-    const proximo = new URLSearchParams(searchParams);
-    if (novo === "semana") proximo.delete("recorte");
-    else proximo.set("recorte", novo);
-    setSearchParams(proximo, { replace: true });
+    // "semana" é o padrão, e padrão fica FORA da URL (E129).
+    setSearchParams((atual) => comFiltros(atual, { recorte: novo }, { recorte: "semana" }), {
+      replace: true,
+    });
   };
 
   return (

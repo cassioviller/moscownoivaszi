@@ -11,7 +11,8 @@ import {
   type ContratoStatus,
   type ListContratosParams,
 } from "@workspace/api-client-react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
+import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
 import { comFiltros, paginaDaUrl } from "@/lib/filtro-url";
 import { useBuscaNaUrl } from "@/hooks/use-busca-na-url";
 import { Card, CardContent } from "@/components/ui/card";
@@ -48,7 +49,7 @@ export default function Contratos() {
   const navigate = useNavigate();
   // E129/D5: filtro, busca e página moram na URL — ida-e-volta preserva e o
   // link filtrado abre filtrado. Default fora da URL (`comFiltros`).
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useEscritaNaUrl();
   const filtro = searchParams.get("filtro") ?? "todos";
   const pagina = paginaDaUrl(searchParams);
   const [busca, setBusca] = useBuscaNaUrl();

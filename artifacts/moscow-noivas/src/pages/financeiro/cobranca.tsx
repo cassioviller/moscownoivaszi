@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link } from "react-router";
+import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -202,7 +203,7 @@ export default function Cobranca() {
   const { activeLojaId, acessosModulos, session } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useEscritaNaUrl();
 
   /**
    * E123/B2 — cobrar por AQUI passa a deixar o mesmo rastro de /mensagens.

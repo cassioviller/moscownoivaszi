@@ -1,4 +1,5 @@
-import { useSearchParams } from "react-router";
+import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
+import { comFiltros } from "@/lib/filtro-url";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useGetMinhaComissao,
@@ -27,7 +28,7 @@ import { capitalizar } from "@/lib/formatos";
  */
 export default function MinhaComissao() {
   const { activeLojaId, user } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useEscritaNaUrl();
   const competencia = searchParams.get("competencia") ?? competenciaAtual();
   const competencias = ultimasCompetencias(competenciaAtual(), 12).reverse();
 
@@ -51,7 +52,14 @@ export default function MinhaComissao() {
         </div>
         <Select
           value={competencia}
-          onValueChange={(v) => setSearchParams(v === competenciaAtual() ? {} : { competencia: v })}
+          onValueChange={(v) =>
+            // O mês corrente é o padrão e fica FORA da URL (E129) — antes isso
+            // era um `{}` que levava junto qualquer parâmetro alheio. Sem
+            // `replace`: trocar de mês aqui é navegação, e o voltar desfaz.
+            setSearchParams((atual) =>
+              comFiltros(atual, { competencia: v }, { competencia: competenciaAtual() }),
+            )
+          }
         >
           <SelectTrigger className="w-56" aria-label="Competência">
             <SelectValue />

@@ -11,7 +11,8 @@ import { useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { Link, useNavigate } from "react-router";
+import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
 import { comFiltros, paginaDaUrl } from "@/lib/filtro-url";
 import { useBuscaNaUrl } from "@/hooks/use-busca-na-url";
 import { Card, CardContent } from "@/components/ui/card";
@@ -74,7 +75,7 @@ export default function Orcamentos() {
   const [open, setOpen] = useState(false);
   // E129/D5: filtro, busca e página moram na URL — ida-e-volta preserva e o
   // link filtrado abre filtrado. Default fora da URL (`comFiltros`).
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useEscritaNaUrl();
   const filtro = searchParams.get("filtro") ?? "todos";
   const pagina = paginaDaUrl(searchParams);
   const [busca, setBusca] = useBuscaNaUrl();

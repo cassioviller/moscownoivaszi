@@ -31,7 +31,8 @@ import {
   type SimulacaoComissao,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router";
+import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
+import { comFiltros } from "@/lib/filtro-url";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -177,7 +178,7 @@ export default function Comissoes() {
     podeMexerNaComissao && podeNoModulo(acessosModulos, "admin", "editar");
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useEscritaNaUrl();
 
   const competencia = searchParams.get("competencia") ?? competenciaAtual();
 
@@ -328,9 +329,7 @@ export default function Comissoes() {
   );
 
   const trocarCompetencia = (c: string) => {
-    const proximo = new URLSearchParams(searchParams);
-    proximo.set("competencia", c);
-    setSearchParams(proximo, { replace: true });
+    setSearchParams((atual) => comFiltros(atual, { competencia: c }), { replace: true });
   };
 
   const atualizarFaixa = (i: number, campo: keyof FaixaForm, valor: string) =>

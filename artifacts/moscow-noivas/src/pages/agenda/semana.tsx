@@ -1,5 +1,7 @@
 import { useMemo } from "react";
-import { Link, useParams, useSearchParams } from "react-router";
+import { Link, useParams } from "react-router";
+import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
+import { comFiltros } from "@/lib/filtro-url";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useListAtendimentos,
@@ -42,7 +44,7 @@ const diaISO = (d: Date) => format(d, "yyyy-MM-dd");
 export default function AgendaSemana() {
   const { lojaId } = useParams();
   const { activeLojaId } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useEscritaNaUrl();
 
   /**
    * G11 (E168) — a semana nasce do dia da LOJA, como a tela do dia.
@@ -113,10 +115,9 @@ export default function AgendaSemana() {
   }, [daSemana]);
 
   const navegar = (destino: Date | null) => {
-    const proximo = new URLSearchParams(searchParams);
-    if (destino) proximo.set("semana", diaISO(destino));
-    else proximo.delete("semana");
-    setSearchParams(proximo, { replace: true });
+    setSearchParams((atual) => comFiltros(atual, { semana: destino ? diaISO(destino) : null }), {
+      replace: true,
+    });
   };
 
   // G11: "hoje" é o dia da LOJA aqui também — a coluna destacada era a do

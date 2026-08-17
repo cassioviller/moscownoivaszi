@@ -1,5 +1,7 @@
 import { useMemo } from "react";
-import { Link, useParams, useSearchParams } from "react-router";
+import { Link, useParams } from "react-router";
+import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
+import { comFiltros } from "@/lib/filtro-url";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useListAuditoria,
@@ -54,7 +56,7 @@ const TODOS = "__todos__";
 export default function Auditoria() {
   const { lojaId } = useParams();
   const { activeLojaId } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useEscritaNaUrl();
 
   const acao = acaoFiltravel(searchParams.get("acao"));
   const usuarioId = searchParams.get("autor") ?? "";
@@ -197,7 +199,17 @@ export default function Auditoria() {
         </div>
 
         {temFiltro && (
-          <Button variant="ghost" onClick={() => setSearchParams({}, { replace: true })}>
+          <Button
+            variant="ghost"
+            onClick={() =>
+              // Nomeados um a um, e não `{}`: a tela limpa os QUATRO filtros que
+              // são dela, e o que ela não escreve atravessa intacto.
+              setSearchParams(
+                (atual) => comFiltros(atual, { acao: null, autor: null, de: null, ate: null }),
+                { replace: true },
+              )
+            }
+          >
             Limpar
           </Button>
         )}

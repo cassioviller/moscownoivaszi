@@ -1,4 +1,5 @@
-import { Link, useParams, useSearchParams } from "react-router";
+import { Link, useParams } from "react-router";
+import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
 import { comFiltros } from "@/lib/filtro-url";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,7 +55,7 @@ export default function ConversaoLeads() {
   // E142/D7: o período mora na URL (E129) — default FORA (sem params, a
   // história inteira, o comportamento de sempre). O recorte é por dia de
   // ENTRADA do lead, no servidor; numerador e denominador do mesmo período.
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useEscritaNaUrl();
   const de = searchParams.get("de") ?? "";
   const ate = searchParams.get("ate") ?? "";
   const definirPeriodo = (nome: "de" | "ate", valor: string) =>

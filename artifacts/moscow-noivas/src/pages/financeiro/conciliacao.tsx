@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router";
+import { Link, useParams } from "react-router";
+import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
 import { comFiltros } from "@/lib/filtro-url";
 import { useAuth } from "@/hooks/use-auth";
 import { podeNoModulo } from "@/lib/permissoes";
@@ -173,7 +174,7 @@ export default function Conciliacao() {
   // E129/D5: só o FILTRO vai à URL (`recorte=todas` quando se escolhe ver as
   // já conferidas; default fora) — o extrato carregado é memória de sessão e
   // não viaja num link.
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useEscritaNaUrl();
   const soNaoConciliado = searchParams.get("recorte") !== "todas";
   const definirSoNaoConciliado = (v: boolean) =>
     setSearchParams((p) => comFiltros(p, { recorte: v ? null : "todas" }), { replace: true });

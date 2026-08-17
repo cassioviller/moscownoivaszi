@@ -1,5 +1,7 @@
 import { useMemo } from "react";
-import { Link, useParams, useSearchParams } from "react-router";
+import { Link, useParams } from "react-router";
+import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
+import { comFiltros } from "@/lib/filtro-url";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useGetUtilizacaoVestidos,
@@ -55,7 +57,7 @@ function usoTotal(v: VestidoUtilizacao): number {
 export default function UtilizacaoVestidos() {
   const { lojaId } = useParams();
   const { activeLojaId } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useEscritaNaUrl();
 
   const periodoParam = searchParams.get("periodo");
   const periodo: Periodo = periodoParam && periodoParam in PERIODOS ? (periodoParam as Periodo) : "12m";
@@ -107,10 +109,10 @@ export default function UtilizacaoVestidos() {
   }, [utilizacao.data]);
 
   const trocarPeriodo = (novo: Periodo) => {
-    const proximo = new URLSearchParams(searchParams);
-    if (novo === "12m") proximo.delete("periodo");
-    else proximo.set("periodo", novo);
-    setSearchParams(proximo, { replace: true });
+    // "12m" é o padrão, e padrão fica FORA da URL (E129).
+    setSearchParams((atual) => comFiltros(atual, { periodo: novo }, { periodo: "12m" }), {
+      replace: true,
+    });
   };
 
   return (

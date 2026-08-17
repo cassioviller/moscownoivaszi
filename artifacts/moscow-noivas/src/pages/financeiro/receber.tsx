@@ -19,7 +19,9 @@ import {
   type Parcela,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useSearchParams } from "react-router";
+import { Link } from "react-router";
+import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
+import { comFiltros } from "@/lib/filtro-url";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -93,7 +95,7 @@ export default function Receber() {
   const podeMovimentar = podeNoModulo(acessosModulos, "contratos", "editar");
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useEscritaNaUrl();
 
   const filtro = (FILTROS.find((f) => f.chave === searchParams.get("filtro"))?.chave ??
     "abertas") as FiltroReceber;
@@ -150,13 +152,9 @@ export default function Receber() {
 
   const hoje = hojeLocal();
 
+  /** S-RM17/E261: `ini`, `fim` e `filtro` são três escritas independentes. */
   const atualizarParams = (patch: Record<string, string>) => {
-    const proximo = new URLSearchParams(searchParams);
-    for (const [chave, valor] of Object.entries(patch)) {
-      if (valor) proximo.set(chave, valor);
-      else proximo.delete(chave);
-    }
-    setSearchParams(proximo, { replace: true });
+    setSearchParams((atual) => comFiltros(atual, patch), { replace: true });
   };
 
   const naJanela = useMemo(() => {

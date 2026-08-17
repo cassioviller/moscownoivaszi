@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link } from "react-router";
+import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -35,7 +36,7 @@ import { resolverIntervalo, competenciaAtual, rotuloCompetencia } from "@/lib/fi
 
 export default function FluxoCaixa() {
   const { activeLojaId } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useEscritaNaUrl();
 
   // A URL é a fonte do intervalo; ausente/inválido cai no mês corrente.
   const intervalo = useMemo(

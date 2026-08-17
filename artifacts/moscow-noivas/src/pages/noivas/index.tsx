@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { Link, useParams, useSearchParams } from "react-router";
+import { Link, useParams } from "react-router";
+import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
 import { comFiltros, paginaDaUrl } from "@/lib/filtro-url";
 import { useBuscaNaUrl } from "@/hooks/use-busca-na-url";
 import { keepPreviousData } from "@tanstack/react-query";
@@ -48,7 +49,7 @@ export default function Noivas() {
   // E129/D5: busca, etapa, página e vista moram na URL — conferir a ficha na
   // página 3 e voltar volta NA página 3, e o link filtrado abre filtrado.
   // (?vista=funil já deep-linkava desde o E68 — mas era só lido no mount.)
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useEscritaNaUrl();
   const etapa = searchParams.get("etapa") ?? TODAS_ETAPAS;
   const pagina = paginaDaUrl(searchParams);
   const vista: "lista" | "funil" = searchParams.get("vista") === "funil" ? "funil" : "lista";

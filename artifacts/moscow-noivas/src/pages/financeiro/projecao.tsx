@@ -12,7 +12,9 @@ import {
   useCreateSaldoReferencia,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useSearchParams } from "react-router";
+import { Link } from "react-router";
+import { useEscritaNaUrl } from "@/hooks/use-escrita-na-url";
+import { comFiltros } from "@/lib/filtro-url";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,7 +50,7 @@ export default function Projecao() {
   const { activeLojaId, acessosModulos } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useEscritaNaUrl();
 
   const horizonteDias = normalizarHorizonte(searchParams.get("h"));
   const podeConferir = podeNoModulo(acessosModulos, "financeiro", "criar");
@@ -160,9 +162,7 @@ export default function Projecao() {
   }
 
   function trocarHorizonte(h: number) {
-    const proximo = new URLSearchParams(searchParams);
-    proximo.set("h", String(h));
-    setSearchParams(proximo, { replace: true });
+    setSearchParams((atual) => comFiltros(atual, { h }), { replace: true });
   }
 
   // `pagamentos` entra aqui: sem ele o saldo de hoje volta a ser a âncora crua,
