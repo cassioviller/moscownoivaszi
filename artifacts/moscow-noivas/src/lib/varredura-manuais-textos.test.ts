@@ -926,6 +926,37 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
     ).toEqual([]);
   });
 
+  /**
+   * **S-RM35 (E269) — declaração NENHUMA pode conter aspa curva, e a razão é
+   * aritmética.**
+   *
+   * `rotulos()` acha a citação com `m[0].indexOf("“")` sobre a tag inteira —
+   * abertura, atributos e conteúdo. Uma aspa curva dentro de um `data-*`
+   * aparece ANTES da do conteúdo, o índice calculado passa a apontar o
+   * atributo, e a citação de verdade fica órfã: a régua da aspa sem casa a
+   * acusa de "solta" enquanto ela está declarada a dois caracteres dali.
+   *
+   * Medido ao alinhar o `proprietario.html:615` com o que o E262 pôs na tela:
+   * declarar `— o envio é aqui embaixo, em “Fechar com a contabilidade”.` num
+   * pedaço só reprovou exatamente assim. **O mesmo trecho declarado em DOIS
+   * pedaços cobre o mesmo texto sem aspa nenhuma no atributo** — que é o que
+   * ficou.
+   */
+  it("nenhuma declaração leva aspa curva dentro do atributo", () => {
+    const comAspa = manuais().flatMap((manual) => {
+      const texto = ler(manual);
+      return [...texto.matchAll(/data-(?:tela|fala|grifo)="([^"]*)"/g)]
+        .filter((m) => /[“”]/.test(m[1]!))
+        .map((m) => `${path.basename(manual)}:${linhaDe(texto, m.index!)} · «${m[1]}»`);
+    });
+    expect(
+      comAspa,
+      "aspa curva dentro de uma declaração: ela vem ANTES da aspa do conteúdo e o " +
+        "`indexOf` de `rotulos()` passa a apontar o atributo, deixando a citação órfã. " +
+        "Parta o pedaço em dois, com ` | ` entre eles (S-RM35)",
+    ).toEqual([]);
+  });
+
   it("a lista de declarações nominais permitidas não vira hábito", () => {
     // A mesma regra 34 pelo avesso do `data-grifo`: razão vazia é permissão
     // sem justificativa, e três é o número de hoje — a quarta passa por aqui.

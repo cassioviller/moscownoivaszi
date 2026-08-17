@@ -209,6 +209,15 @@ function aspasRetas(): Sitio[] {
       // 3. encostada numa expressão JSX: `"{…}` (só no .tsx)
       const jsx = arquivo.endsWith(".tsx") ? linha.match(/"\{/) : null;
       if (jsx) formas.set("expressão JSX", jsx.index ?? 0);
+      // 4. **S-RM36 (E269)** — aspa dupla SOLTA dentro de uma string de aspa
+      //    simples: `'"' + nome + '"'`. Era a única forma que esta régua
+      //    conhecia e não media: ela estava nomeada num docblock logo abaixo,
+      //    "para ninguém a procurar na allowlist" — e docblock não reprova. A
+      //    população é 1 (`restore-drill.ts:44`) e a aspa lá é legítima, mas
+      //    quem escrever a segunda merece o mesmo julgamento que as outras três
+      //    formas dão.
+      const solta = linha.match(/'[^'\n]*"[^'\n]*'/);
+      if (solta) formas.set("aspa solta em string simples", solta.index ?? 0);
       for (const [forma, onde] of formas) {
         const crua = cruas[i] ?? "";
         achados.push({ arquivo, linha: i + 1, forma, texto: janela(crua, onde), crua });
@@ -223,6 +232,22 @@ function aspasRetas(): Sitio[] {
  * A chave é `arquivo` + um pedaço estável da linha, e não o número da linha:
  * uma edição em outro ponto do arquivo não pode fazer esta régua mentir.
  */
+/**
+ * **S-RM37 (E269) — a razão que não é protocolo de máquina nem console.**
+ *
+ * O `EXEMPLO_CORPO` de `captacao.tsx:36` mostra JSON na TELA: a aspa é da
+ * sintaxe que a pessoa copia para o formulário do site, e tirá-la quebraria o
+ * exemplo. Ele é o **único** sítio da lista que não é cabeçalho HTTP, CSV,
+ * console de script, identificador SQL ou codificação de PDF — todos os outros
+ * são máquina falando com máquina, e este é máquina desenhada para uma pessoa.
+ *
+ * A sobra pedia que, se aparecesse um segundo, a razão ganhasse nome próprio em
+ * vez de virar hábito. A razão é uma constante justamente para isso, e a régua
+ * abaixo conta quantas entradas a usam: **hoje é uma, e a segunda passa por
+ * aqui.**
+ */
+const EXEMPLO_NA_TELA = "JSON: a aspa é da sintaxe";
+
 const DE_PROTOCOLO: { arquivo: string; marca: string; razao: string }[] = [
   // HTTP — a aspa é do cabeçalho, e tirá-la quebra o download.
   { arquivo: "artifacts/api-server/src/lib/csv.ts", marca: "Content-Disposition", razao: "HTTP: filename entre aspas" },
@@ -242,16 +267,14 @@ const DE_PROTOCOLO: { arquivo: string; marca: string; razao: string }[] = [
   { arquivo: "artifacts/api-server/src/scripts/seed.ts", marca: "Configurando", razao: "console de arranque" },
   { arquivo: "artifacts/api-server/src/scripts/seed.ts", marca: "senha padrão", razao: "console de arranque" },
   // JSON de exemplo mostrado na tela — a aspa é da sintaxe que a pessoa copia.
-  { arquivo: "artifacts/moscow-noivas/src/pages/configuracoes/captacao.tsx", marca: "EXEMPLO_CORPO", razao: "JSON: a aspa é da sintaxe" },
+  { arquivo: "artifacts/moscow-noivas/src/pages/configuracoes/captacao.tsx", marca: "EXEMPLO_CORPO", razao: EXEMPLO_NA_TELA },
+  // S-RM36 (E269) — a quarta forma, que antes vivia num docblock. A aspa é da
+  // NORMA nos três: identificador de Postgres, e a tabela que traduz a aspa
+  // curva para a reta porque a Helvetica/WinAnsiEncoding não sabe desenhá-la.
+  { arquivo: "artifacts/api-server/src/scripts/restore-drill.ts", marca: "nome.replace", razao: "SQL: identificador de Postgres entre aspas duplas" },
+  { arquivo: "artifacts/api-server/src/lib/pdf-desenhista.ts", marca: `"“": '"'`, razao: "PDF: a fonte não desenha a aspa curva" },
+  { arquivo: "artifacts/api-server/src/lib/pdf-desenhista.ts", marca: `"”": '"'`, razao: "PDF: a fonte não desenha a aspa curva" },
 ];
-
-/**
- * Um sítio de aspa reta legítima que estas três formas **não** alcançam, e fica
- * nomeado aqui para que ninguém o procure na lista acima: o identificador SQL
- * de `restore-drill.ts:44` (`'"' + nome + '"'`), montado por concatenação de
- * strings de aspa SIMPLES — a aspa dupla ali é conteúdo de uma string, sem
- * template e sem escape, que é a forma que esta régua não decide.
- */
 
 function ehDeProtocolo(s: Sitio): boolean {
   return DE_PROTOCOLO.some((p) => p.arquivo === s.arquivo && s.crua.includes(p.marca));
@@ -285,6 +308,18 @@ describe("a aspa reta não nasce em frase que uma pessoa lê", () => {
       (p) => !sitios.some((s) => s.arquivo === p.arquivo && s.crua.includes(p.marca)),
     ).map((p) => `${p.arquivo} « ${p.marca} » (${p.razao})`);
     expect(orfaos).toEqual([]);
-    expect(DE_PROTOCOLO.length).toBe(13);
+    expect(DE_PROTOCOLO.length).toBe(16);
+  });
+
+  it("o exemplo de código na TELA continua sendo um só (S-RM37)", () => {
+    // Todo o resto da lista é máquina falando com máquina — cabeçalho, CSV,
+    // console, identificador SQL, codificação de PDF. Este é máquina desenhada
+    // para uma pessoa copiar, e é a razão mais fácil de esticar sem pensar.
+    const naTela = DE_PROTOCOLO.filter((p) => p.razao === EXEMPLO_NA_TELA);
+    expect(
+      naTela.map((p) => p.arquivo),
+      "nasceu um segundo exemplo de código na tela: ele precisa de razão PRÓPRIA, " +
+        "e não desta — senão a categoria vira o lugar onde toda aspa difícil vai parar (S-RM37)",
+    ).toEqual(["artifacts/moscow-noivas/src/pages/configuracoes/captacao.tsx"]);
   });
 });

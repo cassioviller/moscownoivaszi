@@ -384,6 +384,33 @@ export default function Folha() {
     [doPeriodo],
   );
 
+  /**
+   * **S-RM39 (E269) — as duas pendências do roteiro saem do JSX.**
+   *
+   * As duas eram interpoladas dentro do `<PassoDoRoteiro>`, numa linha só de
+   * **241 e 206 caracteres** — três ternários de plural e uma contagem
+   * embutidos numa string que ninguém lê no diff, e que **qualquer conserto
+   * mexe às cegas**: o vermelho da régua de aspas do E262 precisou de uma
+   * janela para caber na tela. A sobra contava uma linha; são duas.
+   *
+   * E a de cima filtrava a mesma lista **DUAS vezes** para dizer o número e
+   * decidir o plural — a segunda passada existia só porque a primeira estava
+   * presa dentro da interpolação.
+   *
+   * A citação do rótulo (E262) fica: `Fechar com a contabilidade` é o nome do
+   * botão lá embaixo, são quatro palavras, e sem delimitador a frase termina
+   * numa oração que o leitor não sabe onde acaba. A aspa é CURVA, que é o
+   * critério da subfamília B.
+   */
+  const previstas = (contas.data ?? []).filter((c) => c.status === "PREVISTA").length;
+  const frasePrevistas = `${previstas} conta${previstas === 1 ? "" : "s"} em aberto no mês.`;
+
+  const aEnviar = pendentesEnvio.length;
+  const plural = aEnviar === 1 ? "" : "s";
+  const frasePendentesEnvio =
+    `${aEnviar} movimento${plural} do período ainda não enviado${plural}` +
+    ` — o envio é aqui embaixo, em “Fechar com a contabilidade”.`;
+
   const onGerar = async () => {
     try {
       const res = await gerarRecorrencias.mutateAsync({ lojaId: activeLojaId!, data: { competencia } });
@@ -517,7 +544,7 @@ export default function Folha() {
                 estadoDasConsultas(contas),
                 !(contas.data ?? []).some((c) => c.status === "PREVISTA"),
               )}
-              pendencia={`${(contas.data ?? []).filter((c) => c.status === "PREVISTA").length} conta${(contas.data ?? []).filter((c) => c.status === "PREVISTA").length === 1 ? "" : "s"} em aberto no mês.`}
+              pendencia={frasePrevistas}
               href={`/loja/${activeLojaId}/financeiro/pagar?ini=${janelaCompetencia.de}&fim=${janelaCompetencia.ate}`}
               rotuloLink="Pagar →"
             />
@@ -528,11 +555,7 @@ export default function Folha() {
                 estadoDasConsultas(pagamentos),
                 pendentesEnvio.length === 0,
               )}
-              /* E262 — `Fechar com a contabilidade` é o rótulo do botão lá
-                 embaixo: são quatro palavras, e sem delimitador a frase termina
-                 numa oração que o leitor não sabe onde acaba. A aspa fica, e
-                 vira curva (o critério da subfamília B). */
-              pendencia={`${pendentesEnvio.length} movimento${pendentesEnvio.length === 1 ? "" : "s"} do período ainda não enviado${pendentesEnvio.length === 1 ? "" : "s"} — o envio é aqui embaixo, em “Fechar com a contabilidade”.`}
+              pendencia={frasePendentesEnvio}
             />
           </ol>
         </CardContent>
