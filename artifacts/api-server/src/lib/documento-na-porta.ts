@@ -38,7 +38,10 @@ function conferir(
       recusa: {
         error: tipo === "CPF" ? "CPF_INVALIDO" : "CNPJ_INVALIDO",
         detalhe:
-          `${tipo} "${valor.trim()}" não é um ${tipo} válido: os dígitos verificadores não fecham. ` +
+          // E262 — o número que a pessoa digitou está no campo, do lado, sem
+          // aspa nenhuma. A aspa aqui é a mesma que a decisão da dona
+          // (S-RM16) tirou do catálogo.
+          `${tipo} ${valor.trim()} não é um ${tipo} válido: os dígitos verificadores não fecham. ` +
           `Confira o número antes de gravar — ele sai impresso no contrato. ` +
           `(O sistema confere a aritmética do número, não o cadastro na Receita.)`,
         campos: [{ campo, motivo: `${tipo} com dígitos verificadores errados` }],

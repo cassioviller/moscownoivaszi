@@ -312,7 +312,11 @@ export default function ContratoDetail() {
   // caixa" como se fossem coisas diferentes — e a porta abria as duas.
   const fraseDaDevolucao =
     destinoPago === "estornar"
-      ? "Com \"Devolvi o valor\" marcado abaixo, a devolução sai do caixa agora — não nasce conta a pagar."
+      ? // E262 — `Devolvi o valor` é o rótulo da caixa logo abaixo, e a aspa é
+        // o que diz onde ele acaba: sem ela a oração vira
+        // `Com Devolvi o valor marcado abaixo`, que não é português. A aspa
+        // curva é a que o próprio manual usa em `vendedora.html:853`.
+        "Com “Devolvi o valor” marcado abaixo, a devolução sai do caixa agora — não nasce conta a pagar."
       : "A devolução nasce como conta a pagar da loja, vencendo em 30 dias (13ª §3º).";
 
   /**

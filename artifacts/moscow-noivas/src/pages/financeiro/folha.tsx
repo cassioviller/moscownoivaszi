@@ -527,7 +527,11 @@ export default function Folha() {
                 estadoDasConsultas(pagamentos),
                 pendentesEnvio.length === 0,
               )}
-              pendencia={`${pendentesEnvio.length} movimento${pendentesEnvio.length === 1 ? "" : "s"} do período ainda não enviado${pendentesEnvio.length === 1 ? "" : "s"} — o envio é aqui embaixo, em "Fechar com a contabilidade".`}
+              /* E262 — `Fechar com a contabilidade` é o rótulo do botão lá
+                 embaixo: são quatro palavras, e sem delimitador a frase termina
+                 numa oração que o leitor não sabe onde acaba. A aspa fica, e
+                 vira curva (o critério da subfamília B). */
+              pendencia={`${pendentesEnvio.length} movimento${pendentesEnvio.length === 1 ? "" : "s"} do período ainda não enviado${pendentesEnvio.length === 1 ? "" : "s"} — o envio é aqui embaixo, em “Fechar com a contabilidade”.`}
             />
           </ol>
         </CardContent>

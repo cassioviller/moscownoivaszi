@@ -142,7 +142,11 @@ function EditarAtributoForm({ atributo }: { atributo: Atributo }) {
     try {
       await deleteAtributo.mutateAsync({ lojaId: activeLojaId!, atributoId: atributo.id });
       await queryClient.invalidateQueries({ queryKey: getListAtributosQueryKey(activeLojaId!) });
-      toast({ title: "Atributo apagado", description: `"${atributo.nome}" saiu do catálogo.` });
+      // E262 — a decisão da dona (S-RM16) vale para o valor que a pessoa
+      // digitou, e o E259 a executou só na RECUSA (`routes/catalogo.ts`). A
+      // confirmação ficou com as aspas retas e a tela passou a recusar de um
+      // jeito e confirmar de outro, a dois cliques de distância.
+      toast({ title: "Atributo apagado", description: `${atributo.nome} saiu do catálogo.` });
       navigate(`/loja/${lojaId}/catalogo`);
     } catch (err) {
       setConfirmarApagarAtributo(false);
@@ -177,7 +181,7 @@ function EditarAtributoForm({ atributo }: { atributo: Atributo }) {
       await queryClient.invalidateQueries({ queryKey: getListAtributosQueryKey(activeLojaId!) });
       const valores = form.getValues();
       form.reset({ ...valores, opcoes: valores.opcoes.filter((o) => o.opcaoId !== opcaoParaApagar.id) });
-      toast({ title: "Opção apagada", description: `"${opcaoParaApagar.valor}" saiu de "${atributo.nome}".` });
+      toast({ title: "Opção apagada", description: `${opcaoParaApagar.valor} saiu de ${atributo.nome}.` });
       setOpcaoParaApagar(null);
     } catch (err) {
       setOpcaoParaApagar(null);
@@ -401,10 +405,10 @@ function EditarAtributoForm({ atributo }: { atributo: Atributo }) {
         <AlertDialog open={confirmarApagarAtributo} onOpenChange={setConfirmarApagarAtributo}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Apagar o atributo "{atributo.nome}"?</AlertDialogTitle>
+              <AlertDialogTitle>Apagar o atributo {atributo.nome}?</AlertDialogTitle>
               <AlertDialogDescription>
                 Só sai o atributo que não classifica peça nem noiva. Se já classificar, o sistema recusa e diz
-                quantas — e o caminho é desmarcar "Atributo ativo".
+                quantas — e o caminho é desmarcar “Atributo ativo”.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -418,7 +422,7 @@ function EditarAtributoForm({ atributo }: { atributo: Atributo }) {
         <AlertDialog open={!!opcaoParaApagar} onOpenChange={(v) => !v && setOpcaoParaApagar(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Apagar a opção "{opcaoParaApagar?.valor}"?</AlertDialogTitle>
+              <AlertDialogTitle>Apagar a opção {opcaoParaApagar?.valor}?</AlertDialogTitle>
               <AlertDialogDescription>
                 Só sai a opção sem uso. Se ela já classificar peça ou noiva, o sistema recusa — desative-a.
               </AlertDialogDescription>

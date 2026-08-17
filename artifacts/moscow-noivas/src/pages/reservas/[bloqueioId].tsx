@@ -2038,7 +2038,10 @@ export default function ReservaDetalhe() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remover este ajuste?</AlertDialogTitle>
             <AlertDialogDescription>
-              "{ajusteParaRemover?.descricao}" sai da prova, e o checklist dele vai junto.
+              {/* E262 — a decisão da dona (S-RM16) sobre o valor que a pessoa
+                  digitou. Achado pela régua, não pela sobra: nenhuma das quatro
+                  o nomeia. */}
+              {ajusteParaRemover?.descricao} sai da prova, e o checklist dele vai junto.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

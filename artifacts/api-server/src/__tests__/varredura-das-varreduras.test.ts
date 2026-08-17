@@ -125,15 +125,22 @@ describe("S-C260 — toda varredura diz o tamanho do que olhou", () => {
     // gesto volta a ser resolvido por POSIÇÃO, que foi a S-R7). A população da
     // classe é **um** arquivo, e ele já está pago: a régua nasce como cerca do
     // segundo, não como retrato de dívida.
-    expect(todas.length, `varreduras encontradas:\n${todas.join("\n")}`).toBe(37);
+    // E262: 37 → 38. A `varredura-aspa-reta` (frontend, S-RM19/20/21/22 — a
+    // aspa reta em frase que uma pessoa lê). Ela alcança três formas
+    // decidíveis (template literal, aspa escapada, aspa encostada em expressão
+    // JSX) e DECLARA a que não alcança: a aspa reta em texto JSX nu, que tem a
+    // mesma forma léxica de um argumento de função. Os 13 sítios em que a aspa
+    // é da NORMA — `ETag`, `Content-Disposition`, campo de CSV, console de
+    // script, JSON de exemplo — são passivo julgado no formato da regra 31.
+    expect(todas.length, `varreduras encontradas:\n${todas.join("\n")}`).toBe(38);
 
     // E as duas dimensões, nomeadas: a sobra descrevia só a grafia, e o
     // julgamento de 14/08 também tinha perdido as 5 da primeira grafia que
     // moram no frontend.
     const porGrafia = (re: RegExp) => todas.filter((r) => re.test(path.basename(r))).length;
-    expect(porGrafia(/^varredura-/)).toBe(25); // E236: +1, a `varredura-manuais-prints`; E239: +3, na API; E250: +1, a `varredura-migracoes-por-loja`
+    expect(porGrafia(/^varredura-/)).toBe(26); // E236: +1, a `varredura-manuais-prints`; E239: +3, na API; E250: +1, a `varredura-migracoes-por-loja`; E262: +1, a `varredura-aspa-reta`
     expect(porGrafia(/-varredura\./)).toBe(12); // E256: +1, a `campo-id-em-field-array-varredura`
-    expect(todas.filter((r) => r.startsWith("artifacts/moscow-noivas/")).length).toBe(17); // E236: +1, no frontend; E256: +1
+    expect(todas.filter((r) => r.startsWith("artifacts/moscow-noivas/")).length).toBe(18); // E236: +1, no frontend; E256: +1; E262: +1
   });
 
   it("nenhuma varredura afirma sobre um conjunto cujo tamanho ela não diz", () => {

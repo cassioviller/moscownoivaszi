@@ -78,7 +78,9 @@ export default function AdminPerfis() {
       setNovoNome("");
       toast({
         title: "Perfil criado",
-        description: `"${nome}" nasce sem acesso nenhum — marque na matriz o que ele pode.`,
+        // E262 — o nome que a pessoa acabou de digitar aparece na lista sem
+        // aspa nenhuma; a aspa em volta dele aqui só atrapalha quem procura.
+        description: `${nome} nasce sem acesso nenhum — marque na matriz o que ele pode.`,
       });
     } catch (err) {
       toast({

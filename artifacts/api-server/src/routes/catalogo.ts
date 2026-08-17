@@ -111,7 +111,11 @@ router.delete("/lojas/:lojaId/atributos/:atributoId", async (req, res): Promise<
         // que leu no manual achava `"Marfim" classifica`. A frase equivalente em
         // `routes/agenda.ts:232` já nomeia sem aspa nenhuma.
         `${alvo.nome} classifica ${emPecas.n} peça(s) e ${emNoivas.n} noiva(s) — apagar levaria essa classificação junto. ` +
-        "Para tirá-lo do catálogo sem perder o que já foi classificado, desmarque \"Atributo ativo\".",
+        // E262 — a aspa FICA, e vira curva. `Atributo ativo` é o rótulo de uma
+        // caixa que está na tela: sem delimitador a frase não diz se o `ativo`
+        // é do rótulo ou dela. É o critério da subfamília B, e a mesma tela o
+        // repete em `catalogo/[atributoId]/editar.tsx:407`.
+        "Para tirá-lo do catálogo sem perder o que já foi classificado, desmarque “Atributo ativo”.",
     });
     return;
   }
