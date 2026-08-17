@@ -106,23 +106,24 @@ describe("E252 — o envio à contabilidade é por ATO", () => {
 
   /**
    * **O caso da sobra, com o dinheiro.** Antes do E252 o segundo `declarar`
-   * devolvia `parcelas: 0` e os R$ 600,00 ficavam fora de todo pacote.
+   * devolvia zero recebimentos (o campo se chamava `parcelas` até a S-RM9) e
+   * os R$ 600,00 ficavam fora de todo pacote.
    */
   it("o pedaço NOVO numa parcela já declarada entra no pacote seguinte — e o já declarado não volta", async () => {
     const pid = await parcelaDe(1000, "2028-03-10");
     await receber(pid, 400, "2028-03-05");
 
     const primeiro = await declarar("2028-03-01", "2028-03-31").expect(200);
-    expect(primeiro.body).toEqual({ marcados: 1, parcelas: 1, pagamentos: 0 });
+    expect(primeiro.body).toEqual({ marcados: 1, recebimentos: 1, pagamentos: 0 });
     expect((await lerParcela(pid)).enviadoContabilidadeEm).not.toBeNull();
     const carimboDoPrimeiroAto = (await enviosDa(pid))[0]?.enviadoEm ?? null;
 
     await receber(pid, 600, "2028-03-20");
 
     const segundo = await declarar("2028-03-01", "2028-03-31").expect(200);
-    // ANTES do E252: `{ marcados: 0, parcelas: 0, pagamentos: 0 }` — os
+    // ANTES do E252: `{ marcados: 0, recebimentos: 0, pagamentos: 0 }` — os
     // R$ 600,00 nunca eram declarados, porque a LINHA já tinha carimbo.
-    expect(segundo.body).toEqual({ marcados: 1, parcelas: 1, pagamentos: 0 });
+    expect(segundo.body).toEqual({ marcados: 1, recebimentos: 1, pagamentos: 0 });
 
     const envios = await enviosDa(pid);
     expect(envios).toHaveLength(2);
@@ -160,7 +161,7 @@ describe("E252 — o envio à contabilidade é por ATO", () => {
 
     const r = await declarar("2028-04-01", "2028-04-30").expect(200);
 
-    expect(r.body.parcelas).toBe(1);
+    expect(r.body.recebimentos).toBe(1);
     expect((await lerParcela(pid)).enviadoContabilidadeEm).not.toBeNull();
     expect(await enviosDa(pid)).toEqual([]);
     // Idempotente do mesmo jeito.
@@ -181,7 +182,7 @@ describe("E252 — o envio à contabilidade é por ATO", () => {
     // Junho primeiro: só o ato de junho é declarado, e a parcela NÃO ganha o
     // carimbo — ela ainda tem um ato de fora de todo pacote.
     const junho = await declarar("2028-06-01", "2028-06-30").expect(200);
-    expect(junho.body.parcelas).toBe(1);
+    expect(junho.body.recebimentos).toBe(1);
     // ANTES do E252: o carimbo da LINHA nascia aqui, e os R$ 400,00 de maio
     // ficavam para sempre fora de todo pacote.
     expect((await lerParcela(pid)).enviadoContabilidadeEm).toBeNull();
@@ -189,7 +190,7 @@ describe("E252 — o envio à contabilidade é por ATO", () => {
 
     // Maio depois: o pedaço antigo entra, e aí o carimbo da parcela é DERIVADO.
     const maio = await declarar("2028-05-01", "2028-05-31").expect(200);
-    expect(maio.body.parcelas).toBe(1);
+    expect(maio.body.recebimentos).toBe(1);
     expect(await declaradoDa(pid)).toBe(1000);
     expect((await lerParcela(pid)).enviadoContabilidadeEm).not.toBeNull();
   });
@@ -225,7 +226,7 @@ describe("E252 — o envio à contabilidade é por ATO", () => {
   it("depois do estorno, o recebimento re-lançado entra no pacote seguinte", async () => {
     const pid = await parcelaDe(900, "2028-08-10");
     await receber(pid, 900, "2028-08-04");
-    expect((await declarar("2028-08-01", "2028-08-31").expect(200)).body.parcelas).toBe(1);
+    expect((await declarar("2028-08-01", "2028-08-31").expect(200)).body.recebimentos).toBe(1);
 
     await dona.post(`/api/lojas/${f.lojaId}/parcelas/${pid}/estornar`).send({}).expect(200);
     // O E115 limpa o carimbo da linha no estorno — e é o que faz a parcela
@@ -235,7 +236,7 @@ describe("E252 — o envio à contabilidade é por ATO", () => {
 
     const r = await declarar("2028-08-01", "2028-08-31").expect(200);
 
-    expect(r.body.parcelas).toBe(1);
+    expect(r.body.recebimentos).toBe(1);
     expect((await lerParcela(pid)).enviadoContabilidadeEm).not.toBeNull();
     // Duas linhas de envio: a do ato cortado (histórico) e a do ato válido. O
     // que a derivação conta é só o VÁLIDO — o corte é a leitura do recibo.
@@ -285,7 +286,7 @@ describe("E252 — o envio à contabilidade é por ATO", () => {
     const setembro = await declarar("2028-09-01", "2028-09-30").expect(200);
 
     // ANTES da decisão 3: `0` — o ato caía em outubro e setembro fechava sem ele.
-    expect(setembro.body.parcelas).toBe(1);
+    expect(setembro.body.recebimentos).toBe(1);
     expect((await lerParcela(pid)).enviadoContabilidadeEm).not.toBeNull();
     expect(await enviosDa(pid)).toHaveLength(1);
     expect((await declarar("2028-10-01", "2028-10-31").expect(200)).body.marcados).toBe(0);

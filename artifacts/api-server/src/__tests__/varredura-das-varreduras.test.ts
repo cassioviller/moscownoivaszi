@@ -119,15 +119,21 @@ describe("S-C260 — toda varredura diz o tamanho do que olhou", () => {
     // cartesiano não aparece escrito; e S-R5 — a marca do IPCA de exemplo é a
     // mesma no seed e no DELETE da faxina). A primeira régua sobre `docs/migracoes`
     // que julga o SQL, e não a cobertura dele.
-    expect(todas.length, `varreduras encontradas:\n${todas.join("\n")}`).toBe(36);
+    // E256: 36 → 37. A `campo-id-em-field-array-varredura` (frontend, S-RM8 —
+    // um campo `id` dentro do `z.array(z.object({…}))` de um `useFieldArray` é
+    // sobrescrito pela chave do hook, a identidade some da linha e o alvo do
+    // gesto volta a ser resolvido por POSIÇÃO, que foi a S-R7). A população da
+    // classe é **um** arquivo, e ele já está pago: a régua nasce como cerca do
+    // segundo, não como retrato de dívida.
+    expect(todas.length, `varreduras encontradas:\n${todas.join("\n")}`).toBe(37);
 
     // E as duas dimensões, nomeadas: a sobra descrevia só a grafia, e o
     // julgamento de 14/08 também tinha perdido as 5 da primeira grafia que
     // moram no frontend.
     const porGrafia = (re: RegExp) => todas.filter((r) => re.test(path.basename(r))).length;
     expect(porGrafia(/^varredura-/)).toBe(25); // E236: +1, a `varredura-manuais-prints`; E239: +3, na API; E250: +1, a `varredura-migracoes-por-loja`
-    expect(porGrafia(/-varredura\./)).toBe(11);
-    expect(todas.filter((r) => r.startsWith("artifacts/moscow-noivas/")).length).toBe(16); // E236: +1, no frontend
+    expect(porGrafia(/-varredura\./)).toBe(12); // E256: +1, a `campo-id-em-field-array-varredura`
+    expect(todas.filter((r) => r.startsWith("artifacts/moscow-noivas/")).length).toBe(17); // E236: +1, no frontend; E256: +1
   });
 
   it("nenhuma varredura afirma sobre um conjunto cujo tamanho ela não diz", () => {

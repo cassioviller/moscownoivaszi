@@ -8235,13 +8235,17 @@ components:
         ate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
     EnviarContabilidadeResultado:
       type: object
-      required: [marcados, parcelas, pagamentos]
+      required: [marcados, recebimentos, pagamentos]
       properties:
         # `marcados` é o TOTAL e continua existindo: a tela já o lê, e um número
         # que some quebra quem não foi avisado. Os dois campos abaixo é que
         # dizem a verdade nova — F34/E103, fechar o mês carimba os DOIS lados.
-        marcados: { type: integer, description: "Total (parcelas + pagamentos)" }
-        parcelas: { type: integer, description: "Recebimentos declarados — o lado que NÃO existia antes do F34" }
+        marcados: { type: integer, description: "Total (recebimentos + pagamentos)" }
+        # S-RM9: o campo se chamava `parcelas` e a descrição já dizia
+        # "Recebimentos declarados". Desde o E252 declarar é por ATO, e a
+        # parcela recebida em dois PIX conta DOIS — o nome era o que restava
+        # meio passo atrás do que o número mede.
+        recebimentos: { type: integer, description: "Recebimentos declarados — o lado que NÃO existia antes do F34" }
         pagamentos: { type: integer }
     # O saldo conferido num DIA — a âncora da projeção. Chavear por competência
     # não respondia "quanto tem em caixa hoje?"; a data responde.

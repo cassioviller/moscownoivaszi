@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { useDiaLocal } from "@/hooks/use-dia-local";
 import {
   useGetAlertaCaixa,
   getGetAlertaCaixaQueryKey,
@@ -18,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Bell, X } from "lucide-react";
 import { podeNoModulo } from "@/lib/permissoes";
-import { hojeLocal, addDias } from "@/lib/financeiro/datas";
+import { addDias } from "@/lib/financeiro/datas";
 import { instanteDiaMes } from "@/lib/formatos";
 import { avisoDoAtraso } from "@/lib/financeiro/fila-de-atrasos";
 
@@ -75,6 +76,19 @@ export function SinoNotificacoes() {
   // `financeiro: NADA` e `contratos: TUDO`, e é ela quem cobra o atraso da 16ª.
   const veContratos = podeNoModulo(acessosModulos, "contratos", "ver");
 
+  /**
+   * **S-RM7 — o dia é um dado da tela, não uma chamada solta.**
+   *
+   * Este sino está em TODA tela e vive numa aba que o ateliê deixa aberta o
+   * dia inteiro. Enquanto `hojeLocal()` era chamado dentro do `useMemo`, o dia
+   * congelava no último render: o id do aviso de erro (`ATRASO:erro:<dia>`,
+   * S-R17) e a frase do caixa negativo continuavam as de ontem depois da
+   * meia-noite, e a dispensa de ontem seguia calando o aviso de hoje. Vindo do
+   * hook, o dia é uma dependência como as outras — e uma string, que é o que
+   * mantém o memo parado entre viradas.
+   */
+  const hoje = useDiaLocal();
+
   const alertaCaixa = useGetAlertaCaixa(activeLojaId!, {
     query: {
       queryKey: getGetAlertaCaixaQueryKey(activeLojaId!),
@@ -102,7 +116,10 @@ export function SinoNotificacoes() {
   });
   // E83: o poll pede a JANELA (hoje e amanhã cobrem as próximas 24h), não a
   // agenda inteira — o recorte fino por timestamp continua abaixo, no cliente.
-  const janelaSino = { de: hojeLocal(), ate: addDias(hojeLocal(), 1) };
+  // S-RM7: a janela também é do DIA — na virada ela vira chave nova e a
+  // agenda das próximas 24h é buscada de novo, em vez de continuar sendo a de
+  // ontem numa aba que ninguém recarregou.
+  const janelaSino = { de: hoje, ate: addDias(hoje, 1) };
   const atendimentos = useListAtendimentos(activeLojaId!, janelaSino, {
     query: {
       queryKey: getListAtendimentosQueryKey(activeLojaId!, janelaSino),
@@ -145,7 +162,7 @@ export function SinoNotificacoes() {
         // S-M4: primeiro dia negativo HOJE = a loja já está no vermelho, e
         // "fica negativo em" mentiria sobre um fato presente.
         titulo:
-          diaNegativo <= hojeLocal()
+          diaNegativo <= hoje
             ? "O caixa já está negativo"
             : `O caixa fica negativo em ${instanteDiaMes(`${diaNegativo}T12:00:00-03:00`)}`,
         detalhe: "Pela projeção com o que há para receber e pagar.",
@@ -173,8 +190,11 @@ export function SinoNotificacoes() {
          * O erro não tem número para assinar — mas o que ele esconde cresce
          * por DIA (R$ 500,00 num vestido de R$ 3.000,00), e é essa a unidade
          * em que "o fato mudou". Dispensar hoje não cala amanhã.
+         *
+         * **S-RM7:** o dia vem do `useDiaLocal()`, não de uma chamada aqui
+         * dentro — senão "amanhã" só chegava quando alguma query mudasse.
          */
-        id: `ATRASO:erro:${hojeLocal()}`,
+        id: `ATRASO:erro:${hoje}`,
         titulo: "Não consegui ler a fila de atrasos",
         detalhe: "A peça fora da arara pode estar somando diária — abra Contratos e tente de novo.",
         href: `${base}/contratos`,
@@ -238,7 +258,10 @@ export function SinoNotificacoes() {
     }
 
     return lista;
-  }, [alertaCaixa.data, atrasos.data, atrasos.isError, pendencias.data, parados.data, atendimentos.data, base]);
+    // S-RM7: `hoje` é uma STRING `YYYY-MM-DD`. Ela só muda na virada da
+    // meia-noite, e nas outras horas custa uma comparação de string por
+    // render — a lista continua nascendo uma vez só.
+  }, [alertaCaixa.data, atrasos.data, atrasos.isError, pendencias.data, parados.data, atendimentos.data, base, hoje]);
 
   const chave = user && activeLojaId ? chaveDispensadas(user.id, activeLojaId) : null;
   const visiveis = useMemo(() => {

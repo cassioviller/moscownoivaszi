@@ -1901,9 +1901,12 @@ router.post("/lojas/:lojaId/financeiro/contabilidade/enviar", async (req, res): 
     return { recebimentos, pgs };
   });
 
+  // S-RM9: o campo se chamava `parcelas` e sempre contou `recebimentos` —
+  // desde o E252 a unidade é o ATO, e a parcela recebida em dois PIX conta
+  // DOIS. O nome agora diz o que a variável ao lado já dizia.
   res.json(EnviarContabilidadeResponse.parse({
     marcados: recebimentos + pgs.length,
-    parcelas: recebimentos,
+    recebimentos,
     pagamentos: pgs.length,
   }));
 });

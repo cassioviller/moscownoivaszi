@@ -92,7 +92,7 @@ describe("E103/F34 — declarar o mês à contabilidade", () => {
 
     const r = await declarar().expect(200);
 
-    expect(r.body.parcelas).toBe(1);
+    expect(r.body.recebimentos).toBe(1);
     expect(r.body.pagamentos).toBe(1);
     expect(r.body.marcados).toBe(2);
     expect((await lerParcela(rec)).enviadoContabilidadeEm).not.toBeNull();

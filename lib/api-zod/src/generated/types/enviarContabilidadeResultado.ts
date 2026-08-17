@@ -7,9 +7,9 @@
  */
 
 export interface EnviarContabilidadeResultado {
-  /** Total (parcelas + pagamentos) */
+  /** Total (recebimentos + pagamentos) */
   marcados: number;
   /** Recebimentos declarados — o lado que NÃO existia antes do F34 */
-  parcelas: number;
+  recebimentos: number;
   pagamentos: number;
 }

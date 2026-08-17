@@ -307,7 +307,10 @@ function EditarAtributoForm({ atributo }: { atributo: Atributo }) {
                 {fields.map((f, index) => (
                   // `f.id` é a chave do useFieldArray (ele reusa o nome `id` e
                   // apaga o da opção); a identidade da opção mora no VALOR da
-                  // linha, em `opcoes.${index}.id` — ver S-R7 acima.
+                  // linha, em `opcoes.${index}.opcaoId` — ver S-R7 acima. O
+                  // nome CERTO do campo é o que a varredura da S-RM8 cobra
+                  // (`campo-id-em-field-array-varredura.test.ts`); este
+                  // comentário ainda dizia `.id`, o nome que o E253 aposentou.
                   <div key={f.id} className="flex items-center gap-2.5">
                     <FormField
                       control={form.control}

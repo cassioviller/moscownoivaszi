@@ -8855,8 +8855,8 @@ export const EnviarContabilidadeBody = zod.object({
 })
 
 export const EnviarContabilidadeResponse = zod.object({
-  "marcados": zod.number().describe('Total (parcelas + pagamentos)'),
-  "parcelas": zod.number().describe('Recebimentos declarados — o lado que NÃO existia antes do F34'),
+  "marcados": zod.number().describe('Total (recebimentos + pagamentos)'),
+  "recebimentos": zod.number().describe('Recebimentos declarados — o lado que NÃO existia antes do F34'),
   "pagamentos": zod.number()
 })
 
