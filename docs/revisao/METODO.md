@@ -480,6 +480,18 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
     por `git ls-files` liam o passado. **O conserto de verdade é publicar**; o
     contorno é o reset no primeiro gesto, e ele tem de estar no prompt.)*
 
+    **Emenda de 2026-08-17 (lote dos quatro agentes): o worktree também nasce
+    sem `node_modules`, e o sintoma MENTE.** O primeiro gesto tem duas linhas,
+    não uma: `pnpm install --frozen-lockfile` (15,9 s) e `pnpm run
+    typecheck:libs` da raiz, ANTES de qualquer régua. Sem a segunda, o `tsc` do
+    pacote cospe **`TS6305: lib/api-client-react/dist/index.d.ts has not been
+    built`** e trinta erros que parecem do código que o agente acabou de
+    escrever — e ele vai caçar defeito que não existe, no arquivo errado, com
+    a régua dizendo o contrário do que ela mede. Os quatro agentes deste lote
+    bateram nisso; dois o relataram por escrito, o que é como esta emenda
+    existe. **Como a regra 29, isto tem de estar no PROMPT** — descobrir na
+    quinta ferramenta o que cabia na primeira linha custa uma sessão por
+    agente.*
 30. **Consolidar régua duplicada exige prova de EQUIVALÊNCIA antes da troca — e
     a prova costuma corrigir uma premissa escrita no repositório.** Duas funções
     com o mesmo nome e o mesmo corpo aparente não são a mesma função até que

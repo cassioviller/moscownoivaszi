@@ -107,10 +107,30 @@ para o documento que manda.
    R$ 0,00, porque nenhuma das 110 parcelas vencidas tem mês cheio de mora —
    está armada, e a prova é R$ 78,96 sobre R$ 5.000,00 vencida em 10/03/2026.
 
-   **Contado em 17/08: o repositório tem 15 sobras abertas — 0 🔴 · 4 🟠 ·
-   9 🟡 · 2 🔵.** São as **13** S-R que restam, mais a **S-M17** (que espera a
-   instalação real) e a **S-RM1**. A fila de hoje é o **E251** (as cinco
-   corridas que o E245 abriu ao consertar as outras), depois E252, E253, E254.
+   **E a fila do review max está INTEIRA EXECUTADA** (17/08). O E251, o E252,
+   o E253 e o E254 saíram de **quatro agentes em paralelo**, divididos pelo
+   recurso compartilhado (banco próprio para quem precisa; ninguém toca as
+   tabelas de Sobras; ninguém roda E2E) — o plano é
+   [`2026-08-17-as-15-abertas-com-agentes-plano.md`](docs/propostas/2026-08-17-as-15-abertas-com-agentes-plano.md).
+   O E251 achou **dois** ciclos de deadlock onde a sobra via um; o E252 pôs o
+   envio à contabilidade por ATO (o conserto óbvio declararia R$ 1.400,00
+   sobre R$ 1.000,00 recebidos); o E253 tirou o alvo do apagar do ÍNDICE; o
+   E254 matou um seletor de E2E que nunca existiu. **Uma linha da integração
+   não é de agente nenhum** e está marcada no `financeiro.ts`: os dois
+   chamadores que o E252 criou dentro da transação passam a ler pelo `tx` que
+   o E251 tornou possível — nenhum dos dois via o código do outro.
+
+   **Contado em 17/08, com as quatro réguas fechadas: o repositório tem 8
+   sobras abertas — 0 🔴 · 0 🟠 · 3 🟡 · 5 🔵.** São as sete que os agentes
+   acharam de passagem (**S-RM2, S-RM3, S-RM4, S-RM7, S-RM8, S-RM9, S-RM10**,
+   na tabela do rastreador do review max) e a **S-M17**, que espera uma
+   instalação real que ainda não existe. **Não há fila de código em curso.**
+
+   **E o lote desmentiu nove dos catorze diagnósticos**, nas duas direções —
+   está contado no rastreador. O caso que mais ensina é a **S-R11**: ela
+   errava a CAUSA (culpava a visibilidade pool × `tx`, e em READ COMMITTED as
+   duas leituras veem o mesmo instante), e o conserto que ela prescrevia teria
+   produzido teste verde sobre caminho torto.
 
    A régua do E241 achou a suíte de API vermelha no `main` desde `ec53e2d6`
    (consertada em `c8dda201`). Também: as duas
@@ -118,9 +138,10 @@ para o documento que manda.
    achou — a edição de atributo caía ao abrir), a S-A27 foi classificada e o
    `heliumdb` perdeu 725 contas e 451 pagamentos fantasmas de E2E.
 
-3. **A régua e a publicação.** Hoje a régua é **API 1881 (269 arquivos) ·
-   frontend 1017 (108 arquivos) · E2E 187 · typecheck verde em 5 projetos** —
-   a API e o frontend no fecho do E250, o E2E no do E249 (17/08). A API inteira leva ~11,6 min no
+3. **A régua e a publicação.** Hoje a régua é **API 1905 (272 arquivos) ·
+   frontend 1037 (113 arquivos) · E2E 187 (0 skipped) · banco virgem 16 ·
+   typecheck verde em 5 projetos** — as QUATRO medidas em série no fecho do
+   lote dos agentes (17/08). A API inteira leva ~11,6 min no
    `heliumdb`; o E2E, ~6,5 min, e é a régua que **agente nenhum pode rodar**
    (worktree isola arquivo e banco e NÃO isola porta — e dois E2E ao mesmo
    tempo precisam de banco, portas **e checkout** próprios, medido na S-O93:
@@ -134,7 +155,7 @@ para o documento que manda.
    (instalação nova, ~1 min): rode-a antes de mexer em seed, schema ou
    `global-setup`.
 
-   **O `main` está 33+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
+   **O `main` está 43+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
    de manhã; a conferência, a fila do review max e os docs não estão
    publicados). Confira com
    `git rev-list --count origin/main..main` antes de assumir — esta linha

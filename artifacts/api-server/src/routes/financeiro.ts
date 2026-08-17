@@ -1765,11 +1765,22 @@ router.post("/lojas/:lojaId/financeiro/contabilidade/enviar", async (req, res): 
      * R$ 600,00 em março não entraria no pacote de fevereiro nunca — que é o
      * mesmo buraco da S-R6 pelo lado da data.
      */
+    /**
+     * **A costura do E251 com o E252 — e ela não é de agente nenhum.**
+     *
+     * O E252 escreveu estes dois chamadores; o E251 deu às quatro leitoras de
+     * `recibos-do-banco.ts` o executor opcional (S-R11). Nenhum dos dois podia
+     * fechar esta linha: um não via o código do outro, e a fronteira do lote
+     * proibia atravessar. **Ler no pool de dentro da transação é o hazard que
+     * a S-R11 nomeia** — a leitura sai por outra conexão, fora das trancas que
+     * esta transação segura —, e aqui ela decide quem é declarado à
+     * contabilidade, que é escrita de mão única.
+     */
     const candidatas = await tx.query.parcelasTable.findMany({
-      where: await recebidasNaJanela(lojaId, de, ate),
+      where: await recebidasNaJanela(lojaId, de, ate, tx),
     });
     const trilha = candidatas.length
-      ? await trilhaDosRecebimentos(lojaId, candidatas.flatMap((p) => [p.id, p.contratoId]))
+      ? await trilhaDosRecebimentos(lojaId, candidatas.flatMap((p) => [p.id, p.contratoId]), tx)
       : [];
     const jaEnviados = candidatas.length
       ? new Set(
