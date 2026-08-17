@@ -268,26 +268,45 @@ test.describe("Onda 5 — a porta da contabilidade (E260)", () => {
     expect(recebida.status(), await recebida.text()).toBe(200);
 
     /**
-     * — A tela: a janela vira o dia da fixture, e o clique declara. —
+     * — A tela: a janela vira o dia da fixture pelo GESTO, e o clique declara. —
      *
-     * **A janela entra pela URL, e não por dois `fill()` seguidos, por causa
-     * da S-RM17 que este épico achou** (`folha.tsx:316-323`): duas edições
-     * dentro do mesmo frame perdem a primeira, e como `resolverIntervalo`
-     * troca as pontas quando `ini > fim`, a janela ALARGA em silêncio. Medido
-     * na primeira execução deste teste: a URL foi de `?ini=2024-04-04` para
-     * `?fim=2024-04-04` — sem o `ini` —, o clique declarou
-     * `2024-04-04..2026-08-01` e carimbou **302 recebimentos** de verdade.
-     * Os dois campos são afirmados aqui embaixo, então a tela continua na
-     * régua; o que sai é o gesto que dispara a corrida.
+     * **Os dois `fill()` seguidos são a prova de ponta a ponta da S-RM17**, e
+     * eles estiveram proibidos aqui entre o E260 e o E261. Na primeira execução
+     * deste teste, este par de linhas declarou `2024-04-04..2026-08-01` à
+     * contabilidade e carimbou **302 recebimentos** de verdade no `heliumdb`:
+     * a segunda edição não continha o que a primeira pôs (`?ini=2024-04-04`
+     * virou `?fim=2024-04-04`, sem o `ini`), e o `resolverIntervalo` trocou as
+     * pontas, devolvendo dois anos e quatro meses sobre um botão de mão única.
+     *
+     * O E261 fechou a fresta com o `useEscritaNaUrl()`, que acumula as escritas
+     * do frame — **e provou que o conserto prescrito no diagnóstico não
+     * consertava**: o updater funcional do `react-router@7.18.1` recebe
+     * `new URLSearchParams(searchParams)` do `useCallback`, tão velho quanto o
+     * que o handler leria sozinho.
+     *
+     * **A guarda desta cena pega a regressão, e não é determinística — está
+     * medido.** Com o conserto revertido só nesta tela, o teste reprovou em
+     * **3 de 4 execuções**, sempre na asserção do campo "Até" e sempre ANTES do
+     * clique (`Expected: "2024-04-04" · Received: "2026-08-01"` — a mesma
+     * janela que carimbou os 302). O verde da quarta é a corrida não
+     * acontecendo: as duas escritas caíram em frames diferentes. Ela nunca
+     * reprova por engano — só reprova quando a janela está mesmo errada —, e a
+     * prova DETERMINÍSTICA do fecho é o teste de unidade do E261
+     * (`lib/escrita-na-url.test.tsx`), não esta.
      */
-    await page.goto(`/financeiro/folha?ini=${DIA}&fim=${DIA}`);
+    await page.goto("/financeiro/folha");
     await expect(page.getByRole("heading", { name: "Folha do mês", exact: true })).toBeVisible();
+    // `exact`: o `getByLabel` casa por substring, e a mesma tela tem o campo
+    // "Descrição" do diálogo de despesa, que contém "De".
+    await page.getByLabel("De", { exact: true }).fill(DIA);
+    await page.getByLabel("Até", { exact: true }).fill(DIA);
     /**
-     * **A guarda antes do clique, e ela não é decoração.** "Declarar o mês" é
-     * escrita de mão única — não há rota que limpe o carimbo. Afirmar a janela
-     * só DEPOIS do clique transformaria uma janela errada em dano no banco, que
-     * foi exatamente o que aconteceu aqui. `exact`: o `getByLabel` casa por
-     * substring, e a mesma tela tem o campo "Descrição", que contém "De".
+     * **A guarda antes do clique, e ela não é decoração — é a asserção que
+     * pega a S-RM17 se ela voltar.** "Declarar o mês" é escrita de mão única:
+     * não há rota que limpe o carimbo. Afirmar a janela só DEPOIS do clique
+     * transformaria uma janela errada em dano no banco, que foi exatamente o
+     * que aconteceu aqui. Com a fresta aberta, o campo "Até" chega nestas duas
+     * linhas com o último dia do mês corrente, e o teste para ANTES de apertar.
      */
     await expect(page.getByLabel("De", { exact: true })).toHaveValue(DIA);
     await expect(page.getByLabel("Até", { exact: true })).toHaveValue(DIA);
