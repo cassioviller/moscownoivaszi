@@ -14,7 +14,7 @@ para o documento que manda.
    hoje, e a seção de crítica diz por que cada uma existe, com a evidência que a
    motivou. Não é história: é o contrato.
 
-2. **O estado de hoje (2026-08-16, madrugada).** Não há trilha em curso com
+2. **O estado de hoje (2026-08-17, manhã).** Não há trilha em curso com
    fila de código: **toda linha de código aberta em rastreador nenhum é
    ZERO.** O que existe está nas tabelas de Sobras — **conte, não deduza**; a
    linha aberta é a que NÃO está riscada:
@@ -143,16 +143,37 @@ para o documento que manda.
    inteira deu **187**. **Total de suíte não se deduz de execução de arquivo
    único** — é a família da regra 35 com o mecanismo invertido.
 
+   **E as 7 que sobraram daquele lote também estão fechadas** (17/08, manhã) —
+   o plano é
+   [`2026-08-17-as-7-sobras-plano.md`](docs/propostas/2026-08-17-as-7-sobras-plano.md)
+   e a seção *"O fecho das 7"* do mesmo rastreador é onde ele é contado. Uma
+   ficou aberta pela razão escrita antes de começar (a **S-M17**, que espera a
+   instalação real). As outras seis saíram em três épicos, dois deles em
+   agentes paralelos: o **E258** (`3e1cce5f`, agente) pôs seis telas a ler o dia
+   do `useDiaLocal()` — **42 chamadas em 17 telas, 10 em `useMemo`**, e depois
+   **26 e ZERO** —, e corrigiu a razão de DUAS das dez: em `orcamentos/[id].tsx`
+   a prévia VIRA o corpo do `POST /contratos`, então tela e servidor concordam e
+   **o contrato nasce com a entrada vencida**; o **E259** (`e969dfe6`, agente)
+   levou a régua dos manuais de **213 para 349 das 466 aspas curvas** com um
+   critério de MARCAÇÃO (a citação que tem casa entra), achou três frases
+   envelhecidas na primeira execução — uma delas a mesma renomeação do E248,
+   seis linhas acima da que motivou a S-RM2 — e mediu que **o guarda do E255
+   estava errado**; o **E260** (`c5820408`, orquestrador, porque a régua é o
+   E2E) deu cena à porta "Enviar à contabilidade".
+
    **Contado nas tabelas em 17/08, com as quatro réguas fechadas: o
-   repositório tem 7 sobras abertas — 0 🔴 · 0 🟠 · 2 🟡 · 5 🔵.** São a
-   **S-M17** (que espera uma instalação real que ainda não existe), a
-   **S-RM11** 🟡 e as cinco 🔵 **S-RM12, S-RM13, S-RM14, S-RM15, S-RM16** — na
-   tabela do rastreador do review max, e **seis das sete nasceram do fecho das
-   8**. A maior é a **S-RM11**, e ela é maior que a S-RM7 que a revelou:
-   `hojeLocal()` aparece **38 vezes em 17 telas**, 11 delas dentro de um
-   `useMemo` sem o dia nas dependências, e duas já foram conferidas — o painel
-   e a agenda ficam em ontem numa aba deixada aberta pela virada. **Não há
-   fila de código em curso.**
+   repositório tem 9 sobras abertas — 0 🔴 · 2 🟠 · 2 🟡 · 5 🔵.** São a
+   **S-M17** (que espera uma instalação real que ainda não existe) e as **oito
+   S-RM17…S-RM24**, todas nascidas do fecho das 7, na tabela do rastreador do
+   review max. **As duas 🟠 são as que mordem.** A **S-RM17** foi achada pelo
+   E2E do E260 — e ele a achou CAUSANDO-A: a janela do envio à contabilidade
+   alarga sozinha quando as duas pontas são editadas no mesmo frame
+   (`atualizarParams` fecha sobre o `searchParams` velho, e o `resolverIntervalo`
+   troca as pontas), e o clique carimbou **302 recebimentos** de verdade no
+   `heliumdb`, restaurados por SQL. A **S-RM19** é consequência de uma decisão
+   tomada sobre medição estreita: o catálogo passa a **recusar sem aspas e
+   confirmar com elas**, a dois cliques de distância. **Não há fila de código
+   em curso.**
 
    **E o lote desmentiu nove dos catorze diagnósticos**, nas duas direções —
    está contado no rastreador. O caso que mais ensina é a **S-R11**: ela
@@ -167,10 +188,12 @@ para o documento que manda.
    `heliumdb` perdeu 725 contas e 451 pagamentos fantasmas de E2E.
 
 3. **A régua e a publicação.** Hoje a régua é **API 1905 (272 arquivos) ·
-   frontend 1044 (115 arquivos) · E2E 187 (0 skipped) · banco virgem 16 ·
-   typecheck verde em 5 projetos** — as QUATRO medidas em série no fecho das 8
-   (17/08). O frontend subiu de 1037/113 no fecho anterior; **o E2E ficou em
-   187, e não nos 188 que o E257 publicou** (regra 36). A API inteira leva
+   frontend 1053 (117 arquivos) · E2E 188 (0 skipped) · banco virgem 16 ·
+   typecheck verde em 5 projetos** — as QUATRO medidas em série no fecho das 7
+   (17/08). O frontend subiu de 1044/115 e **não é a soma dos dois relatórios**:
+   o E258 mediu 1052/117 no worktree dele e o E259 mediu 1045/115 no dele, cada
+   um sem enxergar o outro — integrados, são 1053/117, e é a recontagem que
+   vale. O E2E foi de 187 para 188 com o teste do E260. A API inteira leva
    ~10,6 a 11,6 min no
    `heliumdb`; o E2E, ~6,5 min, e é a régua que **agente nenhum pode rodar**
    (worktree isola arquivo e banco e NÃO isola porta — e dois E2E ao mesmo
@@ -185,9 +208,9 @@ para o documento que manda.
    (instalação nova, ~1 min): rode-a antes de mexer em seed, schema ou
    `global-setup`.
 
-   **O `main` está 52+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
-   de manhã; a conferência, a fila do review max, o fecho das 8 e os docs não
-   estão publicados). Confira com
+   **O `main` está 62+ commits À FRENTE de `origin/main`** (= `017a28d4`, 16/08
+   de manhã; a conferência, a fila do review max, o fecho das 8, o fecho das 7 e
+   os docs não estão publicados). Confira com
    `git rev-list --count origin/main..main` antes de assumir — esta linha
    envelhece a cada commit. Todo worktree de agente nasce em `origin/main`
    (regra 29), e o primeiro gesto de todo agente é conferir a própria base.
