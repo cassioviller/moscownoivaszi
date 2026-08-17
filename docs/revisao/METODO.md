@@ -268,6 +268,21 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
     são padrões especiais do replacement. *(R7-design: um `$'` num YAML de
     replacement duplicou 40.893 linhas do openapi em silêncio, e o codegen
     apagou `generated/` ao falhar — E142.)*
+
+    **Emenda de 2026-08-17 (E250): a regra vale para o SHELL, e ali o que ela
+    come é DINHEIRO.** Em `perl -pi -e 's/…/…/'` o replacement interpola
+    variáveis: `$ 1` já era conhecido (e usado de propósito nas substituições de
+    ID), mas `R$ 12.000,00` vira `R.000,00` e `R$ 0,00` vira `R-e,00` — o `$ 1`
+    e o `$ 0` do meio do valor. Aconteceu duas vezes no MESMO comando, ao
+    registrar o hash do E249 e do E250 na tabela de épicos, e as duas linhas
+    ficaram no arquivo dizendo um número que não existe. **A tabela de sobras e
+    os relatórios deste repositório são feitos de valores em reais**, então a
+    superfície é exatamente onde mais dói: um `grep` por `R[^$]` acha o
+    estrago, e ninguém roda esse `grep` por hábito.
+    **Texto com `$` se edita por substituição LITERAL** — a ferramenta de edição
+    por string exata, ou um here-doc —, nunca por regex de linha de comando. E
+    quando não houver escolha, o `$` do replacement se escapa e o resultado se
+    relê.
 16. Dado COMPARTILHADO (banco de dev/E2E) só muda com o valor original
     anotado antes — e semeadura de prova visual sai no mesmo gesto que entrou.
     *(R7-design: um `casamento_data` movido sem anotar pôs o bloqueio no

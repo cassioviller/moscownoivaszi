@@ -18,11 +18,12 @@ entrar na tabela — nenhum descartado. A S-R1 (a suíte de API vermelha no
 1 🔴 · 7 🟠 · 8 🟡 · 2 🔵**, em **6 épicos**. Sete deles nasceram da fila do
 mesmo dia (E242, E244, E245, higiene, E248).
 
-**Contado em 17/08/2026, depois do E249** (`458adf11`): das 18, **três
-fecharam** — S-R2 🔴, S-R3 🟠, S-R12 🟡 —, e o E249 abriu **uma** (S-RM1 🟡, na
-tabela abaixo). O repositório inteiro tem hoje **17 sobras abertas: 0 🔴 · 6 🟠
-· 9 🟡 · 2 🔵** — as 15 S-R que restam, mais a S-M17 (que espera a instalação
-real) e a S-RM1. **Conte as tabelas, não este parágrafo.**
+**Contado em 17/08/2026, depois do E249 (`458adf11`) e do E250 (`91012acb`)**:
+das 18, **cinco fecharam** — S-R2 🔴, S-R3 🟠, S-R12 🟡 pelo E249; S-R5 🟠 e
+S-R9 🟠 pelo E250 —, e o E249 abriu **uma** (S-RM1 🟡, na tabela abaixo). O
+repositório inteiro tem hoje **15 sobras abertas: 0 🔴 · 4 🟠 · 9 🟡 · 2 🔵** —
+as **13** S-R que restam, mais a S-M17 (que espera a instalação real) e a
+S-RM1. **Conte as tabelas, não este parágrafo.**
 
 *Uma correção de contagem, feita aqui em 17/08:* o cabeçalho da conferência
 publicava *"1 🔴 · 8 🟠 · 8 🟡 · 2 🔵"*, que soma **19** para **18** linhas.
@@ -33,8 +34,8 @@ tinha sido copiado para o ponteiro, para o plano e para este arquivo.
 
 | Épico | Tese | Fecha | Estado |
 |---|---|---|---|
-| ~~**E249**~~ | ~~a data do papel segue o casamento, e todo mundo lê a mesma data~~ | S-R2 🔴, S-R3 🟠, S-R12 🟡 | ✅ `458adf11` · [relatório](execucao/E249.md) — o papel recalcula pela janela nova quando o casamento é adiado (hora preservada, e só cede à 4ª); `disponibilidade.ts` lê `fimPrevistoDaDevolucao` pelo SELECT que já existia; o `PATCH /contratos` derruba a fila. Vermelho antes: `expected 48000 to be +0` — e a sobra dizia R.000,00, porque o caput da 16ª multiplica POR PEÇA. API 1878 · E2E 187 |
-| **E250** | o que se escreve num banco que já existe | S-R5 🟠, S-R9 🟠 | pendente |
+| ~~**E249**~~ | ~~a data do papel segue o casamento, e todo mundo lê a mesma data~~ | S-R2 🔴, S-R3 🟠, S-R12 🟡 | ✅ `458adf11` · [relatório](execucao/E249.md) — o papel recalcula pela janela nova quando o casamento é adiado (hora preservada, e só cede à 4ª); `disponibilidade.ts` lê `fimPrevistoDaDevolucao` pelo SELECT que já existia; o `PATCH /contratos` derruba a fila. Vermelho antes: `expected 48000 to be +0` — e a sobra dizia R$ 12.000,00, porque o caput da 16ª multiplica POR PEÇA. API 1878 · E2E 187 |
+| ~~**E250**~~ | ~~o que se escreve num banco que já existe~~ | S-R5 🟠, S-R9 🟠 | ✅ `91012acb` · [relatório](execucao/E250.md) — a faxina apaga o índice de exemplo pela marca (que virou constante), e NÃO um filtro no leitor, que desfaria a decisão do E242; o backfill da S-A27 ganha `loja_id` nas três pontas e a vírgula vira `JOIN … ON`. **A sobra errava para MENOS o alcance do S-R9 e para MAIS o dano vivo do S-R5**: hoje ele cobra R$ 0,00 (nenhuma das 110 parcelas tem mês cheio de mora). Duas réguas novas, as duas medidas em vermelho. API 1881 · banco virgem 16 |
 | **E251** | as portas ao lado, segunda passada | S-R4 🟠, S-R8 🟠, S-R10 🟡, S-R11 🟡, S-R13 🟡 | pendente |
 | **E252** | o envio à contabilidade é por ATO, não por parcela | S-R6 🟠 | pendente |
 | **E253** | as telas apagam e mostram o que o banco tem | S-R7 🟠, S-R16 🟡, S-R17 🟡, S-R19 🔵 | pendente |

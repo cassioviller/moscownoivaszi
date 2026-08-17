@@ -97,10 +97,20 @@ para o documento que manda.
    a **S-RM1** 🟡 (a data do papel agora estica a janela física e ninguém
    revalida os dias que ela estica).
 
-   **Contado em 17/08: o repositório tem 17 sobras abertas — 0 🔴 · 6 🟠 ·
-   9 🟡 · 2 🔵.** São as 15 S-R que restam, mais a **S-M17** (que espera a
-   instalação real) e a **S-RM1**. A fila de hoje é o **E250** (o índice de
-   exemplo e o backfill que cruza lojas), depois E251, E252, E253, E254.
+   **O E250 também está FEITO** (`91012acb`): o índice de exemplo que o E242
+   gateou só na escrita sai por MIGRAÇÃO (a marca virou constante;
+   `DELETE 11` no `heliumdb`), e não por filtro no leitor — que era o que a
+   sobra pedia e desfaria a decisão do E242. E o backfill da S-A27 ganha
+   `loja_id` nas três pontas: ele casava as CTEs por vírgula e escreveria
+   **264 linhas onde devem ser 132** num banco de duas lojas. **A sobra também
+   errava o dano vivo, agora para MAIS**: hoje a correção inventada cobra
+   R$ 0,00, porque nenhuma das 110 parcelas vencidas tem mês cheio de mora —
+   está armada, e a prova é R$ 78,96 sobre R$ 5.000,00 vencida em 10/03/2026.
+
+   **Contado em 17/08: o repositório tem 15 sobras abertas — 0 🔴 · 4 🟠 ·
+   9 🟡 · 2 🔵.** São as **13** S-R que restam, mais a **S-M17** (que espera a
+   instalação real) e a **S-RM1**. A fila de hoje é o **E251** (as cinco
+   corridas que o E245 abriu ao consertar as outras), depois E252, E253, E254.
 
    A régua do E241 achou a suíte de API vermelha no `main` desde `ec53e2d6`
    (consertada em `c8dda201`). Também: as duas
@@ -108,9 +118,9 @@ para o documento que manda.
    achou — a edição de atributo caía ao abrir), a S-A27 foi classificada e o
    `heliumdb` perdeu 725 contas e 451 pagamentos fantasmas de E2E.
 
-3. **A régua e a publicação.** Hoje a régua é **API 1878 (268 arquivos) ·
+3. **A régua e a publicação.** Hoje a régua é **API 1881 (269 arquivos) ·
    frontend 1017 (108 arquivos) · E2E 187 · typecheck verde em 5 projetos** —
-   as quatro medidas em série no fecho do E249 (17/08). A API inteira leva ~11,6 min no
+   a API e o frontend no fecho do E250, o E2E no do E249 (17/08). A API inteira leva ~11,6 min no
    `heliumdb`; o E2E, ~6,5 min, e é a régua que **agente nenhum pode rodar**
    (worktree isola arquivo e banco e NÃO isola porta — e dois E2E ao mesmo
    tempo precisam de banco, portas **e checkout** próprios, medido na S-O93:
