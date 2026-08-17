@@ -83,7 +83,7 @@ function textoDaTela(): string {
 
 interface Citacao {
   manual: string;
-  tipo: "botão" | "recado";
+  tipo: "botão" | "recado" | "cláusula";
   exibido: string;
   /** O pedaço que a tela tem de conter. Igual ao exibido, salvo molde. */
   esperado: string;
@@ -135,7 +135,74 @@ function recados(manual: string): Citacao[] {
   return achados;
 }
 
-const todas = () => manuais().flatMap((m) => [...botoes(m), ...recados(m)]);
+/**
+ * **S-R14/S-R15 — a terceira família: a citação que NOMEIA uma cláusula.**
+ *
+ * As duas colheitas acima leem lugares fixos da marcação: o chip
+ * `<span class="btn">` e a 1ª célula das tabelas *"O recado"*. Uma frase que o
+ * sistema escreve e o manual cita **em prosa** — num `<li>`, num `<p>`, num
+ * `<p class="nota">` — não passava por régua nenhuma. Foi assim que o E248
+ * trocou *"multa e juros"* por *"multa, juros e correção"* em três telas e no
+ * `whatsapp.ts:115`, atualizou o que estava em `<td>`, e deixou **cinco
+ * citações** vivas na forma velha: `noiva.html:370, 420, 421` e
+ * `vendedora.html:800, 806` — frases entre aspas que o código não escreve mais,
+ * e que a noiva procura no portal sem achar.
+ *
+ * **A família é definida pelo conteúdo da própria citação, não por um atributo
+ * que o autor lembre de pôr**: uma citação que diz *"cláusula 9ª"*, *"(18ª)"*,
+ * *"cláusula 5ª §3º" é, por construção, uma frase que o SISTEMA imprime — a
+ * prosa do manual cita as cláusulas sem aspas curvas, e as 15 medidas em 17/08
+ * são 15 frases de sistema, sem um único falso positivo. Citação nova que nomeie
+ * cláusula entra sozinha: não há como escrevê-la e ficar de fora da régua.
+ *
+ * **O que esta colheita NÃO alcança, e está declarado**: as outras citações de
+ * prosa. Medido em 17/08 sobre os cinco manuais: **161 fragmentos entre aspas
+ * curvas em `<em>`, dos quais 82 batem literalmente com a tela e 79 não** — e
+ * os 79 são uma mistura de molde, de fala da vendedora (*"quanto ficou mesmo?"*)
+ * e de frase de sistema. Separá-los é classificação manual de 79 itens com um
+ * mecanismo de declaração novo, e é épico próprio. O `vendedora.html:800`
+ * (*"· inclui R$ 15,00 de multa e juros"*, que não nomeia cláusula) é a prova
+ * de que a fresta continua: ele foi corrigido à mão aqui, e nenhuma régua o
+ * guarda.
+ */
+const CITA_CLAUSULA = /cláusula\s+\d+ª|\(\d+ª\)/i;
+
+function clausulas(manual: string): Citacao[] {
+  const html = ler(manual);
+  // O que a colheita de RECADO já lê não é recolhido de novo — lá o `data-tela`
+  // já mora no `<td>`, e uma segunda exigência sobre a mesma frase seria só uma
+  // segunda chance de errar.
+  const jaColhido = new Set(recados(manual).map((c) => c.exibido));
+
+  const achados: Citacao[] = [];
+  for (const linha of html.split("\n")) {
+    for (const q of linha.matchAll(/“([^”]+)”/g)) {
+      const cru = q[1]!.trim();
+      const exibido = cru
+        .replace(/<[^>]+>/g, "")
+        .replace(/&nbsp;/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (jaColhido.has(exibido) || jaColhido.has(cru)) continue;
+      if (!CITA_CLAUSULA.test(exibido)) continue;
+      // O `data-tela` mora na tag que ABRE a citação — o `<em>` da prosa, ou o
+      // `<p>` quando a citação é o parágrafo inteiro.
+      const antes = linha.slice(0, q.index!);
+      const abre = [...antes.matchAll(/<([a-z]+)((?:[^>"]|"[^"]*")*)>/gi)].at(-1);
+      const declarado = abre ? /data-tela="([^"]+)"/.exec(abre[2] ?? "")?.[1] : undefined;
+      achados.push({
+        manual,
+        tipo: "cláusula",
+        exibido,
+        esperado: declarado ?? exibido,
+        molde: declarado !== undefined,
+      });
+    }
+  }
+  return achados;
+}
+
+const todas = () => manuais().flatMap((m) => [...botoes(m), ...recados(m), ...clausulas(m)]);
 
 describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
   it("a varredura tem o que varrer — piso de população", () => {
@@ -145,6 +212,9 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
     expect(manuais().length).toBe(5);
     expect(citacoes.filter((c) => c.tipo === "botão").length).toBeGreaterThanOrEqual(140);
     expect(citacoes.filter((c) => c.tipo === "recado").length).toBeGreaterThanOrEqual(35);
+    // S-R15: 13 citações que nomeiam cláusula fora das tabelas de recado,
+    // medidas em 17/08 (5 estavam na forma que o E248 aposentou).
+    expect(citacoes.filter((c) => c.tipo === "cláusula").length).toBeGreaterThanOrEqual(13);
   });
 
   it("todo nome de botão e todo recado citados existem na tela", () => {
@@ -190,8 +260,19 @@ describe("varredura — o manual cita a tela LITERALMENTE (E210)", () => {
      * conta de comissão) são frases contíguas em `MENSAGENS_ERRO` e entraram
      * como citação literal, sem molde.
      */
+    /**
+     * **S-R15 sobe para 23, e os 11 novos são a família das cláusulas.** A
+     * colheita nova recolhe 13 citações; 2 batem literalmente com a tela
+     * (*"Prazo de devolução antecipada da reserva (cláusula 18ª)"*, o rótulo do
+     * campo, citado igual nos manuais do proprietário e da vendedora) e 11 são
+     * molde pela razão de sempre — o valor está DENTRO da frase (o acréscimo em
+     * reais, os dias de atraso, o expediente da loja, o percentual do reajuste,
+     * o código da peça). Onze declarações de uma vez é o preço de estrear uma
+     * família inteira, e não deve se repetir: daqui para a frente, citação nova
+     * que nomeie cláusula ou bate literal, ou declara o pedaço.
+     */
     const moldes = todas().filter((c) => c.molde);
-    expect(moldes.length).toBe(12);
+    expect(moldes.length).toBe(23);
     // E o molde tem de ser mais curto que o exibido — senão não é molde, é uma
     // citação literal com um atributo pendurado.
     for (const m of moldes) {

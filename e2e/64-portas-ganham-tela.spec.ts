@@ -31,10 +31,25 @@ test.describe.serial("S-O131 — as portas que ganharam tela", () => {
   let opcaoId: string | null = null;
   let regraId: string | null = null;
   let mariaId: string | null = null;
+  /**
+   * S-R14 — o ID do próprio admin logado. A cena de "não apagar a si mesmo"
+   * pedia `apagar-usuario-${estado.adminEmail}`, e a tela monta o testid com
+   * `u.id` (`admin/index.tsx:596`): o seletor NUNCA existiu, e o `toHaveCount(0)`
+   * era verdadeiro com a guarda (`:590`) no lugar e sem ela.
+   */
+  let adminId: string | null = null;
 
   test.beforeAll(async ({ request }) => {
     await request.post(`${API_URL}/api/auth/login`, { data: { email: estado.adminEmail, senha: estado.senha } });
     await request.post(`${API_URL}/api/auth/selecionar-loja`, { data: { lojaId: estado.lojaId } });
+
+    // S-R14: o próprio admin, pelo ID — é com ele que a tela monta o testid.
+    const [admin] = await db
+      .select({ id: usuariosTable.id })
+      .from(usuariosTable)
+      .where(eq(usuariosTable.email, estado.adminEmail));
+    expect(admin?.id, `o admin ${estado.adminEmail} tem de existir no banco`).toBeTruthy();
+    adminId = admin!.id;
 
     const loja = await request.post(`${API_URL}/api/admin/lojas`, { data: { nome: `E2E Loja vazia ${stamp}` } });
     expect(loja.status(), await loja.text()).toBe(201);
@@ -101,7 +116,16 @@ test.describe.serial("S-O131 — as portas que ganharam tela", () => {
     lojaVaziaId = null;
 
     // A pessoa sem histórico sai; a própria pessoa (o admin logado) não tem o botão.
-    await expect(page.getByTestId(`apagar-usuario-${estado.adminEmail}`)).toHaveCount(0);
+    //
+    // S-R14 (regra 34) — o assert de antes pedia `apagar-usuario-${estado.adminEmail}`
+    // e a tela monta `apagar-usuario-${u.id}`: um e-mail nunca é um UUID, o
+    // seletor não casava com nada, e a ÚNICA cena de "não apagar a si mesmo"
+    // ficava verde com a guarda de `admin/index.tsx:590` removida. A linha do
+    // admin precisa estar DESENHADA para o count 0 significar alguma coisa —
+    // por isso o "Editar" dele, que a tela mostra para todo mundo, é afirmado
+    // antes: sem ele, ausência de botão e ausência de linha seriam o mesmo verde.
+    await expect(page.getByTestId(`editar-usuario-${adminId}`)).toBeVisible();
+    await expect(page.getByTestId(`apagar-usuario-${adminId}`)).toHaveCount(0);
     await page.getByTestId(`apagar-usuario-${usuarioNovoId}`).click();
     await page.getByTestId("confirmar-apagar-usuario").click();
     await expect(page.getByText("Pessoa apagada").first()).toBeVisible();

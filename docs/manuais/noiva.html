@@ -367,7 +367,7 @@
       <h3>“Seus recibos”</h3>
       <p>Logo abaixo do extrato, <strong>um recibo por pagamento</strong>, cada um com o botão <span class="btn">Recibo</span> que baixa o PDF. Quem pagou R$ 300,00 em março e R$ 700,00 em abril tem <strong>dois papéis</strong>, cada um com o seu dia e a sua forma — não um só, datado do último.</p>
       <p>O recibo diz quem pagou, quanto, quando, por qual forma, a que contrato e parcela se refere, e quem emitiu — com o <strong>CNPJ e o endereço da loja</strong>, que saem de <em>Configurações → Dados da loja</em>. É a cláusula 7ª do contrato dela: <em>“a LOCADORA deverá fornecer todos os recibos de pagamentos efetuados pelo LOCATÁRIO”</em>.</p>
-      <p><strong>Quando o pagamento quitou parcela e multa juntas, o recibo diz quanto foi de cada uma</strong> — uma linha embaixo do valor: <em>“R$ 500,00 nesta parcela + R$ 15,00 de multa e juros (cláusula 9ª)”</em>. Sem ela, quem pagou R$ 515,00 de uma parcela de R$ 500,00 guarda um papel que não bate com o carnê.</p>
+      <p><strong>Quando o pagamento quitou parcela e multa juntas, o recibo diz quanto foi de cada uma</strong> — uma linha embaixo do valor: <em data-tela="de multa, juros e correção (cláusula 9ª)">“R$ 500,00 nesta parcela + R$ 15,00 de multa, juros e correção (cláusula 9ª)”</em>. Sem ela, quem pagou R$ 515,00 de uma parcela de R$ 500,00 guarda um papel que não bate com o carnê.</p>
       <div class="fala">
         <span class="rotulo">Recibo estornado some, e é para somer</span>
         <p>Se você estornar um recebimento, o recibo dele <strong>desaparece do portal na hora</strong> e o link antigo para de funcionar. Recibo de dinheiro que voltou é documento falso — o sistema prefere não ter papel a ter um errado.</p>
@@ -417,15 +417,15 @@
       <p>Ela lê isso em <strong>três lugares</strong>, e nos três com a conta escrita — nunca só o número maior:</p>
       <ul>
         <li><strong>No portal</strong>, embaixo da parcela, em vermelho: <em>“Vencida há 30 dia(s): multa de 2% = R$ 10,00 · juros de 1% ao mês (30/30) = R$ 5,00. Saldo R$ 500,00 + R$ 15,00 = R$ 515,00. Sem correção monetária — ainda não há mês cheio de atraso (IPCA, meses inteiros entre o vencimento e hoje).”</em> Com um mês cheio de atraso e o IPCA informado pela loja, a frase termina em <em>“Correção pelo IPCA de 04/2026 a 07/2026 (1%) = R$ 5,02.”</em>; sem o índice do mês, <em>“o IPCA de mm/aaaa não foi informado”</em>.</li>
-        <li><strong>Na mensagem de cobrança</strong> que você manda pelo WhatsApp: <em>“Esse total já inclui R$ 15,00 de multa e juros pelo atraso (cláusula 9ª do contrato).”</em></li>
-        <li><strong>No recibo</strong>, depois de pagar: <em>“R$ 500,00 nesta parcela + R$ 15,00 de multa e juros (cláusula 9ª)”</em></li>
+        <li><strong>Na mensagem de cobrança</strong> que você manda pelo WhatsApp: <em data-tela="de multa, juros e correção pelo atraso (cláusula 9ª do contrato).">“Esse total já inclui R$ 15,00 de multa, juros e correção pelo atraso (cláusula 9ª do contrato).”</em></li>
+        <li><strong>No recibo</strong>, depois de pagar: <em data-tela="de multa, juros e correção (cláusula 9ª)">“R$ 500,00 nesta parcela + R$ 15,00 de multa, juros e correção (cláusula 9ª)”</em></li>
       </ul>
 
       <p><strong>A correção monetária é pelo IPCA</strong> (decidido em 15/08/2026), pelos <strong>meses cheios</strong> de atraso — os meses de calendário inteiros entre o vencimento e hoje — e só com o índice que a loja informou em Configurações → Índices. Vencida há 20 dias, não há mês cheio e não há correção; mês sem índice informado não corrige, e a frase da tela diz qual mês falta. Multa e juros continuam sobre o saldo, não sobre o corrigido. <strong>Se ela perguntar, a resposta é essa</strong>, e é a mesma que a loja tem.</p>
 
       <div class="fala">
         <span class="rotulo">A multa pode ser perdoada, e o perdão fica visível</span>
-        <p>A loja pode perdoar a multa e os juros de uma parcela. Quando isso acontece, <strong>a linha não some do portal</strong>: ela troca o vermelho pelo cinza e passa a dizer <em>“Vencida há 30 dia(s) — multa e juros PERDOADOS (cláusula 9ª). Saldo R$ 500,00.”</em> O principal continua devido; o que foi perdoado é o acréscimo.</p>
+        <p>A loja pode perdoar a multa e os juros de uma parcela. Quando isso acontece, <strong>a linha não some do portal</strong>: ela troca o vermelho pelo cinza e passa a dizer <em data-tela="dia(s) — multa e juros PERDOADOS (cláusula 9ª). Saldo ">“Vencida há 30 dia(s) — multa e juros PERDOADOS (cláusula 9ª). Saldo R$ 500,00.”</em> O principal continua devido; o que foi perdoado é o acréscimo.</p>
         <p>É de propósito. Perdão que apaga a linha vira perdão invisível, e a próxima pessoa a abrir o extrato estranha um saldo sem acréscimo. <strong>Assim ela vê que foi um gesto da loja</strong> — e você também.</p>
       </div>
 
@@ -553,7 +553,7 @@
 
       <h3>Retirar e devolver — cláusulas 4ª e 5ª</h3>
       <p>A loja retira e devolve <strong>de terça a sábado, das 10:30 às 19:00</strong> — e o <strong>sábado fecha mais cedo, às 18:00</strong>. Domingo e segunda não há retirada nem devolução. A locação em si começa às <strong>10:30</strong> do dia da retirada e termina às <strong>18:00</strong> do dia da devolução.</p>
-      <p>O sistema <strong>recusa</strong> marcar uma retirada ou devolução fora disso, e a recusa diz a que horas voltar em vez de um código: <em>“A loja retira e devolve terça a sexta, das 10:30 às 19:00 … (cláusula 4ª).”</em></p>
+      <p>O sistema <strong>recusa</strong> marcar uma retirada ou devolução fora disso, e a recusa diz a que horas voltar em vez de um código: <em data-tela="A loja retira e devolve ">“A loja retira e devolve terça a sexta, das 10:30 às 19:00 … (cláusula 4ª).”</em></p>
       <p class="nota">Esses são os horários do contrato, e valem para a loja que nunca mexeu neles. <b>Se a sua loja tem outro expediente, ele está em Configurações</b> e é o que vale — a recusa cita sempre o expediente cadastrado, não o do papel. Confira antes de prometer um sábado às 18:30 para uma noiva.</p>
 
       <div class="fala">

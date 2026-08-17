@@ -73,8 +73,23 @@ const porLoja = new Map<string, Entrada>();
  * uma fila envelhecida por 5 min, e o conserto é uma comparação.
  */
 const geracaoPorLoja = new Map<string, number>();
+/**
+ * **S-R18 — a cerca do B7 era inócua para a loja que ninguém tinha derrubado
+ * pelo nome.** O `derrubar()` sem argumento subia a geração percorrendo
+ * `geracaoPorLoja`, e esse `Map` só ganha chave quando alguém derruba a loja
+ * POR NOME. Loja nunca derrubada pelo nome tem geração 0 antes e 0 depois do
+ * `clear()` global: um GET em voo que leu 0, foi ao banco, e voltou depois do
+ * `derrubar()` grava a fila velha — que é exatamente a janela que o B7 existe
+ * para fechar, e ela continuava aberta por até 5 min.
+ *
+ * A geração de uma loja passa a ser **global + a dela**. As duas parcelas só
+ * crescem, então a soma cresce a cada `derrubar`, com nome ou sem — não há
+ * como duas gerações diferentes darem o mesmo número para a mesma loja, que é
+ * o que a comparação do `guardar` precisa.
+ */
+let geracaoGlobal = 0;
 export function geracaoDaFila(lojaId: string): number {
-  return geracaoPorLoja.get(lojaId) ?? 0;
+  return geracaoGlobal + (geracaoPorLoja.get(lojaId) ?? 0);
 }
 
 /** A resposta pronta da loja, ou null se não há (ou envelheceu). */
@@ -98,7 +113,9 @@ export function guardarFilaDeAtrasos(lojaId: string, corpo: unknown, geracaoLida
 export function derrubarFilaDeAtrasos(lojaId?: string): void {
   if (lojaId === undefined) {
     porLoja.clear();
-    for (const [id, g] of geracaoPorLoja) geracaoPorLoja.set(id, g + 1);
+    // S-R18: uma parcela GLOBAL, e não um laço pelas lojas já conhecidas — a
+    // loja que nunca foi derrubada pelo nome não está no Map e ficava de fora.
+    geracaoGlobal += 1;
   } else {
     porLoja.delete(lojaId);
     geracaoPorLoja.set(lojaId, geracaoDaFila(lojaId) + 1);
