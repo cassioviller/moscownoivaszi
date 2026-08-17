@@ -29,10 +29,12 @@ integrados um a um.
 E2E 187 em 6,5 min, 0 skipped · banco virgem inteiro (16) · typecheck verde
 em 5 projetos.**
 
-**O repositório tem agora 8 sobras abertas: 0 🔴 · 0 🟠 · 3 🟡 · 5 🔵** — as
-**sete** que os agentes acharam de passagem (tabela abaixo) e a **S-M17**, que
-espera o dump de uma instalação real que ainda não existe. Começou o dia em
-15. **Conte as tabelas, não este parágrafo.**
+**Ao fim desta fila o repositório tinha 8 sobras abertas: 0 🔴 · 0 🟠 · 3 🟡 ·
+5 🔵** — as **sete** que os agentes acharam de passagem (tabela abaixo) e a
+**S-M17**, que espera o dump de uma instalação real que ainda não existe.
+Começou o dia em 15. Essas oito são o que o **fecho das 8** foi buscar, e a
+contagem de hoje está na seção dele, mais abaixo. **Conte as tabelas, não este
+parágrafo.**
 
 **O que o lote ensinou sobre o diagnóstico, e é o que vale guardar:** das 14
 sobras executadas, **nove tinham o mecanismo ou o número errado** — e nas duas
@@ -61,6 +63,59 @@ tinha sido copiado para o ponteiro, para o plano e para este arquivo.
 | ~~**E252**~~ | ~~o envio à contabilidade é por ATO, não por parcela~~ | S-R6 🟠 | ✅ `4d271353` · [relatório](execucao/E252.md) — declarar é por ATO, no molde da conciliação do E235; o carimbo da parcela vira DERIVADO. Migração com backfill rodada no `heliumdb` (`INSERT 0 0`, 0 de 322 carimbadas). **A armadilha tem número**: limpar o carimbo declararia R$ 1.400,00 sobre R$ 1.000,00 recebidos |
 | ~~**E253**~~ | ~~as telas apagam e mostram o que o banco tem~~ | S-R7 🟠, S-R16 🟡, S-R17 🟡, S-R19 🔵 | ✅ `a5c9c630` · [relatório](execucao/E253.md) — o alvo do apagar vem da identidade e a lista encolhe por `reset`, não por `remove()` (que ligaria o `isDirty`); as invalidações viram famílias nomeadas, com varredura contra a sexta grafia. **As quatro sobras erravam para MAIS.** Frontend 1017 → 1037 (108 → 113 arquivos) |
 | ~~**E254**~~ | ~~a letra e a régua~~ | S-R14 🟡, S-R15 🟡, S-R18 🔵 | ✅ `f0f4b5d6` · [relatório](execucao/E254.md) — o seletor que nunca existiu (um e-mail não é um UUID), as CINCO citações mortas em DOIS manuais, e a cerca que só cercava quem já tinha nome. **A regra 34 fechada com execução pelo orquestrador**: com a guarda removida de propósito, o `e2e/64` novo reprova com `Received: 1`; o velho passaria |
+
+## O fecho das 8 — E255, E256, E257
+
+Plano: [`2026-08-17-as-8-que-sobraram-plano.md`](../../propostas/2026-08-17-as-8-que-sobraram-plano.md)
+· Base: `28ca37cc`
+
+As 8 que a fila do review max deixou abertas. **Duas saíram sem código, e o
+plano disse por quê antes de começar**: a **S-RM10** já estava paga (virou
+emenda à regra 29 em `2656568d` — sobra cujo conserto é uma regra fecha quando
+a regra está escrita), e a **S-M17 não é nossa para fechar** (ela pede o dump
+de uma instalação real, e a dona respondeu em 16/08 que a instalação real
+ainda não existe). Sobraram **seis com código**, em três épicos.
+
+| Épico | Tese | Fecha | Estado |
+|---|---|---|---|
+| ~~**E255**~~ | ~~a régua lê a tela como a noiva a lê, e a citação que não é tela declara que não é~~ | S-RM2 🟡, S-RM4 🔵 | ✅ `f422195b` · [relatório](execucao/E255.md) — o corpus vira a UNIÃO do fonte cru com o fonte RENDERIZADO (as regras de espaço do JSX), e a colheita passa de "citação que nomeia cláusula" para toda aspa curva dentro de `<em>`. **13 → 160 citações na régua; 94 conferidas LITERALMENTE.** O épico tinha permissão de fechar DECLARANDO e não precisou dela |
+| ~~**E256**~~ | ~~três frestas pequenas, e cada uma tinha a sua régua no lugar errado~~ | S-RM7 🔵, S-RM8 🔵, S-RM9 🔵 | ✅ `0c136b19` · [relatório](execucao/E256.md) — entra o `useDiaLocal()`, que re-renderiza uma vez por virada, e o sino lê o dia dele em TRÊS sítios; o `useFieldArray` é varrido (população 1, zero ofensores); `parcelas` → `recebimentos` em SEIS frentes, não quatro. **A S-RM7 estava aberta por uma razão factualmente ERRADA**, herdada do E253 |
+| ~~**E257**~~ | ~~o `/admin` ganha cena nos dois botões que spec nenhum clicava~~ | S-RM3 🔵 | ✅ `517cf46d` · [relatório](execucao/E257.md) — **executado pelo orquestrador, porque a régua que o fecha é o E2E** e worktree não isola porta (S-O93). Três asserções por metade, e a terceira é o BANCO. **O número que ele publicou estava errado e está corrigido no relatório**: o `e2e/64` tem 3 testes antes e depois — a cena entrou DENTRO do teste do `:108` |
+
+**Régua do fecho, as quatro medidas em série no `main` em 17/08: API 1905
+(272 arquivos, 10,6 min) · frontend 1044 (115 arquivos, 27,2 s) · E2E 187 em
+6,5 min, 0 skipped · banco virgem inteiro (16, 1 min) · typecheck verde em 5
+projetos.** As três medidas que o lote moveu batem com o que os relatórios
+prometeram, exceto uma: o frontend saiu de 1037 (113 arquivos) para **1044
+(115)**, como o E256 declarou, e o **E2E ficou em 187**, contra os 188 que o
+E257 publicou.
+
+**O E257 publicou um número que não foi medido onde ele é afirmado, e isso é a
+regra 35 outra vez.** O `e2e/64` tem **três** `test(` antes (`f0f4b5d6`) e
+**três** depois: a cobertura dos dois "Editar" entrou como seis asserções
+dentro do teste do `:108`. O "4 passed" que o relatório leu era *1 do projeto
+`setup` (`playwright.config.ts:80`, o `auth.setup.ts`) + 3 testes do arquivo* —
+e a prova estava dentro do próprio relatório, cujo vermelho da regra 34 numera
+o teste que falhou como `✘  2`. **A cobertura é real; o total da suíte é que
+foi deduzido de uma execução de arquivo único.** Corrigido no relatório do
+E257, com a lição escrita ao lado da do diagnóstico: contar dentro do arquivo
+é o que acerta, deduzir o todo a partir da parte é o que erra.
+
+**O ponto de encontro dos dois agentes não colidiu.** O E256 avisou que a
+`varredura-das-varreduras` obriga os dois a mexer nas mesmas quatro linhas e
+que o número tem de ser **recontado depois da integração, não somado de
+cabeça**. Recontado: o E255 não criou varredura nenhuma — ele engordou a
+`varredura-manuais-textos`, que já existia —, então o `toBe(37)` que o E256
+escreveu é o número certo, e a API inteira o confirma.
+
+**Contado nas tabelas com as quatro réguas fechadas: o repositório tem 7
+sobras abertas — 0 🔴 · 0 🟠 · 2 🟡 · 5 🔵.** São a **S-M17** (que espera a
+instalação real), a **S-RM11** 🟡 e as cinco 🔵 **S-RM12, S-RM13, S-RM14,
+S-RM15 e S-RM16**. As sete S-RM que a fila do review max deixou estão todas
+riscadas; **seis nasceram deste lote**, e a maior delas é maior que a sobra
+que a revelou: a **S-RM11** conta 38 chamadas de `hojeLocal()` em 17 telas, 11
+delas dentro de um `useMemo` sem o dia nas dependências. **Não há fila de
+código em curso.**
 
 ## Decisões
 
